@@ -12,7 +12,7 @@ export default function StoreDashboardSettingsLoading() {
 
       {/* Tabs Skeleton */}
       <div className="space-y-6">
-        <div className="flex space-x-1">
+        <div className="flex gap-1">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-24" />
           ))}

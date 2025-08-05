@@ -193,8 +193,8 @@ export default function BrandProductsPage() {
             </div>
 
             <div className="relative w-full sm:w-auto sm:min-w-[300px]">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
-              <Input placeholder="ابحث باسم المنتج أو مدينة أو..." className="pr-10 text-start" dir={direction} />
+              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
+              <Input placeholder="ابحث باسم المنتج أو مدينة أو..." className="pe-10 text-start" dir={direction} />
             </div>
           </div>
 

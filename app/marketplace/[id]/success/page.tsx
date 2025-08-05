@@ -55,7 +55,7 @@ export default function RequestSuccessPage() {
             سيتم إشعارك فور مراجعة صاحب المحل للطلب.
           </p>
           <div className="flex justify-center items-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/brand-dashboard">
               <Button size="lg" className="text-base">
                 الذهاب الى لوحة التحكم
               </Button>

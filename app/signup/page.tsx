@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Eye, ArrowRight } from "lucide-react"
+import { Eye, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -39,7 +39,7 @@ export default function SignUpPage() {
           <div className="inline-flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center relative">
               <div className="w-8 h-8 border-2 border-primary-foreground rounded-md"></div>
-              <div className="absolute -top-1 -right-1 w-6 h-6 border-2 border-primary-foreground rounded-md bg-primary"></div>
+              <div className="absolute -top-1 -end-1 w-6 h-6 border-2 border-primary-foreground rounded-md bg-primary"></div>
             </div>
             <span className="text-3xl font-bold text-foreground">{t("common.shibr")}</span>
           </div>
@@ -152,16 +152,16 @@ export default function SignUpPage() {
                     id="password"
                     type="password"
                     placeholder={t("auth.password_placeholder")}
-                    className="pl-10 h-12"
+                    className="ps-10 h-12"
                     dir={direction}
                     required
                   />
-                  <Eye className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" />
+                  <Eye className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" />
                 </div>
               </div>
 
               {/* Terms and Conditions */}
-              <div className="flex items-start space-x-3">
+              <div className="flex items-start gap-3">
                 <Checkbox id="terms" className="mt-1" />
                 <Label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
                   {t("auth.terms_agreement")}{" "}
@@ -200,7 +200,7 @@ export default function SignUpPage() {
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowRight className="h-4 w-4" />
+            {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
             {t("auth.back_to_home")}
           </Link>
         </div>

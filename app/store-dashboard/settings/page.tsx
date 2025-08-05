@@ -47,7 +47,7 @@ export default function StoreDashboardSettingsPage() {
                     <AvatarImage src="/placeholder.svg?height=96&width=96" alt="Profile" />
                     <AvatarFallback>أم</AvatarFallback>
                   </Avatar>
-                  <Button size="sm" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0">
+                  <Button size="sm" className="absolute -bottom-2 -end-2 h-8 w-8 rounded-full p-0">
                     <Camera className="h-4 w-4" />
                   </Button>
                 </div>

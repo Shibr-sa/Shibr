@@ -99,8 +99,8 @@ export default function StoreDashboardShelvesPage() {
             <CardTitle>قائمة الرفوف</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input placeholder="البحث في الرفوف..." className="pr-10 w-64" />
+                <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input placeholder="البحث في الرفوف..." className="pe-10 w-64" />
               </div>
               <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                 <Filter className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function StoreDashboardShelvesPage() {
                     <TableHead>الحالة</TableHead>
                     <TableHead>المستأجر</TableHead>
                     <TableHead>المنتجات</TableHead>
-                    <TableHead className="text-right">الإجراءات</TableHead>
+                    <TableHead className="text-end">الإجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,7 +154,7 @@ export default function StoreDashboardShelvesPage() {
                       </TableCell>
                       <TableCell>{shelf.renter || "-"}</TableCell>
                       <TableCell>{shelf.products}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">

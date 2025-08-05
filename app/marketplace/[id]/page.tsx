@@ -131,8 +131,8 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
                   <div className="space-y-2">
                     <Label htmlFor="booking-date">مدة الحجز المطلوبة*</Label>
                     <div className="relative">
-                      <Input id="booking-date" defaultValue="Aug 17 - Aug 23" className="pl-10" />
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input id="booking-date" defaultValue="Aug 17 - Aug 23" className="ps-10" />
+                      <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -211,8 +211,8 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
               </CardContent>
               <div className="p-4 border-t mt-auto">
                 <div className="relative">
-                  <Input placeholder="اكتب رسالتك" className="pr-24" />
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <Input placeholder="اكتب رسالتك" className="pe-24" />
+                  <div className="absolute start-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Camera className="h-4 w-4" />
                     </Button>

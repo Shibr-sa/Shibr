@@ -56,7 +56,7 @@ export default function AdminDashboardLayout({
                     <AvatarImage src="/placeholder-user.jpg" />
                     <AvatarFallback>SH</AvatarFallback>
                   </Avatar>
-                  <div className="text-right">
+                  <div className="text-end">
                     <div className="text-sm font-medium">Shadcn</div>
                     <div className="text-xs text-gray-500">m@example.com</div>
                   </div>

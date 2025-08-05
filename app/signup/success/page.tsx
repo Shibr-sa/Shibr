@@ -18,7 +18,7 @@ export default function SignUpSuccessPage() {
           <div className="inline-flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center relative">
               <div className="w-8 h-8 border-2 border-primary-foreground rounded-md"></div>
-              <div className="absolute -top-1 -right-1 w-6 h-6 border-2 border-primary-foreground rounded-md bg-primary"></div>
+              <div className="absolute -top-1 -end-1 w-6 h-6 border-2 border-primary-foreground rounded-md bg-primary"></div>
             </div>
             <span className="text-3xl font-bold text-foreground">Shibr</span>
           </div>

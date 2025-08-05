@@ -10,32 +10,19 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 
-const faqItems = [
-  {
-    question: "هل Shelfy تأخذ عمولة على كل عملية؟",
-    answer:
-      "نعم ، Shelfy مجرد منصة وسيطة. الاتفاق المالي بالكامل بين صاحب المحل وصاحب المتجر، والمنصة تاخذ نسبة بسيطه.",
-  },
-  {
-    question: "هل فيه عقد بين الطرفين؟",
-    answer: "لا يوجد",
-  },
-  {
-    question: "كيف يتم تتبع المبيعات؟",
-    answer: "لا يوجد",
-  },
-  {
-    question: "هل أقدر أغيّر شروط الإيجار بعد إضافة الرف؟",
-    answer: "لا يوجد",
-  },
-  {
-    question: "هل أقدر أستأجر أكثر من محل في نفس الوقت؟",
-    answer: "لا يوجد",
-  },
-]
+// FAQ items will be created dynamically using translations
 
 export default function ShibrLandingPage() {
   const { t, direction } = useLanguage()
+  
+  // Create FAQ items dynamically from translations
+  const faqItems = [
+    { question: t("faq.q1"), answer: t("faq.a1") },
+    { question: t("faq.q2"), answer: t("faq.a2") },
+    { question: t("faq.q3"), answer: t("faq.a3") },
+    { question: t("faq.q4"), answer: t("faq.a4") },
+    { question: t("faq.q5"), answer: t("faq.a5") },
+  ]
 
   return (
     <div className={`min-h-screen bg-background ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
@@ -253,9 +240,9 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
                       <Users className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">حقوق واضحة لكل الأطراف</h3>
+                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.clear_rights.title")}</h3>
                     <p className="text-[#71717a] text-sm leading-relaxed text-center">
-                      كل منتج مربوط بكود QR خاص، يضمن تتبع كل عملية شراء بدقة، ويعطي كل طرف حقه من العمولة أو الإيراد.
+                      {t("features.clear_rights.description")}
                     </p>
                   </div>
                 </CardContent>
@@ -267,10 +254,9 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">تحويل المساحات الفارغة إلى دخل</h3>
+                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.empty_spaces.title")}</h3>
                     <p className="text-[#71717a] text-sm leading-relaxed text-center">
-                      لو عندك رف، جدار أو زاوية غير مستخدمة.. Shelfy تساعدك تأجرها وتحقق منها دخل شهري أو نسبة من
-                      المبيعات بكل سهولة.
+                      {t("features.empty_spaces.description")}
                     </p>
                   </div>
                 </CardContent>
@@ -282,9 +268,9 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
                       <Store className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">وصول حقيقي بدون فتح فرع</h3>
+                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.real_reach.title")}</h3>
                     <p className="text-[#71717a] text-sm leading-relaxed text-center">
-                      لأصحاب المتاجر الإلكترونية، تقدر تحط منتجاتك في أحياء ومدن مختلفة بدون ما تفتح فرع أو توظف أحد.
+                      {t("features.real_reach.description")}
                     </p>
                   </div>
                 </CardContent>
@@ -296,9 +282,9 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
                       <Award className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">نظام تأجير مرن</h3>
+                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.flexible_rental.title")}</h3>
                     <p className="text-[#71717a] text-sm leading-relaxed text-center">
-                      اختر طريقة الدفع المناسبة لك: مبلغ شهري، نسبة من المبيعات، أو مزيج بينهم.. وأنت المتحكم في الشروط.
+                      {t("features.flexible_rental.description")}
                     </p>
                   </div>
                 </CardContent>
@@ -411,15 +397,15 @@ export default function ShibrLandingPage() {
               <div className="space-y-3 text-primary-foreground/80">
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-start">+966 50 123 4567</span>
+                  <span className="text-start">{t("footer.phone")}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-start">info@shibr.com</span>
+                  <span className="text-start">{t("footer.email")}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-start">الرياض، المملكة العربية السعودية</span>
+                  <span className="text-start">{t("footer.address")}</span>
                 </div>
               </div>
               <div className="flex gap-2 pt-4 justify-start">

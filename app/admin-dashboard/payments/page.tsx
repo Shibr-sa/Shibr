@@ -169,8 +169,8 @@ export default function PaymentsPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input placeholder="البحث في المعاملات..." className="pr-10" />
+              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input placeholder="البحث في المعاملات..." className="pe-10" />
             </div>
             <Button variant="outline">
               <Filter className="w-4 h-4 me-2" />
@@ -189,15 +189,15 @@ export default function PaymentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">رقم المعاملة</TableHead>
-                <TableHead className="text-right">المحل</TableHead>
-                <TableHead className="text-right">المبلغ</TableHead>
-                <TableHead className="text-right">النوع</TableHead>
-                <TableHead className="text-right">طريقة الدفع</TableHead>
-                <TableHead className="text-right">الحالة</TableHead>
-                <TableHead className="text-right">العمولة</TableHead>
-                <TableHead className="text-right">التاريخ</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-end">رقم المعاملة</TableHead>
+                <TableHead className="text-end">المحل</TableHead>
+                <TableHead className="text-end">المبلغ</TableHead>
+                <TableHead className="text-end">النوع</TableHead>
+                <TableHead className="text-end">طريقة الدفع</TableHead>
+                <TableHead className="text-end">الحالة</TableHead>
+                <TableHead className="text-end">العمولة</TableHead>
+                <TableHead className="text-end">التاريخ</TableHead>
+                <TableHead className="text-end">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

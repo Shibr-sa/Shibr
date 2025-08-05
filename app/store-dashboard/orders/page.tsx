@@ -105,8 +105,8 @@ export default function StoreDashboardOrdersPage() {
             <CardTitle>طلبات الاستئجار</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input placeholder="البحث في الطلبات..." className="pr-10 w-64" />
+                <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input placeholder="البحث في الطلبات..." className="pe-10 w-64" />
               </div>
               <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                 <Filter className="h-4 w-4" />
@@ -134,7 +134,7 @@ export default function StoreDashboardOrdersPage() {
                     <TableHead>المبلغ</TableHead>
                     <TableHead>الحالة</TableHead>
                     <TableHead>التاريخ</TableHead>
-                    <TableHead className="text-right">الإجراءات</TableHead>
+                    <TableHead className="text-end">الإجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -158,7 +158,7 @@ export default function StoreDashboardOrdersPage() {
                       <TableCell>{order.amount} ريال</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{order.date}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <div className="flex items-center gap-2 justify-end">
                           {order.status === "pending" && (
                             <>

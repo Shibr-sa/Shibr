@@ -114,10 +114,10 @@ export default function MarketplacePage() {
                   <Input
                     id="search"
                     placeholder={t("marketplace.search_placeholder")}
-                    className="pl-10 h-12"
+                    className="ps-10 h-12"
                     dir={direction}
                   />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
 
@@ -156,8 +156,8 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-foreground">0 ★</span>
                   <div className="flex-1 h-2 bg-muted rounded-full relative">
-                    <div className="absolute left-0 top-0 h-full w-3/4 bg-primary rounded-full"></div>
-                    <div className="absolute left-3/4 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background"></div>
+                    <div className="absolute start-0 top-0 h-full w-3/4 bg-primary rounded-full"></div>
+                    <div className="absolute start-3/4 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background"></div>
                   </div>
                   <span className="text-sm text-muted-foreground">9000 ★</span>
                 </div>
@@ -178,7 +178,7 @@ export default function MarketplacePage() {
 
               {/* Search Button */}
               <Button className="h-12 text-base">
-                <Search className="mr-2 h-4 w-4" />
+                <Search className="me-2 h-4 w-4" />
                 {t("marketplace.search_stores")}
               </Button>
             </div>
@@ -196,16 +196,16 @@ export default function MarketplacePage() {
                     {/* Simulated Map */}
                     <div className="w-full h-full relative">
                       {/* Map markers */}
-                      <div className="absolute top-1/4 right-1/3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      <div className="absolute top-1/4 end-1/3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         1
                       </div>
-                      <div className="absolute top-1/2 right-1/4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      <div className="absolute top-1/2 end-1/4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         2
                       </div>
-                      <div className="absolute bottom-1/3 right-2/3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      <div className="absolute bottom-1/3 end-2/3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         3
                       </div>
-                      <div className="absolute top-3/4 left-1/4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      <div className="absolute top-3/4 start-1/4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         4
                       </div>
                     </div>
@@ -288,7 +288,7 @@ export default function MarketplacePage() {
             {/* Pagination */}
             <div className="flex items-center justify-center gap-2 pt-6">
               <Button variant="outline" size="sm">
-                <ChevronRight className="h-4 w-4" />
+                {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
               <Button variant="default" size="sm">
                 1
@@ -298,7 +298,7 @@ export default function MarketplacePage() {
               </Button>
               <span className="px-2">...</span>
               <Button variant="outline" size="sm">
-                <ChevronLeft className="h-4 w-4" />
+                {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </Button>
             </div>
           </div>

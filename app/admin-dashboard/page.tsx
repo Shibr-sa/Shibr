@@ -212,7 +212,7 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               {topProducts.map((product, index) => (
                 <div key={index} className="flex items-center gap-4">
-                  <div className="w-32 text-sm font-medium text-right">{product.name}</div>
+                  <div className="w-32 text-sm font-medium text-end">{product.name}</div>
                   <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
                     <div
                       className="h-6 rounded-full flex items-center justify-end px-2"
@@ -250,12 +250,12 @@ export default function AdminDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">اسم المحل</TableHead>
-                <TableHead className="text-right">الفرع</TableHead>
-                <TableHead className="text-right">اسم الرف</TableHead>
-                <TableHead className="text-right">تاريخ الإضافة</TableHead>
-                <TableHead className="text-right">المحالة</TableHead>
-                <TableHead className="text-right">خيارات</TableHead>
+                <TableHead className="text-end">اسم المحل</TableHead>
+                <TableHead className="text-end">الفرع</TableHead>
+                <TableHead className="text-end">اسم الرف</TableHead>
+                <TableHead className="text-end">تاريخ الإضافة</TableHead>
+                <TableHead className="text-end">المحالة</TableHead>
+                <TableHead className="text-end">خيارات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -164,10 +164,10 @@ export default function BrandShelvesPage() {
           {/* Search Bar and Add Button */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
+              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
               <Input
                 placeholder="ابحث باسم المحل أو مدينة أو..."
-                className="pr-10 border-[#eef1f0] text-start"
+                className="pe-10 border-[#eef1f0] text-start"
                 dir={direction}
               />
             </div>
@@ -259,10 +259,10 @@ export default function BrandShelvesPage() {
 
           {/* Search Bar */}
           <div className="relative max-w-md">
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
+            <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#71717a]" />
             <Input
               placeholder="ابحث باسم المحل أو مدينة أو..."
-              className="pr-10 border-[#eef1f0] text-start"
+              className="pe-10 border-[#eef1f0] text-start"
               dir={direction}
             />
           </div>
