@@ -174,6 +174,9 @@ const translations = {
     "auth.signup": "تسجيل حساب جديد",
     "auth.welcome":
       "مرحبًا بك! سجل دخولك للوصول إلى لوحة التحكم وإدارة نشاطك بكل سهولة، سواء كنت صاحب محل أو متجر إلكتروني.",
+    "auth.welcome_back": "مرحباً بعودتك",
+    "auth.signin_description": "سجل دخولك للوصول إلى لوحة التحكم وإدارة نشاطك بكل سهولة",
+    "auth.dont_have_account": "لا تملك حساباً؟",
     "auth.mobile": "رقم الجوال",
     "auth.password": "كلمة المرور",
     "auth.password_placeholder": "من فضلك أدخل كلمة المرور",
@@ -422,6 +425,9 @@ const translations = {
     "auth.signup": "Create New Account",
     "auth.welcome":
       "Welcome! Sign in to access your dashboard and manage your activity easily, whether you are a store owner or an online store.",
+    "auth.welcome_back": "Welcome Back",
+    "auth.signin_description": "Sign in to access your dashboard and manage your activity easily",
+    "auth.dont_have_account": "Don't have an account?",
     "auth.mobile": "Mobile Number",
     "auth.password": "Password",
     "auth.password_placeholder": "Please enter your password",
