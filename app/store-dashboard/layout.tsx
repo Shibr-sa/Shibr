@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Home, Package, ShoppingCart, Settings, ChevronDown, User, LogOut } from "lucide-react"
+import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 
@@ -47,9 +48,13 @@ export default function StoreDashboardLayout({
       <header className="sticky top-0 z-50 w-full border-b bg-background">
         <div className="flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">ش</span>
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Shibr Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             <span className="text-lg font-bold text-foreground">{t("common.shibr")}</span>
           </div>
 

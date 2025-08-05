@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { CheckCircle, ChevronLeft, User } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function RequestSuccessPage() {
   return (
@@ -10,9 +11,13 @@ export default function RequestSuccessPage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">ش</span>
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Shibr Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10"
+            />
             <span className="text-xl font-bold text-foreground">Shibr</span>
           </div>
 
@@ -75,9 +80,13 @@ export default function RequestSuccessPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-lg font-bold text-primary-foreground">ش</span>
-                </div>
+                <Image
+                  src="/logo.svg"
+                  alt="Shibr Logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10"
+                />
                 <span className="text-xl font-bold">Shibr</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">

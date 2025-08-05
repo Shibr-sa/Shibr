@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/language-context"
@@ -33,10 +34,13 @@ export default function SignInPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center relative">
-              <div className="w-8 h-8 border-2 border-primary-foreground rounded-md"></div>
-              <div className="absolute -top-1 -end-1 w-6 h-6 border-2 border-primary-foreground rounded-md bg-primary"></div>
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Shibr Logo"
+              width={48}
+              height={48}
+              className="h-12 w-12"
+            />
             <span className="text-3xl font-bold text-foreground">{t("common.shibr")}</span>
           </div>
         </div>

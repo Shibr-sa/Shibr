@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { Home, FileText, Store, CreditCard, Settings, ChevronDown, User } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 
 const navigation = [
@@ -37,9 +38,13 @@ export default function AdminDashboardLayout({
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Shibr Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             <span className="text-xl font-bold text-gray-900">Shibr</span>
           </div>
 

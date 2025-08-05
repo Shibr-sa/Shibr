@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 
@@ -61,9 +62,13 @@ export default function MarketplacePage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">ش</span>
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Shibr Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10"
+            />
             <span className="text-xl font-bold text-foreground">{t("common.shibr")}</span>
           </div>
 
@@ -348,9 +353,13 @@ export default function MarketplacePage() {
 
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-lg font-bold text-primary-foreground">ش</span>
-                </div>
+                <Image
+                  src="/logo.svg"
+                  alt="Shibr Logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10"
+                />
                 <span className="text-xl font-bold">{t("common.shibr")}</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">{t("footer.description")}</p>
