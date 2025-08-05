@@ -5,13 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
-- `pnpm dev` - Start development server on http://localhost:3000
-- `pnpm build` - Build production bundle
-- `pnpm start` - Start production server
-- `pnpm lint` - Run Next.js linter
+- `bun dev` - Start development server on http://localhost:3000
+- `bun run build` - Build production bundle
+- `bun start` - Start production server
+- `bun run lint` - Run Next.js linter
 
 ### Package Management
-This project uses pnpm. Install dependencies with `pnpm install`.
+This project uses Bun. Install dependencies with `bun install`.
 
 ## Architecture Overview
 
