@@ -18,21 +18,21 @@ export default function BrandShelvesPage() {
       unit: "ر.س",
       subtitle: "17% من الشهر الماضي",
       icon: TrendingUp,
-      color: "#725cad",
+      color: "hsl(263, 36%, 52%)",
     },
     {
       title: "عدد مسحات QR الإجمالية",
       value: "1,890",
       subtitle: "12% من الشهر الماضي",
       icon: QrCode,
-      color: "#725cad",
+      color: "hsl(263, 36%, 52%)",
     },
     {
       title: "عدد الرفوف الموجودة حالياً",
       value: "15",
       subtitle: "20% من الشهر الماضي",
       icon: Package,
-      color: "#725cad",
+      color: "hsl(263, 36%, 52%)",
     },
   ]
 
@@ -171,7 +171,7 @@ export default function BrandShelvesPage() {
                 dir={direction}
               />
             </div>
-            <Button className="bg-[#725cad] hover:bg-[#725cad]/90 text-white gap-2 shrink-0">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shrink-0">
               <Plus className="h-4 w-4" />
               اضافة رف جديد
             </Button>
@@ -252,7 +252,7 @@ export default function BrandShelvesPage() {
             >
               جديد
             </Button>
-            <Button variant="default" size="sm" className="bg-[#725cad] hover:bg-[#725cad]/90 text-white">
+            <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
               الكل
             </Button>
           </div>

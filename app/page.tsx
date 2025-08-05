@@ -222,10 +222,10 @@ export default function ShibrLandingPage() {
             {/* Content Section */}
             <div className="space-y-8 text-start">
               <div className="space-y-6">
-                <h2 className="text-4xl font-bold text-[#283455] leading-tight text-start">
+                <h2 className="text-4xl font-bold text-secondary leading-tight text-start">
                   ليش تختار شبر؟ المنصة اللي تجمع بين التجارة الواقعية والرقمية في مكان واحد
                 </h2>
-                <p className="text-[#71717a] text-lg leading-relaxed text-start">
+                <p className="text-muted-foreground text-lg leading-relaxed text-start">
                   سواء كنت صاحب محل، تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، Shelfy مصممة تقدم لك
                   تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى آخر بيع.
                 </p>
@@ -237,11 +237,11 @@ export default function ShibrLandingPage() {
               <Card className="bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center text-center space-y-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Users className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.clear_rights.title")}</h3>
-                    <p className="text-[#71717a] text-sm leading-relaxed text-center">
+                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.clear_rights.title")}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.clear_rights.description")}
                     </p>
                   </div>
@@ -251,11 +251,11 @@ export default function ShibrLandingPage() {
               <Card className="bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center text-center space-y-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.empty_spaces.title")}</h3>
-                    <p className="text-[#71717a] text-sm leading-relaxed text-center">
+                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.empty_spaces.title")}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.empty_spaces.description")}
                     </p>
                   </div>
@@ -265,11 +265,11 @@ export default function ShibrLandingPage() {
               <Card className="bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center text-center space-y-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Store className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.real_reach.title")}</h3>
-                    <p className="text-[#71717a] text-sm leading-relaxed text-center">
+                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.real_reach.title")}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.real_reach.description")}
                     </p>
                   </div>
@@ -279,11 +279,11 @@ export default function ShibrLandingPage() {
               <Card className="bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center text-center space-y-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#725cad]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Award className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#283455] text-center">{t("features.flexible_rental.title")}</h3>
-                    <p className="text-[#71717a] text-sm leading-relaxed text-center">
+                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.flexible_rental.title")}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.flexible_rental.description")}
                     </p>
                   </div>

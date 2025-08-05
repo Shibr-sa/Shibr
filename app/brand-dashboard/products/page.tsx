@@ -99,12 +99,12 @@ export default function BrandProductsPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 variant="outline"
-                className="gap-2 text-[#725cad] border-[#725cad] hover:bg-[#725cad] hover:text-white bg-transparent"
+                className="gap-2 text-primary border-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
               >
                 <Download className="h-4 w-4" />
                 استيراد المنتجات من Excel
               </Button>
-              <Button className="gap-2 bg-[#725cad] hover:bg-[#283455] text-white">
+              <Button className="gap-2 bg-primary hover:bg-secondary text-primary-foreground">
                 <Plus className="h-4 w-4" />
                 إضافة منتج جديد
               </Button>
@@ -121,8 +121,8 @@ export default function BrandProductsPage() {
                     <p className="text-2xl font-bold text-[#131313]">45,231.89 ر.س</p>
                     <p className="text-xs text-[#71717a] mt-1">من 20 يناير</p>
                   </div>
-                  <div className="w-12 h-12 bg-[#725cad]/10 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-[#725cad]" />
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-primary" />
                   </div>
                 </div>
               </CardContent>
@@ -267,7 +267,7 @@ export default function BrandProductsPage() {
               <span className="sr-only">الصفحة السابقة</span>
               <span>‹‹</span>
             </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0 bg-[#725cad] text-white border-[#725cad]">
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 bg-primary text-primary-foreground border-primary">
               1
             </Button>
             <Button variant="outline" size="sm" className="h-8 w-8 p-0 bg-transparent">

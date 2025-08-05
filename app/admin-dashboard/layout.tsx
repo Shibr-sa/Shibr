@@ -81,8 +81,9 @@ export default function AdminDashboardLayout({
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-e border-gray-200 min-h-[calc(100vh-73px)]">
-          <nav className="p-4 space-y-2">
+        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-muted/30">
+          <div className="p-4">
+            <nav className="space-y-2">
             {navigation.map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
@@ -100,7 +101,8 @@ export default function AdminDashboardLayout({
                 </Link>
               )
             })}
-          </nav>
+            </nav>
+          </div>
         </aside>
 
         {/* Main Content */}

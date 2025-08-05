@@ -88,7 +88,7 @@ export default function BrandDashboardLayout({
         {/* Sidebar */}
         <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-muted/30">
           <div className="p-4">
-            <nav className="space-y-1">
+            <nav className="space-y-2">
               {sidebarItems.map((item) => {
                 const isActive = pathname === item.href
                 return (

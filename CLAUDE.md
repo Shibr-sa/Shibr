@@ -197,6 +197,15 @@ Authentication flow:
   - Each color has DEFAULT and foreground variants
 - **Status colors**: Use semantic colors (destructive for errors, primary for success)
 
+### Brand Colors
+- **Primary Color**: #725CAD (Purple) - Used for primary actions, buttons, and brand elements
+- **Secondary Color**: #283455 (Dark Blue) - Used for text titles and secondary elements
+- **Text Title Color**: #283455 (Same as Secondary) - Used for headings and important text
+- These colors are configured in the CSS variables and should be accessed via Tailwind classes:
+  - Use `bg-primary`, `text-primary`, `border-primary` for primary color
+  - Use `bg-secondary`, `text-secondary`, `border-secondary` for secondary color
+  - Use `text-foreground` for main text, `text-muted-foreground` for secondary text
+
 ### Layout Patterns
 - **Cards**: Use Card components for grouped content with consistent padding
 - **Responsive design**: Mobile-first approach using Tailwind responsive prefixes

@@ -27,19 +27,19 @@ export default function BrandSettingsPage() {
               <TabsList className="grid w-full grid-cols-3 bg-transparent h-auto p-0 rounded-none">
                 <TabsTrigger
                   value="general"
-                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#725cad] data-[state=active]:bg-transparent data-[state=active]:text-[#725cad] bg-transparent text-[#71717a] hover:text-[#131313]"
+                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary bg-transparent text-muted-foreground hover:text-foreground"
                 >
                   إعدادات عامة
                 </TabsTrigger>
                 <TabsTrigger
                   value="brand"
-                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#725cad] data-[state=active]:bg-transparent data-[state=active]:text-[#725cad] bg-transparent text-[#71717a] hover:text-[#131313]"
+                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary bg-transparent text-muted-foreground hover:text-foreground"
                 >
                   بيانات العلامة التجارية
                 </TabsTrigger>
                 <TabsTrigger
                   value="payment"
-                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#725cad] data-[state=active]:bg-transparent data-[state=active]:text-[#725cad] bg-transparent text-[#71717a] hover:text-[#131313]"
+                  className="text-start py-4 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary bg-transparent text-muted-foreground hover:text-foreground"
                 >
                   إعدادات الدفع
                 </TabsTrigger>
@@ -114,7 +114,7 @@ export default function BrandSettingsPage() {
 
               {/* Save Button */}
               <div className="flex justify-center">
-                <Button className="bg-[#725cad] hover:bg-[#5d4a8a] text-white px-8 py-2 rounded-full">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2 rounded-full">
                   حفظ التغيير
                 </Button>
               </div>
@@ -133,7 +133,7 @@ export default function BrandSettingsPage() {
                 </div>
 
                 <div className="flex justify-center">
-                  <Button className="bg-[#725cad] hover:bg-[#5d4a8a] text-white px-8 py-2 rounded-full">
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2 rounded-full">
                     تغيير كلمة المرور
                   </Button>
                 </div>
