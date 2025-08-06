@@ -45,6 +45,7 @@ const translations = {
     "nav.signin": "تسجيل الدخول",
     "nav.marketplace": "السوق",
     "nav.dashboard": "لوحة التحكم",
+    "nav.navigation": "التنقل",
     "nav.questions": "المسائل والأجوبة",
     "nav.why_us": "لماذا نحن",
 
@@ -373,6 +374,7 @@ const translations = {
     "nav.signin": "Sign In",
     "nav.marketplace": "Marketplace",
     "nav.dashboard": "Dashboard",
+    "nav.navigation": "Navigation",
     "nav.questions": "Questions & Answers",
     "nav.why_us": "Why Us",
 

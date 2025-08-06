@@ -91,21 +91,26 @@ export default function BrandDashboardLayout({
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-muted/30">
-          <div className="p-4">
-            <nav className="space-y-2">
+        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-background">
+          <div className="flex flex-col py-4 px-3">
+            <div className="space-y-1">
               {sidebarItems.map((item) => {
                 const isActive = pathname === item.href
                 return (
-                  <Link key={item.href} href={item.href}>
-                    <Button variant={isActive ? "default" : "ghost"} className="w-full justify-start gap-3 h-10 px-3">
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="flex-1 text-start">{t(item.title)}</span>
-                    </Button>
-                  </Link>
+                  <Button
+                    key={item.href}
+                    variant={isActive ? "secondary" : "ghost"}
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link href={item.href}>
+                      <item.icon className="me-2 h-4 w-4" />
+                      {t(item.title)}
+                    </Link>
+                  </Button>
                 )
               })}
-            </nav>
+            </div>
           </div>
         </aside>
 

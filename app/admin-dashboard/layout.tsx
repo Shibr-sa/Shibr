@@ -25,7 +25,7 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { language, t } = useLanguage()
+  const { language } = useLanguage()
   const pathname = usePathname()
 
   return (
@@ -86,27 +86,28 @@ export default function AdminDashboardLayout({
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-muted/30">
-          <div className="p-4">
-            <nav className="space-y-2">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              const Icon = item.icon
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? "bg-purple-100 text-purple-700" : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-start">{language === "ar" ? item.name : item.nameEn}</span>
-                </Link>
-              )
-            })}
-            </nav>
+        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-background">
+          <div className="flex flex-col py-4 px-3">
+            <div className="space-y-1">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                
+                return (
+                  <Button
+                    key={item.href}
+                    variant={isActive ? "secondary" : "ghost"}
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link href={item.href}>
+                      <Icon className="me-2 h-4 w-4" />
+                      {language === "ar" ? item.name : item.nameEn}
+                    </Link>
+                  </Button>
+                )
+              })}
+            </div>
           </div>
         </aside>
 
