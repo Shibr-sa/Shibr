@@ -9,6 +9,7 @@ import { Home, Package, ShoppingCart, Settings, ChevronUp, User, LogOut } from "
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
+import { useCurrentUser } from "@/hooks/use-current-user"
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +38,7 @@ export default function BrandDashboardLayout({
 }) {
   const pathname = usePathname()
   const { t, direction } = useLanguage()
+  const { user, getInitials } = useCurrentUser()
 
   return (
     <SidebarProvider>
@@ -94,12 +96,18 @@ export default function BrandDashboardLayout({
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton size="lg" className="w-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder-avatar.jpg" alt="Avatar" />
-                        <AvatarFallback className="bg-primary text-primary-foreground">BR</AvatarFallback>
+                        <AvatarImage src={user?.avatar} alt={user?.fullName} />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {user ? getInitials(user.fullName) : "BR"}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col gap-0.5 text-start leading-none">
-                        <span className="text-sm font-medium">{t("dashboard.user.name")}</span>
-                        <span className="text-xs text-muted-foreground">brand@example.com</span>
+                        <span className="text-sm font-medium">
+                          {user?.fullName || t("dashboard.user.name")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {user?.email || "brand@example.com"}
+                        </span>
                       </div>
                       <ChevronUp className="ms-auto size-4" />
                     </SidebarMenuButton>
