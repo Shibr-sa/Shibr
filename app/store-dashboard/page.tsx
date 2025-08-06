@@ -13,6 +13,22 @@ export default function StoreDashboardPage() {
   const { t, direction } = useLanguage()
   const router = useRouter()
 
+  // Check if store data is complete
+  // This checks for essential store information in session storage
+  const checkStoreDataComplete = () => {
+    const user = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('currentUser') || '{}') : {}
+    
+    // Check if essential store data fields are filled
+    const hasStoreName = user.storeName && user.storeName.trim() !== ''
+    const hasStoreType = user.storeType && user.storeType.trim() !== ''
+    const hasCommercialReg = user.commercialReg && user.commercialReg.trim() !== ''
+    const hasPhoneNumber = user.phoneNumber && user.phoneNumber.trim() !== ''
+    
+    return hasStoreName && hasStoreType && (hasCommercialReg || user.isFreelance) && hasPhoneNumber
+  }
+
+  const isStoreDataComplete = checkStoreDataComplete()
+
   return (
     <div className="space-y-6">
       <div>
@@ -20,31 +36,33 @@ export default function StoreDashboardPage() {
         <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
       </div>
 
-      {/* Data Completion Warning */}
-      <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
-        <AlertTriangle className="h-5 w-5 text-destructive" />
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <AlertTitle className="text-destructive font-semibold mb-0">
-              {t("dashboard.incomplete_profile_warning")}
-            </AlertTitle>
-            <AlertDescription className="mt-1">
-              <span className="text-muted-foreground">
-                {t("dashboard.complete_data_description")}
-              </span>
-            </AlertDescription>
+      {/* Data Completion Warning - Only show if data is incomplete */}
+      {!isStoreDataComplete && (
+        <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <AlertTitle className="text-destructive font-semibold mb-0">
+                {t("dashboard.incomplete_profile_warning")}
+              </AlertTitle>
+              <AlertDescription className="mt-1">
+                <span className="text-muted-foreground">
+                  {t("dashboard.complete_data_description")}
+                </span>
+              </AlertDescription>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => router.push("/store-dashboard/settings")}
+              className="gap-2 ms-4 flex-shrink-0"
+            >
+              {t("dashboard.complete_profile_now")}
+              {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+            </Button>
           </div>
-          <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={() => router.push("/store-dashboard/settings")}
-            className="gap-2 ms-4 flex-shrink-0"
-          >
-            {t("dashboard.complete_profile_now")}
-            {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-          </Button>
-        </div>
-      </Alert>
+        </Alert>
+      )}
 
       {/* Stats Section - Unified Card Design */}
       <Card>
@@ -54,7 +72,11 @@ export default function StoreDashboardPage() {
               <h2 className="text-2xl font-bold mb-2">{t("dashboard.manage_store_starts_here")}</h2>
               <p className="text-muted-foreground">{t("dashboard.monitor_performance_description")}</p>
             </div>
-            <Button className="gap-1">
+            <Button 
+              className="gap-1" 
+              disabled={!isStoreDataComplete}
+              title={!isStoreDataComplete ? t("dashboard.complete_profile_first") : ""}
+            >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}
             </Button>
@@ -96,7 +118,11 @@ export default function StoreDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("dashboard.new_rental_requests")}</CardTitle>
-            <Link href="#" className="text-sm text-primary">
+            <Link 
+              href="#" 
+              className={`text-sm ${isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
+              onClick={!isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+            >
               {t("dashboard.see_more")}
             </Link>
           </CardHeader>
@@ -114,7 +140,11 @@ export default function StoreDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("dashboard.your_shelves")}</CardTitle>
-            <Link href="#" className="text-sm text-primary">
+            <Link 
+              href="#" 
+              className={`text-sm ${isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
+              onClick={!isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+            >
               {t("dashboard.see_more")}
             </Link>
           </CardHeader>
@@ -127,7 +157,12 @@ export default function StoreDashboardPage() {
               className="mb-4"
             />
             <p className="text-muted-foreground mb-2">{t("dashboard.no_shelves_displayed")}</p>
-            <Button variant="link" className="text-primary gap-1">
+            <Button 
+              variant="link" 
+              className="text-primary gap-1"
+              disabled={!isStoreDataComplete}
+              title={!isStoreDataComplete ? t("dashboard.complete_profile_first") : ""}
+            >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}
             </Button>
