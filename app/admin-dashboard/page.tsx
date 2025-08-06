@@ -39,46 +39,46 @@ const storesData = [
   {
     id: 1,
     storeName: "Store X",
-    branch: "الرياض",
-    shelfName: "رف واجهة",
-    dateAdded: "24 يونيو 2023",
-    status: "قيد المراجعة",
+    branch: "Riyadh",
+    shelfName: "Front Shelf",
+    dateAdded: "June 24, 2023",
+    status: "under_review",
     statusColor: "orange",
   },
   {
     id: 2,
-    storeName: "محل العطور",
-    branch: "جدة",
-    shelfName: "زاوية عرض",
-    dateAdded: "23 يونيو 2023",
-    status: "مقبول",
+    storeName: "Perfume Store",
+    branch: "Jeddah",
+    shelfName: "Display Corner",
+    dateAdded: "June 23, 2023",
+    status: "accepted",
     statusColor: "green",
   },
   {
     id: 3,
     storeName: "Modern Style",
-    branch: "الدمام",
-    shelfName: "رف خارجي",
-    dateAdded: "22 يونيو 2023",
-    status: "قيد المراجعة",
+    branch: "Dammam",
+    shelfName: "External Shelf",
+    dateAdded: "June 22, 2023",
+    status: "under_review",
     statusColor: "orange",
   },
   {
     id: 4,
     storeName: "Modern Style",
-    branch: "الرياض",
-    shelfName: "رف خارجي",
-    dateAdded: "22 يونيو 2023",
-    status: "قيد المراجعة",
+    branch: "Riyadh",
+    shelfName: "External Shelf",
+    dateAdded: "June 22, 2023",
+    status: "under_review",
     statusColor: "orange",
   },
   {
     id: 5,
     storeName: "Modern Style",
-    branch: "جدة",
-    shelfName: "رف خارجي",
-    dateAdded: "22 يونيو 2023",
-    status: "قيد المراجعة",
+    branch: "Jeddah",
+    shelfName: "External Shelf",
+    dateAdded: "June 22, 2023",
+    status: "under_review",
     statusColor: "orange",
   },
 ]
@@ -90,53 +90,53 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">لوحة التحكم</h1>
-        <p className="text-gray-600">نظرة شاملة على أداء المنصة وإحصائياتها</p>
+        <h1 className="text-2xl font-bold mb-2">{t("dashboard.control_panel")}</h1>
+        <p className="text-gray-600">{t("dashboard.platform_overview")}</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">عدد المستخدمين الكلي</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.total_users")}</CardTitle>
             <Users className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">555</div>
-            <p className="text-xs text-muted-foreground">+20.1% من الشهر الماضي</p>
+            <p className="text-xs text-muted-foreground">+20.1% {t("dashboard.from_last_month")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">عدد الرفوف</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.shelves_count")}</CardTitle>
             <Package className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">890</div>
-            <p className="text-xs text-muted-foreground">منها 620 مؤجر 270 متاح</p>
+            <p className="text-xs text-muted-foreground">620 {t("dashboard.rented")} 270 {t("dashboard.available")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي الإيرادات</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.total_revenue")}</CardTitle>
             <DollarSign className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">320,000</div>
-            <p className="text-xs text-muted-foreground">من عمليات التأجير</p>
+            <p className="text-xs text-muted-foreground">{t("dashboard.from_rentals")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">طلبات الإيجار</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.rental_requests")}</CardTitle>
             <FileText className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">2,200</div>
-            <p className="text-xs text-muted-foreground">+20.1% من الشهر الماضي</p>
+            <p className="text-xs text-muted-foreground">+20.1% {t("dashboard.from_last_month")}</p>
           </CardContent>
         </Card>
       </div>
@@ -147,19 +147,19 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>معدل الإيرادات</CardTitle>
+              <CardTitle>{t("dashboard.revenue_rate")}</CardTitle>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-purple-600">
-                  سنوي
+                  {t("dashboard.yearly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  شهري
+                  {t("dashboard.monthly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  أسبوعي
+                  {t("dashboard.weekly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  يومي
+                  {t("dashboard.daily")}
                 </Button>
               </div>
             </div>
@@ -191,19 +191,19 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>أكثر المنتجات مبيعاً</CardTitle>
+              <CardTitle>{t("dashboard.top_selling_products")}</CardTitle>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-purple-600">
-                  سنوي
+                  {t("dashboard.yearly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  شهري
+                  {t("dashboard.monthly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  أسبوعي
+                  {t("dashboard.weekly")}
                 </Button>
                 <Button variant="ghost" size="sm">
-                  يومي
+                  {t("dashboard.daily")}
                 </Button>
               </div>
             </div>
@@ -227,9 +227,9 @@ export default function AdminDashboard() {
                 </div>
               ))}
               <div className="mt-4 text-xs text-gray-500 text-center">
-                ↗️ ارتفاع بنسبة 4.5% هذا الشهر
+                ↗️ {t("dashboard.increase_by")} 4.5% {t("dashboard.this_month")}
                 <br />
-                عرض إجمالي الدوران لفترة الشهر
+                {t("dashboard.show_total_turnover")}
               </div>
             </div>
           </CardContent>
@@ -240,9 +240,9 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>إدارة المحلات</CardTitle>
+            <CardTitle>{t("dashboard.stores_management")}</CardTitle>
             <Button variant="ghost" size="sm">
-              رؤية المزيد ←
+              {t("dashboard.see_more")} ←
             </Button>
           </div>
         </CardHeader>
@@ -250,12 +250,12 @@ export default function AdminDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-end">اسم المحل</TableHead>
-                <TableHead className="text-end">الفرع</TableHead>
-                <TableHead className="text-end">اسم الرف</TableHead>
-                <TableHead className="text-end">تاريخ الإضافة</TableHead>
-                <TableHead className="text-end">المحالة</TableHead>
-                <TableHead className="text-end">خيارات</TableHead>
+                <TableHead className="text-end">{t("dashboard.store_name")}</TableHead>
+                <TableHead className="text-end">{t("dashboard.branch")}</TableHead>
+                <TableHead className="text-end">{t("dashboard.shelf_name")}</TableHead>
+                <TableHead className="text-end">{t("dashboard.date_added")}</TableHead>
+                <TableHead className="text-end">{t("dashboard.status")}</TableHead>
+                <TableHead className="text-end">{t("dashboard.options")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -274,7 +274,7 @@ export default function AdminDashboard() {
                           : "bg-orange-100 text-orange-800 hover:bg-orange-100"
                       }
                     >
-                      {store.status}
+                      {t(`dashboard.status_${store.status}`)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -287,15 +287,15 @@ export default function AdminDashboard() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
                           <Eye className="w-4 h-4 me-2" />
-                          عرض
+                          {t("dashboard.view")}
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Edit className="w-4 h-4 me-2" />
-                          عرض
+                          {t("dashboard.edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600">
                           <Trash2 className="w-4 h-4 me-2" />
-                          رفض
+                          {t("dashboard.reject")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

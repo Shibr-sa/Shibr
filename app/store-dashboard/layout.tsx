@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -37,8 +37,18 @@ export default function StoreDashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { t, direction } = useLanguage()
   const { user, getInitials } = useCurrentUser()
+
+  const handleLogout = () => {
+    // Clear session storage
+    sessionStorage.removeItem("currentUser")
+    // Clear any remembered email
+    localStorage.removeItem("userEmail")
+    // Redirect to sign in page
+    router.push("/signin")
+  }
 
   return (
     <SidebarProvider>
@@ -98,7 +108,7 @@ export default function StoreDashboardLayout({
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={user?.avatar} alt={user?.fullName} />
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {user ? getInitials(user.fullName) : "ST"}
+                          {user ? getInitials() : "ST"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col gap-0.5 text-start leading-none">
@@ -125,9 +135,9 @@ export default function StoreDashboardLayout({
                       <Settings className="me-2 h-4 w-4" />
                       <span>{t("dashboard.user.settings")}</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                       <LogOut className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.user.logout")}</span>
+                      <span>{t("dashboard.logout")}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

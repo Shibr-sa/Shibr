@@ -29,6 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Ignore TypeScript errors or use `any` without justification
 
 ### Version Control Standards
+- **IMPORTANT**: NEVER commit or push changes unless explicitly instructed by the user with "push these changes" or similar explicit command
 - **Commit Messages**: Use conventional commits (feat:, fix:, docs:, style:, refactor:)
 - **Branch Naming**: feature/*, bugfix/*, hotfix/* patterns
 - **Pull Requests**: Always include description and testing steps

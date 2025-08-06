@@ -43,6 +43,6 @@ export function useCurrentUser() {
   return {
     user,
     isLoading,
-    getInitials: user ? getInitials(user.fullName) : () => "US",
+    getInitials: user ? () => getInitials(user.fullName) : () => "US",
   }
 }
