@@ -250,7 +250,7 @@ export default function ShibrLandingPage() {
               <CardContent className="p-0">
                 <Image
                   src="/placeholder.svg?height=400&width=300"
-                  alt="جدة - مواقع المتاجر المتاحة"
+                  alt={t("video.jeddah_stores")}
                   width={300}
                   height={400}
                   className="w-full aspect-[3/4] object-cover"
@@ -262,7 +262,7 @@ export default function ShibrLandingPage() {
               <CardContent className="p-0">
                 <Image
                   src="/placeholder.svg?height=400&width=300"
-                  alt="الرياض - مواقع المتاجر المتاحة"
+                  alt={t("video.riyadh_stores")}
                   width={300}
                   height={400}
                   className="w-full aspect-[3/4] object-cover"
@@ -281,11 +281,10 @@ export default function ShibrLandingPage() {
             <div className="space-y-8 text-start">
               <div className="space-y-6">
                 <h2 className="text-4xl font-bold text-secondary leading-tight text-start">
-                  ليش تختار شبر؟ المنصة اللي تجمع بين التجارة الواقعية والرقمية في مكان واحد
+                  {t("why_choose.title")}
                 </h2>
                 <p className="text-muted-foreground text-lg leading-relaxed text-start">
-                  سواء كنت صاحب محل، تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، Shelfy مصممة تقدم لك
-                  تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى آخر بيع.
+                  {t("why_choose.description")}
                 </p>
               </div>
             </div>
@@ -472,10 +471,10 @@ export default function ShibrLandingPage() {
               </div>
               <div className="flex gap-2 pt-4 justify-start">
                 <Button size="sm" variant="secondary">
-                  تويتر
+                  {t("footer.social.twitter")}
                 </Button>
                 <Button size="sm" variant="secondary">
-                  لينكد إن
+                  {t("footer.social.linkedin")}
                 </Button>
               </div>
             </div>

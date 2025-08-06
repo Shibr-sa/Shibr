@@ -22,6 +22,8 @@ const translations = {
     "common.shibr": "Shibr",
     "common.search": "بحث",
     "common.save": "حفظ",
+    "common.language.arabic": "العربية",
+    "common.language.english": "English",
     "common.cancel": "إلغاء",
     "common.delete": "حذف",
     "common.edit": "تعديل",
@@ -158,6 +160,12 @@ const translations = {
     "video.description":
       "تطبيق الخدمات المتكاملة في منصة Shelfy يساعد على تحسين الأعمال والتجارة وتوفير الحلول المتكاملة في مكان واحد. يوفر التطبيق التحكم في جميع الأعمال والمبيعات الخدمية المقدمة من خلال منصة واحدة يمكن من خلالها إدارة الأعمال بطريقة احترافية.",
     "video.start_journey": "ابدأ رحلتك الآن",
+    "video.jeddah_stores": "جدة - مواقع المتاجر المتاحة",
+    "video.riyadh_stores": "الرياض - مواقع المتاجر المتاحة",
+    
+    // Why Choose Section
+    "why_choose.title": "ليش تختار شبر؟ المنصة اللي تجمع بين التجارة الواقعية والرقمية في مكان واحد",
+    "why_choose.description": "سواء كنت صاحب محل، تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، Shelfy مصممة تقدم لك تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى آخر بيع.",
 
     // Statistics
     "stats.why_choose": "ليش تختار",
@@ -187,6 +195,8 @@ const translations = {
     "footer.rights": "جميع الحقوق محفوظة",
     "footer.description":
       "منصة Shibr الرائدة في ربط المتاجر الواقعية والإلكترونية، نوفر حلول متكاملة لإدارة الأعمال التجارية بطريقة احترافية.",
+    "footer.social.twitter": "تويتر",
+    "footer.social.linkedin": "لينكد إن",
 
     // Marketplace
     "marketplace.title": "البحث في المحلات والمتاجر",
@@ -198,6 +208,14 @@ const translations = {
     "marketplace.dammam": "الدمام",
     "marketplace.north": "الشمال",
     "marketplace.south": "الجنوب",
+    "marketplace.footer.available_stations": "المحطات المتاحة",
+    
+    // Marketplace Mock Data
+    "marketplace.mock.store_name_1": "كوفي سيوت",
+    "marketplace.mock.monthly": "شهري",
+    "marketplace.mock.location_riyadh": "المملكة العربية السعودية، الرياض 13512، حطين",
+    "marketplace.mock.service_type": "نوع الخدمة",
+    "marketplace.mock.through_april": "من خلال 1 أبريل",
     "marketplace.east": "الشرق",
     "marketplace.west": "الغرب",
     "marketplace.price_range": "نطاق السعر",
@@ -332,6 +350,8 @@ const translations = {
     "common.shibr": "Shibr",
     "common.search": "Search",
     "common.save": "Save",
+    "common.language.arabic": "العربية",
+    "common.language.english": "English",
     "common.cancel": "Cancel",
     "common.delete": "Delete",
     "common.edit": "Edit",
@@ -470,6 +490,12 @@ const translations = {
     "video.description":
       "The integrated services application on the Shelfy platform helps improve business and commerce and provide integrated solutions in one place. The application provides control over all business and service sales provided through one platform through which business can be managed professionally.",
     "video.start_journey": "Start Your Journey Now",
+    "video.jeddah_stores": "Jeddah - Available store locations",
+    "video.riyadh_stores": "Riyadh - Available store locations",
+    
+    // Why Choose Section
+    "why_choose.title": "Why choose Shibr? The platform that brings together physical and digital commerce in one place",
+    "why_choose.description": "Whether you're a store owner looking to increase your income, or an online store wanting to reach customers in reality, Shelfy is designed to provide you with a smooth, flexible experience that preserves your rights from the first shelf to the last sale.",
 
     // Statistics
     "stats.why_choose": "Why choose",
@@ -500,6 +526,8 @@ const translations = {
     "footer.rights": "All rights reserved",
     "footer.description":
       "Shibr platform is a leader in connecting physical and online stores, providing integrated solutions for managing commercial business professionally.",
+    "footer.social.twitter": "Twitter",
+    "footer.social.linkedin": "LinkedIn",
 
     // Marketplace
     "marketplace.title": "Search Stores and Markets",
@@ -511,6 +539,14 @@ const translations = {
     "marketplace.dammam": "Dammam",
     "marketplace.north": "North",
     "marketplace.south": "South",
+    "marketplace.footer.available_stations": "Available Stations",
+    
+    // Marketplace Mock Data
+    "marketplace.mock.store_name_1": "Coffee Suit",
+    "marketplace.mock.monthly": "Monthly",
+    "marketplace.mock.location_riyadh": "Saudi Arabia, Riyadh 13512, Hittin",
+    "marketplace.mock.service_type": "Service Type",
+    "marketplace.mock.through_april": "Through April 1",
     "marketplace.east": "East",
     "marketplace.west": "West",
     "marketplace.price_range": "Price Range",

@@ -19,39 +19,39 @@ export default function MarketplacePage() {
   const stores = [
     {
       id: 1,
-      name: "كوفي سيوت",
+      name: t("marketplace.mock.store_name_1"),
       image: "/placeholder.svg?height=200&width=300",
       rating: 4.8,
       price: "2000",
-      period: "شهري",
+      period: t("marketplace.mock.monthly"),
       discount: "+18%",
-      location: "المملكة العربية السعودية، الرياض 13512، حطين",
+      location: t("marketplace.mock.location_riyadh"),
       owner: "Esther Howard",
-      services: ["نوع الخدمة", "الرياض", "من خلال 1 أبريل"],
+      services: [t("marketplace.mock.service_type"), t("marketplace.riyadh"), t("marketplace.mock.through_april")],
     },
     {
       id: 2,
-      name: "كوفي سيوت",
+      name: t("marketplace.mock.store_name_1"),
       image: "/placeholder.svg?height=200&width=300",
       rating: 4.8,
       price: "2000",
-      period: "شهري",
+      period: t("marketplace.mock.monthly"),
       discount: "+18%",
-      location: "المملكة العربية السعودية، الرياض 13512، حطين",
+      location: t("marketplace.mock.location_riyadh"),
       owner: "Esther Howard",
-      services: ["نوع الخدمة", "الرياض", "من خلال 1 أبريل"],
+      services: [t("marketplace.mock.service_type"), t("marketplace.riyadh"), t("marketplace.mock.through_april")],
     },
     {
       id: 3,
-      name: "كوفي سيوت",
+      name: t("marketplace.mock.store_name_1"),
       image: "/placeholder.svg?height=200&width=300",
       rating: 4.8,
       price: "2000",
-      period: "شهري",
+      period: t("marketplace.mock.monthly"),
       discount: "+18%",
-      location: "المملكة العربية السعودية، الرياض 13512، حطين",
+      location: t("marketplace.mock.location_riyadh"),
       owner: "Esther Howard",
-      services: ["نوع الخدمة", "الرياض", "من خلال 1 أبريل"],
+      services: [t("marketplace.mock.service_type"), t("marketplace.riyadh"), t("marketplace.mock.through_april")],
     },
   ]
 
@@ -344,7 +344,7 @@ export default function MarketplacePage() {
                 </li>
                 <li>
                   <a href="#" className="hover:text-foreground transition-colors">
-                    المحطات المتاحة
+                    {t("marketplace.footer.available_stations")}
                   </a>
                 </li>
               </ul>
