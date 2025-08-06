@@ -157,7 +157,7 @@ export default function BrandDashboardLayout({
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background">{children}</main>
+          <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
         </div>
       </div>
     </SidebarProvider>
