@@ -55,7 +55,13 @@ const translations = {
     "dashboard.orders": "الطلبات",
     "dashboard.settings": "الإعدادات",
     "dashboard.profile": "الملف الشخصي",
+    "dashboard.posts": "المنشورات",
+    "dashboard.stores": "المتاجر",
+    "dashboard.payments": "المدفوعات",
     "dashboard.logout": "تسجيل الخروج",
+    "dashboard.brand": "لوحة العلامة التجارية",
+    "dashboard.store": "لوحة المتجر",
+    "dashboard.admin": "لوحة المدير",
 
     // Dashboard Home Page
     "dashboard.welcome": "مرحبا بك في لوحة التحكم الخاصة بك",
@@ -385,6 +391,9 @@ const translations = {
     "dashboard.settings": "Settings",
     "dashboard.profile": "Profile",
     "dashboard.logout": "Logout",
+    "dashboard.brand": "Brand Dashboard",
+    "dashboard.store": "Store Dashboard",
+    "dashboard.admin": "Admin Dashboard",
 
     // Dashboard Home Page
     "dashboard.welcome": "Welcome to your dashboard",

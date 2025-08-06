@@ -1,37 +1,31 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Home, Package, ShoppingCart, Settings, ChevronDown, User, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
 
 const sidebarItems = [
-  {
-    title: "brand.dashboard.home",
-    href: "/brand-dashboard",
-    icon: Home,
-  },
-  {
-    title: "brand.dashboard.shelves",
-    href: "/brand-dashboard/shelves",
-    icon: Package,
-  },
-  {
-    title: "brand.dashboard.products",
-    href: "/brand-dashboard/products",
-    icon: ShoppingCart,
-  },
-  {
-    title: "brand.dashboard.settings",
-    href: "/brand-dashboard/settings",
-    icon: Settings,
-  },
+  { title: "dashboard.home", href: "/brand-dashboard", icon: Home },
+  { title: "dashboard.products", href: "/brand-dashboard/products", icon: Package },
+  { title: "dashboard.shelves", href: "/brand-dashboard/shelves", icon: ShoppingCart },
+  { title: "dashboard.settings", href: "/brand-dashboard/settings", icon: Settings },
 ]
 
 export default function BrandDashboardLayout({
@@ -43,80 +37,95 @@ export default function BrandDashboardLayout({
   const { t, direction } = useLanguage()
 
   return (
-    <div className={`min-h-screen bg-muted/40 ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="flex h-14 items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/logo.svg"
-              alt="Shibr Logo"
-              width={32}
-              height={32}
-              className="h-8 w-8"
-            />
-            <span className="text-lg font-bold text-foreground">{t("common.shibr")}</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-8 px-3">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src="/placeholder.svg?height=24&width=24" alt="User" />
-                    <AvatarFallback>
+    <SidebarProvider>
+      <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" asChild>
+                  <Link href="/brand-dashboard">
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                      <Image
+                        src="/logo.svg"
+                        alt="Shibr Logo"
+                        width={20}
+                        height={20}
+                        className="size-5"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-0.5 leading-none">
+                      <span className="font-semibold">{t("common.shibr")}</span>
+                      <span className="text-xs text-muted-foreground">{t("dashboard.brand")}</span>
+                    </div>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {sidebarItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.href}
+                        tooltip={t(item.title)}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="size-4" />
+                          <span>{t(item.title)}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="h-14 border-b bg-background flex items-center px-4">
+            <SidebarTrigger />
+            
+            <div className="flex-1 flex items-center justify-end ms-4">
+              <div className="flex items-center gap-4">
+                <LanguageSwitcher />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
                       <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium hidden sm:inline">{t("dashboard.profile")}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <User className="h-4 w-4 me-2" />
-                  <span>{t("dashboard.profile")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <LogOut className="h-4 w-4 me-2" />
-                  <span>{t("dashboard.logout")}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 min-h-[calc(100vh-3.5rem)] border-e bg-background">
-          <div className="flex flex-col py-4 px-3">
-            <div className="space-y-1">
-              {sidebarItems.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Button
-                    key={item.href}
-                    variant={isActive ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="me-2 h-4 w-4" />
-                      {t(item.title)}
-                    </Link>
-                  </Button>
-                )
-              })}
+                      <span className="hidden md:inline">{t("dashboard.user.name")}</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <User className="me-2 h-4 w-4" />
+                      <span>{t("dashboard.user.profile")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="me-2 h-4 w-4" />
+                      <span>{t("dashboard.user.settings")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive">
+                      <LogOut className="me-2 h-4 w-4" />
+                      <span>{t("dashboard.user.logout")}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-          </div>
-        </aside>
+          </header>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6 space-y-6 bg-background">{children}</main>
+          {/* Main Content */}
+          <main className="flex-1 p-6 bg-background">{children}</main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }
