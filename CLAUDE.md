@@ -50,9 +50,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun run build` - Build production bundle
 - `bun start` - Start production server
 - `bun run lint` - Run Next.js linter
+- `bunx convex dev` - Start Convex development server (real-time backend)
 
 ### Package Management
 This project uses Bun. Install dependencies with `bun install`.
+
+### Database (Convex)
+- `bunx convex dev` - Start Convex dev server with real-time sync
+- `bunx convex deploy` - Deploy to production
+- Dashboard: https://dashboard.convex.dev
 
 ## Architecture Overview
 
@@ -64,6 +70,7 @@ Shibr is a smart platform connecting physical and online stores through a shelf 
 - **Language**: TypeScript with strict mode
 - **UI**: Radix UI primitives wrapped with shadcn/ui components
 - **Styling**: Tailwind CSS with custom design system variables
+- **Database**: Convex (real-time, reactive backend)
 - **State**: React Context API for global state (language/theme)
 - **Forms**: React Hook Form + Zod validation
 - **Auth**: NextAuth.js (credentials provider)
@@ -111,16 +118,20 @@ The app supports Arabic/English with RTL/LTR switching:
 - Loading states use `loading.tsx` files in each route
 
 #### Data Flow
-- Mock data is currently hardcoded in components
+- Mock data is currently hardcoded in components (will be replaced with Convex)
 - Forms use React Hook Form with Zod schemas
 - Tables use shadcn/ui Table component with built-in sorting/filtering
+- Convex provides real-time, reactive data synchronization
 
 ### Important Files
 
 - `/contexts/language-context.tsx` - All translations and language switching logic
-- `/app/layout.tsx` - Root layout with providers
+- `/app/layout.tsx` - Root layout with providers (ConvexClientProvider, LanguageProvider)
 - `/lib/utils.ts` - Utility functions including `cn()` for className merging
 - `/components/ui/` - shadcn/ui component library (don't modify)
+- `/components/convex-provider.tsx` - Convex client provider for real-time data
+- `/convex/schema.ts` - Database schema definition (currently empty, to be implemented)
+- `/convex/_generated/` - Auto-generated Convex client code (do not edit)
 
 ### Development Guidelines
 
@@ -141,6 +152,34 @@ Authentication flow:
 - Sign up includes account type selection (store vs brand owner)
 - Role determines dashboard redirection after login
 - Admin accounts would be created separately (not via signup)
+
+### Convex Backend Integration
+
+The project uses Convex as the backend database and real-time sync solution:
+
+#### Setup & Configuration
+- **Connection**: Configured via `NEXT_PUBLIC_CONVEX_URL` in `.env.local`
+- **Provider**: `ConvexClientProvider` wraps the entire app in `/app/layout.tsx`
+- **Schema**: Located in `/convex/schema.ts` (currently empty, ready for implementation)
+- **Generated Code**: `/convex/_generated/` contains auto-generated client code
+
+#### Development Workflow
+1. **Start Convex dev server**: Run `bunx convex dev` alongside `bun dev`
+2. **Define schema**: Add tables and fields to `/convex/schema.ts`
+3. **Create functions**: Write queries, mutations, and actions in `/convex/` directory
+4. **Use in components**: Import from `convex/_generated/api` and use hooks like `useQuery`, `useMutation`
+
+#### Best Practices
+- Keep schema definitions type-safe with Convex validators
+- Use optimistic updates for better UX
+- Leverage real-time subscriptions for live data
+- Implement proper error handling for mutations
+- Use Convex indexes for efficient queries
+
+#### Resources
+- Dashboard: https://dashboard.convex.dev
+- Documentation: https://docs.convex.dev
+- Schema design: https://docs.convex.dev/database/schemas
 
 ## Design Standards & Best Practices
 

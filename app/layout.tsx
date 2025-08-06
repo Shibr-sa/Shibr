@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Cairo, Inter } from "next/font/google"
 import "./globals.css"
 import { LanguageProvider } from "@/contexts/language-context"
+import { ConvexClientProvider } from "@/components/convex-provider"
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -32,7 +33,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body className={`${cairo.variable} ${inter.variable} font-cairo antialiased`}>
-        <LanguageProvider>{children}</LanguageProvider>
+        <ConvexClientProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   )
