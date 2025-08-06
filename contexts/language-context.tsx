@@ -71,6 +71,8 @@ const translations = {
     "dashboard.start_displaying_shelves": "ابدأ في عرض رفوفك",
     "dashboard.thanks_for_registering": "شكرا لتسجيلك معنا",
     "dashboard.complete_data_description": "يجب عليك ان تكمل ادخال بياناتك للتمكن من عرض رفوفك للإيجار.",
+    "dashboard.incomplete_profile_warning": "تحذير: ملفك الشخصي غير مكتمل",
+    "dashboard.complete_profile_now": "أكمل الملف الآن",
     "dashboard.manage_store_starts_here": "إدارة محلك تبدأ من هنا",
     "dashboard.display_shelf_now": "اعرض رف الآن",
     "dashboard.monitor_performance_description": "راقب أدائك، اعرض رفوفك للتأجير، وابدأ في زيادة دخلك مع Shelfy.",
@@ -416,6 +418,8 @@ const translations = {
     "dashboard.thanks_for_registering": "Thank you for registering with us",
     "dashboard.complete_data_description":
       "You must complete entering your data to be able to display your shelves for rent.",
+    "dashboard.incomplete_profile_warning": "Warning: Your profile is incomplete",
+    "dashboard.complete_profile_now": "Complete Profile Now",
     "dashboard.manage_store_starts_here": "Managing your store starts here",
     "dashboard.display_shelf_now": "Display shelf now",
     "dashboard.monitor_performance_description":
