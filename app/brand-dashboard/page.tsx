@@ -3,14 +3,14 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight } from "lucide-react"
+import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/language-context"
 import { useRouter } from "next/navigation"
 
 export default function BrandDashboardPage() {
-  const { t } = useLanguage()
+  const { t, direction } = useLanguage()
   const router = useRouter()
 
   return (
@@ -21,25 +21,29 @@ export default function BrandDashboardPage() {
       </div>
 
       {/* Data Completion Warning */}
-      <Alert className="border-destructive/50 bg-destructive/10">
+      <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
         <AlertTriangle className="h-5 w-5 text-destructive" />
-        <AlertTitle className="text-destructive font-semibold">
-          {t("dashboard.incomplete_profile_warning")}
-        </AlertTitle>
-        <AlertDescription className="mt-2">
-          <p className="text-muted-foreground mb-3">
-            {t("brand.dashboard.complete_data_description")}
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <AlertTitle className="text-destructive font-semibold mb-0">
+              {t("dashboard.incomplete_profile_warning")}
+            </AlertTitle>
+            <AlertDescription className="mt-1">
+              <span className="text-muted-foreground">
+                {t("brand.dashboard.complete_data_description")}
+              </span>
+            </AlertDescription>
+          </div>
           <Button 
             variant="destructive" 
             size="sm"
             onClick={() => router.push("/brand-dashboard/settings")}
-            className="gap-2"
+            className="gap-2 ms-4 flex-shrink-0"
           >
             {t("dashboard.complete_profile_now")}
-            <ArrowRight className="h-4 w-4" />
+            {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
           </Button>
-        </AlertDescription>
+        </div>
       </Alert>
 
       {/* Welcome Section - Integrated with Stats */}
