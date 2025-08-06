@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin } from "lucide-react"
+import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Building2, ShoppingBag, Target } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
+import { useState } from "react"
 
 // FAQ items will be created dynamically using translations
 
 export default function ShibrLandingPage() {
   const { t, direction } = useLanguage()
+  const [activeServiceType, setActiveServiceType] = useState<"stores" | "centers">("stores")
   
   // Create FAQ items dynamically from translations
   const faqItems = [
@@ -122,50 +124,102 @@ export default function ShibrLandingPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Button size="lg" className="text-base">
+            <Button 
+              size="lg" 
+              className="text-base"
+              variant={activeServiceType === "stores" ? "default" : "outline"}
+              onClick={() => setActiveServiceType("stores")}
+            >
               {t("shelfy.service_stores")}
             </Button>
-            <Button variant="outline" size="lg" className="text-base bg-transparent border-gray-300">
+            <Button 
+              variant={activeServiceType === "centers" ? "default" : "outline"}
+              size="lg" 
+              className="text-base border-gray-300"
+              onClick={() => setActiveServiceType("centers")}
+            >
               {t("shelfy.commercial_centers")}
             </Button>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-0">
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Store className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">{t("shelfy.smart_service")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">{t("shelfy.smart_service_desc")}</p>
-              </CardContent>
-            </Card>
+            {activeServiceType === "stores" ? (
+              <>
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Store className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.smart_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.smart_service_desc")}</p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Zap className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">{t("shelfy.fast_service")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">{t("shelfy.fast_service_desc")}</p>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Zap className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.fast_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.fast_service_desc")}</p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">{t("shelfy.integrated_service")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">{t("shelfy.integrated_service_desc")}</p>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Users className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.integrated_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.integrated_service_desc")}</p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Building2 className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.centers.premium_locations")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.centers.premium_locations_desc")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <ShoppingBag className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.centers.high_traffic")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.centers.high_traffic_desc")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Target className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-center">{t("shelfy.centers.targeted_audience")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-center">{t("shelfy.centers.targeted_audience_desc")}</p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </div>
       </section>

@@ -143,6 +143,14 @@ const translations = {
     "shelfy.fast_service_desc": "خدمة طلبية الأوردر بتحكم كامل - بضع دقائق أو ساعات أو أيام",
     "shelfy.integrated_service": "الخدمة المتكاملة",
     "shelfy.integrated_service_desc": "أنشئ حسابك واشترك وقدم أو اطلب الخدمة المناسبة",
+    
+    // Commercial Centers
+    "shelfy.centers.premium_locations": "مواقع مميزة",
+    "shelfy.centers.premium_locations_desc": "أرفف في أفضل المراكز التجارية والمولات الرائدة في المملكة",
+    "shelfy.centers.high_traffic": "حركة عالية",
+    "shelfy.centers.high_traffic_desc": "معدل زيارات يومي يتجاوز 10,000 زائر في المراكز المختارة",
+    "shelfy.centers.targeted_audience": "جمهور مستهدف",
+    "shelfy.centers.targeted_audience_desc": "وصول مباشر لشرائح العملاء المناسبة لمنتجاتك",
 
     // Video Section
     "video.title": "استعرض الحلول المتاحة...",
@@ -447,6 +455,14 @@ const translations = {
     "shelfy.fast_service_desc": "Order service with full control - minutes, hours or days",
     "shelfy.integrated_service": "Integrated Service",
     "shelfy.integrated_service_desc": "Create your account, subscribe and provide or request the appropriate service",
+    
+    // Commercial Centers
+    "shelfy.centers.premium_locations": "Premium Locations",
+    "shelfy.centers.premium_locations_desc": "Shelves in the best commercial centers and leading malls in the Kingdom",
+    "shelfy.centers.high_traffic": "High Traffic",
+    "shelfy.centers.high_traffic_desc": "Daily visitor rate exceeding 10,000 visitors in selected centers",
+    "shelfy.centers.targeted_audience": "Targeted Audience",
+    "shelfy.centers.targeted_audience_desc": "Direct access to customer segments suitable for your products",
 
     // Video Section
     "video.title": "Explore available solutions...",
