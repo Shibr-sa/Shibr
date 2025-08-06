@@ -14,15 +14,66 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useMutation, useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
+import { useToast } from "@/hooks/use-toast"
+import { useStoreData } from "@/contexts/store-data-context"
 
 export default function StoreDashboardSettingsPage() {
   const { t, direction } = useLanguage()
   const { user } = useCurrentUser()
+  const { toast } = useToast()
+  const { userData: storeUserData } = useStoreData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [isVirtual, setIsVirtual] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Form states for General tab
+  const [ownerName, setOwnerName] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  
+  // Form states for Store Data tab
+  const [storeName, setStoreName] = useState("")
+  const [storeType, setStoreType] = useState("")
+  const [website, setWebsite] = useState("")
+  const [commercialReg, setCommercialReg] = useState("")
+  const [isFreelance, setIsFreelance] = useState(false)
+  
+  // Form states for Payment dialog
+  const [bankName, setBankName] = useState("")
+  const [accountName, setAccountName] = useState("")
+  const [accountNumber, setAccountNumber] = useState("")
+  const [iban, setIban] = useState("")
+  
+  // Convex mutations
+  const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
+  const updateStoreData = useMutation(api.users.updateStoreData)
+  const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
+  const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
+  
+  // Convex queries - only payment methods since userData comes from context
+  const userId = user ? (user.id as Id<"users">) : null
+  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, userId ? { userId } : "skip")
+  
+  // Load user data when available from context
+  useEffect(() => {
+    if (storeUserData) {
+      setOwnerName(storeUserData.ownerName || storeUserData.fullName || "")
+      setPhoneNumber(storeUserData.phoneNumber || "")
+      setEmail(storeUserData.email || "")
+      setStoreName(storeUserData.storeName || "")
+      setStoreType(storeUserData.storeType || "")
+      setWebsite(storeUserData.website || "")
+      setCommercialReg(storeUserData.commercialRegister || "")
+      setIsFreelance(storeUserData.isFreelance || false)
+    }
+  }, [storeUserData])
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
@@ -82,27 +133,87 @@ export default function StoreDashboardSettingsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
-                    <Input id="ownerName" defaultValue={user?.fullName} className="text-start" />
+                    <Input 
+                      id="ownerName" 
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
+                      className="text-start" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phoneNumber" className="text-start block">{t("settings.general.phone_number")}</Label>
-                    <Input id="phoneNumber" type="tel" placeholder="+966 5X XXX XXXX" className="text-start" dir="ltr" />
+                    <Input 
+                      id="phoneNumber" 
+                      type="tel" 
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+966 5X XXX XXXX" 
+                      className="text-start" 
+                      dir="ltr" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-start block">{t("settings.general.email")}</Label>
-                    <Input id="email" type="email" defaultValue={user?.email} className="text-start" dir="ltr" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="text-start" 
+                      dir="ltr" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-start block">{t("settings.general.password")}</Label>
-                    <Input id="password" type="password" placeholder="••••••••" className="text-start" />
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••" 
+                      className="text-start" 
+                    />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button className="gap-2">
+                <Button 
+                  className="gap-2"
+                  disabled={isLoading || !userId}
+                  onClick={async () => {
+                    if (!userId) return
+                    
+                    setIsLoading(true)
+                    try {
+                      const updateData: any = {}
+                      if (ownerName) updateData.ownerName = ownerName
+                      if (phoneNumber) updateData.phoneNumber = phoneNumber
+                      if (email) updateData.email = email
+                      if (password) updateData.password = password
+                      
+                      await updateGeneralSettings({
+                        userId,
+                        ...updateData
+                      })
+                      
+                      toast({
+                        title: t("settings.general.success"),
+                        description: t("settings.general.success_message"),
+                      })
+                    } catch (error) {
+                      toast({
+                        title: t("settings.general.error"),
+                        description: t("settings.general.error_message"),
+                        variant: "destructive",
+                      })
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                >
                   <Save className="h-4 w-4" />
-                  {t("settings.general.save_changes")}
+                  {isLoading ? t("settings.general.saving") : t("settings.general.save_changes")}
                 </Button>
               </div>
             </CardContent>
@@ -122,6 +233,8 @@ export default function StoreDashboardSettingsPage() {
                     </Label>
                     <Input 
                       id="storeName" 
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
                       placeholder={t("settings.store_data.store_name_placeholder")}
                       className="text-start" 
                       required
@@ -133,6 +246,8 @@ export default function StoreDashboardSettingsPage() {
                     </Label>
                     <Input 
                       id="storeType" 
+                      value={storeType}
+                      onChange={(e) => setStoreType(e.target.value)}
                       placeholder={t("settings.store_data.store_type_placeholder")}
                       className="text-start" 
                       required
@@ -148,6 +263,8 @@ export default function StoreDashboardSettingsPage() {
                   <Input 
                     id="website" 
                     type="url" 
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
                     placeholder={t("settings.store_data.website_placeholder")}
                     className="text-start" 
                     dir="ltr"
@@ -161,16 +278,26 @@ export default function StoreDashboardSettingsPage() {
                   </Label>
                   <Input 
                     id="commercialReg" 
+                    value={commercialReg}
+                    onChange={(e) => setCommercialReg(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     className="text-start" 
                     dir="ltr"
-                    required
+                    required={!isFreelance}
+                    disabled={isFreelance}
                   />
                 </div>
 
                 {/* No Commercial Registration Checkbox */}
                 <div className="flex items-center gap-2">
-                  <Checkbox id="noCommercialReg" />
+                  <Checkbox 
+                    id="noCommercialReg" 
+                    checked={isFreelance}
+                    onCheckedChange={(checked) => {
+                      setIsFreelance(checked as boolean)
+                      if (checked) setCommercialReg("")
+                    }}
+                  />
                   <Label 
                     htmlFor="noCommercialReg" 
                     className="text-sm font-normal cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -213,9 +340,62 @@ export default function StoreDashboardSettingsPage() {
 
               {/* Save Button */}
               <div className="flex justify-end">
-                <Button className="gap-2">
+                <Button 
+                  className="gap-2"
+                  disabled={isLoading || !userId}
+                  onClick={async () => {
+                    if (!userId) return
+                    
+                    // Validate required fields
+                    if (!storeName || !storeType || (!commercialReg && !isFreelance) || !phoneNumber) {
+                      toast({
+                        title: t("settings.store_data.validation_error"),
+                        description: t("settings.store_data.fill_required_fields"),
+                        variant: "destructive",
+                      })
+                      return
+                    }
+                    
+                    setIsLoading(true)
+                    try {
+                      await updateStoreData({
+                        userId,
+                        storeName,
+                        storeType,
+                        commercialRegister: commercialReg || undefined,
+                        isFreelance,
+                        website: website || undefined,
+                        phoneNumber,
+                      })
+                      
+                      toast({
+                        title: t("settings.store_data.success"),
+                        description: t("settings.store_data.success_message"),
+                      })
+                      
+                      // Update session storage for dashboard
+                      const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}')
+                      sessionStorage.setItem('currentUser', JSON.stringify({
+                        ...currentUser,
+                        storeName,
+                        storeType,
+                        commercialReg: commercialReg || (isFreelance ? 'freelance' : ''),
+                        isFreelance,
+                        phoneNumber,
+                      }))
+                    } catch (error) {
+                      toast({
+                        title: t("settings.store_data.error"),
+                        description: t("settings.store_data.error_message"),
+                        variant: "destructive",
+                      })
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                >
                   <Save className="h-4 w-4" />
-                  {t("settings.store_data.save_changes")}
+                  {isLoading ? t("settings.store_data.saving") : t("settings.store_data.save_changes")}
                 </Button>
               </div>
             </CardContent>
@@ -246,26 +426,56 @@ export default function StoreDashboardSettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">تحويل بنكي</TableCell>
-                      <TableCell>بنك الراجحي - SA...5453</TableCell>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                          مفعل
-                        </Badge>
-                      </TableCell>
-                      <TableCell>مكتملة</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    {paymentMethods?.map((method) => (
+                      <TableRow key={method._id}>
+                        <TableCell className="font-medium">{method.bankName}</TableCell>
+                        <TableCell>
+                          {method.accountName} - {method.accountNumber.slice(-4).padStart(method.accountNumber.length, '*')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={method.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-700 hover:bg-gray-100"}>
+                            {method.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{method.isVirtual ? t("settings.payment.virtual") : t("settings.payment.physical")}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive"
+                              onClick={async () => {
+                                try {
+                                  await deletePaymentMethod({ paymentMethodId: method._id })
+                                  toast({
+                                    title: t("settings.payment.deleted"),
+                                    description: t("settings.payment.deleted_message"),
+                                  })
+                                } catch (error) {
+                                  toast({
+                                    title: t("settings.payment.error"),
+                                    description: t("settings.payment.error_message"),
+                                    variant: "destructive",
+                                  })
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!paymentMethods || paymentMethods.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                          {t("settings.payment.no_payment_methods")}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -347,16 +557,16 @@ export default function StoreDashboardSettingsPage() {
               <Label htmlFor="bank" className="text-start block">
                 {t("settings.payment.dialog.select_bank")}
               </Label>
-              <Select>
+              <Select value={bankName} onValueChange={setBankName}>
                 <SelectTrigger id="bank" className="w-full">
                   <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="alrajhi">Al-Rajhi Bank</SelectItem>
-                  <SelectItem value="ncb">National Commercial Bank</SelectItem>
-                  <SelectItem value="sabb">SABB</SelectItem>
-                  <SelectItem value="riyadbank">Riyad Bank</SelectItem>
-                  <SelectItem value="alinma">Alinma Bank</SelectItem>
+                  <SelectItem value="Al-Rajhi Bank">Al-Rajhi Bank</SelectItem>
+                  <SelectItem value="National Commercial Bank">National Commercial Bank</SelectItem>
+                  <SelectItem value="SABB">SABB</SelectItem>
+                  <SelectItem value="Riyad Bank">Riyad Bank</SelectItem>
+                  <SelectItem value="Alinma Bank">Alinma Bank</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -368,6 +578,8 @@ export default function StoreDashboardSettingsPage() {
               </Label>
               <Input
                 id="accountName"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_name_placeholder")}
                 className="w-full"
               />
@@ -380,6 +592,8 @@ export default function StoreDashboardSettingsPage() {
               </Label>
               <Input
                 id="accountNumber"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_number_placeholder")}
                 className="w-full"
                 dir="ltr"
@@ -393,6 +607,8 @@ export default function StoreDashboardSettingsPage() {
               </Label>
               <Input
                 id="iban"
+                value={iban}
+                onChange={(e) => setIban(e.target.value)}
                 placeholder="IBAN"
                 className="w-full"
                 dir="ltr"
@@ -400,7 +616,7 @@ export default function StoreDashboardSettingsPage() {
             </div>
 
             {/* Virtual Checkbox */}
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+            <div className="flex items-center gap-2">
               <Checkbox 
                 id="virtual" 
                 checked={isVirtual}
@@ -422,10 +638,55 @@ export default function StoreDashboardSettingsPage() {
             >
               {t("settings.payment.dialog.cancel")}
             </Button>
-            <Button onClick={() => {
-              // Handle save logic here
-              setIsPaymentDialogOpen(false)
-            }}>
+            <Button 
+              disabled={isLoading || !userId}
+              onClick={async () => {
+                if (!userId) return
+                
+                // Validate required fields
+                if (!bankName || !accountName || !accountNumber || !iban) {
+                  toast({
+                    title: t("settings.payment.validation_error"),
+                    description: t("settings.payment.fill_all_fields"),
+                    variant: "destructive",
+                  })
+                  return
+                }
+                
+                setIsLoading(true)
+                try {
+                  await addPaymentMethod({
+                    userId,
+                    bankName,
+                    accountName,
+                    accountNumber,
+                    iban,
+                    isVirtual,
+                  })
+                  
+                  toast({
+                    title: t("settings.payment.success"),
+                    description: t("settings.payment.added_message"),
+                  })
+                  
+                  // Reset form
+                  setBankName("")
+                  setAccountName("")
+                  setAccountNumber("")
+                  setIban("")
+                  setIsVirtual(false)
+                  setIsPaymentDialogOpen(false)
+                } catch (error) {
+                  toast({
+                    title: t("settings.payment.error"),
+                    description: t("settings.payment.error_message"),
+                    variant: "destructive",
+                  })
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+            >
               {t("settings.payment.dialog.save")}
             </Button>
           </div>

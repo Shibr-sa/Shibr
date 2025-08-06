@@ -10,6 +10,7 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { StoreDataProvider } from "@/contexts/store-data-context"
 import {
   Sidebar,
   SidebarContent,
@@ -51,8 +52,9 @@ export default function StoreDashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-      <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+    <StoreDataProvider>
+      <SidebarProvider>
+        <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
         <Sidebar collapsible="icon">
           <SidebarHeader>
             <SidebarMenu>
@@ -160,6 +162,7 @@ export default function StoreDashboardLayout({
           <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
         </div>
       </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </StoreDataProvider>
   )
 }

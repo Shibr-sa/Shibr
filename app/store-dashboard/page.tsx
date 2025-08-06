@@ -8,26 +8,14 @@ import Link from "next/link"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/language-context"
 import { useRouter } from "next/navigation"
+import { useStoreData } from "@/contexts/store-data-context"
 
 export default function StoreDashboardPage() {
   const { t, direction } = useLanguage()
   const router = useRouter()
-
-  // Check if store data is complete
-  // This checks for essential store information in session storage
-  const checkStoreDataComplete = () => {
-    const user = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('currentUser') || '{}') : {}
-    
-    // Check if essential store data fields are filled
-    const hasStoreName = user.storeName && user.storeName.trim() !== ''
-    const hasStoreType = user.storeType && user.storeType.trim() !== ''
-    const hasCommercialReg = user.commercialReg && user.commercialReg.trim() !== ''
-    const hasPhoneNumber = user.phoneNumber && user.phoneNumber.trim() !== ''
-    
-    return hasStoreName && hasStoreType && (hasCommercialReg || user.isFreelance) && hasPhoneNumber
-  }
-
-  const isStoreDataComplete = checkStoreDataComplete()
+  
+  // Use the global store data context
+  const { isLoading, isStoreDataComplete } = useStoreData()
 
   return (
     <div className="space-y-6">
@@ -36,8 +24,8 @@ export default function StoreDashboardPage() {
         <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
       </div>
 
-      {/* Data Completion Warning - Only show if data is incomplete */}
-      {!isStoreDataComplete && (
+      {/* Data Completion Warning - Only show if loaded and data is incomplete */}
+      {!isLoading && !isStoreDataComplete && (
         <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
           <AlertTriangle className="h-5 w-5 text-destructive" />
           <div className="flex items-center justify-between">
@@ -74,8 +62,8 @@ export default function StoreDashboardPage() {
             </div>
             <Button 
               className="gap-1" 
-              disabled={!isStoreDataComplete}
-              title={!isStoreDataComplete ? t("dashboard.complete_profile_first") : ""}
+              disabled={isLoading || !isStoreDataComplete}
+              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
             >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}
@@ -120,8 +108,8 @@ export default function StoreDashboardPage() {
             <CardTitle>{t("dashboard.new_rental_requests")}</CardTitle>
             <Link 
               href="#" 
-              className={`text-sm ${isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
-              onClick={!isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+              className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
+              onClick={isLoading || !isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             >
               {t("dashboard.see_more")}
             </Link>
@@ -142,8 +130,8 @@ export default function StoreDashboardPage() {
             <CardTitle>{t("dashboard.your_shelves")}</CardTitle>
             <Link 
               href="#" 
-              className={`text-sm ${isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
-              onClick={!isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+              className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
+              onClick={isLoading || !isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             >
               {t("dashboard.see_more")}
             </Link>
@@ -160,8 +148,8 @@ export default function StoreDashboardPage() {
             <Button 
               variant="link" 
               className="text-primary gap-1"
-              disabled={!isStoreDataComplete}
-              title={!isStoreDataComplete ? t("dashboard.complete_profile_first") : ""}
+              disabled={isLoading || !isStoreDataComplete}
+              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
             >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}

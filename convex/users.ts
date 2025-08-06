@@ -123,3 +123,99 @@ export const getUsersByType = query({
     return users
   },
 })
+
+// Update store data
+export const updateStoreData = mutation({
+  args: {
+    userId: v.id("users"),
+    storeName: v.optional(v.string()),
+    storeType: v.optional(v.string()),
+    commercialRegister: v.optional(v.string()),
+    isFreelance: v.optional(v.boolean()),
+    website: v.optional(v.string()),
+    ownerName: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    storeLogo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...updateData } = args;
+    
+    // Check if essential fields are complete
+    const storeDataComplete = Boolean(
+      updateData.storeName &&
+      updateData.storeType &&
+      (updateData.commercialRegister || updateData.isFreelance) &&
+      updateData.phoneNumber
+    );
+    
+    // Update the user record
+    await ctx.db.patch(userId, {
+      ...updateData,
+      storeDataComplete,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    return { success: true, storeDataComplete };
+  },
+})
+
+// Get user by ID
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    
+    if (!user) return null;
+    
+    // Don't send password to client
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  },
+})
+
+// Check store data completion status
+export const checkStoreDataComplete = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    
+    if (!user) return false;
+    
+    // Check if essential fields are complete
+    const storeDataComplete = Boolean(
+      user.storeName &&
+      user.storeType &&
+      (user.commercialRegister || user.isFreelance) &&
+      user.phoneNumber
+    );
+    
+    return storeDataComplete;
+  },
+})
+
+// Update general settings
+export const updateGeneralSettings = mutation({
+  args: {
+    userId: v.id("users"),
+    ownerName: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    password: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...updateData } = args;
+    
+    // Filter out undefined values
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+    
+    // Update the user record
+    await ctx.db.patch(userId, {
+      ...filteredData,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    return { success: true };
+  },
+})

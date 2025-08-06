@@ -17,6 +17,16 @@ const schema = defineSchema({
     brandName: v.optional(v.string()), // For brand owners
     commercialRegister: v.optional(v.string()),
     
+    // Store-specific data
+    storeType: v.optional(v.string()),
+    isFreelance: v.optional(v.boolean()),
+    website: v.optional(v.string()),
+    ownerName: v.optional(v.string()),
+    storeLogo: v.optional(v.string()),
+    
+    // Store data completion status
+    storeDataComplete: v.optional(v.boolean()),
+    
     // Account status
     isActive: v.boolean(),
     isEmailVerified: v.boolean(),
@@ -32,6 +42,19 @@ const schema = defineSchema({
     .index("by_email", ["email"])
     .index("by_account_type", ["accountType"])
     .index("by_created_at", ["createdAt"]),
+  
+  paymentMethods: defineTable({
+    userId: v.id("users"),
+    bankName: v.string(),
+    accountName: v.string(),
+    accountNumber: v.string(),
+    iban: v.string(),
+    isVirtual: v.boolean(),
+    isActive: v.boolean(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_user", ["userId"]),
 })
 
 export default schema
