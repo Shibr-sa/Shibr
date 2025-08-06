@@ -8,25 +8,91 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Eye, ArrowRight, ArrowLeft } from "lucide-react"
+import { Eye, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/language-context"
+import { useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SignUpPage() {
-  const [accountType, setAccountType] = useState("store-owner")
+  const [accountType, setAccountType] = useState<"store-owner" | "brand-owner">("store-owner")
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    password: "",
+    storeName: "",
+    brandName: "",
+    commercialRegister: "",
+    agreeToTerms: false,
+  })
+  
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectUrl = searchParams.get("redirect")
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
+  const { toast } = useToast()
+  const createUser = useMutation(api.users.createUser)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // All sign-ups now go to the success page for approval.
-    const successRedirect = redirectUrl ? `/signup/success?redirect=${redirectUrl}` : "/signup/success"
-    router.push(successRedirect)
+    
+    if (!formData.agreeToTerms) {
+      toast({
+        title: t("auth.error"),
+        description: t("auth.must_agree_terms"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      await createUser({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        accountType: accountType,
+        storeName: accountType === "store-owner" ? formData.storeName : undefined,
+        brandName: accountType === "brand-owner" ? formData.brandName : undefined,
+        commercialRegister: formData.commercialRegister || undefined,
+        preferredLanguage: language,
+      })
+
+      toast({
+        title: t("auth.success"),
+        description: t("auth.account_created_successfully"),
+      })
+
+      // Redirect based on account type after signup
+      if (accountType === "brand-owner") {
+        router.push("/brand-dashboard")
+      } else {
+        router.push("/store-dashboard")
+      }
+    } catch (error) {
+      toast({
+        title: t("auth.error"),
+        description: error instanceof Error ? error.message : t("auth.signup_failed"),
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }))
   }
 
   return (
@@ -64,7 +130,7 @@ export default function SignUpPage() {
                 <RadioGroup
                   defaultValue="store-owner"
                   value={accountType}
-                  onValueChange={setAccountType}
+                  onValueChange={(value) => setAccountType(value as "store-owner" | "brand-owner")}
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <Label
@@ -86,16 +152,20 @@ export default function SignUpPage() {
 
               {/* Name Field */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-foreground">
+                <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
                   {t("auth.name")}
                 </Label>
                 <Input
-                  id="name"
+                  id="fullName"
+                  name="fullName"
                   type="text"
                   placeholder={t("auth.name_placeholder")}
                   className="h-12"
                   dir={direction}
+                  value={formData.fullName}
+                  onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -107,11 +177,15 @@ export default function SignUpPage() {
                   </Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder={t("auth.email_placeholder")}
                     className="h-12"
                     dir={direction}
+                    value={formData.email}
+                    onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -119,12 +193,16 @@ export default function SignUpPage() {
                     {t("auth.mobile")}
                   </Label>
                   <Input
-                    id="mobile"
+                    id="phoneNumber"
+                    name="phoneNumber"
                     type="tel"
                     placeholder={t("auth.mobile")}
                     className="h-12"
                     dir={direction}
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -136,13 +214,17 @@ export default function SignUpPage() {
                 </Label>
                 <Input
                   id="business-name"
+                  name={accountType === "store-owner" ? "storeName" : "brandName"}
                   type="text"
                   placeholder={
                     accountType === "store-owner" ? t("auth.store_name_placeholder") : t("auth.brand_name_placeholder")
                   }
                   className="h-12"
                   dir={direction}
+                  value={accountType === "store-owner" ? formData.storeName : formData.brandName}
+                  onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -154,25 +236,38 @@ export default function SignUpPage() {
                 <div className="relative">
                   <Input
                     id="password"
-                    type="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder={t("auth.password_placeholder")}
                     className="ps-10 h-12"
                     dir={direction}
+                    value={formData.password}
+                    onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
-                  <Eye className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" />
+                  <Eye 
+                    className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" 
+                    onClick={() => setShowPassword(!showPassword)}
+                  />
                 </div>
               </div>
 
               {/* Terms and Conditions */}
               <div className="flex items-start gap-3">
-                <Checkbox id="terms" className="mt-1" />
+                <Checkbox 
+                  id="terms" 
+                  className="mt-1" 
+                  checked={formData.agreeToTerms}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agreeToTerms: !!checked }))}
+                  disabled={isLoading}
+                />
                 <Label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
                   {t("auth.terms_agreement")}{" "}
                   <Link href="/terms" className="text-primary hover:underline">
                     {t("auth.terms")}
                   </Link>{" "}
-                  {direction === "ar" ? "و" : "and"}{" "}
+                  {language === "ar" ? "و" : "and"}{" "}
                   <Link href="/privacy" className="text-primary hover:underline">
                     {t("auth.privacy")}
                   </Link>{" "}
@@ -181,8 +276,19 @@ export default function SignUpPage() {
               </div>
 
               {/* Sign Up Button */}
-              <Button type="submit" className="w-full h-12 text-base font-medium">
-                {t("auth.signup")}
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-medium" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                    {t("common.loading")}
+                  </>
+                ) : (
+                  t("auth.signup")
+                )}
               </Button>
             </form>
 

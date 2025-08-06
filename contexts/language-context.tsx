@@ -24,6 +24,7 @@ const translations = {
     "common.save": "حفظ",
     "common.language.arabic": "العربية",
     "common.language.english": "English",
+    "common.loading": "جاري التحميل...",
     "common.cancel": "إلغاء",
     "common.delete": "حذف",
     "common.edit": "تعديل",
@@ -270,6 +271,13 @@ const translations = {
     "auth.terms": "الشروط والأحكام",
     "auth.privacy": "سياسة الخصوصية",
     "auth.platform_terms": "الخاصة بمنصة Shelfy",
+    "auth.error": "خطأ",
+    "auth.success": "نجاح",
+    "auth.must_agree_terms": "يجب الموافقة على الشروط والأحكام",
+    "auth.account_created_successfully": "تم إنشاء الحساب بنجاح",
+    "auth.signup_failed": "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى",
+    "auth.signin_success": "تم تسجيل الدخول بنجاح",
+    "auth.invalid_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
 
     // Settings
     "settings.title": "الإعدادات",
@@ -360,6 +368,7 @@ const translations = {
     "common.save": "Save",
     "common.language.arabic": "العربية",
     "common.language.english": "English",
+    "common.loading": "Loading...",
     "common.cancel": "Cancel",
     "common.delete": "Delete",
     "common.edit": "Edit",
@@ -609,6 +618,13 @@ const translations = {
     "auth.terms": "Terms and Conditions",
     "auth.privacy": "Privacy Policy",
     "auth.platform_terms": "of Shelfy platform",
+    "auth.error": "Error",
+    "auth.success": "Success",
+    "auth.must_agree_terms": "You must agree to the terms and conditions",
+    "auth.account_created_successfully": "Account created successfully",
+    "auth.signup_failed": "Failed to create account. Please try again",
+    "auth.signin_success": "Signed in successfully",
+    "auth.invalid_credentials": "Invalid email or password",
 
     // Settings
     "settings.title": "Settings",
