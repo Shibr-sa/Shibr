@@ -6,7 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **MANDATORY**: Every piece of code, component, and feature MUST adhere to:
 1. **Industry Standards** - Follow established patterns from React, Next.js, and TypeScript communities
-2. **shadcn/ui Conventions** - Use only shadcn components with their standard implementations
+2. **shadcn/ui Implementation** - CRITICAL REQUIREMENT:
+   - **ALWAYS check shadcn/ui documentation FIRST** at https://ui.shadcn.com/docs/components/
+   - **Use shadcn/ui components EXACTLY as documented** - no modifications or custom variations
+   - **Copy the exact implementation patterns** from shadcn documentation
+   - **If a shadcn component exists, NEVER create a custom alternative**
+   - **Check shadcn examples** at https://ui.shadcn.com/examples for implementation patterns
 3. **Accessibility Standards** - WCAG 2.1 AA compliance minimum
 4. **Performance Best Practices** - Code splitting, lazy loading, optimization
 5. **Security Standards** - OWASP guidelines, secure coding practices
@@ -14,8 +19,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 7. **Documentation Standards** - Clear, concise comments and documentation
 
 **NEVER**:
-- Create custom solutions when standard ones exist
-- Modify shadcn/ui components
+- Create custom UI solutions when shadcn/ui components exist
+- Modify shadcn/ui components or their default behavior
+- Assume shadcn doesn't have a component - ALWAYS CHECK DOCUMENTATION FIRST
+- Change shadcn component props or styling beyond what's documented
 - Use deprecated or outdated patterns
 - Hardcode values that should be configurable
 - Skip error handling or validation
@@ -158,11 +165,41 @@ Authentication flow:
 - **Number Formatting**: Use locale-aware number formatting for prices/quantities
 - **Date Formatting**: Use locale-aware date formatting
 
-### UI Component Usage
-- **ALWAYS use shadcn/ui components** from `/components/ui/` - never create custom versions
-- **NEVER modify shadcn/ui components directly** - they are maintained as a library
+### UI Component Usage - CRITICAL REQUIREMENTS
+
+**BEFORE IMPLEMENTING ANY UI COMPONENT:**
+1. **CHECK shadcn/ui documentation FIRST**: https://ui.shadcn.com/docs/components/
+2. **VERIFY if component exists**: Browse the full component list
+3. **COPY exact implementation**: Use the exact code patterns from documentation
+4. **CHECK examples**: Review https://ui.shadcn.com/examples for usage patterns
+
+**Implementation Rules:**
+- **ALWAYS use shadcn/ui components** from `/components/ui/` exactly as documented
+- **NEVER modify shadcn/ui components** - they are library code, not project code
+- **NEVER create custom UI components** if shadcn/ui has an equivalent
+- **USE the exact props and patterns** shown in shadcn documentation
+- **COPY component combinations** from shadcn examples when building features
 - When shadcn component doesn't exist, check Radix UI primitives before creating custom
 - Use the `cn()` utility from `/lib/utils.ts` for conditional className merging
+
+**Common shadcn/ui Components to Use:**
+- **Sidebar**: Use the official Sidebar component with SidebarProvider, SidebarHeader, SidebarContent, SidebarFooter
+- **Forms**: Use Form, FormField, FormItem, FormLabel, FormControl, FormMessage
+- **Data Display**: Use Table, Card, Badge, Avatar, Skeleton
+- **Feedback**: Use Alert, Toast, Dialog, Sheet
+- **Navigation**: Use Tabs, Breadcrumb, NavigationMenu
+- **Inputs**: Use Input, Button, Select, Checkbox, RadioGroup, Switch, Textarea
+- **Layout**: Use Separator, ScrollArea, AspectRatio
+
+**Example - Correct Implementation:**
+```tsx
+// GOOD - Using shadcn exactly as documented
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+// BAD - Creating custom components when shadcn has them
+const CustomCard = () => {...} // NEVER do this
+```
 
 ### Spacing Standards
 - **Between form elements**: Use `space-y-6` for form field groups
