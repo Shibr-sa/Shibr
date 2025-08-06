@@ -3,8 +3,9 @@
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, Package, ShoppingCart, Settings, ChevronDown, User, LogOut } from "lucide-react"
+import { Home, Package, ShoppingCart, Settings, ChevronUp, User, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
@@ -19,6 +20,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 
 const sidebarItems = [
@@ -51,7 +53,7 @@ export default function StoreDashboardLayout({
                         alt="Shibr Logo"
                         width={20}
                         height={20}
-                        className="size-5"
+                        className="size-5 brightness-0 invert"
                       />
                     </div>
                     <div className="flex flex-col gap-0.5 leading-none">
@@ -85,25 +87,28 @@ export default function StoreDashboardLayout({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-        </Sidebar>
-        
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="h-14 border-b bg-background flex items-center px-4">
-            <SidebarTrigger />
-            
-            <div className="flex-1 flex items-center justify-end ms-4">
-              <div className="flex items-center gap-4">
-                <LanguageSwitcher />
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <User className="h-4 w-4" />
-                      <span className="hidden md:inline">{t("dashboard.user.name")}</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
+                    <SidebarMenuButton size="lg" className="w-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="/placeholder-avatar.jpg" alt="Avatar" />
+                        <AvatarFallback className="bg-primary text-primary-foreground">ST</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col gap-0.5 text-start leading-none">
+                        <span className="text-sm font-medium">{t("dashboard.user.name")}</span>
+                        <span className="text-xs text-muted-foreground">store@example.com</span>
+                      </div>
+                      <ChevronUp className="ms-auto size-4" />
+                    </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent 
+                    side="right" 
+                    align="end" 
+                    className="w-56"
+                  >
                     <DropdownMenuItem>
                       <User className="me-2 h-4 w-4" />
                       <span>{t("dashboard.user.profile")}</span>
@@ -118,7 +123,18 @@ export default function StoreDashboardLayout({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="h-14 border-b bg-background flex items-center px-4">
+            <SidebarTrigger />
+            
+            <div className="flex-1 flex items-center justify-end ms-4">
+              <LanguageSwitcher />
             </div>
           </header>
 

@@ -51,6 +51,7 @@ const translations = {
 
     // Dashboard Navigation
     "dashboard.home": "الرئيسية",
+    "dashboard.products": "المنتجات",
     "dashboard.shelves": "الرفوف",
     "dashboard.orders": "الطلبات",
     "dashboard.settings": "الإعدادات",
@@ -386,10 +387,14 @@ const translations = {
 
     // Dashboard Navigation
     "dashboard.home": "Home",
+    "dashboard.products": "Products",
     "dashboard.shelves": "Shelves",
     "dashboard.orders": "Orders",
     "dashboard.settings": "Settings",
     "dashboard.profile": "Profile",
+    "dashboard.posts": "Posts",
+    "dashboard.stores": "Stores",
+    "dashboard.payments": "Payments",
     "dashboard.logout": "Logout",
     "dashboard.brand": "Brand Dashboard",
     "dashboard.store": "Store Dashboard",
