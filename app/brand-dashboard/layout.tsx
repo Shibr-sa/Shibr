@@ -27,8 +27,8 @@ import {
 
 const sidebarItems = [
   { title: "dashboard.home", href: "/brand-dashboard", icon: Home },
-  { title: "dashboard.products", href: "/brand-dashboard/products", icon: Package },
   { title: "dashboard.shelves", href: "/brand-dashboard/shelves", icon: ShoppingCart },
+  { title: "dashboard.products", href: "/brand-dashboard/products", icon: Package },
   { title: "dashboard.settings", href: "/brand-dashboard/settings", icon: Settings },
 ]
 
