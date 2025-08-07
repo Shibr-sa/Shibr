@@ -102,7 +102,7 @@ export default function StoreDashboardPage() {
       </Card>
 
       {/* Empty States */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("dashboard.new_rental_requests")}</CardTitle>
@@ -116,8 +116,8 @@ export default function StoreDashboardPage() {
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-64">
             <Image
-              src="/placeholder.svg?height=100&width=100"
-              alt="Empty state"
+              src="/empty_orders.svg"
+              alt="Empty orders"
               width={100}
               height={100}
               className="mb-4"
@@ -138,8 +138,8 @@ export default function StoreDashboardPage() {
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-64">
             <Image
-              src="/placeholder.svg?height=100&width=100"
-              alt="Empty state"
+              src="/empty_shelves.svg"
+              alt="Empty shelves"
               width={100}
               height={100}
               className="mb-4"

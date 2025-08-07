@@ -149,7 +149,7 @@ export default function StoreDashboardSettingsPage() {
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="+966 5X XXX XXXX" 
                       className="text-start" 
-                      dir="ltr" 
+                      dir={direction} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function StoreDashboardSettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="text-start" 
-                      dir="ltr" 
+                      dir={direction} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -267,7 +267,7 @@ export default function StoreDashboardSettingsPage() {
                     onChange={(e) => setWebsite(e.target.value)}
                     placeholder={t("settings.store_data.website_placeholder")}
                     className="text-start" 
-                    dir="ltr"
+                    dir={direction}
                   />
                 </div>
 
@@ -282,7 +282,7 @@ export default function StoreDashboardSettingsPage() {
                     onChange={(e) => setCommercialReg(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     className="text-start" 
-                    dir="ltr"
+                    dir={direction}
                     required={!isFreelance}
                     disabled={isFreelance}
                   />
@@ -596,7 +596,7 @@ export default function StoreDashboardSettingsPage() {
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_number_placeholder")}
                 className="w-full"
-                dir="ltr"
+                dir={direction}
               />
             </div>
 
@@ -611,7 +611,7 @@ export default function StoreDashboardSettingsPage() {
                 onChange={(e) => setIban(e.target.value)}
                 placeholder="IBAN"
                 className="w-full"
-                dir="ltr"
+                dir={direction}
               />
             </div>
 

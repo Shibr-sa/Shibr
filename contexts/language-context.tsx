@@ -186,8 +186,8 @@ const translations = {
     "settings.general.save_changes": "حفظ التغييرات",
     
     // Store Data Settings
-    "settings.store_data.store_name": "اسم العلامة التجارية",
-    "settings.store_data.store_name_placeholder": "أدخل اسم العلامة التجارية",
+    "settings.store_data.store_name": "اسم المتجر",
+    "settings.store_data.store_name_placeholder": "أدخل اسم المتجر",
     "settings.store_data.store_type": "نوع العمل",
     "settings.store_data.store_type_placeholder": "اختر نوع العمل",
     "settings.store_data.website": "الموقع الإلكتروني",
@@ -744,8 +744,8 @@ const translations = {
     "settings.general.save_changes": "Save Changes",
     
     // Store Data Settings
-    "settings.store_data.store_name": "Brand Name",
-    "settings.store_data.store_name_placeholder": "Enter brand name",
+    "settings.store_data.store_name": "Store Name",
+    "settings.store_data.store_name_placeholder": "Enter store name",
     "settings.store_data.store_type": "Business Type",
     "settings.store_data.store_type_placeholder": "Select business type",
     "settings.store_data.website": "Website",
