@@ -23,8 +23,7 @@ export default function AddShelfPage() {
   const [city, setCity] = useState("")
   const [branch, setBranch] = useState("")
   const [discountPercentage, setDiscountPercentage] = useState("")
-  const [minPrice, setMinPrice] = useState("")
-  const [maxPrice, setMaxPrice] = useState("")
+  const [monthlyPrice, setMonthlyPrice] = useState("")
   const [availableFrom, setAvailableFrom] = useState("")
   const [length, setLength] = useState("")
   const [width, setWidth] = useState("")
@@ -99,8 +98,22 @@ export default function AddShelfPage() {
               </div>
             </div>
 
-            {/* Second Row - Discount and Price Range */}
+            {/* Second Row - Price, Discount and Available From */}
             <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="monthlyPrice" className="text-start block">
+                  {t("add_shelf.monthly_price")} *
+                </Label>
+                <Input
+                  id="monthlyPrice"
+                  value={monthlyPrice}
+                  onChange={(e) => setMonthlyPrice(e.target.value)}
+                  placeholder={t("add_shelf.price_placeholder_min")}
+                  className="text-start"
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="discount" className="text-start block">
                   {t("add_shelf.discount_percentage")} *
@@ -113,28 +126,6 @@ export default function AddShelfPage() {
                   className="text-start"
                   required
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-start block">
-                  {t("add_shelf.monthly_price")} *
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    placeholder={t("add_shelf.price_placeholder_min")}
-                    className="text-start"
-                    required
-                  />
-                  <Input
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    placeholder={t("add_shelf.price_placeholder_max")}
-                    className="text-start"
-                    required
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -267,14 +258,14 @@ export default function AddShelfPage() {
               </Label>
               
               <div className="grid gap-4 md:grid-cols-3">
-                {/* Shelf Image Upload */}
+                {/* Exterior Image Upload */}
                 <div className="space-y-2">
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm font-medium text-center">{t("add_shelf.upload_shelf_image")}</p>
+                      <p className="text-sm font-medium text-center">{t("add_shelf.upload_exterior_image")}</p>
                       <p className="text-xs text-muted-foreground text-center">
-                        {t("add_shelf.upload_shelf_image_desc")}
+                        {t("add_shelf.upload_exterior_image_desc")}
                       </p>
                       <Button variant="outline" size="sm">
                         {t("settings.store_data.choose_file")}
@@ -299,14 +290,14 @@ export default function AddShelfPage() {
                   </div>
                 </div>
 
-                {/* Exterior Image Upload */}
+                {/* Shelf Image Upload */}
                 <div className="space-y-2">
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm font-medium text-center">{t("add_shelf.upload_exterior_image")}</p>
+                      <p className="text-sm font-medium text-center">{t("add_shelf.upload_shelf_image")}</p>
                       <p className="text-xs text-muted-foreground text-center">
-                        {t("add_shelf.upload_exterior_image_desc")}
+                        {t("add_shelf.upload_shelf_image_desc")}
                       </p>
                       <Button variant="outline" size="sm">
                         {t("settings.store_data.choose_file")}
