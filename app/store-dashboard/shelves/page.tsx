@@ -230,7 +230,11 @@ export default function StoreDashboardShelvesPage() {
                   </TableRow>
                 ) : (
                   filteredShelves.map((shelf) => (
-                    <TableRow key={shelf._id}>
+                    <TableRow 
+                      key={shelf._id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
+                    >
                       <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                       <TableCell>{shelf.branch}</TableCell>
                       <TableCell>
@@ -279,6 +283,7 @@ export default function StoreDashboardShelvesPage() {
                           className="h-8 w-8"
                           disabled={isLoading || !isStoreDataComplete}
                           title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+                          onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
