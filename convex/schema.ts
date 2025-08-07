@@ -15,10 +15,13 @@ const schema = defineSchema({
     // Profile information
     storeName: v.optional(v.string()), // For store owners
     brandName: v.optional(v.string()), // For brand owners
-    commercialRegister: v.optional(v.string()),
+    businessRegistration: v.optional(v.string()), // Commercial registration or freelance document number
+    businessRegistrationDocumentId: v.optional(v.string()), // File ID for the document
+    businessRegistrationDocumentUrl: v.optional(v.string()), // URL for the document
     
     // Store-specific data
     storeType: v.optional(v.string()),
+    brandType: v.optional(v.string()), // For brand owners
     isFreelance: v.optional(v.boolean()),
     website: v.optional(v.string()),
     ownerName: v.optional(v.string()),

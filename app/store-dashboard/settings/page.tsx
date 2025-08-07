@@ -50,7 +50,7 @@ export default function StoreDashboardSettingsPage() {
   const [storeName, setStoreName] = useState("")
   const [storeType, setStoreType] = useState("")
   const [website, setWebsite] = useState("")
-  const [commercialReg, setCommercialReg] = useState("")
+  const [businessReg, setBusinessReg] = useState("")
   const [isFreelance, setIsFreelance] = useState(false)
   
   // Form states for Payment dialog
@@ -80,7 +80,7 @@ export default function StoreDashboardSettingsPage() {
       setStoreName(storeUserData.storeName || "")
       setStoreType(storeUserData.storeType || "")
       setWebsite(storeUserData.website || "")
-      setCommercialReg(storeUserData.commercialRegister || "")
+      setBusinessReg(storeUserData.businessRegistration || "")
       setIsFreelance(storeUserData.isFreelance || false)
       setProfileImageUrl(storeUserData.profileImageUrl || null)
     }
@@ -372,13 +372,13 @@ export default function StoreDashboardSettingsPage() {
 
                 {/* Commercial Registration Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="commercialReg" className="text-start block">
+                  <Label htmlFor="businessReg" className="text-start block">
                     {t("settings.store_data.commercial_reg")} *
                   </Label>
                   <Input 
-                    id="commercialReg" 
-                    value={commercialReg}
-                    onChange={(e) => setCommercialReg(e.target.value)}
+                    id="businessReg" 
+                    value={businessReg}
+                    onChange={(e) => setBusinessReg(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     className="text-start" 
                     dir={direction}
@@ -394,7 +394,7 @@ export default function StoreDashboardSettingsPage() {
                     checked={isFreelance}
                     onCheckedChange={(checked) => {
                       setIsFreelance(checked as boolean)
-                      if (checked) setCommercialReg("")
+                      if (checked) setBusinessReg("")
                     }}
                   />
                   <Label 
@@ -480,7 +480,7 @@ export default function StoreDashboardSettingsPage() {
                     if (!userId) return
                     
                     // Validate required fields
-                    if (!storeName || !storeType || (!commercialReg && !isFreelance) || !phoneNumber) {
+                    if (!storeName || !storeType || (!businessReg && !isFreelance) || !phoneNumber) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -495,7 +495,7 @@ export default function StoreDashboardSettingsPage() {
                         userId,
                         storeName,
                         storeType,
-                        commercialRegister: commercialReg || undefined,
+                        businessRegistration: businessReg || undefined,
                         isFreelance,
                         website: website || undefined,
                         phoneNumber,
@@ -512,7 +512,7 @@ export default function StoreDashboardSettingsPage() {
                         ...currentUser,
                         storeName,
                         storeType,
-                        commercialReg: commercialReg || (isFreelance ? 'freelance' : ''),
+                        businessReg: businessReg || (isFreelance ? 'freelance' : ''),
                         isFreelance,
                         phoneNumber,
                       }))

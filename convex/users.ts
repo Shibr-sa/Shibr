@@ -11,7 +11,7 @@ export const createUser = mutation({
     accountType: v.union(v.literal("store-owner"), v.literal("brand-owner")),
     storeName: v.optional(v.string()),
     brandName: v.optional(v.string()),
-    commercialRegister: v.optional(v.string()),
+    businessRegistration: v.optional(v.string()),
     preferredLanguage: v.union(v.literal("ar"), v.literal("en")),
   },
   handler: async (ctx, args) => {
@@ -34,7 +34,7 @@ export const createUser = mutation({
       accountType: args.accountType,
       storeName: args.storeName,
       brandName: args.brandName,
-      commercialRegister: args.commercialRegister,
+      businessRegistration: args.businessRegistration,
       isActive: true,
       isEmailVerified: false,
       createdAt: new Date().toISOString(),
@@ -130,7 +130,7 @@ export const updateStoreData = mutation({
     userId: v.id("users"),
     storeName: v.optional(v.string()),
     storeType: v.optional(v.string()),
-    commercialRegister: v.optional(v.string()),
+    businessRegistration: v.optional(v.string()),
     isFreelance: v.optional(v.boolean()),
     website: v.optional(v.string()),
     ownerName: v.optional(v.string()),
@@ -144,7 +144,7 @@ export const updateStoreData = mutation({
     const storeDataComplete = Boolean(
       updateData.storeName &&
       updateData.storeType &&
-      (updateData.commercialRegister || updateData.isFreelance) &&
+      (updateData.businessRegistration || updateData.isFreelance) &&
       updateData.phoneNumber
     );
     
@@ -185,7 +185,7 @@ export const checkStoreDataComplete = query({
     const storeDataComplete = Boolean(
       user.storeName &&
       user.storeType &&
-      (user.commercialRegister || user.isFreelance) &&
+      (user.businessRegistration || user.isFreelance) &&
       user.phoneNumber
     );
     
@@ -220,6 +220,29 @@ export const updateGeneralSettings = mutation({
   },
 })
 
+// Update brand data (for brand owners)
+export const updateBrandData = mutation({
+  args: {
+    userId: v.id("users"),
+    brandName: v.optional(v.string()),
+    brandType: v.optional(v.string()),
+    businessRegistration: v.optional(v.string()),
+    isFreelance: v.optional(v.boolean()),
+    website: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...updateData } = args
+    
+    await ctx.db.patch(userId, {
+      ...updateData,
+      updatedAt: new Date().toISOString(),
+    })
+    
+    return { success: true }
+  },
+})
+
 // Update profile image
 export const updateProfileImage = mutation({
   args: {
@@ -244,5 +267,32 @@ export const updateProfileImage = mutation({
     });
     
     return imageUrl;
+  },
+})
+
+// Update business registration document
+export const updateBusinessRegistrationDocument = mutation({
+  args: {
+    userId: v.id("users"),
+    documentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, documentId } = args;
+    
+    // Get the URL for the uploaded document
+    const documentUrl = await ctx.storage.getUrl(documentId);
+    
+    if (!documentUrl) {
+      throw new Error("Failed to get document URL");
+    }
+    
+    // Update the user record with the new document URL
+    await ctx.db.patch(userId, {
+      businessRegistrationDocumentId: documentId,
+      businessRegistrationDocumentUrl: documentUrl,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    return documentUrl;
   },
 })

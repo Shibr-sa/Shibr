@@ -29,7 +29,7 @@ export default function SignUpPage() {
     password: "",
     storeName: "",
     brandName: "",
-    commercialRegister: "",
+    businessRegistration: "",
     agreeToTerms: false,
   })
   
@@ -61,7 +61,7 @@ export default function SignUpPage() {
         accountType: accountType,
         storeName: accountType === "store-owner" ? formData.storeName : undefined,
         brandName: accountType === "brand-owner" ? formData.brandName : undefined,
-        commercialRegister: formData.commercialRegister || undefined,
+        businessRegistration: formData.businessRegistration || undefined,
         preferredLanguage: language,
       })
 
