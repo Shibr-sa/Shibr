@@ -11,11 +11,13 @@ import { Search, Plus, Package, BarChart3, DollarSign, Edit2 } from "lucide-reac
 import { useLanguage } from "@/contexts/language-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 export default function StoreDashboardShelvesPage() {
   const { t, direction } = useLanguage()
   const { isLoading, isStoreDataComplete } = useStoreData()
   const [filter, setFilter] = useState("all")
+  const router = useRouter()
 
   // Filter options - order them based on direction
   const filterOptions = [
@@ -134,6 +136,7 @@ export default function StoreDashboardShelvesPage() {
               className="gap-2 bg-primary hover:bg-primary/90 flex-shrink-0"
               disabled={isLoading || !isStoreDataComplete}
               title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+              onClick={() => router.push("/store-dashboard/shelves/new")}
             >
               <Plus className="h-4 w-4" />
               {t("shelves.display_shelf_now")}

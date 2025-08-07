@@ -64,6 +64,7 @@ export default function StoreDashboardPage() {
               className="gap-1" 
               disabled={isLoading || !isStoreDataComplete}
               title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+              onClick={() => router.push("/store-dashboard/shelves/new")}
             >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}
@@ -150,6 +151,7 @@ export default function StoreDashboardPage() {
               className="text-primary gap-1"
               disabled={isLoading || !isStoreDataComplete}
               title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+              onClick={() => router.push("/store-dashboard/shelves/new")}
             >
               <PlusCircle className="h-4 w-4" />
               {t("dashboard.display_shelf_now")}
