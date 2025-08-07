@@ -34,8 +34,8 @@ export default function StoreDashboardOrdersPage() {
   const incomingOrders = [
     {
       id: "1",
-      storeName: "خطوة ستور",
-      city: "جدة",
+      storeName: t("orders.mock.step_store"),
+      city: t("common.jeddah"),
       requestDate: "24 " + t("common.june"),
       status: "under_review",
       rentalDuration: "1 " + t("orders.month"),

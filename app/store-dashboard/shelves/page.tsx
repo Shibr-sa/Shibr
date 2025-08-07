@@ -211,7 +211,7 @@ export default function StoreDashboardShelvesPage() {
                   <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
                   <TableHead className="text-start">{t("shelves.table.price")}</TableHead>
                   <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
-                  <TableHead className="text-start">{t("shelves.table.next_collection")}</TableHead>
+                  <TableHead className="text-start">{t("shelves.table.available_from")}</TableHead>
                   <TableHead className="text-start">{t("shelves.table.action")}</TableHead>
                 </TableRow>
               </TableHeader>

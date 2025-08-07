@@ -219,3 +219,30 @@ export const updateGeneralSettings = mutation({
     return { success: true };
   },
 })
+
+// Update profile image
+export const updateProfileImage = mutation({
+  args: {
+    userId: v.id("users"),
+    profileImageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, profileImageId } = args;
+    
+    // Get the URL for the uploaded image
+    const imageUrl = await ctx.storage.getUrl(profileImageId);
+    
+    if (!imageUrl) {
+      throw new Error("Failed to get image URL");
+    }
+    
+    // Update the user record with the new image URL
+    await ctx.db.patch(userId, {
+      profileImageId,
+      profileImageUrl: imageUrl,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    return imageUrl;
+  },
+})

@@ -10,7 +10,7 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
-import { StoreDataProvider } from "@/contexts/store-data-context"
+import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
 import {
   Sidebar,
   SidebarContent,
@@ -32,15 +32,28 @@ const sidebarItems = [
   { title: "dashboard.settings", href: "/store-dashboard/settings", icon: Settings },
 ]
 
-export default function StoreDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// Inner component that uses the store data context
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { t, direction } = useLanguage()
-  const { user, getInitials } = useCurrentUser()
+  const { user, getInitials: getSessionInitials } = useCurrentUser()
+  const { userData } = useStoreData()
+
+  // Use userData from context if available, fallback to user from session
+  const displayUser = userData || user
+
+  const getInitials = () => {
+    if (userData) {
+      const name = userData.ownerName || userData.fullName || userData.storeName || "Store"
+      const parts = name.split(" ")
+      if (parts.length > 1) {
+        return parts[0][0] + parts[1][0]
+      }
+      return name.substring(0, 2).toUpperCase()
+    }
+    return getSessionInitials()
+  }
 
   const handleLogout = () => {
     // Clear session storage
@@ -52,117 +65,127 @@ export default function StoreDashboardLayout({
   }
 
   return (
-    <StoreDataProvider>
-      <SidebarProvider>
-        <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
-        <Sidebar collapsible="icon">
-          <SidebarHeader>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton size="lg" asChild>
-                  <Link href="/store-dashboard">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                      <Image
-                        src="/logo.svg"
-                        alt="Shibr Logo"
-                        width={20}
-                        height={20}
-                        className="size-5 brightness-0 invert"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="font-semibold">{t("common.shibr")}</span>
-                      <span className="text-xs text-muted-foreground">{t("dashboard.store")}</span>
-                    </div>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {sidebarItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === item.href}
-                        tooltip={t(item.title)}
-                      >
-                        <Link href={item.href}>
-                          <item.icon className="size-4" />
-                          <span>{t(item.title)}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarFooter>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton size="lg" className="w-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.avatar} alt={user?.fullName} />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {user ? getInitials() : "ST"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col gap-0.5 text-start leading-none">
-                        <span className="text-sm font-medium">
-                          {user?.fullName || t("dashboard.user.name")}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {user?.email || "store@example.com"}
-                        </span>
-                      </div>
-                      <ChevronUp className="ms-auto size-4" />
+    <SidebarProvider>
+      <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild>
+                <Link href="/store-dashboard">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                    <Image
+                      src="/logo.svg"
+                      alt="Shibr Logo"
+                      width={20}
+                      height={20}
+                      className="size-5 brightness-0 invert"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-semibold">{t("common.shibr")}</span>
+                    <span className="text-xs text-muted-foreground">{t("dashboard.store")}</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sidebarItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                      tooltip={t(item.title)}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="size-4" />
+                        <span>{t(item.title)}</span>
+                      </Link>
                     </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent 
-                    side="right" 
-                    align="end" 
-                    className="w-56"
-                  >
-                    <DropdownMenuItem>
-                      <User className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.user.profile")}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.user.settings")}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
-                      <LogOut className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.logout")}</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
-        </Sidebar>
-        
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="h-14 border-b bg-background flex items-center px-4">
-            <SidebarTrigger />
-            
-            <div className="flex-1 flex items-center justify-end ms-4">
-              <LanguageSwitcher />
-            </div>
-          </header>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton size="lg" className="w-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={displayUser?.profileImageUrl || displayUser?.avatar} alt={displayUser?.fullName} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {displayUser ? getInitials() : "ST"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col gap-0.5 text-start leading-none">
+                      <span className="text-sm font-medium">
+                        {displayUser?.ownerName || displayUser?.fullName || t("dashboard.user.name")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {displayUser?.email || "store@example.com"}
+                      </span>
+                    </div>
+                    <ChevronUp className="ms-auto size-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  side="right" 
+                  align="end" 
+                  className="w-56"
+                >
+                  <DropdownMenuItem>
+                    <User className="me-2 h-4 w-4" />
+                    <span>{t("dashboard.user.profile")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="me-2 h-4 w-4" />
+                    <span>{t("dashboard.user.settings")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                    <LogOut className="me-2 h-4 w-4" />
+                    <span>{t("dashboard.logout")}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="h-14 border-b bg-background flex items-center px-4">
+          <SidebarTrigger />
+          
+          <div className="flex-1 flex items-center justify-end ms-4">
+            <LanguageSwitcher />
+          </div>
+        </header>
 
-          {/* Main Content */}
-          <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
-        </div>
+        {/* Main Content */}
+        <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
       </div>
-      </SidebarProvider>
+    </div>
+    </SidebarProvider>
+  )
+}
+
+export default function StoreDashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <StoreDataProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </StoreDataProvider>
   )
 }

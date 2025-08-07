@@ -49,7 +49,7 @@ export default function AddShelfPage() {
   
   // Location states - default to Riyadh
   const [selectedLocation, setSelectedLocation] = useState({
-    address: "الرياض، المملكة العربية السعودية",
+    address: t("add_shelf.default_address"),
     latitude: 24.7136,
     longitude: 46.6753
   })

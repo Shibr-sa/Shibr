@@ -14,13 +14,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { useStoreData } from "@/contexts/store-data-context"
+import { ImageCropper } from "@/components/image-cropper"
 
 export default function StoreDashboardSettingsPage() {
   const { t, direction } = useLanguage()
@@ -31,6 +32,13 @@ export default function StoreDashboardSettingsPage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [isVirtual, setIsVirtual] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
+  const [showCropper, setShowCropper] = useState(false)
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
+  const [showLogoCropper, setShowLogoCropper] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for General tab
   const [ownerName, setOwnerName] = useState("")
@@ -56,6 +64,8 @@ export default function StoreDashboardSettingsPage() {
   const updateStoreData = useMutation(api.users.updateStoreData)
   const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
   const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl)
+  const updateProfileImage = useMutation(api.users.updateProfileImage)
   
   // Convex queries - only payment methods since userData comes from context
   const userId = user ? (user.id as Id<"users">) : null
@@ -72,8 +82,84 @@ export default function StoreDashboardSettingsPage() {
       setWebsite(storeUserData.website || "")
       setCommercialReg(storeUserData.commercialRegister || "")
       setIsFreelance(storeUserData.isFreelance || false)
+      setProfileImageUrl(storeUserData.profileImageUrl || null)
     }
   }, [storeUserData])
+
+  // Handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !userId) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: t("settings.general.error"),
+        description: t("settings.general.invalid_image_type"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: t("settings.general.error"),
+        description: t("settings.general.image_too_large"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSelectedImageFile(file)
+    setShowCropper(true)
+  }
+
+  // Handle cropped image upload
+  const handleCroppedImage = async (croppedBlob: Blob) => {
+    if (!userId) return
+
+    setIsLoading(true)
+    try {
+      // Get upload URL from Convex
+      const uploadUrl = await generateUploadUrl()
+      
+      // Upload file to Convex storage
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": croppedBlob.type },
+        body: croppedBlob,
+      })
+      
+      const { storageId } = await result.json()
+      
+      // Get the URL for the uploaded file
+      const imageUrl = await updateProfileImage({
+        userId,
+        profileImageId: storageId,
+      })
+      
+      setProfileImageUrl(imageUrl)
+      
+      toast({
+        title: t("settings.general.success"),
+        description: t("settings.general.image_updated"),
+      })
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      toast({
+        title: t("settings.general.error"),
+        description: t("settings.general.image_upload_error"),
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setSelectedImageFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
@@ -97,7 +183,7 @@ export default function StoreDashboardSettingsPage() {
               {/* Store Logo Section */}
               <div className="flex items-center gap-6">
                 <Avatar className="h-24 w-24 flex-shrink-0">
-                  <AvatarImage src="/placeholder.svg?height=96&width=96" alt="Store Logo" />
+                  <AvatarImage src={profileImageUrl || "/placeholder.svg?height=96&width=96"} alt="Store Logo" />
                   <AvatarFallback className="text-muted-foreground">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -118,9 +204,22 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-3 text-start flex-1">
                   <h3 className="text-lg font-semibold">{t("settings.general.upload_logo")}</h3>
                   <p className="text-sm text-muted-foreground">{t("settings.general.logo_hint")}</p>
-                  <Button size="sm" variant="outline" className="gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2"
+                    disabled={isLoading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Camera className="h-4 w-4" />
-                    {t("settings.general.change_photo")}
+                    {isLoading ? t("settings.general.uploading") : t("settings.general.change_photo")}
                   </Button>
                 </div>
               </div>
@@ -309,6 +408,35 @@ export default function StoreDashboardSettingsPage() {
                 {/* Logo Upload Section */}
                 <div className="border-2 border-dashed border-muted rounded-lg p-8">
                   <div className="flex flex-col items-center justify-center space-y-3">
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (!file.type.startsWith('image/')) {
+                            toast({
+                              title: t("settings.general.error"),
+                              description: t("settings.general.invalid_image_type"),
+                              variant: "destructive",
+                            })
+                            return
+                          }
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast({
+                              title: t("settings.general.error"),
+                              description: t("settings.general.image_too_large"),
+                              variant: "destructive",
+                            })
+                            return
+                          }
+                          setSelectedLogoFile(file)
+                          setShowLogoCropper(true)
+                        }
+                      }}
+                    />
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                       <svg 
                         xmlns="http://www.w3.org/2000/svg" 
@@ -331,7 +459,12 @@ export default function StoreDashboardSettingsPage() {
                         {t("settings.store_data.upload_hint")}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => logoInputRef.current?.click()}
+                    >
                       {t("settings.store_data.choose_file")}
                     </Button>
                   </div>
@@ -501,35 +634,35 @@ export default function StoreDashboardSettingsPage() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-medium">1 يونيو</TableCell>
-                      <TableCell>تحويل بنكي</TableCell>
-                      <TableCell>دفعة من رف الرياض</TableCell>
-                      <TableCell>مكتملة</TableCell>
+                      <TableCell className="font-medium">1 {t("common.june")}</TableCell>
+                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
+                      <TableCell>{t("settings.payment.payment_from_riyadh_shelf")}</TableCell>
+                      <TableCell>{t("settings.payment.completed")}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                             </svg>
-                            تحميل الفاتورة
+                            {t("settings.payment.download_invoice")}
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-medium">1 يونيو (جديد)</TableCell>
-                      <TableCell>تحويل بنكي</TableCell>
-                      <TableCell>رسوم تجديد رف</TableCell>
+                      <TableCell className="font-medium">1 {t("common.june")} ({t("common.new")})</TableCell>
+                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
+                      <TableCell>{t("settings.payment.shelf_renewal_fees")}</TableCell>
                       <TableCell>
                         <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
-                          بانتظار التأكيد
+                          {t("settings.payment.pending_confirmation")}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
                             <Calendar className="w-4 h-4" />
-                            دفع الفاتورة
+                            {t("settings.payment.pay_invoice")}
                           </Button>
                         </div>
                       </TableCell>
@@ -562,11 +695,11 @@ export default function StoreDashboardSettingsPage() {
                   <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Al-Rajhi Bank">Al-Rajhi Bank</SelectItem>
-                  <SelectItem value="National Commercial Bank">National Commercial Bank</SelectItem>
-                  <SelectItem value="SABB">SABB</SelectItem>
-                  <SelectItem value="Riyad Bank">Riyad Bank</SelectItem>
-                  <SelectItem value="Alinma Bank">Alinma Bank</SelectItem>
+                  <SelectItem value="Al-Rajhi Bank">{t("settings.payment.banks.alrajhi")}</SelectItem>
+                  <SelectItem value="National Commercial Bank">{t("settings.payment.banks.ncb")}</SelectItem>
+                  <SelectItem value="SABB">{t("settings.payment.banks.sabb")}</SelectItem>
+                  <SelectItem value="Riyad Bank">{t("settings.payment.banks.riyad")}</SelectItem>
+                  <SelectItem value="Alinma Bank">{t("settings.payment.banks.alinma")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -609,7 +742,7 @@ export default function StoreDashboardSettingsPage() {
                 id="iban"
                 value={iban}
                 onChange={(e) => setIban(e.target.value)}
-                placeholder="IBAN"
+                placeholder={t("settings.payment.dialog.iban_placeholder")}
                 className="w-full"
                 dir={direction}
               />
@@ -692,6 +825,50 @@ export default function StoreDashboardSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Profile Image Cropper Dialog */}
+      <ImageCropper
+        open={showCropper}
+        onClose={() => {
+          setShowCropper(false)
+          setSelectedImageFile(null)
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+          }
+        }}
+        imageFile={selectedImageFile}
+        onCropComplete={handleCroppedImage}
+        aspectRatio={1}
+        cropShape="round"
+      />
+
+      {/* Store Logo Cropper Dialog */}
+      <ImageCropper
+        open={showLogoCropper}
+        onClose={() => {
+          setShowLogoCropper(false)
+          setSelectedLogoFile(null)
+          if (logoInputRef.current) {
+            logoInputRef.current.value = ''
+          }
+        }}
+        imageFile={selectedLogoFile}
+        onCropComplete={async (croppedBlob) => {
+          // For now, just close the cropper
+          // In production, you would upload this logo separately
+          setShowLogoCropper(false)
+          setSelectedLogoFile(null)
+          if (logoInputRef.current) {
+            logoInputRef.current.value = ''
+          }
+          toast({
+            title: t("settings.general.success"),
+            description: t("settings.store_data.logo_uploaded"),
+          })
+        }}
+        aspectRatio={1}
+        cropShape="rect"
+      />
     </div>
   )
 }

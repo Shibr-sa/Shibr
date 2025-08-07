@@ -24,6 +24,10 @@ const schema = defineSchema({
     ownerName: v.optional(v.string()),
     storeLogo: v.optional(v.string()),
     
+    // Profile image
+    profileImageId: v.optional(v.string()),
+    profileImageUrl: v.optional(v.string()),
+    
     // Store data completion status
     storeDataComplete: v.optional(v.boolean()),
     
