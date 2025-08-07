@@ -3,15 +3,20 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react"
+import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, ArrowLeft, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/language-context"
 import { useRouter } from "next/navigation"
+import { useBrandData } from "@/contexts/brand-data-context"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function BrandDashboardPage() {
   const { t, direction } = useLanguage()
   const router = useRouter()
+  
+  // Use the brand data context for consistent state
+  const { isBrandDataComplete, isLoading } = useBrandData()
 
   return (
     <div className="space-y-6">
@@ -20,31 +25,33 @@ export default function BrandDashboardPage() {
         <p className="text-muted-foreground">{t("brand.dashboard.welcome")}</p>
       </div>
 
-      {/* Data Completion Warning */}
-      <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
-        <AlertTriangle className="h-5 w-5 text-destructive" />
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <AlertTitle className="text-destructive font-semibold mb-0">
-              {t("dashboard.incomplete_profile_warning")}
-            </AlertTitle>
-            <AlertDescription className="mt-1">
-              <span className="text-muted-foreground">
-                {t("brand.dashboard.complete_data_description")}
-              </span>
-            </AlertDescription>
+      {/* Data Completion Warning - Only show if data is incomplete */}
+      {isBrandDataComplete === false && (
+        <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <AlertTitle className="text-destructive font-semibold mb-0">
+                {t("dashboard.incomplete_profile_warning")}
+              </AlertTitle>
+              <AlertDescription className="mt-1">
+                <span className="text-muted-foreground">
+                  {t("brand.dashboard.complete_data_description")}
+                </span>
+              </AlertDescription>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => router.push("/brand-dashboard/settings")}
+              className="gap-2 ms-4 flex-shrink-0"
+            >
+              {t("dashboard.complete_profile_now")}
+              {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+            </Button>
           </div>
-          <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={() => router.push("/brand-dashboard/settings")}
-            className="gap-2 ms-4 flex-shrink-0"
-          >
-            {t("dashboard.complete_profile_now")}
-            {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-          </Button>
-        </div>
-      </Alert>
+        </Alert>
+      )}
 
       {/* Welcome Section - Integrated with Stats */}
       <Card>
@@ -56,10 +63,27 @@ export default function BrandDashboardPage() {
                 {t("brand.dashboard.monitor_description")}
               </p>
             </div>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              {t("brand.dashboard.rent_new_shelf")}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button 
+                      className="gap-2"
+                      disabled={!isBrandDataComplete}
+                    >
+                      {!isBrandDataComplete && <Lock className="h-4 w-4" />}
+                      {isBrandDataComplete && <Plus className="h-4 w-4" />}
+                      {t("brand.dashboard.rent_new_shelf")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!isBrandDataComplete && (
+                  <TooltipContent>
+                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Stats Section - Integrated within same card */}
@@ -97,9 +121,25 @@ export default function BrandDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("brand.dashboard.sales")}</CardTitle>
-            <Link href="#" className="text-sm text-primary">
-              {t("brand.dashboard.see_more")}
-            </Link>
+            {isBrandDataComplete ? (
+              <Link href="#" className="text-sm text-primary">
+                {t("brand.dashboard.see_more")}
+              </Link>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      {t("brand.dashboard.see_more")}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-64">
             <Image
@@ -115,9 +155,25 @@ export default function BrandDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("brand.dashboard.your_rented_shelves")}</CardTitle>
-            <Link href="#" className="text-sm text-primary">
-              {t("brand.dashboard.see_more")}
-            </Link>
+            {isBrandDataComplete ? (
+              <Link href="#" className="text-sm text-primary">
+                {t("brand.dashboard.see_more")}
+              </Link>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      {t("brand.dashboard.see_more")}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-64">
             <Image
@@ -128,10 +184,28 @@ export default function BrandDashboardPage() {
               className="mb-4"
             />
             <p className="text-muted-foreground mb-2">{t("brand.dashboard.no_shelves_currently")}</p>
-            <Button variant="link" className="text-primary gap-1">
-              <Plus className="h-4 w-4" />
-              {t("brand.dashboard.add_new_shelf")}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button 
+                      variant={!isBrandDataComplete ? "outline" : "link"} 
+                      className={!isBrandDataComplete ? "gap-1" : "text-primary gap-1"}
+                      disabled={!isBrandDataComplete}
+                    >
+                      {!isBrandDataComplete && <Lock className="h-4 w-4" />}
+                      {isBrandDataComplete && <Plus className="h-4 w-4" />}
+                      {t("brand.dashboard.add_new_shelf")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!isBrandDataComplete && (
+                  <TooltipContent>
+                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </CardContent>
         </Card>
       </div>
@@ -140,9 +214,25 @@ export default function BrandDashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("brand.dashboard.latest_sales_operations")}</CardTitle>
-          <Link href="#" className="text-sm text-primary">
-            {t("brand.dashboard.see_more")}
-          </Link>
+          {isBrandDataComplete ? (
+            <Link href="#" className="text-sm text-primary">
+              {t("brand.dashboard.see_more")}
+            </Link>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
+                    <Lock className="h-3 w-3" />
+                    {t("brand.dashboard.see_more")}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center text-center h-64">
           <Image

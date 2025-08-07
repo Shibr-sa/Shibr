@@ -193,6 +193,26 @@ export const checkStoreDataComplete = query({
   },
 })
 
+// Check brand data completion status
+export const checkBrandDataComplete = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    
+    if (!user) return false;
+    
+    // Check if essential fields are complete
+    const brandDataComplete = Boolean(
+      user.brandName &&
+      user.brandType &&
+      user.businessRegistration &&
+      user.phoneNumber
+    );
+    
+    return brandDataComplete;
+  },
+})
+
 // Update general settings
 export const updateGeneralSettings = mutation({
   args: {
@@ -234,12 +254,31 @@ export const updateBrandData = mutation({
   handler: async (ctx, args) => {
     const { userId, ...updateData } = args
     
+    // Get the current user data
+    const user = await ctx.db.get(userId)
+    if (!user) throw new Error("User not found")
+    
+    // Merge update data with existing data
+    const updatedUser = {
+      ...user,
+      ...updateData,
+    }
+    
+    // Check if essential fields are complete
+    const brandDataComplete = Boolean(
+      updatedUser.brandName &&
+      updatedUser.brandType &&
+      updatedUser.businessRegistration &&
+      updatedUser.phoneNumber
+    )
+    
     await ctx.db.patch(userId, {
       ...updateData,
+      brandDataComplete,
       updatedAt: new Date().toISOString(),
     })
     
-    return { success: true }
+    return { success: true, brandDataComplete }
   },
 })
 

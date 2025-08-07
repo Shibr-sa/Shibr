@@ -21,11 +21,13 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { ImageCropper } from "@/components/image-cropper"
+import { useBrandData } from "@/contexts/brand-data-context"
 
 export default function BrandDashboardSettingsPage() {
   const { t, direction } = useLanguage()
   const { user } = useCurrentUser()
   const { toast } = useToast()
+  const { userData: brandUserData } = useBrandData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [isVirtual, setIsVirtual] = useState(false)
@@ -66,25 +68,24 @@ export default function BrandDashboardSettingsPage() {
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
   
-  // Convex queries
+  // Convex queries - only payment methods since userData comes from context
   const userId = user ? (user.id as Id<"users">) : null
-  const userData = useQuery(api.users.getUserById, userId ? { userId } : "skip")
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, userId ? { userId } : "skip")
   
-  // Load user data when available
+  // Load user data when available from context
   useEffect(() => {
-    if (userData) {
-      setOwnerName(userData.ownerName || userData.fullName || "")
-      setPhoneNumber(userData.phoneNumber || "")
-      setEmail(userData.email || "")
-      setBrandName(userData.brandName || "")
-      setBrandType(userData.brandType || "")
-      setWebsite(userData.website || "")
-      setBusinessReg(userData.businessRegistration || "")
-      setIsFreelance(userData.isFreelance || false)
-      setProfileImageUrl(userData.profileImageUrl || null)
+    if (brandUserData) {
+      setOwnerName(brandUserData.ownerName || brandUserData.fullName || "")
+      setPhoneNumber(brandUserData.phoneNumber || "")
+      setEmail(brandUserData.email || "")
+      setBrandName(brandUserData.brandName || "")
+      setBrandType(brandUserData.brandType || "")
+      setWebsite(brandUserData.website || "")
+      setBusinessReg(brandUserData.businessRegistration || "")
+      setIsFreelance(brandUserData.isFreelance || false)
+      setProfileImageUrl(brandUserData.profileImageUrl || null)
     }
-  }, [userData])
+  }, [brandUserData])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

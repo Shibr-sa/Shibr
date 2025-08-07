@@ -33,6 +33,7 @@ const schema = defineSchema({
     
     // Store data completion status
     storeDataComplete: v.optional(v.boolean()),
+    brandDataComplete: v.optional(v.boolean()),
     
     // Account status
     isActive: v.boolean(),
