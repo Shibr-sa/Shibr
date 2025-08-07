@@ -91,7 +91,16 @@ const translations = {
     "shelves.table.action": "إجراء",
     "shelves.status.rented": "مؤجر",
     "shelves.status.available": "متاح",
+    "shelves.status.pending": "قيد المراجعة",
+    "shelves.status.unavailable": "غير متاح",
     "shelves.view_details": "عرض التفاصيل",
+    "shelves.total_shelves": "إجمالي الرفوف",
+    "shelves.from_rented_shelves": "من الرفوف المؤجرة",
+    "shelves.pending_approval": "قيد الموافقة",
+    "shelves.no_shelves_found": "لا توجد رفوف",
+    "shelves.showing": "عرض",
+    "shelves.of": "من",
+    "shelves.shelves": "رفوف",
     
     // Add Shelf
     "add_shelf.title": "أضف رفًا جديدًا لفرع من فروع محلك",
@@ -754,7 +763,16 @@ const translations = {
     "shelves.table.action": "Action",
     "shelves.status.rented": "Rented",
     "shelves.status.available": "Available",
+    "shelves.status.pending": "Pending",
+    "shelves.status.unavailable": "Unavailable",
     "shelves.view_details": "View Details",
+    "shelves.total_shelves": "Total Shelves",
+    "shelves.from_rented_shelves": "From Rented Shelves",
+    "shelves.pending_approval": "Pending Approval",
+    "shelves.no_shelves_found": "No shelves found",
+    "shelves.showing": "Showing",
+    "shelves.of": "of",
+    "shelves.shelves": "shelves",
     
     // Add Shelf
     "add_shelf.title": "Add a new shelf for one of your store branches",

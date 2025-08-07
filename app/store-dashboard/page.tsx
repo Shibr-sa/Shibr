@@ -3,19 +3,53 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Users, BarChart, Send, PlusCircle, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react"
+import { Users, BarChart, Send, PlusCircle, AlertTriangle, ArrowRight, ArrowLeft, Package, Edit2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/language-context"
 import { useRouter } from "next/navigation"
 import { useStoreData } from "@/contexts/store-data-context"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { Id } from "@/convex/_generated/dataModel"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
+import { ar, enUS } from "date-fns/locale"
 
 export default function StoreDashboardPage() {
   const { t, direction } = useLanguage()
   const router = useRouter()
+  const { user } = useCurrentUser()
   
   // Use the global store data context
-  const { isLoading, isStoreDataComplete } = useStoreData()
+  const { isLoading: storeLoading, isStoreDataComplete } = useStoreData()
+  
+  // Fetch real shelves data from Convex
+  const shelves = useQuery(api.shelves.getOwnerShelves, 
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
+  
+  // Fetch shelf statistics
+  const shelfStats = useQuery(api.shelves.getShelfStats,
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
+  
+  // Get recent shelves (max 3)
+  const recentShelves = shelves?.slice(0, 3) || []
+  
+  // Loading state
+  const isLoading = storeLoading || !shelves || !shelfStats
+  
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat(direction === 'rtl' ? 'ar-SA' : 'en-SA', {
+      style: 'currency',
+      currency: 'SAR',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
 
   return (
     <div className="space-y-6">
@@ -77,7 +111,7 @@ export default function StoreDashboardPage() {
                 <h3 className="text-sm font-medium">{t("dashboard.currently_rented_brands")}</h3>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</div>
               <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
             </div>
 
@@ -86,7 +120,7 @@ export default function StoreDashboardPage() {
                 <h3 className="text-sm font-medium">{t("dashboard.total_sales")}</h3>
                 <BarChart className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{formatCurrency(shelfStats?.totalRevenue || 0)}</div>
               <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
             </div>
 
@@ -95,20 +129,20 @@ export default function StoreDashboardPage() {
                 <h3 className="text-sm font-medium">{t("dashboard.incoming_orders")}</h3>
                 <Send className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{shelfStats?.availableShelves || 0}</div>
               <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Empty States */}
+      {/* Rental Requests and Shelves */}
       <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("dashboard.new_rental_requests")}</CardTitle>
             <Link 
-              href="#" 
+              href="/store-dashboard/orders" 
               className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
               onClick={isLoading || !isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             >
@@ -126,36 +160,103 @@ export default function StoreDashboardPage() {
             <p className="text-muted-foreground">{t("dashboard.no_rental_requests")}</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("dashboard.your_shelves")}</CardTitle>
             <Link 
-              href="#" 
+              href="/store-dashboard/shelves" 
               className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
               onClick={isLoading || !isStoreDataComplete ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             >
               {t("dashboard.see_more")}
             </Link>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center text-center h-64">
-            <Image
-              src="/empty_shelves.svg"
-              alt="Empty shelves"
-              width={100}
-              height={100}
-              className="mb-4"
-            />
-            <p className="text-muted-foreground mb-2">{t("dashboard.no_shelves_displayed")}</p>
-            <Button 
-              variant="link" 
-              className="text-primary gap-1"
-              disabled={isLoading || !isStoreDataComplete}
-              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
-              onClick={() => router.push("/store-dashboard/shelves/new")}
-            >
-              <PlusCircle className="h-4 w-4" />
-              {t("dashboard.display_shelf_now")}
-            </Button>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center text-center h-64">
+                <p className="text-muted-foreground">{t("common.loading")}...</p>
+              </div>
+            ) : recentShelves.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center h-64">
+                <Image
+                  src="/empty_shelves.svg"
+                  alt="Empty shelves"
+                  width={100}
+                  height={100}
+                  className="mb-4"
+                />
+                <p className="text-muted-foreground mb-2">{t("dashboard.no_shelves_displayed")}</p>
+                <Button 
+                  variant="link" 
+                  className="text-primary gap-1"
+                  disabled={isLoading || !isStoreDataComplete}
+                  title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+                  onClick={() => router.push("/store-dashboard/shelves/new")}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  {t("dashboard.display_shelf_now")}
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("shelves.table.shelf_name")}</TableHead>
+                      <TableHead>{t("shelves.table.branch_name")}</TableHead>
+                      <TableHead>{t("shelves.table.price")}</TableHead>
+                      <TableHead>{t("shelves.table.status")}</TableHead>
+                      <TableHead>{t("shelves.table.action")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentShelves.map((shelf: any) => (
+                      <TableRow key={shelf._id}>
+                        <TableCell className="font-medium">{shelf.shelfName}</TableCell>
+                        <TableCell>{shelf.branch}</TableCell>
+                        <TableCell>
+                          {formatCurrency(shelf.monthlyPrice || 0)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="default" 
+                            className={
+                              shelf.status === "rented" 
+                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                : shelf.status === "approved" && shelf.isAvailable
+                                ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                                : shelf.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                            }
+                          >
+                            {shelf.status === "rented" 
+                              ? t("shelves.status.rented")
+                              : shelf.status === "approved" && shelf.isAvailable
+                              ? t("shelves.status.available")
+                              : shelf.status === "pending"
+                              ? t("shelves.status.pending")
+                              : t("shelves.status.unavailable")
+                            }
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

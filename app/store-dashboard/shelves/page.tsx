@@ -10,14 +10,32 @@ import { Label } from "@/components/ui/label"
 import { Search, Plus, Package, BarChart3, DollarSign, Edit2 } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { useStoreData } from "@/contexts/store-data-context"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { Id } from "@/convex/_generated/dataModel"
+import { format } from "date-fns"
+import { ar, enUS } from "date-fns/locale"
 
 export default function StoreDashboardShelvesPage() {
   const { t, direction } = useLanguage()
-  const { isLoading, isStoreDataComplete } = useStoreData()
+  const { isLoading: storeLoading, isStoreDataComplete } = useStoreData()
   const [filter, setFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
+  const { user } = useCurrentUser()
+  
+  // Fetch real shelves data from Convex
+  const shelves = useQuery(api.shelves.getOwnerShelves, 
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
+  
+  // Fetch shelf statistics
+  const shelfStats = useQuery(api.shelves.getShelfStats,
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
 
   // Filter options - order them based on direction
   const filterOptions = [
@@ -28,40 +46,43 @@ export default function StoreDashboardShelvesPage() {
   
   // Reverse for RTL to show "All" first from the right
   const orderedFilters = direction === "rtl" ? [...filterOptions].reverse() : filterOptions
-
-  // Mock data for shelves
-  const shelves = [
-    {
-      id: "1",
-      shelfName: t("shelves.new_shelf"),
-      shelf: t("shelves.riyadh_shelf"),
-      productName: "Nova Perfumes",
-      renter: "Glow Cosmetics",
-      rentalType: "available",
-      status: "rented",
-      price: `500 ${t("common.currency")} / ${t("common.monthly")}`,
-      date: "1 " + t("common.july") + " 2025",
-      category: t("common.riyadh"),
-      subcategory: t("common.dammam"),
-      canEdit: true,
-      hasOffer: false
-    },
-    {
-      id: "2", 
-      shelfName: t("shelves.new_shelf"),
-      shelf: t("shelves.dammam_shelf"),
-      productName: "Nova Perfumes",
-      renter: "Glow Cosmetics",
-      rentalType: "available",
-      status: "rented",
-      price: `650 ${t("common.currency")} / ${t("common.monthly")}`,
-      date: "3 " + t("common.july") + " 2025",
-      category: t("common.riyadh"),
-      subcategory: t("common.dammam"),
-      canEdit: true,
-      hasOffer: false
+  
+  // Filter and search shelves
+  const filteredShelves = useMemo(() => {
+    if (!shelves) return []
+    
+    let filtered = [...shelves]
+    
+    // Apply status filter
+    if (filter === "rented") {
+      filtered = filtered.filter(shelf => shelf.status === "rented")
+    } else if (filter === "available") {
+      filtered = filtered.filter(shelf => shelf.status === "approved" && shelf.isAvailable)
     }
-  ]
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(shelf => 
+        shelf.shelfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        shelf.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        shelf.branch.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+    
+    return filtered
+  }, [shelves, filter, searchQuery])
+  
+  // Loading state
+  const isLoading = storeLoading || !shelves || !shelfStats
+  
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat(direction === 'rtl' ? 'ar-SA' : 'en-SA', {
+      style: 'currency',
+      currency: 'SAR',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
@@ -80,8 +101,10 @@ export default function StoreDashboardShelvesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">{t("shelves.total_rented_shelves")}</p>
-                <p className="text-2xl font-bold">8</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("shelves.increase_from_last_month")}</p>
+                <p className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {shelfStats?.totalShelves || 0} {t("shelves.total_shelves")}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Package className="h-6 w-6 text-primary" />
@@ -95,8 +118,12 @@ export default function StoreDashboardShelvesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">{t("shelves.total_sales")}</p>
-                <p className="text-2xl font-bold text-primary">﷼ 45,231.89</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("shelves.increase_from_last_month")}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(shelfStats?.totalRevenue || 0)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("shelves.from_rented_shelves")}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <BarChart3 className="h-6 w-6 text-primary" />
@@ -110,8 +137,10 @@ export default function StoreDashboardShelvesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">{t("shelves.available_shelves")}</p>
-                <p className="text-2xl font-bold">3</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("shelves.increase_from_last_month")}</p>
+                <p className="text-2xl font-bold">{shelfStats?.availableShelves || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {shelfStats?.pendingShelves || 0} {t("shelves.pending_approval")}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-primary" />
@@ -150,6 +179,8 @@ export default function StoreDashboardShelvesPage() {
               <Input 
                 placeholder={t("shelves.search_placeholder")}
                 className="ps-10 w-80"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
@@ -185,41 +216,76 @@ export default function StoreDashboardShelvesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shelves.map((shelf) => (
-                  <TableRow key={shelf.id}>
-                    <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                    <TableCell>{shelf.shelf}</TableCell>
-                    <TableCell>{shelf.renter}</TableCell>
-                    <TableCell>{shelf.price}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant="default" 
-                        className="bg-green-100 text-green-700 hover:bg-green-100"
-                      >
-                        {t("shelves.status.rented")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{shelf.date}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {shelf.canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            disabled={isLoading || !isStoreDataComplete}
-                            title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {shelf.hasOffer && (
-                          <span className="text-xs text-muted-foreground">{t("shelves.view_details")}</span>
-                        )}
-                      </div>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      {t("common.loading")}...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredShelves.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      {t("shelves.no_shelves_found")}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredShelves.map((shelf) => (
+                    <TableRow key={shelf._id}>
+                      <TableCell className="font-medium">{shelf.shelfName}</TableCell>
+                      <TableCell>{shelf.branch}</TableCell>
+                      <TableCell>
+                        {shelf.status === "rented" && shelf.renterId ? 
+                          shelf.renterId : 
+                          "-"
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {formatCurrency(shelf.monthlyPrice || 0)} / {t("common.monthly")}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="default" 
+                          className={
+                            shelf.status === "rented" 
+                              ? "bg-green-100 text-green-700 hover:bg-green-100"
+                              : shelf.status === "approved" && shelf.isAvailable
+                              ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                              : shelf.status === "pending"
+                              ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                          }
+                        >
+                          {shelf.status === "rented" 
+                            ? t("shelves.status.rented")
+                            : shelf.status === "approved" && shelf.isAvailable
+                            ? t("shelves.status.available")
+                            : shelf.status === "pending"
+                            ? t("shelves.status.pending")
+                            : t("shelves.status.unavailable")
+                          }
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {shelf.availableFrom ? 
+                          format(new Date(shelf.availableFrom), "PPP", { 
+                            locale: direction === "rtl" ? ar : enUS 
+                          }) : "-"
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          disabled={isLoading || !isStoreDataComplete}
+                          title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -227,16 +293,8 @@ export default function StoreDashboardShelvesPage() {
           {/* Pagination Info */}
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
-              149 {t("common.currency")}
+              {t("shelves.showing")} {filteredShelves.length} {t("shelves.of")} {shelves?.length || 0} {t("shelves.shelves")}
             </p>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled>
-                {t("common.previous")}
-              </Button>
-              <Button variant="ghost" size="sm">
-                {t("common.next")}
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
