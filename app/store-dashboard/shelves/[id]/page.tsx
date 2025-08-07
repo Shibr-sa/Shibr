@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { 
   MapPin, 
-  Calendar,
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
@@ -24,69 +23,101 @@ import {
 import { useLanguage } from "@/contexts/language-context"
 import { useParams } from "next/navigation"
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
 
 export default function ShelfDetailsPage() {
   const { t, direction } = useLanguage()
   const params = useParams()
-  const shelfId = params.id as string
+  const shelfIdParam = params.id as string
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-
-  // Mock data - replace with actual data from Convex
-  const shelfData = {
-    id: shelfId,
-    name: "رف جدة",
-    price: 2000,
-    discount: 18,
-    status: "available",
-    city: "جدة",
-    branch: "حطين، جدة 13512، المملكة العربية السعودية",
-    addedDate: "2025-06-15",
+  
+  // Fetch shelf data from Convex - only if we have a valid ID
+  // Note: The ID comes from the URL as a string, but Convex expects an Id type
+  const shelfData = useQuery(
+    api.shelves.getShelfById, 
+    shelfIdParam ? { shelfId: shelfIdParam as Id<"shelves"> } : "skip"
+  )
+  
+  // Loading state - check if shelfData is undefined (still loading)
+  if (shelfData === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Check if shelf was not found (null)
+  if (shelfData === null) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3">
+          <p className="text-lg font-semibold text-foreground">{t("shelf_details.not_found")}</p>
+          <p className="text-muted-foreground">{t("shelf_details.not_found_description")}</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Format the data for display
+  const formattedData = {
+    id: shelfData._id,
+    name: shelfData.shelfName,
+    price: shelfData.monthlyPrice,
+    discount: shelfData.discountPercentage,
+    status: shelfData.status || "available",
+    city: shelfData.city,
+    branch: shelfData.branch,
+    address: shelfData.address || shelfData.branch,
+    addedDate: shelfData.availableFrom || new Date(shelfData._creationTime).toLocaleDateString(),
     dimensions: {
-      length: 1.20,
-      width: 1.20,
-      depth: 3
+      length: parseFloat(shelfData.length) || 1.20,
+      width: parseFloat(shelfData.width) || 1.20,
+      depth: parseFloat(shelfData.depth) || 3
     },
-    productTypes: ["ملابس", "كوتات", "أحذية"],
-    renterName: "Glow Cosmetics",
-    renterEmail: "glow@example.com",
-    renterDate: "1 يوليو",
-    rating: 4.5,
-    modificationCount: 3,
-    images: [
+    productTypes: shelfData.productTypes || [],
+    renterName: shelfData.renterName,
+    renterEmail: shelfData.renterEmail,
+    renterDate: shelfData.rentalStartDate || "—",
+    renterRating: shelfData.renterRating,
+    images: shelfData.images?.length > 0 ? shelfData.images : [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600"
     ]
   }
 
-  // Products sold data
-  const soldProducts = [
-    { id: "#14821", name: "تيشيرت أبيض M", quantity: 34, sales: 10, price: 89 },
-    { id: "#14821", name: "تيشيرت أسود L", quantity: 35, sales: 31, price: 95 },
-    { id: "#14821", name: "تيشيرت أزرق XL", quantity: 36, sales: 12, price: 120 },
-    { id: "#14821", name: "تيشيرت أحمر S", quantity: 37, sales: 32, price: 75 },
-    { id: "#14821", name: "تيشيرت أخضر M", quantity: 38, sales: 45, price: 110 },
-    { id: "#14821", name: "تيشيرت رمادي L", quantity: 39, sales: 23, price: 85 },
-    { id: "#14821", name: "تيشيرت أصفر S", quantity: 40, sales: 5, price: 100 },
+  // Products sold data - TODO: Replace with actual data from Convex when available
+  const soldProducts: Array<{id: string, name: string, quantity: number, sales: number, price: number}> = [
+    { id: "#14821", name: t("shelf_details.sample_product"), quantity: 34, sales: 10, price: 89 },
   ]
 
-  // Payment records
-  const paymentRecords = [
-    { date: "1 يوليو", status: "pending", amount: 500, type: "يوليو" },
-    { date: "1 يوليو", status: "completed", amount: 500, type: "يوليو" }
+  // Payment records - TODO: Replace with actual data from Convex when available
+  const paymentRecords: Array<{date: string, status: string, amount: number, type: string}> = [
+    { date: formattedData.renterDate, status: "pending", amount: formattedData.price, type: t("common.monthly") },
   ]
 
-  // Previous renters
-  const previousRenters = [
-    { name: "Glow Cosmetics", industry: "عناية بالبشرة", ratingLabel: "ممتاز", date: "1 يوليو", amount: 250000 }
+  // Previous renters - TODO: Replace with actual data from Convex when available
+  const previousRenters: Array<{name: string, industry: string, ratingLabel: string, date: string}> = [
+    { 
+      name: formattedData.renterName || t("shelf_details.no_previous_renters"), 
+      industry: t("shelf_details.activity_care"), 
+      ratingLabel: t("shelf_details.excellent"), 
+      date: formattedData.renterDate 
+    }
   ]
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % shelfData.images.length)
+    setCurrentImageIndex((prev) => (prev + 1) % formattedData.images.length)
   }
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + shelfData.images.length) % shelfData.images.length)
+    setCurrentImageIndex((prev) => (prev - 1 + formattedData.images.length) % formattedData.images.length)
   }
 
   return (
@@ -101,16 +132,29 @@ export default function ShelfDetailsPage() {
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Package2 className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <CardTitle className="text-lg">{t("shelf_details.shelf_info")}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">{shelfData.name}</p>
-                </div>
+                <CardTitle className="text-lg">{formattedData.name}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-green-100 text-green-700 hover:bg-green-100">
-                  {t("shelf_details.available")}
+                <Badge 
+                  variant="default" 
+                  className={
+                    formattedData.status === "rented" 
+                      ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                      : "bg-green-100 text-green-700 hover:bg-green-100"
+                  }
+                >
+                  {formattedData.status === "rented" 
+                    ? t("shelf_details.rented")
+                    : t("shelf_details.available")
+                  }
                 </Badge>
-                <Button variant="outline" size="icon" className="h-8 w-8">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  disabled={formattedData.status === "rented"}
+                  title={formattedData.status === "rented" ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
+                >
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -132,7 +176,7 @@ export default function ShelfDetailsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.city")}</p>
-                      <p className="text-sm font-medium">{shelfData.city}</p>
+                      <p className="text-sm font-medium">{formattedData.city}</p>
                     </div>
                   </div>
                   
@@ -143,7 +187,7 @@ export default function ShelfDetailsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.branch")}</p>
-                      <p className="text-sm font-medium">{shelfData.branch}</p>
+                      <p className="text-sm font-medium">{formattedData.branch}</p>
                     </div>
                   </div>
                   
@@ -154,7 +198,7 @@ export default function ShelfDetailsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.address")}</p>
-                      <p className="text-sm font-medium">{shelfData.branch}</p>
+                      <p className="text-sm font-medium">{formattedData.address}</p>
                     </div>
                   </div>
                 </div>
@@ -175,7 +219,7 @@ export default function ShelfDetailsPage() {
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.monthly_price")}</p>
                       <p className="text-sm font-medium">
-                        {shelfData.price} {t("common.currency")} / {t("common.monthly")}
+                        {formattedData.price} {t("common.currency")} / {t("common.monthly")}
                       </p>
                     </div>
                   </div>
@@ -187,7 +231,7 @@ export default function ShelfDetailsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.discount_percentage")}</p>
-                      <p className="text-sm font-medium text-green-600">{shelfData.discount}%</p>
+                      <p className="text-sm font-medium text-green-600">{formattedData.discount}%</p>
                     </div>
                   </div>
                   
@@ -198,7 +242,7 @@ export default function ShelfDetailsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{t("shelf_details.available_from")}</p>
-                      <p className="text-sm font-medium">{shelfData.addedDate}</p>
+                      <p className="text-sm font-medium">{formattedData.addedDate}</p>
                     </div>
                   </div>
                 </div>
@@ -218,7 +262,7 @@ export default function ShelfDetailsPage() {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">{t("shelf_details.dimensions")}</p>
                   <p className="text-sm font-medium">
-                    {shelfData.dimensions.depth}m × {shelfData.dimensions.width}m × {shelfData.dimensions.length}m
+                    {formattedData.dimensions.depth}m × {formattedData.dimensions.width}m × {formattedData.dimensions.length}m
                   </p>
                 </div>
               </div>
@@ -231,7 +275,7 @@ export default function ShelfDetailsPage() {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground mb-2">{t("shelf_details.product_types")}</p>
                   <div className="flex gap-1.5 flex-wrap">
-                    {shelfData.productTypes.map((type, index) => (
+                    {formattedData.productTypes.map((type, index) => (
                       <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5">
                         {type}
                       </Badge>
@@ -248,7 +292,7 @@ export default function ShelfDetailsPage() {
             <CardContent className="p-0">
               <div className="relative aspect-[3/2] overflow-hidden rounded-t-lg">
                 <img 
-                  src={shelfData.images[currentImageIndex]} 
+                  src={formattedData.images[currentImageIndex] || "/placeholder.svg?height=400&width=600"} 
                   alt={`Shelf image ${currentImageIndex + 1}`}
                   className="w-full h-full object-cover"
                 />
@@ -270,7 +314,7 @@ export default function ShelfDetailsPage() {
                 </Button>
               </div>
               <div className="flex gap-2 p-4">
-                {shelfData.images.map((image, index) => (
+                {formattedData.images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
@@ -278,7 +322,7 @@ export default function ShelfDetailsPage() {
                       currentImageIndex === index ? "border-primary" : "border-transparent"
                     }`}
                   >
-                    <img src={image} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={image || "/placeholder.svg?height=80&width=80"} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -295,6 +339,8 @@ export default function ShelfDetailsPage() {
             <Button 
               size="sm"
               className="gap-2"
+              disabled={!formattedData.renterName}
+              title={!formattedData.renterName ? t("shelf_details.no_renter") : ""}
             >
               {t("shelf_details.view_renter")}
             </Button>
@@ -314,11 +360,11 @@ export default function ShelfDetailsPage() {
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="font-medium">{shelfData.renterName}</TableCell>
+                  <TableCell className="font-medium">{formattedData.renterName || "—"}</TableCell>
                   <TableCell>{t("shelf_details.activity_care")}</TableCell>
-                  <TableCell>{shelfData.renterDate}</TableCell>
-                  <TableCell>{shelfData.renterDate}</TableCell>
-                  <TableCell>{shelfData.renterDate}</TableCell>
+                  <TableCell>{formattedData.renterDate}</TableCell>
+                  <TableCell>{formattedData.renterDate}</TableCell>
+                  <TableCell>{formattedData.renterDate}</TableCell>
                   <TableCell>{t("shelf_details.activity_care")}</TableCell>
                   <TableCell>
                     <Button 

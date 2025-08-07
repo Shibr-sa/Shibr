@@ -152,6 +152,67 @@ export const archiveShelf = mutation({
   },
 })
 
+// Get single shelf details by ID
+export const getShelfById = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    const shelf = await ctx.db.get(args.shelfId)
+    
+    if (!shelf) {
+      return null
+    }
+    
+    // Get owner details
+    const owner = await ctx.db.get(shelf.ownerId)
+    
+    // Get renter details if shelf is rented
+    let renter = null
+    if (shelf.renterId) {
+      renter = await ctx.db.get(shelf.renterId)
+    }
+    
+    // Get shelf images URLs from storage
+    let exteriorImageUrl = null
+    let interiorImageUrl = null
+    let shelfImageUrl = null
+    
+    if (shelf.exteriorImage) {
+      exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage)
+    }
+    if (shelf.interiorImage) {
+      interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage)
+    }
+    if (shelf.shelfImage) {
+      shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage)
+    }
+    
+    // Format product types - if it's a string, convert to array
+    const productTypes = shelf.productType 
+      ? (typeof shelf.productType === 'string' ? [shelf.productType] : shelf.productType)
+      : []
+    
+    return {
+      ...shelf,
+      ownerName: owner?.ownerName || owner?.fullName || "Unknown",
+      ownerEmail: owner?.email,
+      renterName: renter?.ownerName || renter?.fullName || null,
+      renterEmail: renter?.email || null,
+      renterRating: null, // Rating field not yet implemented in users table
+      exteriorImageUrl,
+      interiorImageUrl,
+      shelfImageUrl,
+      productTypes,
+      images: [
+        exteriorImageUrl,
+        interiorImageUrl,
+        shelfImageUrl
+      ].filter(Boolean), // Filter out null values
+    }
+  },
+})
+
 // Get shelf statistics for owner dashboard
 export const getShelfStats = query({
   args: { ownerId: v.id("users") },
