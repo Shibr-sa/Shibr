@@ -9,10 +9,12 @@ import { Plus, Package, TrendingUp, Lock, QrCode, Search } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useRouter } from "next/navigation"
 
 export default function BrandShelvesPage() {
   const { t, direction } = useLanguage()
   const { isBrandDataComplete } = useBrandData()
+  const router = useRouter()
 
   const shelvesData = [
     {
@@ -80,16 +82,14 @@ export default function BrandShelvesPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.total_sales")}</p>
-                <p className="text-2xl font-bold text-primary">
-                  {t("common.currency_symbol")} 45,231.89
-                </p>
+                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.current_shelves_count")}</p>
+                <p className="text-2xl font-bold">15</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("brand.shelves.increase_from_last_month")}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary" />
+                <Package className="h-6 w-6 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -116,14 +116,16 @@ export default function BrandShelvesPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.current_shelves_count")}</p>
-                <p className="text-2xl font-bold">15</p>
+                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.total_sales")}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {t("common.currency_symbol")} 45,231.89
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("brand.shelves.increase_from_last_month")}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="h-6 w-6 text-primary" />
+                <TrendingUp className="h-6 w-6 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -154,6 +156,7 @@ export default function BrandShelvesPage() {
                       size="default"
                       className="w-full sm:w-auto"
                       disabled={!isBrandDataComplete}
+                      onClick={() => router.push("/brand-dashboard/marketplace")}
                     >
                       {!isBrandDataComplete ? (
                         <Lock className="h-4 w-4 me-2" />
