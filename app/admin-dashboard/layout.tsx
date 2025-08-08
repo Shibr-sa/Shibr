@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,14 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import {
   Sidebar,
   SidebarContent,
@@ -55,6 +64,64 @@ export default function AdminDashboardLayout({
   const getCurrentPageTitle = () => {
     const currentItem = sidebarItems.find(item => item.href === pathname)
     return currentItem ? t(currentItem.pageTitle) : t("dashboard.home")
+  }
+
+  // Generate breadcrumb items based on pathname
+  const getBreadcrumbs = () => {
+    const pathSegments = pathname.split('/').filter(Boolean)
+    const breadcrumbs = []
+    
+    // Always start with dashboard home
+    breadcrumbs.push({
+      title: t("dashboard.admin"),
+      href: "/admin-dashboard",
+      isCurrentPage: pathname === "/admin-dashboard"
+    })
+    
+    // Add additional segments
+    if (pathSegments.length > 1) {
+      for (let i = 1; i < pathSegments.length; i++) {
+        const href = `/${pathSegments.slice(0, i + 1).join('/')}`
+        const segment = pathSegments[i]
+        
+        // Find matching sidebar item for main sections
+        const sidebarItem = sidebarItems.find(item => item.href === href)
+        
+        // Determine the title
+        let title = ""
+        if (sidebarItem) {
+          title = t(sidebarItem.title)
+        } else {
+          // Handle sub-pages
+          switch(segment) {
+            case 'add':
+              title = t("common.add")
+              break
+            case 'edit':
+              title = t("common.edit")
+              break
+            case 'details':
+              title = t("common.details")
+              break
+            default:
+              // For dynamic IDs, show "Details"
+              if (segment.match(/^[a-zA-Z0-9]+$/)) {
+                title = t("common.details")
+              } else {
+                title = segment.charAt(0).toUpperCase() + segment.slice(1)
+              }
+          }
+        }
+        
+        breadcrumbs.push({
+          title,
+          href,
+          isCurrentPage: i === pathSegments.length - 1
+        })
+      }
+    }
+    
+    return breadcrumbs
   }
 
   return (
@@ -159,9 +226,24 @@ export default function AdminDashboardLayout({
             <SidebarTrigger />
             
             <div className="flex-1 flex items-center justify-between ms-4">
-              <h1 className="text-xl font-semibold text-foreground">
-                {getCurrentPageTitle()}
-              </h1>
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {getBreadcrumbs().map((item, index) => (
+                    <React.Fragment key={item.href}>
+                      {index > 0 && <BreadcrumbSeparator />}
+                      <BreadcrumbItem>
+                        {item.isCurrentPage ? (
+                          <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink asChild>
+                            <Link href={item.href}>{item.title}</Link>
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </React.Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
               <LanguageSwitcher />
             </div>
           </header>
