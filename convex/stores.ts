@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
+import { Id } from "./_generated/dataModel"
 
 // Get all available stores for marketplace
 export const getMarketplaceStores = query({
@@ -119,6 +120,34 @@ export const getStoreDetails = query({
     return {
       ...shelf,
       ownerName: owner?.storeName || owner?.fullName || "Unknown",
+      ownerEmail: owner?.email,
+      storeType: owner?.storeType,
+      ownerPhone: owner?.phoneNumber,
+    }
+  },
+})
+
+// Get a single store by ID
+export const getStoreById = query({
+  args: {
+    storeId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    const shelf = await ctx.db.get(args.storeId)
+    
+    if (!shelf) {
+      return null
+    }
+    
+    // Get owner information
+    const owner = shelf.ownerId 
+      ? await ctx.db.get(shelf.ownerId as Id<"users">)
+      : null
+    
+    // Return the shelf with owner information
+    return {
+      ...shelf,
+      ownerName: owner?.storeName || owner?.fullName || "Store Owner",
       ownerEmail: owner?.email,
       storeType: owner?.storeType,
       ownerPhone: owner?.phoneNumber,
