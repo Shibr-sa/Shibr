@@ -95,12 +95,6 @@ export default function BrandProductsPage() {
 
   return (
     <div className="space-y-6" dir={direction}>
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("brand.dashboard.products_management")}</h1>
-        <p className="text-muted-foreground">{t("brand.dashboard.products_page_description")}</p>
-      </div>
-
       {/* Main Content Card with Statistics */}
       <Card>
         <CardContent className="p-6 space-y-6">

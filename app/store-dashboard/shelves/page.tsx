@@ -86,14 +86,6 @@ export default function StoreDashboardShelvesPage() {
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.shelves")}</h1>
-        <p className="text-muted-foreground">
-          {t("shelves.header_description")}
-        </p>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

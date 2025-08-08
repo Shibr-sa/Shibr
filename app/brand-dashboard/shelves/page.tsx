@@ -71,11 +71,6 @@ export default function BrandShelvesPage() {
 
   return (
     <div className="space-y-6" dir={direction}>
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.shelves")}</h1>
-        <p className="text-muted-foreground">{t("brand.shelves.page_description")}</p>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

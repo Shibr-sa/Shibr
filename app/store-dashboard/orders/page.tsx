@@ -66,14 +66,6 @@ export default function StoreDashboardOrdersPage() {
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.orders")}</h1>
-        <p className="text-muted-foreground">
-          {t("orders.incoming_description")}
-        </p>
-      </div>
-
       {/* Incoming Orders Section */}
       <Card>
         <CardContent className="p-6">

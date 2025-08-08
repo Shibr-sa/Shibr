@@ -25,11 +25,11 @@ import {
 } from "@/components/ui/sidebar"
 
 const sidebarItems = [
-  { title: "dashboard.home", href: "/admin-dashboard", icon: Home },
-  { title: "dashboard.posts", href: "/admin-dashboard/posts", icon: FileText },
-  { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store },
-  { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard },
-  { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings },
+  { title: "dashboard.home", href: "/admin-dashboard", icon: Home, pageTitle: "dashboard.home" },
+  { title: "dashboard.posts", href: "/admin-dashboard/posts", icon: FileText, pageTitle: "dashboard.posts" },
+  { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store, pageTitle: "dashboard.stores" },
+  { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard, pageTitle: "dashboard.payments" },
+  { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
 ]
 
 export default function AdminDashboardLayout({
@@ -49,6 +49,12 @@ export default function AdminDashboardLayout({
     localStorage.removeItem("userEmail")
     // Redirect to sign in page
     router.push("/signin")
+  }
+
+  // Get current page title based on pathname
+  const getCurrentPageTitle = () => {
+    const currentItem = sidebarItems.find(item => item.href === pathname)
+    return currentItem ? t(currentItem.pageTitle) : t("dashboard.home")
   }
 
   return (
@@ -152,7 +158,10 @@ export default function AdminDashboardLayout({
           <header className="h-14 border-b bg-background flex items-center px-4">
             <SidebarTrigger />
             
-            <div className="flex-1 flex items-center justify-end ms-4">
+            <div className="flex-1 flex items-center justify-between ms-4">
+              <h1 className="text-xl font-semibold text-foreground">
+                {getCurrentPageTitle()}
+              </h1>
               <LanguageSwitcher />
             </div>
           </header>

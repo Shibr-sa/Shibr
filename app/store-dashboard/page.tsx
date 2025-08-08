@@ -53,11 +53,6 @@ export default function StoreDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.home")}</h1>
-        <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
-      </div>
-
       {/* Data Completion Warning - Only show if loaded and data is incomplete */}
       {!isLoading && !isStoreDataComplete && (
         <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">

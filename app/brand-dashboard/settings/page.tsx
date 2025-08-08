@@ -210,12 +210,6 @@ export default function BrandDashboardSettingsPage() {
 
   return (
     <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-      {/* Header */}
-      <div className="text-start">
-        <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
-        <p className="text-muted-foreground">{t("settings.brand_description")}</p>
-      </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={direction}>
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>

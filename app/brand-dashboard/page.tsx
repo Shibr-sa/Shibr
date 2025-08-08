@@ -20,11 +20,6 @@ export default function BrandDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("brand.dashboard.home")}</h1>
-        <p className="text-muted-foreground">{t("brand.dashboard.welcome")}</p>
-      </div>
-
       {/* Data Completion Warning - Only show if data is incomplete */}
       {isBrandDataComplete === false && (
         <Alert className="border-destructive/50 bg-destructive/10 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2 [&>svg+div]:translate-y-0">
