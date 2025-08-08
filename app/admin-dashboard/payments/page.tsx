@@ -83,7 +83,7 @@ export default function PaymentsPage() {
           <h1 className="text-2xl font-bold">المدفوعات والتحصيلات</h1>
           <p className="text-gray-600">إدارة جميع المعاملات المالية والعمولات</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        <Button>
           <Download className="w-4 h-4 me-2" />
           تصدير التقرير
         </Button>
@@ -94,8 +94,8 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <DollarSign className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
@@ -112,8 +112,8 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CreditCard className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <CreditCard className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">العمولات</p>
@@ -130,8 +130,8 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <CreditCard className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-secondary/10 rounded-lg">
+                <CreditCard className="w-5 h-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">معاملات معلقة</p>
@@ -148,8 +148,8 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <CreditCard className="w-5 h-5 text-red-600" />
+              <div className="p-2 bg-destructive/10 rounded-lg">
+                <CreditCard className="w-5 h-5 text-destructive" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">معاملات فاشلة</p>
@@ -214,13 +214,6 @@ export default function PaymentsPage() {
                     <Badge
                       variant={
                         payment.status === "مكتمل" ? "default" : payment.status === "معلق" ? "secondary" : "destructive"
-                      }
-                      className={
-                        payment.status === "مكتمل"
-                          ? "bg-green-100 text-green-800"
-                          : payment.status === "معلق"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-red-100 text-red-800"
                       }
                     >
                       {payment.status}

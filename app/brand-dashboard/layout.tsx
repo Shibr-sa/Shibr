@@ -103,6 +103,9 @@ export default function BrandDashboardLayout({
             case 'details':
               title = t("common.details")
               break
+            case 'marketplace':
+              title = t("marketplace.title")
+              break
             default:
               // For dynamic IDs, show "Details"
               if (segment.match(/^[a-zA-Z0-9]+$/)) {

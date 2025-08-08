@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, CalendarDays, Ruler, Box, AlertCircle, Paperclip, Camera, Send, ChevronLeft, User } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 
 // Mock data for a single store, you would fetch this based on the `id` param
@@ -157,13 +158,13 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
                     <Label htmlFor="notes">ملاحظات إضافية (اختياري)</Label>
                     <Textarea id="notes" placeholder="مثال: أحتاج رف في مستوى رؤية واضح" />
                   </div>
-                  <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg p-4 flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                    <p>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
                       الموافقة على الطلب تتم من قبل صاحب المحل خلال 48 ساعة كحد أقصى. لا يتم سحب أي مبالغ حتى يتم
                       التفعيل رسمياً.
-                    </p>
-                  </div>
+                    </AlertDescription>
+                  </Alert>
                   <Button type="submit" size="lg" className="w-full text-base">
                     إرسال الطلب للمراجعة
                   </Button>
@@ -182,7 +183,7 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
                   <div>
                     <p className="font-semibold">{storeDetails.owner.name}</p>
                     <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                      <Badge variant="default" className="h-2 w-2 rounded-full p-0" />
                       <p className="text-xs text-muted-foreground">online</p>
                     </div>
                   </div>

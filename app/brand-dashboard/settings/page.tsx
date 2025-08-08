@@ -615,7 +615,7 @@ export default function BrandDashboardSettingsPage() {
                           {method.accountName} - {method.accountNumber.slice(-4).padStart(method.accountNumber.length, '*')}
                         </TableCell>
                         <TableCell>
-                          <Badge className={method.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-700 hover:bg-gray-100"}>
+                          <Badge variant={method.isActive ? "default" : "secondary"}>
                             {method.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
                           </Badge>
                         </TableCell>
@@ -703,7 +703,7 @@ export default function BrandDashboardSettingsPage() {
                       <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
                       <TableCell>{t("settings.payment.shelf_rental_payment")}</TableCell>
                       <TableCell>
-                        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+                        <Badge variant="secondary">
                           {t("settings.payment.pending_confirmation")}
                         </Badge>
                       </TableCell>

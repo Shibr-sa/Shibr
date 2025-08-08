@@ -151,7 +151,7 @@ export default function BrandShelvesPage() {
                       size="default"
                       className="w-full sm:w-auto"
                       disabled={!isBrandDataComplete}
-                      onClick={() => router.push("/brand-dashboard/marketplace")}
+                      onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
                     >
                       {!isBrandDataComplete ? (
                         <Lock className="h-4 w-4 me-2" />
@@ -232,15 +232,11 @@ export default function BrandShelvesPage() {
                     </TableCell>
                     <TableCell className="h-12 px-4 text-center">
                       <Badge 
-                        variant="secondary"
-                        className={`
-                          font-medium px-2.5 py-0.5
-                          ${shelf.statusType === "active" 
-                            ? "bg-green-50 text-green-700 hover:bg-green-50 border-green-200" 
-                            : shelf.statusType === "pending"
-                            ? "bg-orange-50 text-orange-700 hover:bg-orange-50 border-orange-200"
-                            : "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"}
-                        `}
+                        variant={shelf.statusType === "active" 
+                          ? "default" 
+                          : shelf.statusType === "pending"
+                          ? "secondary"
+                          : "destructive"}
                       >
                         {shelf.status}
                       </Badge>

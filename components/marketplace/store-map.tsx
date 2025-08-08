@@ -76,10 +76,9 @@ function StoreMapContent({
   // Get Google Maps API key from environment variable
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
 
-  // Use the hook for loading Google Maps
+  // Use the hook for loading Google Maps - language is not included to prevent reinitialization errors
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey,
-    language: language,
   })
 
   // Filter stores with valid coordinates

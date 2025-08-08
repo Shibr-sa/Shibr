@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/contexts/language-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -207,16 +208,11 @@ export default function AdminDashboard() {
               {topProducts.map((product, index) => (
                 <div key={index} className="flex items-center gap-4">
                   <div className="w-32 text-sm font-medium text-end">{product.name}</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
-                    <div
-                      className="h-6 rounded-full flex items-center justify-end px-2"
-                      style={{
-                        backgroundColor: product.color,
-                        width: `${product.value}%`,
-                      }}
-                    >
-                      <span className="text-white text-xs font-medium">{product.value}%</span>
-                    </div>
+                  <div className="flex-1 relative">
+                    <Progress value={product.value} className="h-6" />
+                    <span className="absolute end-2 top-1/2 -translate-y-1/2 text-xs font-medium text-primary-foreground">
+                      {product.value}%
+                    </span>
                   </div>
                 </div>
               ))}
@@ -262,11 +258,6 @@ export default function AdminDashboard() {
                   <TableCell>
                     <Badge
                       variant={store.statusColor === "green" ? "default" : "secondary"}
-                      className={
-                        store.statusColor === "green"
-                          ? "bg-green-100 text-green-800 hover:bg-green-100"
-                          : "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                      }
                     >
                       {t(`dashboard.status_${store.status}`)}
                     </Badge>

@@ -68,7 +68,7 @@ export default function PostsPage() {
           <h1 className="text-2xl font-bold">إدارة المنشورات</h1>
           <p className="text-gray-600">إدارة جميع المنشورات والمحتوى على المنصة</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        <Button>
           <Plus className="w-4 h-4 me-2" />
           منشور جديد
         </Button>
@@ -79,8 +79,8 @@ export default function PostsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">إجمالي المنشورات</p>
@@ -93,8 +93,8 @@ export default function PostsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">منشورات نشطة</p>
@@ -107,8 +107,8 @@ export default function PostsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <FileText className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-secondary/10 rounded-lg">
+                <FileText className="w-5 h-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">قيد المراجعة</p>
@@ -121,8 +121,8 @@ export default function PostsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <FileText className="w-5 h-5 text-gray-600" />
+              <div className="p-2 bg-muted rounded-lg">
+                <FileText className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">مسودات</p>
@@ -179,13 +179,6 @@ export default function PostsPage() {
                     <Badge
                       variant={
                         post.status === "منشور" ? "default" : post.status === "قيد المراجعة" ? "secondary" : "outline"
-                      }
-                      className={
-                        post.status === "منشور"
-                          ? "bg-green-100 text-green-800"
-                          : post.status === "قيد المراجعة"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-gray-100 text-gray-800"
                       }
                     >
                       {post.status}

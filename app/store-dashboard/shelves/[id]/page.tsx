@@ -136,12 +136,7 @@ export default function ShelfDetailsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge 
-                  variant="default" 
-                  className={
-                    formattedData.status === "rented" 
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
-                      : "bg-green-100 text-green-700 hover:bg-green-100"
-                  }
+                  variant={formattedData.status === "rented" ? "secondary" : "default"}
                 >
                   {formattedData.status === "rented" 
                     ? t("shelf_details.rented")
@@ -461,12 +456,7 @@ export default function ShelfDetailsPage() {
                       <TableCell>{record.date}</TableCell>
                       <TableCell>
                         <Badge 
-                          variant="default" 
-                          className={
-                            record.status === "completed" 
-                              ? "bg-green-100 text-green-700 hover:bg-green-100" 
-                              : "bg-orange-100 text-orange-700 hover:bg-orange-100"
-                          }
+                          variant={record.status === "completed" ? "default" : "secondary"}
                         >
                           {record.status === "completed" ? t("shelf_details.collected") : t("shelf_details.pending")}
                         </Badge>

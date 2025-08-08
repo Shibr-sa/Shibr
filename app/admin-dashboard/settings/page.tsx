@@ -76,7 +76,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button className="bg-purple-600 hover:bg-purple-700">حفظ التغييرات</Button>
+              <Button>حفظ التغييرات</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button className="bg-purple-600 hover:bg-purple-700">حفظ الإعدادات</Button>
+              <Button>حفظ الإعدادات</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button className="bg-purple-600 hover:bg-purple-700">حفظ إعدادات الأمان</Button>
+              <Button>حفظ إعدادات الأمان</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -259,7 +259,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button className="bg-purple-600 hover:bg-purple-700">حفظ إعدادات المدفوعات</Button>
+              <Button>حفظ إعدادات المدفوعات</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button className="bg-purple-600 hover:bg-purple-700">حفظ إعدادات المستخدمين</Button>
+              <Button>حفظ إعدادات المستخدمين</Button>
             </CardContent>
           </Card>
         </TabsContent>

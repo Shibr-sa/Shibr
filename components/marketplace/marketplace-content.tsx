@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, ChevronRight, Store, Loader2 } from "lucide-react"
+import { Search, MapPin, ChevronLeft, ChevronRight, Store, Loader2, Package, Ruler, Calendar, Check } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useLanguage } from "@/contexts/language-context"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -20,7 +21,7 @@ const StoreMap = lazy(() => import("./store-map"))
 
 // Constants
 const ITEMS_PER_PAGE = 3
-const STORE_CARD_HEIGHT = "h-[200px]"
+const STORE_CARD_HEIGHT = "h-[240px]"
 const STORE_CARD_GAP = "mb-4"
 const DEFAULT_PRICE_RANGE = { min: 0, max: 9000 }
 
@@ -250,29 +251,15 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
             <div className="lg:col-span-2 flex items-center h-12">
               <div className={`flex items-center gap-4 w-full ${(!priceRangeData || !stores || stores.length === 0) ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span className="text-sm text-muted-foreground">{minPrice} {t("common.currency_symbol")}</span>
-                <div className="flex-1 relative mx-2">
-                  <div className="h-2 bg-muted rounded-full">
-                    <div 
-                      className="absolute start-0 top-0 h-full bg-primary rounded-full" 
-                      style={{ width: `${sliderValue}%` }}
-                    />
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={sliderValue}
-                    onChange={(e) => handleSliderChange(parseInt(e.target.value))}
-                    onMouseUp={(e) => handleSliderCommit(parseInt((e.target as HTMLInputElement).value))}
-                    onTouchEnd={(e) => handleSliderCommit(parseInt((e.target as HTMLInputElement).value))}
-                    className="absolute w-full h-full top-0 opacity-0 cursor-pointer"
-                    disabled={!priceRangeData || !stores || stores.length === 0}
-                  />
-                  <div 
-                    className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-sm"
-                    style={{ left: `${sliderValue}%` }}
-                  />
-                </div>
+                <Slider
+                  value={[sliderValue]}
+                  onValueChange={(value) => handleSliderChange(value[0])}
+                  onValueCommit={(value) => handleSliderCommit(value[0])}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                  disabled={!priceRangeData || !stores || stores.length === 0}
+                />
                 <span className="text-sm text-muted-foreground ms-2">{sliderValue === 0 ? minPrice : minPrice + Math.round((sliderValue / 100) * (maxPrice - minPrice))} {t("common.currency_symbol")}</span>
               </div>
             </div>
@@ -318,7 +305,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
       </Card>
 
       {/* Content Grid - Fixed Height Layout */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6" style={{ height: 'calc(100vh - 320px)', minHeight: '680px' }}>
+      <div className="grid lg:grid-cols-2 gap-6 mb-6" style={{ height: 'calc(100vh - 280px)', minHeight: '760px' }}>
         {/* Map Section - Fixed on Left */}
         <div className="order-2 lg:order-1 h-full">
           <Card className="h-full">
@@ -378,12 +365,12 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                     >
                       <Card 
                         id={`store-${store._id}`}
-                        className={`overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border-0 shadow-md ${STORE_CARD_HEIGHT}`}
+                        className={`overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border shadow-lg ${STORE_CARD_HEIGHT}`}
                       >
                         <CardContent className="p-0 h-full">
                           <div className="flex h-full">
                             {/* Store Image */}
-                            <div className="w-2/5 relative bg-gradient-to-br from-amber-50 to-amber-100">
+                            <div className="w-2/5 relative bg-gradient-to-br from-primary/5 via-primary/10 to-primary/20">
                               {store.shelfImage ? (
                                 <img 
                                   src={store.shelfImage} 
@@ -392,64 +379,82 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Store className="h-16 w-16 text-amber-600/30" />
+                                  <div className="relative">
+                                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+                                    <Store className="h-16 w-16 text-primary/40 relative" />
+                                  </div>
                                 </div>
                               )}
                             </div>
 
                             {/* Store Info */}
-                            <div className="flex-1 p-4 flex flex-col">
-                              <div className="flex-1">
-                                <h3 className="text-base font-semibold text-foreground mb-2 line-clamp-1">
-                                  {store.shelfName}
-                                </h3>
+                            <div className="flex-1 p-3 flex flex-col">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <h3 className="text-sm font-semibold text-foreground line-clamp-1 flex-1">
+                                    {store.shelfName}
+                                  </h3>
+                                  {store.isVerified && (
+                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+                                      <Check className="h-2.5 w-2.5 me-0.5" />
+                                      {t("marketplace.verified")}
+                                    </Badge>
+                                  )}
+                                </div>
                                 
-                                <div className="flex items-baseline gap-2 mb-2">
-                                  <span className="text-xl font-bold text-primary">
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                                     {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
                                   </span>
-                                  <span className="text-xs text-muted-foreground">/ {t("marketplace.month")}</span>
+                                  <span className="text-[10px] text-muted-foreground">/ {t("marketplace.month")}</span>
                                   {store.discountPercentage > 0 && (
-                                    <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
-                                      +{store.discountPercentage}%
+                                    <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
+                                      {t("marketplace.save")} {store.discountPercentage}%
                                     </Badge>
                                   )}
                                 </div>
 
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                     <MapPin className="h-3 w-3 flex-shrink-0" />
                                     <span className="line-clamp-1">
                                       {store.address || `${store.city}, ${store.branch}`}
                                     </span>
                                   </div>
 
-                                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1">
-                                      <span>{t("marketplace.shelf_type")}:</span>
-                                      <span className="font-medium text-foreground">{store.productType || t("marketplace.general")}</span>
+                                  <div className="flex flex-col gap-1.5 text-[11px]">
+                                    <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50">
+                                      <Package className="h-3 w-3 text-primary flex-shrink-0" />
+                                      <span className="text-muted-foreground">{t("marketplace.type")}:</span>
+                                      <span className="font-medium text-foreground truncate">{store.productType || t("marketplace.general")}</span>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                      <span>{t("marketplace.dimensions")}:</span>
-                                      <span className="font-medium text-foreground">{store.width}×{store.length}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <span>{t("marketplace.available")}:</span>
-                                      <span className="font-medium text-foreground">
-                                        {new Date(store.availableFrom).toLocaleDateString('ar-SA', { month: 'numeric', day: 'numeric' })}
-                                      </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50 flex-1">
+                                        <Ruler className="h-3 w-3 text-primary flex-shrink-0" />
+                                        <span className="font-medium text-foreground">{store.width}×{store.length}cm</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50 flex-1">
+                                        <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
+                                        <span className="text-muted-foreground">{t("marketplace.available")}:</span>
+                                        <span className="font-medium text-foreground">
+                                          {new Date(store.availableFrom).toLocaleDateString('ar-SA', { month: 'numeric', day: 'numeric' })}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                                <div className="w-7 h-7 bg-secondary/10 rounded-full flex items-center justify-center">
-                                  <span className="text-xs font-semibold text-secondary">
-                                    {store.ownerName?.slice(0, 2).toUpperCase() || "UN"}
-                                  </span>
+                              <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full flex items-center justify-center ring-1 ring-primary/10">
+                                    <span className="text-[10px] font-semibold text-primary">
+                                      {store.ownerName?.slice(0, 2).toUpperCase() || "UN"}
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] font-medium text-foreground">{store.ownerName || "Unknown"}</span>
                                 </div>
-                                <span className="text-xs font-medium">{store.ownerName || "Unknown"}</span>
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                               </div>
                             </div>
                           </div>

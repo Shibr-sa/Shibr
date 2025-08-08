@@ -84,7 +84,7 @@ export default function StoresPage() {
           <h1 className="text-2xl font-bold">إدارة المحلات</h1>
           <p className="text-gray-600">إدارة جميع المحلات المسجلة على المنصة</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        <Button>
           <Plus className="w-4 h-4 me-2" />
           إضافة محل
         </Button>
@@ -95,8 +95,8 @@ export default function StoresPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Store className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Store className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">إجمالي المحلات</p>
@@ -109,8 +109,8 @@ export default function StoresPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Store className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Store className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">محلات نشطة</p>
@@ -123,8 +123,8 @@ export default function StoresPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Store className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-secondary/10 rounded-lg">
+                <Store className="w-5 h-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">قيد المراجعة</p>
@@ -137,8 +137,8 @@ export default function StoresPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Store className="w-5 h-5 text-red-600" />
+              <div className="p-2 bg-destructive/10 rounded-lg">
+                <Store className="w-5 h-5 text-destructive" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">معلقة</p>
@@ -225,13 +225,6 @@ export default function StoresPage() {
                           : store.status === "قيد المراجعة"
                             ? "secondary"
                             : "destructive"
-                      }
-                      className={
-                        store.status === "نشط"
-                          ? "bg-green-100 text-green-800"
-                          : store.status === "قيد المراجعة"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-red-100 text-red-800"
                       }
                     >
                       {store.status}

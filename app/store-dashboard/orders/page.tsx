@@ -106,9 +106,9 @@ export default function StoreDashboardOrdersPage() {
           </div>
 
           {/* Warning Alert */}
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-600">
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
               {t("orders.cancel_warning")}
             </AlertDescription>
           </Alert>
@@ -135,11 +135,11 @@ export default function StoreDashboardOrdersPage() {
                     <TableCell>{order.requestDate}</TableCell>
                     <TableCell>
                       {order.status === "under_review" ? (
-                        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+                        <Badge variant="secondary">
                           {t("orders.under_review_badge")}
                         </Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                        <Badge variant="destructive">
                           {t("orders.rejected_badge")}
                         </Badge>
                       )}
@@ -175,7 +175,7 @@ export default function StoreDashboardOrdersPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
                               disabled={isLoading || !isStoreDataComplete}
                               title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
                             >
@@ -184,7 +184,7 @@ export default function StoreDashboardOrdersPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              className="h-8 w-8 text-primary hover:text-primary"
                               disabled={isLoading || !isStoreDataComplete}
                               title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
                             >

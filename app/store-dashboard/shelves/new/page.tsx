@@ -352,9 +352,9 @@ export default function AddShelfPage() {
             </div>
 
             {/* Price Notice */}
-            <Alert className="border-orange-200 bg-orange-50">
-              <Info className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-600">
+            <Alert variant="default">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
                 {t("add_shelf.price_increase_notice")}
               </AlertDescription>
             </Alert>
