@@ -29,16 +29,6 @@ export const getOrCreateConversation = mutation({
   },
 })
 
-// Get conversation details
-export const getConversation = query({
-  args: {
-    conversationId: v.id("conversations"),
-  },
-  handler: async (ctx, args) => {
-    const conversation = await ctx.db.get(args.conversationId)
-    return conversation
-  },
-})
 
 // Send a message in a conversation
 export const sendMessage = mutation({
