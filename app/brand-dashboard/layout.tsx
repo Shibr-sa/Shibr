@@ -12,6 +12,8 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { BrandDataProvider } from "@/contexts/brand-data-context"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+import { Id } from "@/convex/_generated/dataModel"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -248,7 +250,15 @@ export default function BrandDashboardLayout({
                     ))}
                   </BreadcrumbList>
                 </Breadcrumb>
-                <LanguageSwitcher />
+                <div className="flex items-center gap-2">
+                  {user?.id && (
+                    <NotificationBell 
+                      userId={user.id as Id<"users">} 
+                      userType="brand-owner"
+                    />
+                  )}
+                  <LanguageSwitcher />
+                </div>
               </div>
             </header>
 

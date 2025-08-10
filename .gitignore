@@ -30,3 +30,6 @@ next-env.d.ts
 .env.local
 .env.production
 convex/_generated/
+
+# macOS
+.DS_Store

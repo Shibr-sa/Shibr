@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, Paperclip, Send, Package, Calendar as CalendarIcon } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
@@ -29,9 +29,11 @@ import { ar, enUS } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/language-context"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
+import { ChatInterface } from "@/components/chat/chat-interface"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 interface StoreDetails {
   _id: string
@@ -52,13 +54,20 @@ interface StoreDetails {
   shelfImage?: string
 }
 
-export default function MarketDetailsPage({ params }: { params: { id: string } }) {
+export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { t, language, direction } = useLanguage()
+  const { user } = useCurrentUser()
+  
+  // Unwrap params Promise
+  const resolvedParams = use(params)
+  
+  // Get user ID from current user
+  const userId = user?.id ? (user.id as Id<"users">) : null
   
   // Fetch store details from backend
   const storeDetails = useQuery(api.stores.getStoreById, { 
-    storeId: params.id as Id<"stores"> 
+    storeId: resolvedParams.id as Id<"stores"> 
   }) as StoreDetails | undefined
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
@@ -66,12 +75,87 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
   const [productDescription, setProductDescription] = useState("")
   const [productCount, setProductCount] = useState("")
   const [additionalNotes, setAdditionalNotes] = useState("")
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null)
+  const [hasSubmittedRequest, setHasSubmittedRequest] = useState(false)
+  
+  // Mutations
+  const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
+  const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
+  
+  // Check for existing active rental request
+  const activeRequest = useQuery(api.rentalRequests.getActiveRentalRequest, 
+    userId && storeDetails ? {
+      shelfId: resolvedParams.id as Id<"shelves">,
+      brandOwnerId: userId
+    } : "skip"
+  )
+  
+  // Set conversation and submission state if there's an existing request
+  useEffect(() => {
+    if (activeRequest?.conversationId) {
+      setConversationId(activeRequest.conversationId)
+      setHasSubmittedRequest(true)
+    }
+  }, [activeRequest])
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would normally handle form validation and API call
-    // For now, we'll just navigate to the success page
-    router.push(`/brand-dashboard/shelves/marketplace/${params.id}/success`)
+    
+    if (!dateRange?.from || !dateRange?.to || !productType || !productDescription || !productCount) {
+      alert(language === "ar" ? "يرجى ملء جميع الحقول المطلوبة" : "Please fill all required fields")
+      return
+    }
+    
+    if (!userId || !storeDetails?.ownerId) {
+      alert(language === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first")
+      return
+    }
+    
+    try {
+      // First, create or get conversation
+      let convId = conversationId
+      if (!convId) {
+        convId = await getOrCreateConversation({
+          brandOwnerId: userId,
+          storeOwnerId: storeDetails.ownerId as Id<"users">,
+          shelfId: resolvedParams.id as Id<"shelves">,
+        })
+        setConversationId(convId)
+      }
+      
+      // Create or update rental request
+      const result = await createRentalRequest({
+        shelfId: resolvedParams.id as Id<"shelves">,
+        brandOwnerId: userId,
+        startDate: dateRange.from.toISOString(),
+        endDate: dateRange.to.toISOString(),
+        productType,
+        productDescription,
+        productCount: parseInt(productCount),
+        additionalNotes,
+        conversationId: convId,
+      })
+      
+      // Show success message based on whether it was created or updated
+      if (result.isUpdate) {
+        alert(language === "ar" ? "تم تحديث طلبك بنجاح!" : "Your request has been updated successfully!")
+      } else {
+        alert(language === "ar" ? "تم إرسال طلبك بنجاح!" : "Your request has been submitted successfully!")
+      }
+      
+      // Mark that request has been submitted
+      setHasSubmittedRequest(true)
+      
+      // Reset form fields
+      setDateRange(undefined)
+      setProductType("")
+      setProductDescription("")
+      setProductCount("")
+      setAdditionalNotes("")
+    } catch (error) {
+      console.error("Failed to submit rental request:", error)
+      alert(language === "ar" ? "حدث خطأ في إرسال الطلب" : "Failed to submit request")
+    }
   }
   
   // Loading state
@@ -331,54 +415,37 @@ export default function MarketDetailsPage({ params }: { params: { id: string } }
               </form>
             </Card>
 
-            {/* Chat */}
-            <Card className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src="/placeholder.svg" alt={storeDetails.ownerName || t("marketplace.owner")} />
-                    <AvatarFallback className={direction === "rtl" ? "font-cairo" : "font-inter"}>
-                      {language === "ar" ? "م" : (storeDetails.ownerName || "SO").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className={`font-semibold ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-                      {storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant="default" className="h-2 w-2 rounded-full p-0 bg-green-500" />
-                      <p className={`text-xs text-muted-foreground ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-                        {t("marketplace.details.online_status")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow space-y-4 p-4 bg-muted/30 overflow-y-auto min-h-[300px]">
-                {/* Empty chat area - messages will be loaded from database or added dynamically */}
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p className={`text-sm ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-                    {language === "ar" ? "ابدأ محادثة مع صاحب المتجر" : "Start a conversation with the store owner"}
-                  </p>
-                </div>
-              </CardContent>
-              <div className="p-4 border-t mt-auto">
-                <div className="relative">
-                  <Input 
-                    placeholder={t("marketplace.details.type_message")} 
-                    className={`pe-20 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}
-                  />
-                  <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+            {/* Chat - Only show after rental request submission */}
+            {hasSubmittedRequest && conversationId && userId ? (
+              <div className="h-[600px]">
+                <ChatInterface
+                  conversationId={conversationId}
+                  currentUserId={userId}
+                  currentUserType="brand-owner"
+                  otherUserName={storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
+                  shelfName={storeDetails.shelfName}
+                />
               </div>
-            </Card>
+            ) : (
+              <Card className="h-[600px] flex items-center justify-center">
+                <div className="text-center p-6 space-y-3">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                  <div>
+                    <p className={`font-semibold text-lg ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                      {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
+                    </p>
+                    <p className={`text-muted-foreground text-sm mt-2 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                      {!userId 
+                        ? (language === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first")
+                        : (language === "ar" 
+                          ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر" 
+                          : "Submit a rental request first to chat with the store owner")
+                      }
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
     </div>
   )

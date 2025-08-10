@@ -1,250 +1,350 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Plus, Package, TrendingUp, Lock, QrCode, Search } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Plus, Package, TrendingUp, Lock, QrCode, Search, Eye, MessageSquare } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { format } from "date-fns"
+import { ar, enUS } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 export default function BrandShelvesPage() {
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
   const { isBrandDataComplete } = useBrandData()
   const router = useRouter()
+  const { user } = useCurrentUser()
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const shelvesData = [
-    {
-      id: 1,
-      storeName: "مركز الرفاق",
-      city: "الرياض",
-      operationsCount: 42,
-      rentalDate: "1 يونيو",
-      endDate: "30 يونيو",
-      status: "نشط",
-      statusType: "active",
-    },
-    {
-      id: 2,
-      storeName: "سلة عطر",
-      city: "جدة",
-      operationsCount: 27,
-      rentalDate: "10 يونيو",
-      endDate: "10 يوليو",
-      status: "نشط",
-      statusType: "active",
-    },
-    {
-      id: 3,
-      storeName: "ستايل بوكس",
-      city: "الدمام",
-      operationsCount: 15,
-      rentalDate: "1 مايو",
-      endDate: "1 يونيو",
-      status: "بانتظار تفعيل",
-      statusType: "pending",
-    },
-    {
-      id: 4,
-      storeName: "تجميل وإبداع",
-      city: "المدينة المنورة",
-      operationsCount: 50,
-      rentalDate: "20 مايو",
-      endDate: "2 يونيو",
-      status: "نشط",
-      statusType: "active",
-    },
-    {
-      id: 5,
-      storeName: "تجميل وإبداع",
-      city: "المدينة المنورة",
-      operationsCount: 50,
-      rentalDate: "20 مايو",
-      endDate: "3 يونيو",
-      status: "منتهي",
-      statusType: "expired",
-    },
-  ]
+  // Get user ID from current user
+  const userId = user?.id ? (user.id as Id<"users">) : null
+
+  // Fetch rental requests for the brand owner
+  const rentalRequests = useQuery(
+    api.rentalRequests.getUserRentalRequests,
+    userId ? {
+      userId: userId,
+      userType: "brand" as const
+    } : "skip"
+  )
+
+  // Filter rental requests based on search
+  const filteredRequests = rentalRequests?.filter(request => {
+    const matchesSearch = !searchQuery || 
+      request.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      request.shelfName?.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch
+  }) || []
+
+  // Calculate statistics from all requests (not filtered)
+  const allRequests = rentalRequests || []
+  const activeRentals = allRequests.filter(r => r.status === "active").length
+  const pendingRentals = allRequests.filter(r => r.status === "pending").length
+  const totalRentals = allRequests.length
+  
+  // Loading state
+  const isLoading = userId && !rentalRequests
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            {language === "ar" ? "نشط" : "Active"}
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            {language === "ar" ? "قيد المراجعة" : "Pending"}
+          </Badge>
+        )
+      case "rejected":
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200">
+            {language === "ar" ? "مرفوض" : "Rejected"}
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="secondary">
+            {status}
+          </Badge>
+        )
+    }
+  }
 
   return (
-    <div className="space-y-6" dir={direction}>
+    <div className="w-full space-y-6 overflow-hidden" dir={direction}>
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.current_shelves_count")}</p>
-                <p className="text-2xl font-bold">15</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("brand.shelves.increase_from_last_month")}
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{language === "ar" ? "عدد الرفوف الحالية" : "Current Shelves Count"}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-bold">{activeRentals}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {language === "ar" ? "رفوف نشطة" : "Active shelves"}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="h-6 w-6 text-primary" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.total_qr_scans")}</p>
-                <p className="text-2xl font-bold">1,890</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("brand.shelves.increase_from_last_month")}
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
+                  {language === "ar" ? "طلبات قيد المراجعة" : "Pending Requests"}
+                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-bold">{pendingRentals}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {language === "ar" ? "بانتظار الموافقة" : "Awaiting approval"}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <QrCode className="h-6 w-6 text-primary" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                <QrCode className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{t("brand.shelves.total_sales")}</p>
-                <p className="text-2xl font-bold text-primary">
-                  {t("common.currency_symbol")} 45,231.89
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
+                  {language === "ar" ? "إجمالي الطلبات" : "Total Requests"}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("brand.shelves.increase_from_last_month")}
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-bold">{totalRentals}</p>
+                )}
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1 truncate">
+                  <TrendingUp className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{language === "ar" ? "كل الطلبات" : "All requests"}</span>
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Shelves Management Section */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col space-y-1.5">
-            <CardTitle className="text-xl font-semibold">
-              {t("brand.shelves.manage_shelves_inside_stores")}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {t("brand.shelves.shelves_management_description")}
+      {/* Current Shelves Section */}
+      <Card className="w-full overflow-hidden">
+        <CardContent className="p-4 sm:p-6">
+          {/* Title and Search Section */}
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">
+              {language === "ar" ? "الرفوف الحالية" : "Current Shelves"}
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {language === "ar" 
+                ? "عرض وإدارة جميع الرفوف المستأجرة حالياً"
+                : "View and manage all your currently rented shelves"
+              }
             </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Add Shelf Button and Search */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button 
-                      variant="default"
-                      size="default"
-                      className="w-full sm:w-auto"
-                      disabled={!isBrandDataComplete}
-                      onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
-                    >
-                      {!isBrandDataComplete ? (
-                        <Lock className="h-4 w-4 me-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 me-2" />
-                      )}
-                      {t("brand.shelves.add_new_shelf")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!isBrandDataComplete && (
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-            
-            <div className="relative w-full sm:w-80 md:w-96">
+
+          {/* Search and Add Button */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4 sm:mb-6">
+            <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                type="text"
-                placeholder={t("brand.shelves.search_placeholder")}
-                className="ps-9 h-10"
-                dir={direction}
+                placeholder={language === "ar" ? "بحث..." : "Search..."}
+                className="ps-10 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
+            </div>
+            <div className="sm:ms-auto">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => {
+                        if (isBrandDataComplete) {
+                          router.push("/brand-dashboard/shelves/marketplace")
+                        }
+                      }}
+                      disabled={!isBrandDataComplete}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="h-4 w-4 me-2" />
+                      <span className="hidden sm:inline">{language === "ar" ? "إضافة رف" : "Add Shelf"}</span>
+                      <span className="sm:hidden">{language === "ar" ? "إضافة" : "Add"}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isBrandDataComplete && (
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        <span>{language === "ar" ? "يرجى إكمال بياناتك أولاً" : "Please complete your data first"}</span>
+                      </div>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 
-          {/* Shelves Table */}
-          <div className="rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b bg-muted/50">
-                  <TableHead className="h-12 px-4 text-start font-medium text-foreground">
-                    {t("brand.shelves.store_name")}
-                  </TableHead>
-                  <TableHead className="h-12 px-4 text-center font-medium text-foreground">
-                    {t("brand.shelves.city")}
-                  </TableHead>
-                  <TableHead className="h-12 px-4 text-center font-medium text-foreground">
-                    {t("brand.shelves.operations_count")}
-                  </TableHead>
-                  <TableHead className="h-12 px-4 text-center font-medium text-foreground">
-                    {t("brand.shelves.rental_date")}
-                  </TableHead>
-                  <TableHead className="h-12 px-4 text-center font-medium text-foreground">
-                    {t("brand.shelves.end_date")}
-                  </TableHead>
-                  <TableHead className="h-12 px-4 text-center font-medium text-foreground">
-                    {t("brand.shelves.rental_status")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shelvesData.map((shelf, index) => (
-                  <TableRow 
-                    key={shelf.id} 
-                    className={index === shelvesData.length - 1 ? "" : "border-b"}
-                  >
-                    <TableCell className="h-12 px-4 font-medium text-foreground">
-                      {shelf.storeName}
-                    </TableCell>
-                    <TableCell className="h-12 px-4 text-center text-foreground">
-                      {shelf.city}
-                    </TableCell>
-                    <TableCell className="h-12 px-4 text-center text-foreground">
-                      <span className="font-medium">{shelf.operationsCount}</span>
-                      <span className="ms-1 text-muted-foreground">
-                        {t("brand.shelves.operation")}
-                      </span>
-                    </TableCell>
-                    <TableCell className="h-12 px-4 text-center text-muted-foreground">
-                      {shelf.rentalDate}
-                    </TableCell>
-                    <TableCell className="h-12 px-4 text-center text-muted-foreground">
-                      {shelf.endDate}
-                    </TableCell>
-                    <TableCell className="h-12 px-4 text-center">
-                      <Badge 
-                        variant={shelf.statusType === "active" 
-                          ? "default" 
-                          : shelf.statusType === "pending"
-                          ? "secondary"
-                          : "destructive"}
-                      >
-                        {shelf.status}
-                      </Badge>
+          {/* Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="h-[300px] sm:h-[420px] overflow-auto">
+            <Table className="min-w-[700px]">
+              <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className={cn("min-w-[120px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "المتجر" : "Store"}
+                </TableHead>
+                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "الموقع" : "Location"}
+                </TableHead>
+                <TableHead className={cn("min-w-[80px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "العدد" : "Count"}
+                </TableHead>
+                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "البداية" : "Start"}
+                </TableHead>
+                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "النهاية" : "End"}
+                </TableHead>
+                <TableHead className={cn("min-w-[90px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "الحالة" : "Status"}
+                </TableHead>
+                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
+                  {language === "ar" ? "إجراءات" : "Actions"}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                // Loading state
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TableRow key={`skeleton-${index}`}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell className="text-end">
+                      <Skeleton className="h-8 w-20 ms-auto" />
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                ))
+              ) : filteredRequests.length > 0 ? (
+                filteredRequests.map((request) => (
+                  <TableRow key={request._id}>
+                    <TableCell>
+                      <span className="text-sm font-medium">
+                        {request.otherUserName}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {request.shelfName}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {request.productCount || 0}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {format(new Date(request.startDate), "d MMM", {
+                          locale: language === "ar" ? ar : enUS
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {format(new Date(request.endDate), "d MMM", {
+                          locale: language === "ar" ? ar : enUS
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(request.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {request.conversationId && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+                            onClick={() => router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                          onClick={() => router.push(`/brand-dashboard/shelves/${request._id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : null}
+            </TableBody>
+          </Table>
+          {filteredRequests.length === 0 && !isLoading && (
+            <div className="flex items-center justify-center h-[360px]">
+              <div className="text-center">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  {searchQuery 
+                    ? (language === "ar" ? "لا توجد رفوف مطابقة" : "No matching shelves")
+                    : (language === "ar" ? "لا توجد رفوف حالياً" : "No shelves yet")
+                  }
+                </p>
+                {!searchQuery && isBrandDataComplete && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
+                  >
+                    <Plus className="h-4 w-4 me-2" />
+                    {language === "ar" ? "استأجر رفك الأول" : "Rent your first shelf"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          </div>
           </div>
         </CardContent>
       </Card>

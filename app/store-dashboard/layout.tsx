@@ -12,6 +12,9 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+import { ChatFabWidget } from "@/components/chat/chat-fab-widget"
+import { Id } from "@/convex/_generated/dataModel"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -257,13 +260,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 ))}
               </BreadcrumbList>
             </Breadcrumb>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              {user?.id && (
+                <NotificationBell 
+                  userId={user.id as Id<"users">} 
+                  userType="store-owner"
+                />
+              )}
+              <LanguageSwitcher />
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
       </div>
+      
+      {/* Chat FAB Widget */}
+      <ChatFabWidget />
     </div>
     </SidebarProvider>
   )
