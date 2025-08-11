@@ -21,7 +21,7 @@ import {
   Tag
 } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -30,6 +30,7 @@ import { Id } from "@/convex/_generated/dataModel"
 export default function ShelfDetailsPage() {
   const { t, direction } = useLanguage()
   const params = useParams()
+  const router = useRouter()
   const shelfIdParam = params.id as string
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   
@@ -149,6 +150,7 @@ export default function ShelfDetailsPage() {
                   className="h-8 w-8"
                   disabled={formattedData.status === "rented"}
                   title={formattedData.status === "rented" ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
+                  onClick={() => router.push(`/store-dashboard/shelves/${shelfIdParam}/edit`)}
                 >
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>

@@ -135,12 +135,23 @@ export const updateShelf = mutation({
   args: {
     shelfId: v.id("shelves"),
     shelfName: v.optional(v.string()),
+    city: v.optional(v.string()),
+    branch: v.optional(v.string()),
     monthlyPrice: v.optional(v.number()),
     discountPercentage: v.optional(v.number()),
     availableFrom: v.optional(v.string()),
     isAvailable: v.optional(v.boolean()),
+    length: v.optional(v.string()),
+    width: v.optional(v.string()),
+    depth: v.optional(v.string()),
     productType: v.optional(v.string()),
     description: v.optional(v.string()),
+    address: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    exteriorImage: v.optional(v.string()),
+    interiorImage: v.optional(v.string()),
+    shelfImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { shelfId, ...updateData } = args
