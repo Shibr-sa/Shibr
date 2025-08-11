@@ -95,15 +95,18 @@ export const createRentalRequest = mutation({
       })
     }
 
-    // Format dates nicely (using Gregorian calendar)
+    // Format dates nicely (using Gregorian calendar with Western numerals)
     const formatDate = (dateStr: string) => {
       const date = new Date(dateStr)
-      return date.toLocaleDateString('ar-EG', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        calendar: 'gregory'
-      })
+      // Format in Arabic text but with Western numerals
+      const monthNames = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+      ]
+      const month = monthNames[date.getMonth()]
+      const day = date.getDate()
+      const year = date.getFullYear()
+      return `${day} ${month} ${year}`
     }
     
     // Calculate duration in days
@@ -121,8 +124,8 @@ export const createRentalRequest = mutation({
 📝 الوصف: ${args.productDescription}
 🔢 الكمية: ${args.productCount} قطعة
 
-💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('ar-EG')} ريال
-💰 الإجمالي: ${totalPrice.toLocaleString('ar-EG')} ريال
+💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('en-US')} ريال
+💰 الإجمالي: ${totalPrice.toLocaleString('en-US')} ريال
 
 ${args.additionalNotes ? `📌 ملاحظات: ${args.additionalNotes}` : ''}`
       : `✨ طلب إيجار جديد
@@ -135,8 +138,8 @@ ${args.additionalNotes ? `📌 ملاحظات: ${args.additionalNotes}` : ''}`
 📝 الوصف: ${args.productDescription}
 🔢 الكمية: ${args.productCount} قطعة
 
-💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('ar-EG')} ريال
-💰 الإجمالي: ${totalPrice.toLocaleString('ar-EG')} ريال
+💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('en-US')} ريال
+💰 الإجمالي: ${totalPrice.toLocaleString('en-US')} ريال
 
 ${args.additionalNotes ? `📌 ملاحظات: ${args.additionalNotes}` : ''}`
     

@@ -42,9 +42,9 @@ export default function StoreDashboardPage() {
   // Loading state
   const isLoading = storeLoading || !shelves || !shelfStats
   
-  // Format currency
+  // Format currency - always use Western numerals
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(direction === 'rtl' ? 'ar-SA' : 'en-SA', {
+    return new Intl.NumberFormat('en-SA', {
       style: 'currency',
       currency: 'SAR',
       minimumFractionDigits: 2

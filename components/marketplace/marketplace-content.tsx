@@ -437,7 +437,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                         <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
                                         <span className="text-muted-foreground">{t("marketplace.available")}:</span>
                                         <span className="font-medium text-foreground">
-                                          {new Date(store.availableFrom).toLocaleDateString('ar-SA', { month: 'numeric', day: 'numeric' })}
+                                          {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
                                         </span>
                                       </div>
                                     </div>

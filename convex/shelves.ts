@@ -70,7 +70,32 @@ export const getOwnerShelves = query({
       .order("desc")
       .collect()
     
-    return shelves
+    // Fetch renter names and calculate next collection dates for rented shelves
+    const shelvesWithDetails = await Promise.all(
+      shelves.map(async (shelf) => {
+        let renterName = null
+        let nextCollectionDate = null
+        
+        if (shelf.renterId) {
+          const renter = await ctx.db.get(shelf.renterId)
+          renterName = renter?.fullName || renter?.brandName || renter?.storeName || null
+        }
+        
+        // Calculate next collection date for rented shelves
+        if (shelf.status === "rented" && shelf.rentalEndDate) {
+          // Collection happens at the end of the rental period
+          nextCollectionDate = shelf.rentalEndDate
+        }
+        
+        return {
+          ...shelf,
+          renterName,
+          nextCollectionDate
+        }
+      })
+    )
+    
+    return shelvesWithDetails
   },
 })
 
@@ -238,6 +263,151 @@ export const getShelfStats = query({
       availableShelves,
       pendingShelves,
       totalRevenue,
+    }
+  },
+})
+
+// Get shelf statistics with percentage changes based on period
+export const getShelfStatsWithChanges = query({
+  args: {
+    ownerId: v.id("users"),
+    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+  },
+  handler: async (ctx, args) => {
+    const now = new Date()
+    let compareDate = new Date()
+    
+    // Calculate comparison date based on period
+    switch (args.period) {
+      case "daily":
+        compareDate.setDate(compareDate.getDate() - 1)
+        break
+      case "weekly":
+        compareDate.setDate(compareDate.getDate() - 7)
+        break
+      case "monthly":
+        compareDate.setMonth(compareDate.getMonth() - 1)
+        break
+      case "yearly":
+        compareDate.setFullYear(compareDate.getFullYear() - 1)
+        break
+    }
+    
+    // Get current shelves
+    const allShelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .collect()
+    
+    // Current stats
+    const currentRented = allShelves.filter(s => s.status === "rented").length
+    const currentAvailable = allShelves.filter(s => s.status === "approved" && s.isAvailable).length
+    const currentRevenue = allShelves
+      .filter(s => s.status === "rented")
+      .reduce((sum, s) => sum + (s.rentalPrice || s.monthlyPrice || 0), 0)
+    
+    // Get rental requests to analyze trends
+    const rentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_store_owner", (q) => q.eq("storeOwnerId", args.ownerId))
+      .collect()
+    
+    // Filter requests within comparison period
+    const recentRequests = rentalRequests.filter(r => 
+      new Date(r.createdAt) > compareDate
+    )
+    
+    // Calculate trends based on actual data
+    const acceptedRecent = recentRequests.filter(r => r.status === "active").length
+    const totalRequests = rentalRequests.length
+    const previousPeriodRequests = rentalRequests.filter(r => {
+      const createdDate = new Date(r.createdAt)
+      return createdDate <= compareDate
+    })
+    
+    // Calculate real percentage changes based on activity
+    let rentedChange = 0
+    let availableChange = 0
+    let revenueChange = 0
+    
+    // Analyze previous period data
+    const oldRequests = previousPeriodRequests.filter(r => r.status === "active").length
+    const newRequests = acceptedRecent
+    
+    // For rented shelves change
+    // Track shelves that were rented in the previous period
+    const shelvesRentedRecently = allShelves.filter(s => 
+      s.status === "rented" && 
+      s.rentalStartDate && 
+      new Date(s.rentalStartDate) > compareDate
+    ).length
+    
+    const previousRented = Math.max(0, currentRented - shelvesRentedRecently)
+    
+    if (previousRented > 0) {
+      rentedChange = ((currentRented - previousRented) / previousRented) * 100
+    } else if (currentRented > 0) {
+      rentedChange = 100 // 100% increase if starting from 0
+    } else {
+      rentedChange = 0 // No change if both are 0
+    }
+    
+    // For available shelves change
+    // We need to track how many shelves were available in the previous period
+    const shelvesCreatedRecently = allShelves.filter(s => 
+      new Date(s.createdAt) > compareDate
+    ).length
+    
+    const previousAvailable = Math.max(0, currentAvailable - shelvesCreatedRecently + acceptedRecent)
+    
+    if (previousAvailable > 0) {
+      // Calculate actual percentage change
+      availableChange = ((currentAvailable - previousAvailable) / previousAvailable) * 100
+    } else if (currentAvailable > 0) {
+      // If we had 0 available shelves before and now have some, it's a 100% increase
+      availableChange = 100
+    } else {
+      // No change if both are 0
+      availableChange = 0
+    }
+    
+    // For revenue change
+    // Calculate revenue from shelves that started renting in the previous period
+    const shelvesWithRecentRevenue = allShelves.filter(s => 
+      s.status === "rented" && 
+      s.rentalStartDate && 
+      new Date(s.rentalStartDate) > compareDate
+    )
+    
+    const recentRevenue = shelvesWithRecentRevenue.reduce((sum, s) => 
+      sum + (s.rentalPrice || s.monthlyPrice || 0), 0
+    )
+    
+    const previousRevenue = Math.max(0, currentRevenue - recentRevenue)
+    
+    if (previousRevenue > 0) {
+      revenueChange = ((currentRevenue - previousRevenue) / previousRevenue) * 100
+    } else if (currentRevenue > 0) {
+      revenueChange = 100 // 100% increase if starting from 0 revenue
+    } else {
+      revenueChange = 0 // No change if both are 0
+    }
+    
+    // Round to 1 decimal place
+    rentedChange = Math.round(rentedChange * 10) / 10
+    availableChange = Math.round(availableChange * 10) / 10  
+    revenueChange = Math.round(revenueChange * 10) / 10
+    
+    return {
+      totalShelves: allShelves.length,
+      rentedShelves: currentRented,
+      availableShelves: currentAvailable,
+      pendingShelves: allShelves.filter(s => s.status === "pending").length,
+      totalRevenue: currentRevenue,
+      // Percentage changes
+      rentedChange,
+      availableChange,
+      revenueChange,
     }
   },
 })
