@@ -113,6 +113,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             case 'add':
               title = t("common.add")
               break
+            case 'new':
+              title = t("common.new")
+              break
             case 'edit':
               title = t("common.edit")
               break

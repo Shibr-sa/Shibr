@@ -25,8 +25,14 @@ export const addShelf = mutation({
     shelfImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Calculate final price with platform fee (8% increase)
-    const platformFeePercentage = 8
+    // Get platform settings for dynamic fee percentage
+    const settings = await ctx.db
+      .query("platformSettings")
+      .order("desc")
+      .first()
+    
+    // Use platform fee from settings or default to 8%
+    const platformFeePercentage = settings?.platformFeePercentage || 8
     const finalPrice = args.monthlyPrice * (1 + platformFeePercentage / 100)
     
     // Create the shelf with approved status (active listing)
@@ -149,8 +155,14 @@ export const updateShelf = mutation({
     if (updateData.monthlyPrice !== undefined || updateData.discountPercentage !== undefined) {
       const shelf = await ctx.db.get(shelfId)
       if (shelf) {
+        // Get platform settings for dynamic fee percentage
+        const settings = await ctx.db
+          .query("platformSettings")
+          .order("desc")
+          .first()
+        
         const monthlyPrice = updateData.monthlyPrice ?? shelf.monthlyPrice
-        const platformFeePercentage = 8
+        const platformFeePercentage = settings?.platformFeePercentage || 8
         patchData.finalPrice = monthlyPrice * (1 + platformFeePercentage / 100)
       }
     }

@@ -270,6 +270,14 @@ const schema = defineSchema({
     .index("by_user", ["userId", "isRead"])
     .index("by_created", ["createdAt"])
     .index("by_type", ["type"]),
+  
+  // Platform settings (admin configurable)
+  platformSettings: defineTable({
+    platformFeePercentage: v.number(), // Platform fee percentage (e.g., 8%)
+    minimumShelfPrice: v.number(), // Minimum allowed shelf price
+    maximumDiscountPercentage: v.number(), // Maximum discount percentage allowed
+    updatedAt: v.string(),
+  }),
 })
 
 export default schema
