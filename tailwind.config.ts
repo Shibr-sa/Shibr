@@ -24,6 +24,11 @@ const config = {
   				'var(--font-cairo)',
   				'system-ui',
   				'sans-serif'
+  			],
+  			inter: [
+  				'var(--font-inter)',
+  				'system-ui',
+  				'sans-serif'
   			]
   		},
   		colors: {

@@ -8,7 +8,7 @@ import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Buildi
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useState } from "react"
 
 // FAQ items will be created dynamically using translations
@@ -27,7 +27,7 @@ export default function ShibrLandingPage() {
   ]
 
   return (
-    <div className={`min-h-screen bg-background ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+    <div className="min-h-screen bg-background" dir={direction}>
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">

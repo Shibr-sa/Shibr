@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
@@ -209,7 +209,7 @@ export default function BrandDashboardSettingsPage() {
   }
 
   return (
-    <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={direction}>
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>

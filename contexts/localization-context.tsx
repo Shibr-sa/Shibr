@@ -29,14 +29,13 @@ const translations = {
     "common.fill_required_fields": "يرجى ملء جميع الحقول المطلوبة",
     "common.user_not_found": "لم يتم العثور على المستخدم",
     "common.search": "بحث",
-    "common.loading": "جاري التحميل",
+    "common.loading": "جاري التحميل...",
     "common.all": "الكل",
     "common.new": "جديد",
     "common.currency_symbol": "ر.س",
     "common.save": "حفظ",
     "common.language.arabic": "العربية",
     "common.language.english": "English",
-    "common.loading": "جاري التحميل...",
     "common.cancel": "إلغاء",
     "common.sar": "ر.س",
     "common.delete": "حذف",
@@ -52,7 +51,6 @@ const translations = {
     "common.monthly": "شهرياً",
     "common.july": "يوليو",
     "common.june": "يونيو",
-    "common.new": "جديد",
     "common.riyadh": "الرياض",
     "common.jeddah": "جدة",
     "common.dammam": "الدمام",
@@ -170,7 +168,6 @@ const translations = {
     "add_shelf.file_size_error": "حجم الملف يجب ألا يتجاوز 10 ميجابايت",
     "add_shelf.description_optional": "الوصف (اختياري)",
     "add_shelf.description_example": "مثال: يجانب الباب - يمين الداخل",
-    "add_shelf.address": "العنوان",
     "add_shelf.loading_map": "جاري تحميل الخريطة...",
     "add_shelf.click_map_to_select": "انقر على الخريطة لتحديد الموقع",
     "add_shelf.required_fields_error": "يرجى ملء جميع الحقول المطلوبة",
@@ -713,36 +710,6 @@ const translations = {
     "footer.social.twitter": "تويتر",
     "footer.social.linkedin": "لينكد إن",
 
-    // Marketplace
-    "marketplace.title": "البحث في المحلات والمتاجر",
-    "marketplace.search_placeholder": "اكتب اسم المتجر",
-    "marketplace.all_cities": "كل المدن",
-    "marketplace.all_areas": "كل المناطق",
-    "marketplace.riyadh": "الرياض",
-    "marketplace.jeddah": "جدة",
-    "marketplace.dammam": "الدمام",
-    "marketplace.north": "الشمال",
-    "marketplace.south": "الجنوب",
-    "marketplace.footer.available_stations": "المحطات المتاحة",
-    
-    // Marketplace Mock Data
-    "marketplace.mock.store_name_1": "كوفي سيوت",
-    "marketplace.mock.monthly": "شهري",
-    "marketplace.mock.location_riyadh": "المملكة العربية السعودية، الرياض 13512، حطين",
-    "marketplace.mock.service_type": "نوع الخدمة",
-    "marketplace.mock.through_april": "من خلال 1 أبريل",
-    "marketplace.east": "الشرق",
-    "marketplace.west": "الغرب",
-    "marketplace.price_range": "نطاق السعر",
-    "marketplace.store_type": "نوع المحل",
-    "marketplace.all_types": "جميع الأنواع",
-    "marketplace.coffee": "مقاهي",
-    "marketplace.restaurant": "مطاعم",
-    "marketplace.retail": "متاجر",
-    "marketplace.search_stores": "ابحث لمتاجر",
-    "marketplace.stores_map": "خريطة المتاجر",
-    "marketplace.monthly": "شهري",
-
     // Auth
     "auth.signin": "تسجيل الدخول",
     "auth.signup": "تسجيل حساب جديد",
@@ -905,12 +872,10 @@ const translations = {
     "brand.dashboard.style_box": "ستايل بوكس",
     "brand.dashboard.beautify_launch": "تجميل وإطلاق",
     "brand.dashboard.search_by_store_or_city": "ابحث باسم المحل أو مدينة أو...",
-    "brand.dashboard.all_cities": "كل المدن",
     "brand.dashboard.operations_count": "عدد العمليات",
     "brand.dashboard.products_page_description": "إدارة منتجاتك وتتبع أداء المبيعات ومراقبة المخزون عبر جميع أرفف المتاجر",
     "brand.dashboard.products_statistics_description": "تتبع مقاييس أداء منتجاتك واتجاهات المبيعات",
     "brand.dashboard.products_table_description": "عرض وإدارة جميع منتجاتك المعروضة على أرفف المتاجر",
-    "brand.dashboard.products": "منتجات",
     "brand.dashboard.your_products": "منتجاتك",
     "brand.dashboard.product_image": "الصورة",
     "brand.dashboard.product_name": "اسم المنتج",
@@ -926,7 +891,6 @@ const translations = {
     "marketplace.description": "اكتشف واستأجر أرفف في أفضل المتاجر الفعلية لعرض منتجاتك",
     "marketplace.search_placeholder": "ابحث عن المتاجر أو المواقع...",
     "marketplace.filter_city": "اختر المدينة",
-    "marketplace.all_cities": "جميع المدن",
     "marketplace.filter_category": "اختر الفئة",
     "marketplace.all_categories": "جميع الفئات",
     "marketplace.category_general": "متجر عام",
@@ -1064,14 +1028,13 @@ const translations = {
     "common.fill_required_fields": "Please fill all required fields",
     "common.user_not_found": "User not found",
     "common.search": "Search",
-    "common.loading": "Loading",
+    "common.loading": "Loading...",
     "common.all": "All",
     "common.new": "New",
     "common.currency_symbol": "SAR",
     "common.save": "Save",
     "common.language.arabic": "العربية",
     "common.language.english": "English",
-    "common.loading": "Loading...",
     "common.cancel": "Cancel",
     "common.sar": "SAR",
     "common.delete": "Delete",
@@ -1087,7 +1050,6 @@ const translations = {
     "common.monthly": "monthly",
     "common.july": "July",
     "common.june": "June",
-    "common.new": "New",
     "common.riyadh": "Riyadh",
     "common.jeddah": "Jeddah",
     "common.dammam": "Dammam",
@@ -1204,7 +1166,6 @@ const translations = {
     "add_shelf.update_success_message": "Shelf updated successfully",
     "add_shelf.description_optional": "Description (Optional)",
     "add_shelf.description_example": "Example: Next to the door - Right side of entrance",
-    "add_shelf.address": "Address",
     "add_shelf.loading_map": "Loading map...",
     "add_shelf.click_map_to_select": "Click on the map to select location",
     "add_shelf.required_fields_error": "Please fill in all required fields",
@@ -1749,36 +1710,6 @@ const translations = {
     "footer.social.twitter": "Twitter",
     "footer.social.linkedin": "LinkedIn",
 
-    // Marketplace
-    "marketplace.title": "Search Stores and Markets",
-    "marketplace.search_placeholder": "Type store name",
-    "marketplace.all_cities": "All Cities",
-    "marketplace.all_areas": "All Areas",
-    "marketplace.riyadh": "Riyadh",
-    "marketplace.jeddah": "Jeddah",
-    "marketplace.dammam": "Dammam",
-    "marketplace.north": "North",
-    "marketplace.south": "South",
-    "marketplace.footer.available_stations": "Available Stations",
-    
-    // Marketplace Mock Data
-    "marketplace.mock.store_name_1": "Coffee Suit",
-    "marketplace.mock.monthly": "Monthly",
-    "marketplace.mock.location_riyadh": "Saudi Arabia, Riyadh 13512, Hittin",
-    "marketplace.mock.service_type": "Service Type",
-    "marketplace.mock.through_april": "Through April 1",
-    "marketplace.east": "East",
-    "marketplace.west": "West",
-    "marketplace.price_range": "Price Range",
-    "marketplace.store_type": "Store Type",
-    "marketplace.all_types": "All Types",
-    "marketplace.coffee": "Coffee Shops",
-    "marketplace.restaurant": "Restaurants",
-    "marketplace.retail": "Retail Stores",
-    "marketplace.search_stores": "Search Stores",
-    "marketplace.stores_map": "Stores Map",
-    "marketplace.monthly": "Monthly",
-
     // Auth
     "auth.signin": "Sign In",
     "auth.signup": "Create New Account",
@@ -1941,12 +1872,10 @@ const translations = {
     "brand.dashboard.style_box": "Style Box",
     "brand.dashboard.beautify_launch": "Beautify & Launch",
     "brand.dashboard.search_by_store_or_city": "Search by store name or city...",
-    "brand.dashboard.all_cities": "All Cities",
     "brand.dashboard.operations_count": "Operations Count",
     "brand.dashboard.products_page_description": "Manage your products, track sales performance, and monitor inventory across all store shelves",
     "brand.dashboard.products_statistics_description": "Track your product performance metrics and sales trends",
     "brand.dashboard.products_table_description": "View and manage all your products displayed on store shelves",
-    "brand.dashboard.products": "products",
     "brand.dashboard.your_products": "Your Products",
     "brand.dashboard.product_image": "Image",
     "brand.dashboard.product_name": "Product Name",
@@ -1962,7 +1891,6 @@ const translations = {
     "marketplace.description": "Discover and rent shelves in the best physical stores to display your products",
     "marketplace.search_placeholder": "Search for stores or locations...",
     "marketplace.filter_city": "Select City",
-    "marketplace.all_cities": "All Cities",
     "marketplace.filter_category": "Select Category",
     "marketplace.all_categories": "All Categories",
     "marketplace.category_general": "General Store",
@@ -2097,9 +2025,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     localStorage.setItem("language", lang)
-    // Update document direction
-    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr"
-    document.documentElement.lang = lang
   }
 
   const t = (key: string): string => {
@@ -2111,12 +2036,30 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const savedLanguage = localStorage.getItem("language") as Language
     if (savedLanguage && (savedLanguage === "ar" || savedLanguage === "en")) {
       setLanguageState(savedLanguage)
-      document.documentElement.dir = savedLanguage === "ar" ? "rtl" : "ltr"
-      document.documentElement.lang = savedLanguage
     }
   }, [])
 
-  return <LanguageContext.Provider value={{ language, direction, setLanguage, t }}>{children}</LanguageContext.Provider>
+  // Handle document-level changes (HTML attributes and body classes)
+  useEffect(() => {
+    // Update HTML attributes
+    document.documentElement.lang = language
+    document.documentElement.dir = direction
+    
+    // Update body font class based on direction
+    document.body.classList.remove("font-cairo", "font-inter")
+    const fontClass = direction === "rtl" ? "font-cairo" : "font-inter"
+    document.body.classList.add(fontClass)
+    
+    // Optional: Add direction class for additional styling hooks
+    document.body.classList.remove("dir-rtl", "dir-ltr")
+    document.body.classList.add(`dir-${direction}`)
+  }, [language, direction])
+
+  return (
+    <LanguageContext.Provider value={{ language, direction, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  )
 }
 
 export function useLanguage() {

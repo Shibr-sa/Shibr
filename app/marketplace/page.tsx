@@ -5,14 +5,14 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { MarketplaceContent } from "@/components/marketplace/marketplace-content"
 
 export default function MarketplacePage() {
   const { t, direction } = useLanguage()
 
   return (
-    <div className={`min-h-screen bg-background ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+    <div className="min-h-screen bg-background" dir={direction}>
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">

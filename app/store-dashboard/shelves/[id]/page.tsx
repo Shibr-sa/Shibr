@@ -20,7 +20,7 @@ import {
   CalendarDays,
   Tag
 } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import { useQuery } from "convex/react"
@@ -122,7 +122,7 @@ export default function ShelfDetailsPage() {
   }
 
   return (
-    <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <div className="space-y-6">
       {/* Shelf Information and Images - Side by Side */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Shelf Details Section */}

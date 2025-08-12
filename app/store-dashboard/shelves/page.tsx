@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -158,7 +158,7 @@ export default function StoreDashboardShelvesPage() {
   }
 
   return (
-    <div className={`space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <div className="space-y-6">
       {/* Statistics Section with Time Period Selector */}
       <Card>
         <CardContent className="p-6">
@@ -176,16 +176,16 @@ export default function StoreDashboardShelvesPage() {
             </div>
             <Tabs value={statsPeriod} onValueChange={setStatsPeriod}>
               <TabsList className="flex w-[400px]" dir={direction}>
-                <TabsTrigger value="daily" className={`flex-1 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                <TabsTrigger value="daily" className="flex-1">
                   {periodLabels.daily}
                 </TabsTrigger>
-                <TabsTrigger value="weekly" className={`flex-1 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                <TabsTrigger value="weekly" className="flex-1">
                   {periodLabels.weekly}
                 </TabsTrigger>
-                <TabsTrigger value="monthly" className={`flex-1 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                <TabsTrigger value="monthly" className="flex-1">
                   {periodLabels.monthly}
                 </TabsTrigger>
-                <TabsTrigger value="yearly" className={`flex-1 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                <TabsTrigger value="yearly" className="flex-1">
                   {periodLabels.yearly}
                 </TabsTrigger>
               </TabsList>

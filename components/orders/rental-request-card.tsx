@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { CalendarDays, Package, MessageSquare, Check, X } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -102,14 +102,12 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
             <div>
               <CardTitle className={cn(
                 "text-lg",
-                direction === "rtl" ? "font-cairo" : "font-inter"
-              )}>
+                              )}>
                 {request.brandOwnerName || t("common.unknown")}
               </CardTitle>
               <p className={cn(
                 "text-sm text-muted-foreground mt-1",
-                direction === "rtl" ? "font-cairo" : "font-inter"
-              )}>
+                              )}>
                 {request.shelfName}
               </p>
             </div>
@@ -144,8 +142,7 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
             <p className="text-sm font-medium">{t("marketplace.details.product_description")}</p>
             <p className={cn(
               "text-sm text-muted-foreground",
-              direction === "rtl" ? "font-cairo" : "font-inter"
-            )}>
+                          )}>
               {request.productDescription}
             </p>
           </div>
@@ -155,8 +152,7 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
               <p className="text-sm font-medium">{t("marketplace.details.additional_notes")}</p>
               <p className={cn(
                 "text-sm text-muted-foreground",
-                direction === "rtl" ? "font-cairo" : "font-inter"
-              )}>
+                              )}>
                 {request.additionalNotes}
               </p>
             </div>
@@ -200,13 +196,13 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
       <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+            <DialogTitle>
               {isAccepting 
                 ? (language === "ar" ? "قبول طلب الإيجار" : "Accept Rental Request")
                 : (language === "ar" ? "رفض طلب الإيجار" : "Reject Rental Request")
               }
             </DialogTitle>
-            <DialogDescription className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+            <DialogDescription>
               {language === "ar" 
                 ? "يمكنك إضافة رسالة للعميل (اختياري)"
                 : "You can add a message for the customer (optional)"
@@ -215,7 +211,7 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="response" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+              <Label htmlFor="response">
                 {t("common.message")}
               </Label>
               <Textarea
@@ -227,8 +223,7 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
                     ? (language === "ar" ? "مرحباً! تم قبول طلبك..." : "Welcome! Your request has been accepted...")
                     : (language === "ar" ? "عذراً، الرف غير متاح حالياً..." : "Sorry, the shelf is not available...")
                 }
-                className={direction === "rtl" ? "font-cairo" : "font-inter"}
-                rows={3}
+                                rows={3}
               />
             </div>
           </div>

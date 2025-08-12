@@ -5,7 +5,7 @@ import { GoogleMap, LoadScript, Marker, InfoWindow, useJsApiLoader } from "@reac
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapPin } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 
 interface Store {
   _id: string

@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Home, Package, ShoppingCart, Settings, ChevronUp, User, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { BrandDataProvider } from "@/contexts/brand-data-context"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -132,7 +132,7 @@ export default function BrandDashboardLayout({
   return (
     <BrandDataProvider>
       <SidebarProvider>
-        <div className={`min-h-screen flex w-full ${direction === "rtl" ? "font-cairo" : "font-inter"}`} dir={direction}>
+        <div className="min-h-screen flex w-full" dir={direction}>
           <Sidebar collapsible="icon">
             <SidebarHeader>
               <SidebarMenu>

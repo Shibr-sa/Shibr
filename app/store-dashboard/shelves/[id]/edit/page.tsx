@@ -2,7 +2,7 @@
 
 import { use } from "react"
 import { ShelfForm } from "@/components/shelf-form"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useRouter } from "next/navigation"
 import { useQuery } from "convex/react"
@@ -42,7 +42,7 @@ export default function EditShelfPage({ params }: EditShelfPageProps) {
   }
 
   return (
-    <div className={`max-w-6xl mx-auto ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <div className="max-w-6xl mx-auto">
       <ShelfForm 
         mode="edit" 
         shelfId={shelfId as Id<"shelves">}

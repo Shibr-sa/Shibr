@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Loader2 } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { loadGoogleMaps } from "@/lib/google-maps-loader"
 
 interface MapPickerProps {

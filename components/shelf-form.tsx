@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "convex/react"

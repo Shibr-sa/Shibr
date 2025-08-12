@@ -19,7 +19,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -161,8 +161,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
               )}
               <CardTitle className={cn(
                 "text-lg",
-                direction === "rtl" ? "font-cairo" : "font-inter"
-              )}>
+                              )}>
                 {showConversationsList 
                   ? (language === "ar" ? "المحادثات" : "Conversations")
                   : activeConversation?.otherUserName || (language === "ar" ? "محادثة" : "Chat")
@@ -220,8 +219,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                             <div className="flex items-center justify-between mb-1">
                               <p className={cn(
                                 "font-medium truncate",
-                                direction === "rtl" ? "font-cairo" : "font-inter"
-                              )}>
+                                                              )}>
                                 {conversation.otherUserName}
                               </p>
                               {conversation.unreadCount > 0 && (
@@ -310,8 +308,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                             )}
                             <p className={cn(
                               "text-sm whitespace-pre-wrap",
-                              direction === "rtl" ? "font-cairo" : "font-inter"
-                            )}>
+                                                          )}>
                               {msg.text}
                             </p>
                             <p className={cn(
@@ -342,8 +339,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                   <div className="p-4 border-t bg-muted">
                     <p className={cn(
                       "text-center text-sm text-muted-foreground",
-                      direction === "rtl" ? "font-cairo" : "font-inter"
-                    )}>
+                                          )}>
                       {language === "ar" 
                         ? "هذه المحادثة مغلقة ولا يمكن إرسال رسائل جديدة"
                         : "This conversation is closed and new messages cannot be sent"}
@@ -364,8 +360,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                         placeholder={language === "ar" ? "اكتب رسالتك..." : "Type your message..."}
                         className={cn(
                           "flex-1",
-                          direction === "rtl" ? "font-cairo" : "font-inter"
-                        )}
+                                                  )}
                         dir={direction}
                       />
                       <Button

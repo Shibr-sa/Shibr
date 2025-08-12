@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Bell, MessageSquare, CheckCircle, XCircle, Package, AlertCircle } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { formatDistanceToNow } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { useRouter } from "next/navigation"
@@ -121,7 +121,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
         className="w-80"
       >
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+          <span>
             {language === "ar" ? "الإشعارات" : "Notifications"}
           </span>
           {unreadCount && unreadCount > 0 && (
@@ -152,22 +152,13 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
                     {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex-1 space-y-1">
-                    <p className={cn(
-                      "text-sm font-medium",
-                      direction === "rtl" ? "font-cairo" : "font-inter"
-                    )}>
+                    <p className="text-sm font-medium">
                       {notification.title}
                     </p>
-                    <p className={cn(
-                      "text-xs text-muted-foreground line-clamp-2",
-                      direction === "rtl" ? "font-cairo" : "font-inter"
-                    )}>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
                       {notification.message}
                     </p>
-                    <p className={cn(
-                      "text-xs text-muted-foreground",
-                      direction === "rtl" ? "font-cairo" : "font-inter"
-                    )}>
+                    <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(notification.createdAt), {
                         addSuffix: true,
                         locale: language === "ar" ? ar : enUS,
@@ -183,10 +174,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
           ) : (
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className={cn(
-                "text-sm",
-                direction === "rtl" ? "font-cairo" : "font-inter"
-              )}>
+              <p className="text-sm">
                 {language === "ar" ? "لا توجد إشعارات" : "No notifications"}
               </p>
             </div>

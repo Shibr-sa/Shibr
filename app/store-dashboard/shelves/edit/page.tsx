@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -294,7 +294,7 @@ export default function AddShelfPage() {
   }
 
   return (
-    <div className={`max-w-6xl mx-auto space-y-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-2xl font-bold text-foreground mb-2">{t("add_shelf.title")}</h1>

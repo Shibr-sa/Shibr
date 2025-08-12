@@ -30,7 +30,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { format } from "date-fns"
@@ -156,7 +156,7 @@ function OrdersContent() {
   }
 
   return (
-    <Card className={`${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+    <Card>
       <CardContent className="p-6">
         {/* Header Section */}
         <div className="mb-6">

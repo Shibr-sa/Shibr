@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Cairo, Inter } from "next/font/google"
 import "./globals.css"
-import { LanguageProvider } from "@/contexts/language-context"
+import { LanguageProvider } from "@/contexts/localization-context"
 import { ConvexClientProvider } from "@/components/convex-provider"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={`${cairo.variable} ${inter.variable} font-cairo antialiased`}>
+      <body className={`${cairo.variable} ${inter.variable} antialiased`}>
         <ConvexClientProvider>
           <LanguageProvider>
             {children}

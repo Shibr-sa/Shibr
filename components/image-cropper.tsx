@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import "react-image-crop/dist/ReactCrop.css"
 
 interface ImageCropperProps {

@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Paperclip, Send } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -100,17 +100,17 @@ export function ChatInterface({
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src="/placeholder.svg" alt={otherUserName} />
-            <AvatarFallback className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+            <AvatarFallback >
               {otherUserName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className={`font-semibold ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+            <p className={`font-semibold `}>
               {otherUserName}
             </p>
             <div className="flex items-center gap-1.5">
               <Badge variant="default" className="h-2 w-2 rounded-full p-0 bg-green-500" />
-              <p className={`text-xs text-muted-foreground ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+              <p className={`text-xs text-muted-foreground `}>
                 {t("marketplace.details.online_status")}
               </p>
             </div>
@@ -123,7 +123,7 @@ export function ChatInterface({
           <div className="space-y-4" ref={scrollAreaRef}>
             {messages?.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <p className={`text-sm ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                <p className={`text-sm `}>
                   {language === "ar" 
                     ? `ابدأ محادثة حول ${shelfName}`
                     : `Start a conversation about ${shelfName}`}
@@ -161,10 +161,10 @@ export function ChatInterface({
                           </Badge>
                         </div>
                       )}
-                      <p className={`text-sm ${direction === "rtl" ? "font-cairo" : "font-inter"} whitespace-pre-wrap`}>
+                      <p className={`text-sm  whitespace-pre-wrap`}>
                         {msg.text}
                       </p>
-                      <p className={`text-xs mt-1 opacity-70 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                      <p className={`text-xs mt-1 opacity-70 `}>
                         {format(new Date(msg.createdAt), "p", {
                           locale: language === "ar" ? ar : enUS,
                         })}
@@ -179,7 +179,7 @@ export function ChatInterface({
         
         {isArchived ? (
           <div className="p-4 border-t bg-muted">
-            <p className={`text-center text-sm text-muted-foreground ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+            <p className={`text-center text-sm text-muted-foreground `}>
               {language === "ar" 
                 ? "هذه المحادثة مغلقة ولا يمكن إرسال رسائل جديدة"
                 : "This conversation is closed and new messages cannot be sent"}
@@ -193,7 +193,7 @@ export function ChatInterface({
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={t("marketplace.details.type_message")}
-                className={`pe-20 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}
+                className={`pe-20 `}
                 disabled={isTyping || isArchived}
               />
               <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">

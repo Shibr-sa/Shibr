@@ -28,7 +28,7 @@ import { format, addDays } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import Image from "next/image"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
@@ -202,7 +202,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   className="w-full md:w-1/3 h-64 object-cover rounded-lg"
                 />
                 <div className="flex-1">
-                  <h1 className={`text-2xl font-bold mb-2 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                  <h1 className="text-2xl font-bold mb-2">
                     {storeDetails.shelfName}
                   </h1>
                   <div className="flex items-baseline gap-2 mb-4">
@@ -218,7 +218,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   </div>
                   <div className="flex items-start gap-2 text-muted-foreground mb-6">
                     <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
-                    <span className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <span>
                       {storeDetails.address || `${storeDetails.city}, ${storeDetails.branch}`}
                     </span>
                   </div>
@@ -266,16 +266,16 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             <Card>
               <form onSubmit={handleSubmit}>
                 <CardHeader>
-                  <CardTitle className={`text-xl ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                  <CardTitle className="text-xl">
                     {t("marketplace.details.send_request_title")}
                   </CardTitle>
-                  <p className={`text-muted-foreground text-sm ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                  <p className="text-muted-foreground text-sm">
                     {t("marketplace.details.send_request_description")}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="booking-date" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <Label htmlFor="booking-date">
                       {t("marketplace.details.booking_duration")}*
                     </Label>
                     <Popover>
@@ -286,7 +286,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           className={cn(
                             "w-full justify-start text-left font-normal ps-10 relative",
                             !dateRange && "text-muted-foreground",
-                            direction === "rtl" ? "font-cairo" : "font-inter"
                           )}
                         >
                           <CalendarIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -322,7 +321,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             return date < today
                           }}
                           dir={direction}
-                          className={direction === "rtl" ? "font-cairo" : "font-inter"}
                           classNames={{
                             today: "bg-transparent text-foreground font-normal"
                           }}
@@ -331,37 +329,36 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     </Popover>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="product-type" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <Label htmlFor="product-type">
                       {t("marketplace.details.product_type")}*
                     </Label>
                     <Select value={productType} onValueChange={setProductType} required>
                       <SelectTrigger 
                         id="product-type"
-                        className={direction === "rtl" ? "font-cairo" : "font-inter"}
                       >
                         <SelectValue placeholder={t("marketplace.details.select_product_type")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beauty" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                        <SelectItem value="beauty" >
                           {t("marketplace.category_beauty")}
                         </SelectItem>
-                        <SelectItem value="fashion" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                        <SelectItem value="fashion" >
                           {t("marketplace.category_fashion")}
                         </SelectItem>
-                        <SelectItem value="electronics" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                        <SelectItem value="electronics" >
                           {t("marketplace.category_electronics")}
                         </SelectItem>
-                        <SelectItem value="grocery" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                        <SelectItem value="grocery" >
                           {t("marketplace.category_grocery")}
                         </SelectItem>
-                        <SelectItem value="general" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                        <SelectItem value="general" >
                           {t("marketplace.category_general")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="product-desc" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <Label htmlFor="product-desc" >
                       {t("marketplace.details.product_description")}*
                     </Label>
                     <Textarea
@@ -369,13 +366,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       value={productDescription}
                       onChange={(e) => setProductDescription(e.target.value)}
                       placeholder={t("marketplace.details.product_description_placeholder")}
-                      className={`${direction === "rtl" ? "font-cairo" : "font-inter"} min-h-[60px] h-[60px]`}
+                      className={` min-h-[60px] h-[60px]`}
                       rows={2}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="product-count" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <Label htmlFor="product-count" >
                       {t("marketplace.details.product_count")}*
                     </Label>
                     <Input
@@ -385,12 +382,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       value={productCount}
                       onChange={(e) => setProductCount(e.target.value)}
                       placeholder="50"
-                      className={direction === "rtl" ? "font-cairo" : "font-inter"}
-                      required
+                                            required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="notes" className={direction === "rtl" ? "font-cairo" : "font-inter"}>
+                    <Label htmlFor="notes" >
                       {t("marketplace.details.additional_notes")}
                     </Label>
                     <Textarea 
@@ -398,17 +394,17 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       value={additionalNotes}
                       onChange={(e) => setAdditionalNotes(e.target.value)}
                       placeholder={t("marketplace.details.additional_notes_placeholder")}
-                      className={`${direction === "rtl" ? "font-cairo" : "font-inter"} min-h-[60px] h-[60px]`}
+                      className={` min-h-[60px] h-[60px]`}
                       rows={2}
                     />
                   </div>
                   <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
                     <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <AlertDescription className={`${direction === "rtl" ? "font-cairo" : "font-inter"} text-amber-800 dark:text-amber-200 font-medium`}>
+                    <AlertDescription className={` text-amber-800 dark:text-amber-200 font-medium`}>
                       {t("marketplace.details.approval_notice")}
                     </AlertDescription>
                   </Alert>
-                  <Button type="submit" size="lg" className={`w-full text-base ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                  <Button type="submit" size="lg" className={`w-full text-base `}>
                     {t("marketplace.details.submit_request")}
                   </Button>
                 </CardContent>
@@ -431,10 +427,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 <div className="text-center p-6 space-y-3">
                   <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                   <div>
-                    <p className={`font-semibold text-lg ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                    <p className={`font-semibold text-lg `}>
                       {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
                     </p>
-                    <p className={`text-muted-foreground text-sm mt-2 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
+                    <p className={`text-muted-foreground text-sm mt-2 `}>
                       {!userId 
                         ? (language === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first")
                         : (language === "ar" 

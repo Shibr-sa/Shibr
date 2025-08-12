@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import Image from "next/image"
 
 export default function BrandProductsPage() {

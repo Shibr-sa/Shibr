@@ -13,7 +13,7 @@ import { Search, MapPin, ChevronLeft, ChevronRight, Store, Loader2, Package, Rul
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useDebounce } from "@/hooks/use-debounce"
 
 // Lazy load the map component to improve initial page load

@@ -11,7 +11,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useLanguage } from "@/contexts/language-context"
+import { useLanguage } from "@/contexts/localization-context"
 import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
@@ -97,7 +97,7 @@ export default function SignInPage() {
 
   return (
     <div
-      className={`min-h-screen bg-muted/30 flex items-center justify-center p-6 ${direction === "rtl" ? "font-cairo" : "font-inter"}`}
+      className="min-h-screen bg-muted/30 flex items-center justify-center p-6"
       dir={direction}
     >
       <div className="w-full max-w-md">
