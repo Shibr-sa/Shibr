@@ -261,7 +261,7 @@ export default function SignUpPage() {
                   <Link href="/terms" className="text-primary hover:underline">
                     {t("auth.terms")}
                   </Link>{" "}
-                  {language === "ar" ? "و" : "and"}{" "}
+                  {t("auth.and")}{" "}
                   <Link href="/privacy" className="text-primary hover:underline">
                     {t("auth.privacy")}
                   </Link>{" "}

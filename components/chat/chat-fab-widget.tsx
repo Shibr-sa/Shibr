@@ -30,7 +30,7 @@ interface ChatFabWidgetProps {
 }
 
 export function ChatFabWidget({ className }: ChatFabWidgetProps) {
-  const { language, direction } = useLanguage()
+  const { t, language, direction } = useLanguage()
   const { user } = useCurrentUser()
   const [isOpen, setIsOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -163,8 +163,8 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                 "text-lg",
                               )}>
                 {showConversationsList 
-                  ? (language === "ar" ? "المحادثات" : "Conversations")
-                  : activeConversation?.otherUserName || (language === "ar" ? "محادثة" : "Chat")
+                  ? t("chat.conversations")
+                  : activeConversation?.otherUserName || t("chat.chat")
                 }
               </CardTitle>
               {totalUnread > 0 && showConversationsList && (
@@ -253,7 +253,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                     <div className="text-center py-8">
                       <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                       <p className="text-muted-foreground">
-                        {language === "ar" ? "لا توجد محادثات" : "No conversations yet"}
+                        {t("chat.no_conversations")}
                       </p>
                     </div>
                   )}
@@ -357,7 +357,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                       <Input
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder={language === "ar" ? "اكتب رسالتك..." : "Type your message..."}
+                        placeholder={t("chat.type_message_placeholder")}
                         className={cn(
                           "flex-1",
                                                   )}

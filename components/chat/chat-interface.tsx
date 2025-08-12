@@ -155,9 +155,9 @@ export function ChatInterface({
                       {isSystem && (
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant="outline" className="text-xs">
-                            {msg.messageType === "rental_request" && (language === "ar" ? "جديد" : "New")}
-                            {msg.messageType === "rental_accepted" && (language === "ar" ? "نشط" : "Active")}
-                            {msg.messageType === "rental_rejected" && (language === "ar" ? "مرفوض" : "Rejected")}
+                            {msg.messageType === "rental_request" && t("chat.status.new")}
+                            {msg.messageType === "rental_accepted" && t("status.active")}
+                            {msg.messageType === "rental_rejected" && t("status.rejected")}
                           </Badge>
                         </div>
                       )}

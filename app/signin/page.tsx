@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function SignInPage() {
   const router = useRouter()
-  const { t, direction, language } = useLanguage()
+  const { t, direction } = useLanguage()
   const { toast } = useToast()
   const verifyUser = useMutation(api.users.verifyUser)
   

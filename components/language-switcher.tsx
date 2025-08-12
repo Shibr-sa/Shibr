@@ -13,7 +13,7 @@ export function LanguageSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1 h-8 bg-transparent">
           <Globe className="h-4 w-4" />
-          <span>{language === "ar" ? t("common.language.arabic") : t("common.language.english")}</span>
+          <span>{t(language === "ar" ? "common.language.arabic" : "common.language.english")}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

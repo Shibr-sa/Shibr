@@ -506,13 +506,13 @@ export default function AddShelfPage() {
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-start block">
-                  {language === "ar" ? "الوصف (اختياري)" : "Description (Optional)"}
+                  {t("form.description_optional")}
                 </Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={language === "ar" ? "مثال: يجانب الباب - يمين الداخل" : "Example: Next to the door - Right side when entering"}
+                  placeholder={t("form.description_example")}
                   className="min-h-[260px] text-start resize-none"
                 />
               </div>
@@ -520,7 +520,7 @@ export default function AddShelfPage() {
               {/* Map */}
               <div className="space-y-2">
                 <Label className="text-start block">
-                  {language === "ar" ? "العنوان" : "Address"} *
+                  {t("form.address")} *
                 </Label>
                 <div className="space-y-3">
                   {/* Interactive Map Container */}
@@ -547,7 +547,7 @@ export default function AddShelfPage() {
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm text-muted-foreground">
-                          {selectedLocation.address || (language === "ar" ? "انقر على الخريطة لتحديد الموقع" : "Click on the map to select location")}
+                          {selectedLocation.address || t("form.click_map_select_location")}
                         </p>
                       </div>
                     </div>

@@ -113,19 +113,19 @@ function OrdersContent() {
       case "pending":
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
-            {language === "ar" ? "قيد المراجعة" : "Pending"}
+            {t("status.pending")}
           </Badge>
         )
       case "active":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200">
-            {language === "ar" ? "نشط" : "Active"}
+            {t("status.active")}
           </Badge>
         )
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 border-red-200">
-            {language === "ar" ? "مرفوض" : "Rejected"}
+            {t("status.rejected")}
           </Badge>
         )
       default:
@@ -141,7 +141,7 @@ function OrdersContent() {
     const start = new Date(startDate)
     const end = new Date(endDate)
     const months = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
-    return language === "ar" ? `${months} ${months === 1 ? "شهر" : "شهور"}` : `${months} ${months === 1 ? "month" : "months"}`
+    return `${months} ${months === 1 ? t("duration.month_singular") : t("duration.months_plural")}`
   }
 
   if (!userId) {
@@ -149,7 +149,7 @@ function OrdersContent() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          {language === "ar" ? "يرجى تسجيل الدخول لعرض الطلبات" : "Please login to view orders"}
+          {t("orders.login_to_view")}
         </AlertDescription>
       </Alert>
     )
@@ -161,13 +161,10 @@ function OrdersContent() {
         {/* Header Section */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2">
-            {language === "ar" ? "طلبات الوارد من المتاجر الإلكترونية" : "Incoming Requests from Online Stores"}
+            {t("store.incoming_requests")}
           </h1>
           <p className="text-muted-foreground">
-            {language === "ar" 
-              ? "تابع طلبات استئجار الرفوف من المتاجر الإلكترونية، وراجع تفاصيل كل طلب، واختر الموافقة أو الرفض بناءً على المعلومات المعروضة."
-              : "Track shelf rental requests from online stores, review each request details, and choose to approve or reject based on the displayed information."
-            }
+            {t("store.incoming_requests_description")}
           </p>
         </div>
 
@@ -193,7 +190,7 @@ function OrdersContent() {
           <div className="relative w-full sm:w-80 ms-auto">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder={language === "ar" ? "ابحث باسم المتجر أو مدينة الرف..." : "Search by store name or shelf city..."}
+              placeholder={t("search.store_or_city_placeholder")}
               className="ps-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -205,10 +202,7 @@ function OrdersContent() {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {language === "ar" 
-              ? "سوف يتم إلغاء الطلبات بعد 48 ساعة في حالة عد الموافقة عليها"
-              : "Requests will be cancelled after 48 hours if not approved"
-            }
+            {t("store.cancellation_notice")}
           </AlertDescription>
         </Alert>
 
@@ -219,25 +213,25 @@ function OrdersContent() {
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "المتجر" : "Store"}
+                  {t("table.store")}
                 </TableHead>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "الفرع" : "Branch"}
+                  {t("table.branch")}
                 </TableHead>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "مدة الإيجار" : "Rental Duration"}
+                  {t("table.rental_duration")}
                 </TableHead>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "الحالة" : "Status"}
+                  {t("table.status")}
                 </TableHead>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "تاريخ الطلب" : "Request Date"}
+                  {t("table.request_date")}
                 </TableHead>
                 <TableHead className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {language === "ar" ? "التقييم" : "Rating"}
+                  {t("table.rating")}
                 </TableHead>
                 <TableHead className={cn("w-[150px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "خيارات" : "Actions"}
+                  {t("table.options")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -253,7 +247,7 @@ function OrdersContent() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-medium">
-                        {request.shelfName || language === "ar" ? "جدة" : "Jeddah"}
+                        {request.shelfName || t("common.jeddah")}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -325,8 +319,8 @@ function OrdersContent() {
                 <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">
                   {searchQuery || filter !== "all" 
-                    ? (language === "ar" ? "لا توجد طلبات مطابقة" : "No matching requests")
-                    : (language === "ar" ? "لا توجد طلبات حالياً" : "No rental requests yet")
+                    ? t("store.no_matching_requests")
+                    : t("store.no_requests_yet")
                   }
                 </p>
               </div>
@@ -339,9 +333,10 @@ function OrdersContent() {
         {filteredRequests.length > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-muted-foreground">
-              {language === "ar" 
-                ? `عرض ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} من ${filteredRequests.length} طلب`
-                : `Showing ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} of ${filteredRequests.length} requests`
+              {t("pagination.showing")
+                .replace("{start}", String(startIndex + 1))
+                .replace("{end}", String(Math.min(endIndex, filteredRequests.length)))
+                .replace("{total}", String(filteredRequests.length))
               }
             </div>
             <div className="flex items-center gap-2">
@@ -352,7 +347,7 @@ function OrdersContent() {
                 disabled={currentPage === 1}
               >
                 {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                {language === "ar" ? "السابق" : "Previous"}
+                {t("pagination.previous")}
               </Button>
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
@@ -373,7 +368,7 @@ function OrdersContent() {
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
               >
-                {language === "ar" ? "التالي" : "Next"}
+                {t("pagination.next")}
                 {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
             </div>

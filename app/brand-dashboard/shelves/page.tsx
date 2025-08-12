@@ -61,19 +61,19 @@ export default function BrandShelvesPage() {
       case "active":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200">
-            {language === "ar" ? "نشط" : "Active"}
+            {t("status.active")}
           </Badge>
         )
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            {language === "ar" ? "قيد المراجعة" : "Pending"}
+            {t("status.pending")}
           </Badge>
         )
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 border-red-200">
-            {language === "ar" ? "مرفوض" : "Rejected"}
+            {t("status.rejected")}
           </Badge>
         )
       default:
@@ -93,14 +93,14 @@ export default function BrandShelvesPage() {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{language === "ar" ? "عدد الرفوف الحالية" : "Current Shelves Count"}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{t("brand.current_shelves_count")}</p>
                 {isLoading ? (
                   <Skeleton className="h-8 w-16 mb-1" />
                 ) : (
                   <p className="text-xl sm:text-2xl font-bold">{activeRentals}</p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {language === "ar" ? "رفوف نشطة" : "Active shelves"}
+                  {t("brand.active_shelves")}
                 </p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -115,7 +115,7 @@ export default function BrandShelvesPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
-                  {language === "ar" ? "طلبات قيد المراجعة" : "Pending Requests"}
+                  {t("brand.pending_requests")}
                 </p>
                 {isLoading ? (
                   <Skeleton className="h-8 w-16 mb-1" />
@@ -123,7 +123,7 @@ export default function BrandShelvesPage() {
                   <p className="text-xl sm:text-2xl font-bold">{pendingRentals}</p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {language === "ar" ? "بانتظار الموافقة" : "Awaiting approval"}
+                  {t("brand.awaiting_approval")}
                 </p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
@@ -138,7 +138,7 @@ export default function BrandShelvesPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
-                  {language === "ar" ? "إجمالي الطلبات" : "Total Requests"}
+                  {t("brand.total_requests")}
                 </p>
                 {isLoading ? (
                   <Skeleton className="h-8 w-16 mb-1" />
@@ -147,7 +147,7 @@ export default function BrandShelvesPage() {
                 )}
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1 truncate">
                   <TrendingUp className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{language === "ar" ? "كل الطلبات" : "All requests"}</span>
+                  <span className="truncate">{t("brand.all_requests")}</span>
                 </p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
@@ -164,12 +164,10 @@ export default function BrandShelvesPage() {
           {/* Title and Search Section */}
           <div className="mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold mb-2">
-              {language === "ar" ? "الرفوف الحالية" : "Current Shelves"}
+              {t("brand.current_shelves")}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {language === "ar" 
-                ? "عرض وإدارة جميع الرفوف المستأجرة حالياً"
-                : "View and manage all your currently rented shelves"
+              {t("brand.current_shelves_description")}
               }
             </p>
           </div>
@@ -179,7 +177,7 @@ export default function BrandShelvesPage() {
             <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={language === "ar" ? "بحث..." : "Search..."}
+                placeholder={t("ui.search_placeholder")}
                 className="ps-10 w-full"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -199,15 +197,15 @@ export default function BrandShelvesPage() {
                       className="w-full sm:w-auto"
                     >
                       <Plus className="h-4 w-4 me-2" />
-                      <span className="hidden sm:inline">{language === "ar" ? "إضافة رف" : "Add Shelf"}</span>
-                      <span className="sm:hidden">{language === "ar" ? "إضافة" : "Add"}</span>
+                      <span className="hidden sm:inline">{t("ui.add_shelf")}</span>
+                      <span className="sm:hidden">{t("ui.add")}</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {!isBrandDataComplete && (
                       <div className="flex items-center gap-2">
                         <Lock className="h-4 w-4" />
-                        <span>{language === "ar" ? "يرجى إكمال بياناتك أولاً" : "Please complete your data first"}</span>
+                        <span>{t("ui.complete_data_first")}</span>
                       </div>
                     )}
                   </TooltipContent>
@@ -223,25 +221,25 @@ export default function BrandShelvesPage() {
               <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 <TableHead className={cn("min-w-[120px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "المتجر" : "Store"}
+                  {t("table.store")}
                 </TableHead>
                 <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "الموقع" : "Location"}
+                  {t("table.location")}
                 </TableHead>
                 <TableHead className={cn("min-w-[80px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "العدد" : "Count"}
+                  {t("table.count")}
                 </TableHead>
                 <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "البداية" : "Start"}
+                  {t("table.start")}
                 </TableHead>
                 <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "النهاية" : "End"}
+                  {t("table.end")}
                 </TableHead>
                 <TableHead className={cn("min-w-[90px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "الحالة" : "Status"}
+                  {t("table.status")}
                 </TableHead>
                 <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {language === "ar" ? "إجراءات" : "Actions"}
+                  {t("table.actions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -327,8 +325,8 @@ export default function BrandShelvesPage() {
                 <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">
                   {searchQuery 
-                    ? (language === "ar" ? "لا توجد رفوف مطابقة" : "No matching shelves")
-                    : (language === "ar" ? "لا توجد رفوف حالياً" : "No shelves yet")
+                    ? t("brand.no_matching_shelves")
+                    : t("brand.no_shelves_yet")
                   }
                 </p>
                 {!searchQuery && isBrandDataComplete && (
@@ -338,7 +336,7 @@ export default function BrandShelvesPage() {
                     onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
                   >
                     <Plus className="h-4 w-4 me-2" />
-                    {language === "ar" ? "استأجر رفك الأول" : "Rent your first shelf"}
+                    {t("brand.rent_first_shelf")}
                   </Button>
                 )}
               </div>

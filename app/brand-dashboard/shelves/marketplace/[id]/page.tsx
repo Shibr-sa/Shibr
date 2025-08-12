@@ -102,12 +102,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     e.preventDefault()
     
     if (!dateRange?.from || !dateRange?.to || !productType || !productDescription || !productCount) {
-      alert(language === "ar" ? "يرجى ملء جميع الحقول المطلوبة" : "Please fill all required fields")
+      alert(t("form.fill_required_fields"))
       return
     }
     
     if (!userId || !storeDetails?.ownerId) {
-      alert(language === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first")
+      alert(t("form.login_first"))
       return
     }
     
@@ -138,9 +138,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       
       // Show success message based on whether it was created or updated
       if (result.isUpdate) {
-        alert(language === "ar" ? "تم تحديث طلبك بنجاح!" : "Your request has been updated successfully!")
+        alert(t("form.request_updated_success"))
       } else {
-        alert(language === "ar" ? "تم إرسال طلبك بنجاح!" : "Your request has been submitted successfully!")
+        alert(t("form.request_submitted_success"))
       }
       
       // Mark that request has been submitted
@@ -154,7 +154,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       setAdditionalNotes("")
     } catch (error) {
       console.error("Failed to submit rental request:", error)
-      alert(language === "ar" ? "حدث خطأ في إرسال الطلب" : "Failed to submit request")
+      alert(t("form.submit_error"))
     }
   }
   
@@ -427,11 +427,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                   <div>
                     <p className={`font-semibold text-lg `}>
-                      {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
+                      {t("form.chat_unavailable")}
                     </p>
                     <p className={`text-muted-foreground text-sm mt-2 `}>
                       {!userId 
-                        ? (language === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first")
+                        ? t("form.login_first")
                         : (language === "ar" 
                           ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر" 
                           : "Submit a rental request first to chat with the store owner")

@@ -151,10 +151,10 @@ export default function StoreDashboardShelvesPage() {
 
   // Time period labels
   const periodLabels = {
-    daily: language === "ar" ? "يومي" : "Daily",
-    weekly: language === "ar" ? "أسبوعي" : "Weekly",
-    monthly: language === "ar" ? "شهري" : "Monthly",
-    yearly: language === "ar" ? "سنوي" : "Yearly"
+    daily: t("period.daily"),
+    weekly: t("period.weekly"),
+    monthly: t("period.monthly"),
+    yearly: t("period.yearly")
   }
 
   return (
@@ -166,7 +166,7 @@ export default function StoreDashboardShelvesPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold">
-                {language === "ar" ? "إحصائياتك" : "Your Statistics"}
+                {t("store.your_statistics")}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {language === "ar" 
@@ -208,11 +208,11 @@ export default function StoreDashboardShelvesPage() {
                         <div className="flex items-center gap-1 mt-1">
                           {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
                           <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {language === "ar" ? "من" : "from"} {
-                              statsPeriod === "daily" ? (language === "ar" ? "الأمس" : "yesterday") :
-                              statsPeriod === "weekly" ? (language === "ar" ? "الأسبوع الماضي" : "last week") :
-                              statsPeriod === "monthly" ? (language === "ar" ? "الشهر الماضي" : "last month") :
-                              (language === "ar" ? "السنة الماضية" : "last year")
+                            {formatPercentage(change)} {t("time.from")} {
+                              statsPeriod === "daily" ? t("time.yesterday") :
+                              statsPeriod === "weekly" ? t("time.last_week") :
+                              statsPeriod === "monthly" ? t("time.last_month") :
+                              t("time.last_year")
                             }
                           </span>
                         </div>
@@ -242,11 +242,11 @@ export default function StoreDashboardShelvesPage() {
                         <div className="flex items-center gap-1 mt-1">
                           {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
                           <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {language === "ar" ? "من" : "from"} {
-                              statsPeriod === "daily" ? (language === "ar" ? "الأمس" : "yesterday") :
-                              statsPeriod === "weekly" ? (language === "ar" ? "الأسبوع الماضي" : "last week") :
-                              statsPeriod === "monthly" ? (language === "ar" ? "الشهر الماضي" : "last month") :
-                              (language === "ar" ? "السنة الماضية" : "last year")
+                            {formatPercentage(change)} {t("time.from")} {
+                              statsPeriod === "daily" ? t("time.yesterday") :
+                              statsPeriod === "weekly" ? t("time.last_week") :
+                              statsPeriod === "monthly" ? t("time.last_month") :
+                              t("time.last_year")
                             }
                           </span>
                         </div>
@@ -274,11 +274,11 @@ export default function StoreDashboardShelvesPage() {
                         <div className="flex items-center gap-1 mt-1">
                           {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
                           <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {language === "ar" ? "من" : "from"} {
-                              statsPeriod === "daily" ? (language === "ar" ? "الأمس" : "yesterday") :
-                              statsPeriod === "weekly" ? (language === "ar" ? "الأسبوع الماضي" : "last week") :
-                              statsPeriod === "monthly" ? (language === "ar" ? "الشهر الماضي" : "last month") :
-                              (language === "ar" ? "السنة الماضية" : "last year")
+                            {formatPercentage(change)} {t("time.from")} {
+                              statsPeriod === "daily" ? t("time.yesterday") :
+                              statsPeriod === "weekly" ? t("time.last_week") :
+                              statsPeriod === "monthly" ? t("time.last_month") :
+                              t("time.last_year")
                             }
                           </span>
                         </div>
@@ -436,7 +436,7 @@ export default function StoreDashboardShelvesPage() {
                               size="icon" 
                               className="h-8 w-8"
                               disabled={isLoading || !isStoreDataComplete}
-                              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : (language === "ar" ? "عرض التفاصيل" : "View Details")}
+                              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : t("store.view_details")}
                               onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
                             >
                               <Eye className="h-4 w-4" />

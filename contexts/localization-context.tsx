@@ -1015,6 +1015,115 @@ const translations = {
     "brand.shelves.quantity_requested": "الكمية المطلوبة",
     "brand.shelves.branch": "الفرع",
     "brand.shelves.store": "المحل",
+
+    // Notifications
+    "notifications.title": "الإشعارات",
+    "notifications.mark_all_read": "قراءة الكل",
+    "notifications.no_notifications": "لا توجد إشعارات",
+
+    // Status/State Values
+    "status.active": "نشط",
+    "status.pending": "قيد المراجعة",
+    "status.rejected": "مرفوض",
+
+    // Common Actions
+    "actions.accept_rental_request": "قبول طلب الإيجار",
+    "actions.reject_rental_request": "رفض طلب الإيجار",
+
+    // Time Periods
+    "period.daily": "يومي",
+    "period.weekly": "أسبوعي",
+    "period.monthly": "شهري",
+    "period.yearly": "سنوي",
+
+    // Time References
+    "time.yesterday": "الأمس",
+    "time.last_week": "الأسبوع الماضي",
+    "time.last_month": "الشهر الماضي",
+    "time.last_year": "السنة الماضية",
+    "time.from": "من",
+
+    // Chat
+    "chat.conversations": "المحادثات",
+    "chat.chat": "محادثة",
+    "chat.no_conversations": "لا توجد محادثات",
+    "chat.type_message_placeholder": "اكتب رسالتك...",
+    "chat.status.new": "جديد",
+    "chat.request_accepted_message": "مرحباً! تم قبول طلبك...",
+    "chat.shelf_unavailable_message": "عذراً، الرف غير متاح حالياً...",
+
+    // Brand Dashboard
+    "brand.current_shelves_count": "عدد الرفوف الحالية",
+    "brand.active_shelves": "رفوف نشطة",
+    "brand.pending_requests": "طلبات قيد المراجعة",
+    "brand.awaiting_approval": "بانتظار الموافقة",
+    "brand.total_requests": "إجمالي الطلبات",
+    "brand.all_requests": "كل الطلبات",
+    "brand.current_shelves": "الرفوف الحالية",
+    "brand.no_matching_shelves": "لا توجد رفوف مطابقة",
+    "brand.no_shelves_yet": "لا توجد رفوف حالياً",
+    "brand.rent_first_shelf": "استأجر رفك الأول",
+    "brand.current_shelves_description": "عرض وإدارة جميع الرفوف المستأجرة حالياً",
+
+    // Table Headers
+    "table.store": "المتجر",
+    "table.location": "الموقع",
+    "table.count": "العدد",
+    "table.start": "البداية",
+    "table.end": "النهاية",
+    "table.status": "الحالة",
+    "table.actions": "إجراءات",
+    "table.branch": "الفرع",
+    "table.rental_duration": "مدة الإيجار",
+    "table.request_date": "تاريخ الطلب",
+    "table.rating": "التقييم",
+    "table.options": "خيارات",
+
+    // Store Dashboard
+    "store.your_statistics": "إحصائياتك",
+    "store.view_details": "عرض التفاصيل",
+    "store.incoming_requests": "طلبات الوارد من المتاجر الإلكترونية",
+    "store.no_matching_requests": "لا توجد طلبات مطابقة",
+    "store.no_requests_yet": "لا توجد طلبات حالياً",
+    "store.incoming_requests_description": "تابع طلبات استئجار الرفوف من المتاجر الإلكترونية، وراجع تفاصيل كل طلب، واختر الموافقة أو الرفض بناءً على المعلومات المعروضة.",
+    "store.cancellation_notice": "سوف يتم إلغاء الطلبات بعد 48 ساعة في حالة عد الموافقة عليها",
+
+    // Common UI
+    "ui.add_shelf": "إضافة رف",
+    "ui.add": "إضافة",
+    "ui.complete_data_first": "يرجى إكمال بياناتك أولاً",
+    "ui.search_placeholder": "بحث...",
+
+    // Duration
+    "duration.month_singular": "شهر",
+    "duration.months_plural": "شهور",
+
+    // Pagination
+    "pagination.previous": "السابق",
+    "pagination.next": "التالي",
+    "pagination.showing": "عرض {start}-{end} من {total} طلب",
+
+    // Forms & Validation
+    "form.fill_required_fields": "يرجى ملء جميع الحقول المطلوبة",
+    "form.login_first": "يرجى تسجيل الدخول أولاً",
+    "form.request_updated_success": "تم تحديث طلبك بنجاح!",
+    "form.request_submitted_success": "تم إرسال طلبك بنجاح!",
+    "form.submit_error": "حدث خطأ في إرسال الطلب",
+    "form.chat_unavailable": "المحادثة غير متاحة",
+    "form.description_optional": "الوصف (اختياري)",
+    "form.description_example": "مثال: يجانب الباب - يمين الداخل",
+    "form.address": "العنوان",
+    "form.click_map_select_location": "انقر على الخريطة لتحديد الموقع",
+    "form.add_customer_message": "يمكنك إضافة رسالة للعميل (اختياري)",
+
+    // Auth
+    "auth.and": "و",
+
+    // Orders
+    "orders.login_to_view": "يرجى تسجيل الدخول لعرض الطلبات",
+
+    // Search/Filter
+    "search.store_or_city_placeholder": "ابحث باسم المتجر أو مدينة الرف...",
   },
   en: {
     // Common
@@ -2015,6 +2124,115 @@ const translations = {
     "brand.shelves.quantity_requested": "Quantity Requested",
     "brand.shelves.branch": "Branch",
     "brand.shelves.store": "Store",
+
+    // Notifications
+    "notifications.title": "Notifications",
+    "notifications.mark_all_read": "Mark all read",
+    "notifications.no_notifications": "No notifications",
+
+    // Status/State Values
+    "status.active": "Active",
+    "status.pending": "Pending",
+    "status.rejected": "Rejected",
+
+    // Common Actions
+    "actions.accept_rental_request": "Accept Rental Request",
+    "actions.reject_rental_request": "Reject Rental Request",
+
+    // Time Periods
+    "period.daily": "Daily",
+    "period.weekly": "Weekly",
+    "period.monthly": "Monthly",
+    "period.yearly": "Yearly",
+
+    // Time References
+    "time.yesterday": "yesterday",
+    "time.last_week": "last week",
+    "time.last_month": "last month",
+    "time.last_year": "last year",
+    "time.from": "from",
+
+    // Chat
+    "chat.conversations": "Conversations",
+    "chat.chat": "Chat",
+    "chat.no_conversations": "No conversations yet",
+    "chat.type_message_placeholder": "Type your message...",
+    "chat.status.new": "New",
+    "chat.request_accepted_message": "Welcome! Your request has been accepted...",
+    "chat.shelf_unavailable_message": "Sorry, the shelf is not available...",
+
+    // Brand Dashboard
+    "brand.current_shelves_count": "Current Shelves Count",
+    "brand.active_shelves": "Active shelves",
+    "brand.pending_requests": "Pending Requests",
+    "brand.awaiting_approval": "Awaiting approval",
+    "brand.total_requests": "Total Requests",
+    "brand.all_requests": "All requests",
+    "brand.current_shelves": "Current Shelves",
+    "brand.no_matching_shelves": "No matching shelves",
+    "brand.no_shelves_yet": "No shelves yet",
+    "brand.rent_first_shelf": "Rent your first shelf",
+    "brand.current_shelves_description": "View and manage all your currently rented shelves",
+
+    // Table Headers
+    "table.store": "Store",
+    "table.location": "Location",
+    "table.count": "Count",
+    "table.start": "Start",
+    "table.end": "End",
+    "table.status": "Status",
+    "table.actions": "Actions",
+    "table.branch": "Branch",
+    "table.rental_duration": "Rental Duration",
+    "table.request_date": "Request Date",
+    "table.rating": "Rating",
+    "table.options": "Actions",
+
+    // Store Dashboard
+    "store.your_statistics": "Your Statistics",
+    "store.view_details": "View Details",
+    "store.incoming_requests": "Incoming Requests from Online Stores",
+    "store.no_matching_requests": "No matching requests",
+    "store.no_requests_yet": "No rental requests yet",
+    "store.incoming_requests_description": "Track shelf rental requests from online stores, review each request details, and choose to approve or reject based on the displayed information.",
+    "store.cancellation_notice": "Requests will be cancelled after 48 hours if not approved",
+
+    // Common UI
+    "ui.add_shelf": "Add Shelf",
+    "ui.add": "Add",
+    "ui.complete_data_first": "Please complete your data first",
+    "ui.search_placeholder": "Search...",
+
+    // Duration
+    "duration.month_singular": "month",
+    "duration.months_plural": "months",
+
+    // Pagination
+    "pagination.previous": "Previous",
+    "pagination.next": "Next",
+    "pagination.showing": "Showing {start}-{end} of {total} requests",
+
+    // Forms & Validation
+    "form.fill_required_fields": "Please fill all required fields",
+    "form.login_first": "Please login first",
+    "form.request_updated_success": "Your request has been updated successfully!",
+    "form.request_submitted_success": "Your request has been submitted successfully!",
+    "form.submit_error": "Failed to submit request",
+    "form.chat_unavailable": "Chat Unavailable",
+    "form.description_optional": "Description (Optional)",
+    "form.description_example": "Example: Next to the door - Right side when entering",
+    "form.address": "Address",
+    "form.click_map_select_location": "Click on the map to select location",
+    "form.add_customer_message": "You can add a message for the customer (optional)",
+
+    // Auth
+    "auth.and": "and",
+
+    // Orders
+    "orders.login_to_view": "Please login to view orders",
+
+    // Search/Filter
+    "search.store_or_city_placeholder": "Search by store name or shelf city...",
   },
 }
 

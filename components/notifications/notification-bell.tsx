@@ -122,7 +122,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
       >
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>
-            {language === "ar" ? "الإشعارات" : "Notifications"}
+            {t("notifications.title")}
           </span>
           {unreadCount && unreadCount > 0 && (
             <Button
@@ -131,7 +131,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
               onClick={handleMarkAllAsRead}
               className="h-auto p-1 text-xs"
             >
-              {language === "ar" ? "قراءة الكل" : "Mark all read"}
+              {t("notifications.mark_all_read")}
             </Button>
           )}
         </DropdownMenuLabel>
@@ -175,7 +175,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                {language === "ar" ? "لا توجد إشعارات" : "No notifications"}
+                {t("notifications.no_notifications")}
               </p>
             </div>
           )}

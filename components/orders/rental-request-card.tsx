@@ -198,15 +198,12 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
           <DialogHeader>
             <DialogTitle>
               {isAccepting 
-                ? (language === "ar" ? "قبول طلب الإيجار" : "Accept Rental Request")
-                : (language === "ar" ? "رفض طلب الإيجار" : "Reject Rental Request")
+                ? t("actions.accept_rental_request")
+                : t("actions.reject_rental_request")
               }
             </DialogTitle>
             <DialogDescription>
-              {language === "ar" 
-                ? "يمكنك إضافة رسالة للعميل (اختياري)"
-                : "You can add a message for the customer (optional)"
-              }
+              {t("form.add_customer_message")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -220,8 +217,8 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
                 onChange={(e) => setResponseText(e.target.value)}
                 placeholder={
                   isAccepting
-                    ? (language === "ar" ? "مرحباً! تم قبول طلبك..." : "Welcome! Your request has been accepted...")
-                    : (language === "ar" ? "عذراً، الرف غير متاح حالياً..." : "Sorry, the shelf is not available...")
+                    ? t("chat.request_accepted_message")
+                    : t("chat.shelf_unavailable_message")
                 }
                                 rows={3}
               />
