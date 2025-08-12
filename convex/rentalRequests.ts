@@ -347,6 +347,7 @@ export const getUserRentalRequests = query({
         return {
           ...request,
           shelfName: shelf?.shelfName,
+          shelfBranch: shelf?.branch,
           otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName,
         }
       })

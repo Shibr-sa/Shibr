@@ -53,7 +53,7 @@ export default function SignUpPage() {
     setIsLoading(true)
     
     try {
-      await createUser({
+      const newUser = await createUser({
         email: formData.email,
         password: formData.password,
         fullName: formData.fullName,
@@ -64,6 +64,9 @@ export default function SignUpPage() {
         businessRegistration: formData.businessRegistration || undefined,
         preferredLanguage: language,
       })
+
+      // Store user data in sessionStorage to maintain consistency with sign-in flow
+      sessionStorage.setItem("currentUser", JSON.stringify(newUser))
 
       toast({
         title: t("auth.success"),

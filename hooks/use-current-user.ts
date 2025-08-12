@@ -33,7 +33,10 @@ export function useCurrentUser() {
 
   // Function to get initials from name
   const getInitials = (name: string) => {
-    const parts = name.split(" ")
+    if (!name || name.trim().length === 0) {
+      return "US"
+    }
+    const parts = name.trim().split(" ")
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
     }

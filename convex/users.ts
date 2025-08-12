@@ -42,7 +42,16 @@ export const createUser = mutation({
       preferredLanguage: args.preferredLanguage,
     })
 
-    return userId
+    // Return the same structure as verifyUser for consistency
+    return {
+      id: userId,
+      email: args.email,
+      fullName: args.fullName,
+      accountType: args.accountType,
+      storeName: args.storeName,
+      brandName: args.brandName,
+      preferredLanguage: args.preferredLanguage,
+    }
   },
 })
 
