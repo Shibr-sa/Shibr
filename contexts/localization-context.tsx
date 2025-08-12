@@ -162,10 +162,12 @@ const translations = {
     "add_shelf.shelf_dimensions": "أبعاد الرف",
     "add_shelf.success_message": "تم إضافة الرف بنجاح وهو متاح الآن للتأجير",
     "add_shelf.update_success_message": "تم تحديث الرف بنجاح",
+    "add_shelf.max_discount_error": "الحد الأقصى للخصم هو {max}%",
+    "add_shelf.platform_fee_notice": "السعر سوف يضاف عليه نسبة شبر هي {fee}%",
     "add_shelf.error_message": "حدث خطأ أثناء إضافة الرف. يرجى المحاولة مرة أخرى",
+    "add_shelf.file_size_error": "حجم الملف يجب ألا يتجاوز 10 ميجابايت",
     "add_shelf.discount_max_error": "النسبة يجب ألا تتجاوز 22%",
     "add_shelf.discount_max_error_dynamic": "الحد الأقصى للخصم هو",
-    "add_shelf.file_size_error": "حجم الملف يجب ألا يتجاوز 10 ميجابايت",
     "add_shelf.description_optional": "الوصف (اختياري)",
     "add_shelf.description_example": "مثال: يجانب الباب - يمين الداخل",
     "add_shelf.loading_map": "جاري تحميل الخريطة...",
@@ -1272,6 +1274,8 @@ const translations = {
     "add_shelf.price_fee_notice": "A Shibr fee will be added to the price",
     "add_shelf.shelf_dimensions": "Shelf Dimensions",
     "add_shelf.update_button": "Update Shelf",
+    "add_shelf.max_discount_error": "Maximum discount is {max}%",
+    "add_shelf.platform_fee_notice": "A {fee}% Shibr fee will be added to the price",
     "add_shelf.update_success_message": "Shelf updated successfully",
     "add_shelf.description_optional": "Description (Optional)",
     "add_shelf.description_example": "Example: Next to the door - Right side of entrance",
@@ -2236,41 +2240,72 @@ const translations = {
   },
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("ar")
+export function LanguageProvider({ 
+  children,
+  initialLanguage 
+}: { 
+  children: React.ReactNode
+  initialLanguage?: Language 
+}) {
+  const getInitialLanguage = (): Language => {
+    if (initialLanguage) return initialLanguage
+    if (typeof window !== 'undefined') {
+      const htmlLang = document.documentElement.lang
+      return (htmlLang === 'en' || htmlLang === 'ar') ? htmlLang as Language : 'ar'
+    }
+    return 'ar'
+  }
+  
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage)
   const direction: Direction = language === "ar" ? "rtl" : "ltr"
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
-    localStorage.setItem("language", lang)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("language", lang)
+      document.cookie = `language=${lang};path=/;max-age=31536000;SameSite=Lax`
+    }
   }
 
   const t = (key: string): string => {
     return translations[language][key as keyof (typeof translations)[typeof language]] || key
   }
 
-  useEffect(() => {
-    // Load saved language from localStorage
-    const savedLanguage = localStorage.getItem("language") as Language
-    if (savedLanguage && (savedLanguage === "ar" || savedLanguage === "en")) {
-      setLanguageState(savedLanguage)
-    }
-  }, [])
 
-  // Handle document-level changes (HTML attributes and body classes)
   useEffect(() => {
-    // Update HTML attributes
+    // Only sync if we're on the client and haven't received initialLanguage from server
+    if (typeof window === 'undefined') return
+    
+    const savedLang = localStorage.getItem('language') as Language
+    
+    if (savedLang && (savedLang === 'ar' || savedLang === 'en')) {
+      if (savedLang !== language) {
+        // Only update if there's a real mismatch (shouldn't happen with proper cookie sync)
+        setLanguageState(savedLang)
+        document.cookie = `language=${savedLang};path=/;max-age=31536000;SameSite=Lax`
+      }
+    } else if (!savedLang) {
+      // First time - save current language
+      localStorage.setItem('language', language)
+      document.cookie = `language=${language};path=/;max-age=31536000;SameSite=Lax`
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  
+  useEffect(() => {
     document.documentElement.lang = language
     document.documentElement.dir = direction
     
-    // Update body font class based on direction
     document.body.classList.remove("font-cairo", "font-inter")
     const fontClass = direction === "rtl" ? "font-cairo" : "font-inter"
     document.body.classList.add(fontClass)
     
-    // Optional: Add direction class for additional styling hooks
     document.body.classList.remove("dir-rtl", "dir-ltr")
     document.body.classList.add(`dir-${direction}`)
+    
+    // Mark as hydrated after first render to enable transitions
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add('hydrated')
+    })
   }, [language, direction])
 
   return (

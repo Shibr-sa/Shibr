@@ -15,6 +15,7 @@ import { useLanguage } from "@/contexts/localization-context"
 import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
+import { validateData, signinSchema } from "@/lib/validations"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -49,13 +50,23 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate form data
+    const validation = validateData(signinSchema, formData)
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors)[0]
+      toast({
+        title: t("auth.error"),
+        description: firstError,
+        variant: "destructive",
+      })
+      return
+    }
+    
     setIsLoading(true)
 
     try {
-      const user = await verifyUser({
-        email: formData.email,
-        password: formData.password,
-      })
+      const user = await verifyUser(validation.data)
 
       // Store user info in localStorage (in production, use proper session management)
       if (rememberMe) {

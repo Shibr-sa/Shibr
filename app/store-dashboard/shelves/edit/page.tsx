@@ -11,7 +11,9 @@ import { Upload, MapPin, Info, CalendarIcon } from "lucide-react"
 import { MapPicker } from "@/components/ui/map-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/formatters"
+import { validateData, shelfSchema, percentageSchema } from "@/lib/validations"
+import { NUMERIC_LIMITS, SAUDI_CITIES } from "@/lib/constants"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/contexts/localization-context"
@@ -56,33 +58,11 @@ export default function AddShelfPage() {
     longitude: 46.6753
   })
   
-  // City coordinates in Saudi Arabia
-  const cityCoordinates: Record<string, { lat: number; lng: number }> = {
-    riyadh: { lat: 24.7136, lng: 46.6753 },
-    jeddah: { lat: 21.5433, lng: 39.1728 },
-    mecca: { lat: 21.4225, lng: 39.8262 },
-    medina: { lat: 24.5247, lng: 39.5692 },
-    dammam: { lat: 26.3927, lng: 49.9777 },
-    khobar: { lat: 26.2172, lng: 50.1971 },
-    dhahran: { lat: 26.2361, lng: 50.0393 },
-    taif: { lat: 21.4373, lng: 40.5128 },
-    buraidah: { lat: 26.3266, lng: 43.9750 },
-    tabuk: { lat: 28.3835, lng: 36.5662 },
-    hail: { lat: 27.5219, lng: 41.6907 },
-    "hafar-al-batin": { lat: 28.4337, lng: 45.9601 },
-    jubail: { lat: 27.0046, lng: 49.6460 },
-    najran: { lat: 17.5656, lng: 44.2289 },
-    abha: { lat: 18.2164, lng: 42.5053 },
-    "khamis-mushait": { lat: 18.3060, lng: 42.7297 },
-    jazan: { lat: 16.8892, lng: 42.5511 },
-    yanbu: { lat: 24.0893, lng: 38.0618 },
-    "al-qatif": { lat: 26.5195, lng: 50.0240 },
-    unaizah: { lat: 26.0844, lng: 43.9935 },
-    arar: { lat: 30.9753, lng: 41.0381 },
-    sakaka: { lat: 29.9697, lng: 40.2064 },
-    "al-kharj": { lat: 24.1556, lng: 47.3120 },
-    "al-ahsa": { lat: 25.3487, lng: 49.5856 }
-  }
+  // Get city coordinates from constants
+  const cityCoordinates = SAUDI_CITIES.reduce((acc, city) => {
+    acc[city.value] = { lat: city.lat, lng: city.lng }
+    return acc
+  }, {} as Record<string, { lat: number; lng: number }>)
 
   // Update location when city changes
   useEffect(() => {
@@ -109,6 +89,21 @@ export default function AddShelfPage() {
   const exteriorInputRef = useRef<HTMLInputElement>(null)
   const interiorInputRef = useRef<HTMLInputElement>(null)
   const shelfInputRef = useRef<HTMLInputElement>(null)
+  
+  // Memoized values for MapPicker
+  const defaultLocation = useMemo(() => ({
+    lat: selectedLocation.latitude,
+    lng: selectedLocation.longitude,
+    address: selectedLocation.address
+  }), [selectedLocation.latitude, selectedLocation.longitude, selectedLocation.address])
+  
+  const handleLocationSelect = useCallback((location: { lat: number; lng: number; address: string }) => {
+    setSelectedLocation({
+      latitude: location.lat,
+      longitude: location.lng,
+      address: location.address
+    })
+  }, [])
 
   // Redirect if store data is not complete
   if (!isLoading && !isStoreDataComplete) {
@@ -156,15 +151,22 @@ export default function AddShelfPage() {
       return
     }
     
-    // Validate discount percentage (max from settings or 22%)
-    const discount = parseFloat(discountPercentage)
-    const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
-    if (isNaN(discount) || discount > maxDiscount) {
+    // Validate discount percentage
+    const discountValidation = validateData(percentageSchema, discountPercentage)
+    if (!discountValidation.success) {
       toast({
         title: t("common.error"),
-        description: language === "ar" 
-          ? `الحد الأقصى للخصم هو ${maxDiscount}%`
-          : `Maximum discount is ${maxDiscount}%`,
+        description: Object.values(discountValidation.errors)[0],
+        variant: "destructive",
+      })
+      return
+    }
+    const discount = discountValidation.data
+    const maxDiscount = platformSettings?.maximumDiscountPercentage || NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
+    if (discount > maxDiscount) {
+      toast({
+        title: t("common.error"),
+        description: t("add_shelf.max_discount_error").replace("{max}", maxDiscount.toString()),
         variant: "destructive",
       })
       return
@@ -202,7 +204,7 @@ export default function AddShelfPage() {
         branch,
         monthlyPrice: parseFloat(monthlyPrice),
         discountPercentage: discount,
-        availableFrom: availableFrom ? format(availableFrom, "yyyy-MM-dd") : new Date().toISOString().split('T')[0],
+        availableFrom: availableFrom ? formatDate(availableFrom, 'en', 'short').split('/').reverse().join('-') : new Date().toISOString().split('T')[0],
         length,
         width,
         depth,
@@ -238,7 +240,7 @@ export default function AddShelfPage() {
   
   // Handle file selection
   const handleFileSelect = (type: 'exterior' | 'interior' | 'shelf', file: File | null) => {
-    if (file && file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file && file.size > NUMERIC_LIMITS.FILE_SIZE_MAX) {
       toast({
         title: t("common.error"),
         description: t("add_shelf.file_size_error"),
@@ -332,30 +334,11 @@ export default function AddShelfPage() {
                     <SelectValue placeholder={t("add_shelf.city_placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="riyadh">الرياض - Riyadh</SelectItem>
-                    <SelectItem value="jeddah">جدة - Jeddah</SelectItem>
-                    <SelectItem value="mecca">مكة المكرمة - Mecca</SelectItem>
-                    <SelectItem value="medina">المدينة المنورة - Medina</SelectItem>
-                    <SelectItem value="dammam">الدمام - Dammam</SelectItem>
-                    <SelectItem value="khobar">الخبر - Khobar</SelectItem>
-                    <SelectItem value="dhahran">الظهران - Dhahran</SelectItem>
-                    <SelectItem value="taif">الطائف - Taif</SelectItem>
-                    <SelectItem value="buraidah">بريدة - Buraidah</SelectItem>
-                    <SelectItem value="tabuk">تبوك - Tabuk</SelectItem>
-                    <SelectItem value="hail">حائل - Hail</SelectItem>
-                    <SelectItem value="hafar-al-batin">حفر الباطن - Hafar Al-Batin</SelectItem>
-                    <SelectItem value="jubail">الجبيل - Jubail</SelectItem>
-                    <SelectItem value="najran">نجران - Najran</SelectItem>
-                    <SelectItem value="abha">أبها - Abha</SelectItem>
-                    <SelectItem value="khamis-mushait">خميس مشيط - Khamis Mushait</SelectItem>
-                    <SelectItem value="jazan">جازان - Jazan</SelectItem>
-                    <SelectItem value="yanbu">ينبع - Yanbu</SelectItem>
-                    <SelectItem value="al-qatif">القطيف - Al-Qatif</SelectItem>
-                    <SelectItem value="unaizah">عنيزة - Unaizah</SelectItem>
-                    <SelectItem value="arar">عرعر - Arar</SelectItem>
-                    <SelectItem value="sakaka">سكاكا - Sakaka</SelectItem>
-                    <SelectItem value="al-kharj">الخرج - Al-Kharj</SelectItem>
-                    <SelectItem value="al-ahsa">الأحساء - Al-Ahsa</SelectItem>
+                    {SAUDI_CITIES.map(city => (
+                      <SelectItem key={city.value} value={city.value}>
+                        {city.nameAr} - {city.nameEn}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -420,9 +403,7 @@ export default function AddShelfPage() {
                     >
                       <CalendarIcon className="me-2 h-4 w-4" />
                       {availableFrom ? (
-                        format(availableFrom, "PPP", { 
-                          locale: direction === "rtl" ? ar : enUS 
-                        })
+                        formatDate(availableFrom, language, 'full')
                       ) : (
                         <span>{t("add_shelf.available_date")}</span>
                       )}
@@ -434,7 +415,7 @@ export default function AddShelfPage() {
                       selected={availableFrom}
                       onSelect={setAvailableFrom}
                       disabled={(date) => date < new Date()}
-                      locale={direction === "rtl" ? ar : enUS}
+                      locale={language === "ar" ? ar : enUS}
                     />
                   </PopoverContent>
                 </Popover>
@@ -445,9 +426,7 @@ export default function AddShelfPage() {
             <Alert className="border-yellow-500 bg-yellow-50">
               <Info className="h-4 w-4 text-yellow-600" />
               <AlertDescription className="text-yellow-900">
-                {language === "ar" 
-                  ? `السعر سوف يضاف عليه نسبة شبر هي ${platformSettings?.platformFeePercentage || 8}%` 
-                  : `A ${platformSettings?.platformFeePercentage || 8}% Shibr fee will be added to the price`}
+                {t("add_shelf.platform_fee_notice").replace("{fee}", (platformSettings?.platformFeePercentage || NUMERIC_LIMITS.DEFAULT_PLATFORM_FEE).toString())}
               </AlertDescription>
             </Alert>
 
@@ -525,18 +504,8 @@ export default function AddShelfPage() {
                 <div className="space-y-3">
                   {/* Interactive Map Container */}
                   <MapPicker
-                    defaultLocation={useMemo(() => ({
-                      lat: selectedLocation.latitude,
-                      lng: selectedLocation.longitude,
-                      address: selectedLocation.address
-                    }), [selectedLocation.latitude, selectedLocation.longitude])}
-                    onLocationSelect={useCallback((location) => {
-                      setSelectedLocation({
-                        latitude: location.lat,
-                        longitude: location.lng,
-                        address: location.address
-                      })
-                    }, [])}
+                    defaultLocation={defaultLocation}
+                    onLocationSelect={handleLocationSelect}
                     height="200px"
                     zoom={15}
                   />

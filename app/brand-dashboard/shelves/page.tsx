@@ -168,7 +168,6 @@ export default function BrandShelvesPage() {
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
               {t("brand.current_shelves_description")}
-              }
             </p>
           </div>
 

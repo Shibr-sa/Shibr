@@ -33,8 +33,7 @@ import {
 import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
-import { format } from "date-fns"
-import { ar, enUS } from "date-fns/locale"
+import { formatDate, formatDuration } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 function OrdersContent() {
@@ -138,10 +137,7 @@ function OrdersContent() {
   }
 
   const calculateDuration = (startDate: string, endDate: string) => {
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const months = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
-    return `${months} ${months === 1 ? t("duration.month_singular") : t("duration.months_plural")}`
+    return formatDuration(startDate, endDate, language)
   }
 
   if (!userId) {
@@ -260,9 +256,7 @@ function OrdersContent() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {format(new Date(request.createdAt), "d MMM yyyy", {
-                          locale: language === "ar" ? ar : enUS
-                        })}
+                        {formatDate(request.createdAt, language, 'long')}
                       </span>
                     </TableCell>
                     <TableCell>

@@ -28,9 +28,9 @@ export default function MarketplacePage() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {t("nav.home")}
-            </a>
+            </Link>
             <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {t("nav.questions")}
             </a>

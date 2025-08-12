@@ -98,7 +98,20 @@
   font-feature-settings: "tnum";
 }
 
-/* Smooth transitions for direction changes */
-* {
+/* Prevent layout shift during font loading */
+html {
+  /* Preload font metrics to prevent CLS */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions for direction changes - but not on initial load */
+html:not(.hydrated) * {
+  transition: none !important;
+}
+
+html.hydrated * {
   transition: margin 0.2s ease, padding 0.2s ease;
 }
