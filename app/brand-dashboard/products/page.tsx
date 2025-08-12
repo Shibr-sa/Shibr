@@ -94,7 +94,7 @@ export default function BrandProductsPage() {
   ]
 
   return (
-    <div className="space-y-6" dir={direction}>
+    <div className="space-y-6">
       {/* Main Content Card with Statistics */}
       <Card>
         <CardContent className="p-6 space-y-6">
@@ -189,7 +189,6 @@ export default function BrandProductsPage() {
                 type="text"
                 placeholder={t("brand.dashboard.search_products")}
                 className="ps-9 h-10"
-                dir={direction}
               />
             </div>
           </div>

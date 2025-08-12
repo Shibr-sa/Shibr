@@ -86,7 +86,7 @@ export default function BrandShelvesPage() {
   }
 
   return (
-    <div className="w-full space-y-6 overflow-hidden" dir={direction}>
+    <div className="w-full space-y-6 overflow-hidden">
       {/* Statistics Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card>

@@ -126,7 +126,7 @@ export default function AdminDashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir={direction}>
+      <div className="min-h-screen flex w-full">
         <Sidebar collapsible="icon">
           <SidebarHeader>
             <SidebarMenu>
@@ -249,7 +249,7 @@ export default function AdminDashboardLayout({
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
+          <main className="flex-1 p-6 bg-background">{children}</main>
         </div>
       </div>
     </SidebarProvider>

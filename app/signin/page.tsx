@@ -98,7 +98,6 @@ export default function SignInPage() {
   return (
     <div
       className="min-h-screen bg-muted/30 flex items-center justify-center p-6"
-      dir={direction}
     >
       <div className="w-full max-w-md">
         {/* Logo */}
@@ -135,7 +134,6 @@ export default function SignInPage() {
                   type="email"
                   placeholder={t("auth.email_placeholder")}
                   className="h-12"
-                  dir={direction}
                   value={formData.email}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -160,7 +158,6 @@ export default function SignInPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder={t("auth.password_placeholder")}
                     className="ps-10 h-12"
-                    dir={direction}
                     value={formData.password}
                     onChange={handleInputChange}
                     disabled={isLoading}

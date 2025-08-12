@@ -145,7 +145,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir={direction}>
+      <div className="min-h-screen flex w-full">
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <SidebarMenu>
@@ -276,7 +276,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 bg-background" dir={direction}>{children}</main>
+        <main className="flex-1 p-6 bg-background">{children}</main>
       </div>
       
       {/* Chat FAB Widget */}

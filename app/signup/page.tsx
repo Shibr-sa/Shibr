@@ -98,8 +98,7 @@ export default function SignUpPage() {
   return (
     <div
       className="min-h-screen bg-muted/30 flex items-center justify-center p-6"
-      dir={direction}
-    >
+         >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -161,8 +160,7 @@ export default function SignUpPage() {
                   type="text"
                   placeholder={t("auth.name_placeholder")}
                   className="h-12"
-                  dir={direction}
-                  value={formData.fullName}
+                                   value={formData.fullName}
                   onChange={handleInputChange}
                   required
                   disabled={isLoading}
@@ -181,8 +179,7 @@ export default function SignUpPage() {
                     type="email"
                     placeholder={t("auth.email_placeholder")}
                     className="h-12"
-                    dir={direction}
-                    value={formData.email}
+                                       value={formData.email}
                     onChange={handleInputChange}
                     required
                     disabled={isLoading}
@@ -198,8 +195,7 @@ export default function SignUpPage() {
                     type="tel"
                     placeholder={t("auth.mobile")}
                     className="h-12"
-                    dir={direction}
-                    value={formData.phoneNumber}
+                                       value={formData.phoneNumber}
                     onChange={handleInputChange}
                     required
                     disabled={isLoading}
@@ -220,8 +216,7 @@ export default function SignUpPage() {
                     accountType === "store-owner" ? t("auth.store_name_placeholder") : t("auth.brand_name_placeholder")
                   }
                   className="h-12"
-                  dir={direction}
-                  value={accountType === "store-owner" ? formData.storeName : formData.brandName}
+                                   value={accountType === "store-owner" ? formData.storeName : formData.brandName}
                   onChange={handleInputChange}
                   required
                   disabled={isLoading}
@@ -240,8 +235,7 @@ export default function SignUpPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder={t("auth.password_placeholder")}
                     className="ps-10 h-12"
-                    dir={direction}
-                    value={formData.password}
+                                       value={formData.password}
                     onChange={handleInputChange}
                     required
                     disabled={isLoading}

@@ -163,7 +163,7 @@ export default function StoreDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={direction}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" >
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
@@ -242,7 +242,7 @@ export default function StoreDashboardSettingsPage() {
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="+966 5X XXX XXXX" 
                       className="text-start" 
-                      dir={direction} 
+                       
                     />
                   </div>
                   <div className="space-y-2">
@@ -253,7 +253,7 @@ export default function StoreDashboardSettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="text-start" 
-                      dir={direction} 
+                       
                     />
                   </div>
                   <div className="space-y-2">
@@ -360,8 +360,7 @@ export default function StoreDashboardSettingsPage() {
                     onChange={(e) => setWebsite(e.target.value)}
                     placeholder={t("settings.store_data.website_placeholder")}
                     className="text-start" 
-                    dir={direction}
-                  />
+                                     />
                 </div>
 
                 {/* Commercial Registration Number */}
@@ -375,8 +374,7 @@ export default function StoreDashboardSettingsPage() {
                     onChange={(e) => setBusinessReg(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     className="text-start" 
-                    dir={direction}
-                    required={!isFreelance}
+                                       required={!isFreelance}
                     disabled={isFreelance}
                   />
                 </div>
@@ -671,7 +669,7 @@ export default function StoreDashboardSettingsPage() {
 
       {/* Add Payment Method Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" dir={direction}>
+        <DialogContent className="sm:max-w-[500px]" >
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
               {t("settings.payment.dialog.title")}
@@ -723,8 +721,7 @@ export default function StoreDashboardSettingsPage() {
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_number_placeholder")}
                 className="w-full"
-                dir={direction}
-              />
+                             />
             </div>
 
             {/* IBAN */}
@@ -738,8 +735,7 @@ export default function StoreDashboardSettingsPage() {
                 onChange={(e) => setIban(e.target.value)}
                 placeholder={t("settings.payment.dialog.iban_placeholder")}
                 className="w-full"
-                dir={direction}
-              />
+                             />
             </div>
 
             {/* Virtual Checkbox */}

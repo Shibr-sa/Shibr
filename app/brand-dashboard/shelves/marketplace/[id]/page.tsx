@@ -161,7 +161,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Loading state
   if (!storeDetails) {
     return (
-      <div className="flex flex-col gap-8" dir={direction}>
+      <div className="flex flex-col gap-8">
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-6">
@@ -189,7 +189,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="flex flex-col gap-8" dir={direction}>
+    <div className="flex flex-col gap-8">
           {/* Top Section: Store Details */}
           <Card>
             <CardContent className="p-4">
@@ -320,7 +320,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             today.setHours(0, 0, 0, 0)
                             return date < today
                           }}
-                          dir={direction}
                           classNames={{
                             today: "bg-transparent text-foreground font-normal"
                           }}

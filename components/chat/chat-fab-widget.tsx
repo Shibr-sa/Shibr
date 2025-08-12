@@ -361,7 +361,6 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                         className={cn(
                           "flex-1",
                                                   )}
-                        dir={direction}
                       />
                       <Button
                         type="submit"

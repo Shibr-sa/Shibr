@@ -175,7 +175,7 @@ export default function StoreDashboardShelvesPage() {
               </p>
             </div>
             <Tabs value={statsPeriod} onValueChange={setStatsPeriod}>
-              <TabsList className="flex w-[400px]" dir={direction}>
+              <TabsList className="flex w-[400px]">
                 <TabsTrigger value="daily" className="flex-1">
                   {periodLabels.daily}
                 </TabsTrigger>

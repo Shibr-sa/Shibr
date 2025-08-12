@@ -258,7 +258,7 @@ function StoreMapContent({
               }}
               onCloseClick={() => setSelectedMarker(null)}
             >
-              <div className="p-2 min-w-[200px]" dir={direction}>
+              <div className="p-2 min-w-[200px]">
                 <h3 className="font-bold text-sm mb-1">{selectedMarker.shelfName}</h3>
                 <p className="text-xs text-muted-foreground mb-2">
                   {selectedMarker.city} - {selectedMarker.branch}
