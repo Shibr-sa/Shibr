@@ -280,7 +280,7 @@ export default function ShibrLandingPage() {
             {/* Content Section */}
             <div className="space-y-8 text-start">
               <div className="space-y-6">
-                <h2 className="text-4xl font-bold text-secondary leading-tight text-start">
+                <h2 className="text-4xl font-bold text-foreground leading-tight text-start">
                   {t("why_choose.title")}
                 </h2>
                 <p className="text-muted-foreground text-lg leading-relaxed text-start">
@@ -297,7 +297,7 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Users className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.clear_rights.title")}</h3>
+                    <h3 className="text-lg font-bold text-foreground text-center">{t("features.clear_rights.title")}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.clear_rights.description")}
                     </p>
@@ -311,7 +311,7 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.empty_spaces.title")}</h3>
+                    <h3 className="text-lg font-bold text-foreground text-center">{t("features.empty_spaces.title")}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.empty_spaces.description")}
                     </p>
@@ -325,7 +325,7 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Store className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.real_reach.title")}</h3>
+                    <h3 className="text-lg font-bold text-foreground text-center">{t("features.real_reach.title")}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.real_reach.description")}
                     </p>
@@ -339,7 +339,7 @@ export default function ShibrLandingPage() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                       <Award className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-secondary text-center">{t("features.flexible_rental.title")}</h3>
+                    <h3 className="text-lg font-bold text-foreground text-center">{t("features.flexible_rental.title")}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed text-center">
                       {t("features.flexible_rental.description")}
                     </p>
@@ -394,7 +394,7 @@ export default function ShibrLandingPage() {
                   alt="Shibr Logo"
                   width={40}
                   height={40}
-                  className="h-10 w-10 opacity-80"
+                  className="h-10 w-10 brightness-0 invert"
                 />
                 <span className="text-xl font-bold">{t("common.shibr")}</span>
               </div>

@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Cairo, Inter } from "next/font/google"
 import { cookies } from "next/headers"
 import "./globals.css"
@@ -24,9 +24,41 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Shibr - منصة ذكية تربط بين المتاجر",
+  title: "Shibr",
   description: "منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية",
-  generator: "v0.dev",
+  metadataBase: new URL('https://shibr.sa'),
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo.svg',
+  },
+  manifest: '/site.webmanifest',
+  openGraph: {
+    title: 'Shibr - منصة ذكية تربط بين المتاجر',
+    description: 'منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية',
+    type: 'website',
+    locale: 'ar_SA',
+    alternateLocale: 'en_US',
+    images: [
+      {
+        url: '/logo.svg',
+        width: 512,
+        height: 512,
+        alt: 'Shibr Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Shibr',
+    description: 'منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية',
+    images: ['/logo.svg'],
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#725CAD',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default async function RootLayout({

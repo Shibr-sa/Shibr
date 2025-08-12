@@ -126,12 +126,11 @@ The app supports Arabic/English with RTL/LTR switching:
 
 ### Important Files
 
-- `/contexts/language-context.tsx` - All translations and language switching logic
-- `/app/layout.tsx` - Root layout with providers (ConvexClientProvider, LanguageProvider)
-- `/lib/utils.ts` - Utility functions including `cn()` for className merging
+- `/contexts/localization-context.tsx` - All translations and language switching logic
+- `/lib/formatters.ts` - Centralized formatting utilities (English numerals only)
+- `/lib/validations.ts` - Zod schemas for type-safe validation
+- `/lib/constants.ts` - Application-wide constants and limits
 - `/components/ui/` - shadcn/ui component library (don't modify)
-- `/components/convex-provider.tsx` - Convex client provider for real-time data
-- `/convex/schema.ts` - Database schema definition (currently empty, to be implemented)
 - `/convex/_generated/` - Auto-generated Convex client code (do not edit)
 
 ### Development Guidelines
@@ -139,10 +138,9 @@ The app supports Arabic/English with RTL/LTR switching:
 When adding new features:
 1. Check if translation keys exist before adding new ones
 2. Use existing UI components from `/components/ui/`
-3. Follow the established dashboard layout patterns
-4. Maintain TypeScript strict mode compliance
-5. Ensure RTL compatibility for Arabic text
-6. Use logical properties (start/end) instead of physical (left/right)
+3. Maintain TypeScript strict mode compliance
+4. Ensure RTL compatibility - use logical properties (start/end) instead of physical (left/right)
+5. Use centralized utilities from `/lib/` for formatting, validation, and constants
 
 When modifying dashboards:
 - Each dashboard type has consistent navigation in its layout file
@@ -202,8 +200,10 @@ The project uses Convex as the backend database and real-time sync solution:
   )
   ```
 - **Icons & Images**: Mirror icons that have directional meaning (arrows, etc.)
-- **Number Formatting**: Use locale-aware number formatting for prices/quantities
-- **Date Formatting**: Use locale-aware date formatting
+- **Number & Date Formatting**:
+  - **ALWAYS use English numerals** (0-9), never Arabic-Hindi numerals
+  - **Use Gregorian calendar only**, no Hijri dates
+  - **Use centralized formatters** from `/lib/formatters.ts`
 
 ### UI Component Usage - CRITICAL REQUIREMENTS
 
@@ -231,15 +231,6 @@ The project uses Convex as the backend database and real-time sync solution:
 - **Inputs**: Use Input, Button, Select, Checkbox, RadioGroup, Switch, Textarea
 - **Layout**: Use Separator, ScrollArea, AspectRatio
 
-**Example - Correct Implementation:**
-```tsx
-// GOOD - Using shadcn exactly as documented
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-// BAD - Creating custom components when shadcn has them
-const CustomCard = () => {...} // NEVER do this
-```
 
 ### Spacing Standards
 - **Between form elements**: Use `space-y-6` for form field groups
@@ -274,38 +265,20 @@ const CustomCard = () => {...} // NEVER do this
   - Each color has DEFAULT and foreground variants
 - **Status colors**: Use semantic colors (destructive for errors, primary for success)
 
-### Brand Colors
-- **Primary Color**: #725CAD (Purple) - Used for primary actions, buttons, and brand elements
-- **Secondary Color**: #283455 (Dark Blue) - Used for text titles and secondary elements
-- **Text Title Color**: #283455 (Same as Secondary) - Used for headings and important text
-- These colors are configured in the CSS variables and should be accessed via Tailwind classes:
-  - Use `bg-primary`, `text-primary`, `border-primary` for primary color
-  - Use `bg-secondary`, `text-secondary`, `border-secondary` for secondary color
-  - Use `text-foreground` for main text, `text-muted-foreground` for secondary text
+### Design System Colors
+- **Primary Color**: #725CAD (Purple) - The ONLY custom brand color
+- **All other colors**: Use default shadcn/ui color system
+- **Usage**: `text-foreground` for main text, `text-muted-foreground` for secondary text
+- **NEVER add custom colors beyond the primary brand color**
 
 ### Layout Patterns
 - **Cards**: Use Card components for grouped content with consistent padding
 - **Responsive design**: Mobile-first approach using Tailwind responsive prefixes
 - **RTL/LTR Support**: 
-  - **ALWAYS use logical properties** instead of physical ones:
-    - Use `ps-*` (padding-start) instead of `pl-*` (padding-left)
-    - Use `pe-*` (padding-end) instead of `pr-*` (padding-right)
-    - Use `ms-*` (margin-start) instead of `ml-*` (margin-left)
-    - Use `me-*` (margin-end) instead of `mr-*` (margin-right)
-    - Use `start-*` instead of `left-*` for positioning
-    - Use `end-*` instead of `right-*` for positioning
-    - Use `text-start` instead of `text-left`
-    - Use `text-end` instead of `text-right`
-  - Use `gap-*` instead of `space-x-*` for flexbox/grid spacing
-  - Use `rounded-s-*` and `rounded-e-*` instead of `rounded-l-*` and `rounded-r-*`
-  - **Directional Icons**: Use rotation or conditional rendering for arrows:
-    ```tsx
-    // For arrows that should flip in RTL
-    <ArrowRight className={direction === "rtl" ? "rotate-180" : ""} />
-    // Or use different icons
-    {direction === "rtl" ? <ArrowLeft /> : <ArrowRight />}
-    ```
-  - **Always test both directions** when implementing new layouts
+  - Use logical properties: `ps-*`, `pe-*`, `ms-*`, `me-*`, `start-*`, `end-*`
+  - Avoid physical properties: `pl-*`, `pr-*`, `ml-*`, `mr-*`, `left-*`, `right-*`
+  - Use `gap-*` instead of `space-x-*` for spacing
+  - Mirror directional icons in RTL mode
 - **Loading states**: Implement skeleton loaders using Skeleton component
 - **Empty states**: Provide meaningful empty state messages with actions
 
