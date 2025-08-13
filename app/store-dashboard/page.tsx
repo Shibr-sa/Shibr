@@ -1,9 +1,11 @@
 "use client"
 
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Store, TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Edit2, Inbox, Layout, Check, X, Eye, Star } from "lucide-react"
+import { Store, TrendingUp, TrendingDown, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Edit2, Inbox, Layout, Eye, Star } from "lucide-react"
+import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
 import Link from "next/link"
 import { useLanguage } from "@/contexts/localization-context"
 import { useRouter } from "next/navigation"
@@ -22,6 +24,8 @@ export default function StoreDashboardPage() {
   const { t, direction, language } = useLanguage()
   const router = useRouter()
   const { user } = useCurrentUser()
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState<RentalRequestDetails | null>(null)
   
   // Use the global store data context
   const { isLoading: storeLoading, isStoreDataComplete } = useStoreData()
@@ -31,9 +35,12 @@ export default function StoreDashboardPage() {
     user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
   )
   
-  // Fetch shelf statistics
-  const shelfStats = useQuery(api.shelves.getShelfStats,
-    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  // Fetch shelf statistics with percentage changes
+  const shelfStats = useQuery(api.shelves.getShelfStatsWithChanges,
+    user?.id ? { 
+      ownerId: user.id as Id<"users">,
+      period: "monthly" as const  // Compare with last month
+    } : "skip"
   )
   
   // Fetch rental requests for the store owner
@@ -53,7 +60,7 @@ export default function StoreDashboardPage() {
   
   // Loading state
   const isLoading = storeLoading || !shelves || !shelfStats
-  
+
   // Format currency - always use Western numerals
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-SA', {
@@ -129,9 +136,28 @@ export default function StoreDashboardPage() {
                     </p>
                     <p className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</p>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        0.0% {t("time.from")} {t("time.last_month")}
-                      </span>
+                      {shelfStats && typeof shelfStats.rentedChange === 'number' ? (
+                        shelfStats.rentedChange !== 0 ? (
+                          <>
+                            {shelfStats.rentedChange > 0 ? (
+                              <TrendingUp className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-600" />
+                            )}
+                            <span className={`text-xs font-medium ${shelfStats.rentedChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {shelfStats.rentedChange > 0 ? '+' : ''}{shelfStats.rentedChange}% {t("time.from")} {t("time.last_month")}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            0.0% {t("time.from")} {t("time.last_month")}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          0.0% {t("time.from")} {t("time.last_month")}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -153,9 +179,28 @@ export default function StoreDashboardPage() {
                       {formatCurrency(shelfStats?.totalRevenue || 0)}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        0.0% {t("time.from")} {t("time.last_month")}
-                      </span>
+                      {shelfStats && typeof shelfStats.revenueChange === 'number' ? (
+                        shelfStats.revenueChange !== 0 ? (
+                          <>
+                            {shelfStats.revenueChange > 0 ? (
+                              <TrendingUp className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-600" />
+                            )}
+                            <span className={`text-xs font-medium ${shelfStats.revenueChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {shelfStats.revenueChange > 0 ? '+' : ''}{shelfStats.revenueChange}% {t("time.from")} {t("time.last_month")}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            0.0% {t("time.from")} {t("time.last_month")}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          0.0% {t("time.from")} {t("time.last_month")}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -297,36 +342,17 @@ export default function StoreDashboardPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
-                                {request.status === "pending" && (
-                                  <>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8"
-                                      onClick={() => {/* Handle approve */}}
-                                    >
-                                      <Check className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8"
-                                      onClick={() => {/* Handle reject */}}
-                                    >
-                                      <X className="h-4 w-4 text-red-600" />
-                                    </Button>
-                                  </>
-                                )}
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8"
-                                  onClick={() => router.push("/store-dashboard/orders")}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setSelectedRequest(request)
+                                  setShowDetailsDialog(true)
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -479,6 +505,13 @@ export default function StoreDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Request Details Dialog */}
+      <RequestDetailsDialog 
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+        request={selectedRequest}
+      />
     </div>
   )
 }

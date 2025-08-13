@@ -78,6 +78,35 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
     }
   }, [selectedConversation, userId, markAsRead])
 
+  // Listen for external events to open chat
+  useEffect(() => {
+    const handleOpenChat = (event: CustomEvent) => {
+      const { partnerId, partnerName } = event.detail
+      
+      // Open the chat widget
+      setIsOpen(true)
+      
+      // Find the conversation with this partner
+      const conversation = conversations?.find(c => c.otherUserId === partnerId)
+      
+      if (conversation) {
+        // If conversation exists, select it
+        setSelectedConversation(conversation._id)
+        setShowConversationsList(false)
+      } else {
+        // If no conversation exists, show conversations list
+        // You might want to create a new conversation here
+        setShowConversationsList(true)
+      }
+    }
+
+    window.addEventListener('openChat' as any, handleOpenChat)
+    
+    return () => {
+      window.removeEventListener('openChat' as any, handleOpenChat)
+    }
+  }, [conversations])
+
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedConversation || !userId) return
 
@@ -366,7 +395,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                         size="icon"
                         disabled={!message.trim()}
                       >
-                        <Send className="h-4 w-4 rtl:rotate-180" />
+                        <Send className="h-4 w-4" />
                       </Button>
                     </form>
                   </div>

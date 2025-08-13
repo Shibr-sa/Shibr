@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, Suspense } from "react"
-import { useQuery, useMutation } from "convex/react"
+import React, { useState, Suspense, useCallback, useMemo } from "react"
+import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,13 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Separator } from "@/components/ui/separator"
+import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
 import {
   Table,
   TableBody,
@@ -29,11 +23,8 @@ import {
 import { 
   Search, 
   AlertCircle, 
-  Package,
   Inbox,
   FileSearch,
-  Check, 
-  X, 
   Eye,
   Star,
   ChevronLeft,
@@ -52,7 +43,7 @@ function OrdersContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState<any>(null)
+  const [selectedRequest, setSelectedRequest] = useState<RentalRequestDetails | null>(null)
   const itemsPerPage = 5
 
   // Get the userId as a Convex Id
@@ -67,10 +58,6 @@ function OrdersContent() {
     } : "skip"
   )
 
-  // Mutations
-  const acceptRequest = useMutation(api.rentalRequests.acceptRentalRequest)
-  const rejectRequest = useMutation(api.rentalRequests.rejectRentalRequest)
-
   // Filter options for orders section
   const ordersFilterOptions = [
     { value: "all", label: t("orders.all") },
@@ -83,40 +70,29 @@ function OrdersContent() {
   const orderedOrdersFilters = direction === "rtl" ? [...ordersFilterOptions].reverse() : ordersFilterOptions
 
   // Filter rental requests based on selected filter and search query
-  const filteredRequests = rentalRequests?.filter(request => {
-    const matchesFilter = filter === "all" || request.status === filter
-    const matchesSearch = !searchQuery || 
-      request.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.shelfBranch?.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesFilter && matchesSearch
-  }) || []
+  const filteredRequests = useMemo(() => {
+    return rentalRequests?.filter(request => {
+      const matchesFilter = filter === "all" || request.status === filter
+      const matchesSearch = !searchQuery || 
+        request.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        request.shelfBranch?.toLowerCase().includes(searchQuery.toLowerCase())
+      return matchesFilter && matchesSearch
+    }) || []
+  }, [rentalRequests, filter, searchQuery])
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedRequests = filteredRequests.slice(startIndex, endIndex)
+  const paginatedRequests = useMemo(() => 
+    filteredRequests.slice(startIndex, endIndex),
+    [filteredRequests, startIndex, endIndex]
+  )
 
   // Reset to page 1 when filter or search changes
   React.useEffect(() => {
     setCurrentPage(1)
   }, [filter, searchQuery])
-
-  const handleAccept = async (requestId: Id<"rentalRequests">) => {
-    try {
-      await acceptRequest({ requestId })
-    } catch (error) {
-      console.error("Failed to accept request:", error)
-    }
-  }
-
-  const handleReject = async (requestId: Id<"rentalRequests">) => {
-    try {
-      await rejectRequest({ requestId })
-    } catch (error) {
-      console.error("Failed to reject request:", error)
-    }
-  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -286,42 +262,18 @@ function OrdersContent() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            {request.status === "pending" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => handleAccept(request._id)}
-                                  title={t("orders.accept")}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleReject(request._id)}
-                                  title={t("orders.reject")}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                              title={t("orders.view_details")}
-                              onClick={() => {
-                                setSelectedRequest(request)
-                                setShowDetailsDialog(true)
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                            title={t("orders.view_details")}
+                            onClick={() => {
+                              setSelectedRequest(request)
+                              setShowDetailsDialog(true)
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -389,166 +341,11 @@ function OrdersContent() {
     </Card>
 
     {/* Request Details Dialog */}
-    <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-semibold">
-                {t("orders.request_details")}
-              </DialogTitle>
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <span>{t("orders.cancel_warning")}</span>
-              </div>
-            </div>
-            <Separator />
-          </div>
-        </DialogHeader>
-        
-        {selectedRequest && (
-          <div className="space-y-6 mt-4">
-            {/* Request Info Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.request_number")}</p>
-                <p className="font-medium">#{selectedRequest._id?.slice(-10) || "0000000000"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.city")}</p>
-                <p className="font-medium">{t("common.jeddah")}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.activity_type")}</p>
-                <p className="font-medium">{t("orders.cafe")}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.renter_name")}</p>
-                <p className="font-medium">{selectedRequest.otherUserName || "-"}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.commercial_register")}</p>
-                <p className="font-medium">101234567</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.website")}</p>
-                <p className="font-medium">www.example.com</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.email")}</p>
-                <p className="font-medium">info@example.com</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.rating")}</p>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">4/5</span>
-                  <div className="flex">
-                    {[1, 2, 3, 4].map((star) => (
-                      <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    ))}
-                    <Star className="h-3 w-3 text-gray-300" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Request Details Table */}
-            <div>
-              <h3 className="font-semibold mb-4">{t("orders.request_details_title")}</h3>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-start">{t("orders.branch")}</TableHead>
-                      <TableHead className="text-start">{t("orders.activity")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_duration")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_type")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_date")}</TableHead>
-                      <TableHead className="text-start">{t("orders.notes")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        {selectedRequest.shelfBranch || t("common.jeddah")}
-                      </TableCell>
-                      <TableCell>{t("orders.new_shelf")}</TableCell>
-                      <TableCell>
-                        {selectedRequest.startDate && selectedRequest.endDate 
-                          ? calculateDuration(selectedRequest.startDate, selectedRequest.endDate)
-                          : "-"}
-                      </TableCell>
-                      <TableCell>{t("orders.monthly")}</TableCell>
-                      <TableCell>
-                        {selectedRequest.createdAt 
-                          ? formatDate(selectedRequest.createdAt, language, 'long')
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {selectedRequest.additionalNotes || t("orders.want_to_rent")}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            {/* Additional Info */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-800">
-                {t("orders.agreement_confirmation")}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (selectedRequest.status === "pending") {
-                    handleReject(selectedRequest._id)
-                    setShowDetailsDialog(false)
-                  }
-                }}
-                disabled={selectedRequest.status !== "pending"}
-              >
-                {t("orders.reject_request")}
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedRequest.status === "pending") {
-                    handleAccept(selectedRequest._id)
-                    setShowDetailsDialog(false)
-                  }
-                }}
-                disabled={selectedRequest.status !== "pending"}
-              >
-                {t("orders.accept_request")}
-              </Button>
-            </div>
-
-            {/* Bottom Info */}
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span>{selectedRequest.otherUserName || t("orders.requester")}</span>
-                <Badge variant="outline" className="text-xs">
-                  {t("status.online")}
-                </Badge>
-              </div>
-              <Button variant="link" className="text-sm h-auto p-0">
-                {t("orders.thank_you_message")}
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    <RequestDetailsDialog 
+      open={showDetailsDialog}
+      onOpenChange={setShowDetailsDialog}
+      request={selectedRequest}
+    />
     </>
   )
 }

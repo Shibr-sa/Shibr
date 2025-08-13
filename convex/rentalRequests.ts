@@ -348,7 +348,19 @@ export const getUserRentalRequests = query({
           ...request,
           shelfName: shelf?.shelfName,
           shelfBranch: shelf?.branch,
+          shelfCity: shelf?.city,
+          shelfPrice: shelf?.monthlyPrice,
+          otherUserId: otherUserId,
           otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName,
+          otherUserEmail: otherUser?.email,
+          phoneNumber: otherUser?.phoneNumber,
+          website: otherUser?.website,
+          activityType: otherUser?.storeType || otherUser?.brandType || "-",
+          city: shelf?.city,
+          commercialRegisterNumber: otherUser?.businessRegistration,
+          commercialRegisterFile: otherUser?.businessRegistrationDocumentUrl,
+          rating: 4, // Default rating for now
+          rentalType: "monthly", // Default rental type
         }
       })
     )

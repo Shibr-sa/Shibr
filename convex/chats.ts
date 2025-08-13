@@ -198,6 +198,7 @@ export const getUserConversations = query({
 
         return {
           ...conv,
+          otherUserId: otherUserId,
           otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName || "Unknown",
           shelfName: shelf?.shelfName || "Unknown Shelf",
           unreadCount: user.accountType === "brand-owner" ? conv.brandOwnerUnreadCount : conv.storeOwnerUnreadCount,
