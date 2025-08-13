@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useState, useMemo, useEffect } from "react"
@@ -473,7 +473,7 @@ export default function StoreDashboardShelvesPage() {
                 disabled={currentPage === 1}
                 className="h-8 w-8"
               >
-                {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
               </Button>
               
               <div className="flex items-center gap-1">
@@ -497,7 +497,7 @@ export default function StoreDashboardShelvesPage() {
                 disabled={currentPage === totalPages || totalPages <= 1}
                 className="h-8 w-8"
               >
-                {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
               </Button>
             </div>
           </div>

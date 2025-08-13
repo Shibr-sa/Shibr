@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   MapPin, 
   ChevronLeft,
-  ChevronRight,
   MoreHorizontal,
   Download,
   Edit2,
@@ -299,7 +298,7 @@ export default function ShelfDetailsPage() {
                   className="absolute start-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
                   onClick={prevImage}
                 >
-                  {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -307,7 +306,7 @@ export default function ShelfDetailsPage() {
                   className="absolute end-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
                   onClick={nextImage}
                 >
-                  {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
                 </Button>
               </div>
               <div className="flex gap-2 p-4">

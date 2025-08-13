@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, MoreHorizontal, ChevronLeft } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import Image from "next/image"
 
 export default function BrandProductsPage() {
-  const { t, direction } = useLanguage()
+  const { t } = useLanguage()
 
   const products = [
     {
@@ -260,7 +260,7 @@ export default function BrandProductsPage() {
                 className="h-8 w-8"
                 disabled
               >
-                {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
               </Button>
               <div className="flex items-center gap-1">
                 <Button 
@@ -277,7 +277,7 @@ export default function BrandProductsPage() {
                 className="h-8 w-8"
                 disabled
               >
-                {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
               </Button>
             </div>
           </div>

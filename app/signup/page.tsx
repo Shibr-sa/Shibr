@@ -136,18 +136,18 @@ export default function SignUpPage() {
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <Label
-                    htmlFor="brand-owner"
-                    className="flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
-                  >
-                    <span className="font-medium">{t("auth.brand_owner")}</span>
-                    <RadioGroupItem value="brand-owner" id="brand-owner" />
-                  </Label>
-                  <Label
                     htmlFor="store-owner"
-                    className="flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                    className={`flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all ${direction === 'rtl' ? 'md:order-2' : 'md:order-1'}`}
                   >
                     <span className="font-medium">{t("auth.store_owner")}</span>
                     <RadioGroupItem value="store-owner" id="store-owner" />
+                  </Label>
+                  <Label
+                    htmlFor="brand-owner"
+                    className={`flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all ${direction === 'rtl' ? 'md:order-1' : 'md:order-2'}`}
+                  >
+                    <span className="font-medium">{t("auth.brand_owner")}</span>
+                    <RadioGroupItem value="brand-owner" id="brand-owner" />
                   </Label>
                 </RadioGroup>
               </div>
@@ -307,7 +307,7 @@ export default function SignUpPage() {
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
             {t("auth.back_to_home")}
           </Link>
         </div>

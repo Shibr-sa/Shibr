@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
@@ -19,7 +19,7 @@ import { validateData, signinSchema } from "@/lib/validations"
 
 export default function SignInPage() {
   const router = useRouter()
-  const { t, direction } = useLanguage()
+  const { t } = useLanguage()
   const { toast } = useToast()
   const verifyUser = useMutation(api.users.verifyUser)
   
@@ -236,7 +236,7 @@ export default function SignInPage() {
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            {direction === "rtl" ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
             {t("auth.back_to_home")}
           </Link>
         </div>

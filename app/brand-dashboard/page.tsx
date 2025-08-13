@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, ArrowLeft, Lock } from "lucide-react"
+import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useLanguage } from "@/contexts/localization-context"
@@ -42,7 +42,7 @@ export default function BrandDashboardPage() {
               className="gap-2 ms-4 flex-shrink-0"
             >
               {t("dashboard.complete_profile_now")}
-              {direction === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </div>
         </Alert>

@@ -190,16 +190,7 @@ The project uses Convex as the backend database and real-time sync solution:
   1. Add the Arabic version in the `ar` object
   2. Add the English version in the `en` object
   3. Test both languages to ensure proper display
-- **Direction-Aware Layouts**:
-  ```tsx
-  const { t, direction } = useLanguage()
-  return (
-    <div dir={direction} className={direction === "rtl" ? "font-cairo" : "font-inter"}>
-      {/* Content */}
-    </div>
-  )
-  ```
-- **Icons & Images**: Mirror icons that have directional meaning (arrows, etc.)
+- **Direction-Aware Layouts**: Use Tailwind's `rtl:` modifiers instead of explicit direction checks
 - **Number & Date Formatting**:
   - **ALWAYS use English numerals** (0-9), never Arabic-Hindi numerals
   - **Use Gregorian calendar only**, no Hijri dates
@@ -278,7 +269,7 @@ The project uses Convex as the backend database and real-time sync solution:
   - Use logical properties: `ps-*`, `pe-*`, `ms-*`, `me-*`, `start-*`, `end-*`
   - Avoid physical properties: `pl-*`, `pr-*`, `ml-*`, `mr-*`, `left-*`, `right-*`
   - Use `gap-*` instead of `space-x-*` for spacing
-  - Mirror directional icons in RTL mode
+  - Use Tailwind's `rtl:` modifiers for direction-specific styling
 - **Loading states**: Implement skeleton loaders using Skeleton component
 - **Empty states**: Provide meaningful empty state messages with actions
 

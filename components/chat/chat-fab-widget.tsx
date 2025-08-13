@@ -16,8 +16,7 @@ import {
   Send, 
   Minimize2, 
   Maximize2,
-  ChevronLeft,
-  ChevronRight
+  ChevronLeft
 } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -30,7 +29,7 @@ interface ChatFabWidgetProps {
 }
 
 export function ChatFabWidget({ className }: ChatFabWidgetProps) {
-  const { t, language, direction } = useLanguage()
+  const { t, language } = useLanguage()
   const { user } = useCurrentUser()
   const [isOpen, setIsOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -156,7 +155,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                   onClick={handleBackToList}
                   className="h-8 w-8"
                 >
-                  {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                 </Button>
               )}
               <CardTitle className={cn(
@@ -367,10 +366,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                         size="icon"
                         disabled={!message.trim()}
                       >
-                        <Send className={cn(
-                          "h-4 w-4",
-                          direction === "rtl" ? "rotate-180" : ""
-                        )} />
+                        <Send className="h-4 w-4 rtl:rotate-180" />
                       </Button>
                     </form>
                   </div>

@@ -357,7 +357,7 @@ function OrdersContent() {
               disabled={currentPage === 1}
               className="h-8 w-8"
             >
-              {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
             </Button>
             
             <div className="flex items-center gap-1">
@@ -381,7 +381,7 @@ function OrdersContent() {
               disabled={currentPage === totalPages || totalPages <= 1}
               className="h-8 w-8"
             >
-              {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </div>
         </div>

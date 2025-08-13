@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, ChevronRight, Store, Loader2, Package, Ruler, Calendar, Check } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, Loader2, Package, Ruler, Calendar, Check } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -49,7 +49,7 @@ interface Store {
 }
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
-  const { t, direction } = useLanguage()
+  const { t } = useLanguage()
 
   // Search and filter states
   const [searchInput, setSearchInput] = useState("")
@@ -454,7 +454,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                   </div>
                                   <span className="text-[11px] font-medium text-foreground">{store.ownerName || "Unknown"}</span>
                                 </div>
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground rtl:rotate-180" />
                               </div>
                             </div>
                           </div>
@@ -476,7 +476,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                 onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1 || totalPages === 0}
               >
-                {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
               </Button>
               
               {totalPages === 0 ? (
@@ -527,7 +527,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                 onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages || totalPages === 0}
               >
-                {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
               </Button>
             </div>
           </div>
