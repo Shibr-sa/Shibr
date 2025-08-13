@@ -3,20 +3,70 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Package, BarChart, Store, Plus, AlertTriangle, ArrowRight, Lock } from "lucide-react"
+import { 
+  Package, 
+  BarChart, 
+  Store, 
+  Plus, 
+  AlertTriangle, 
+  ArrowRight, 
+  Lock,
+  TrendingUp,
+  TrendingDown,
+  ShoppingCart,
+  Layers,
+  BarChart3
+} from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { useLanguage } from "@/contexts/localization-context"
 import { useRouter } from "next/navigation"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { Id } from "@/convex/_generated/dataModel"
+import { formatCurrency } from "@/lib/formatters"
 
 export default function BrandDashboardPage() {
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
   const router = useRouter()
+  const { user } = useCurrentUser()
   
   // Use the brand data context for consistent state
   const { isBrandDataComplete, isLoading } = useBrandData()
+  
+  // Fetch rental requests for the brand owner
+  const rentalRequests = useQuery(
+    api.rentalRequests.getUserRentalRequests,
+    user?.id ? {
+      userId: user.id as Id<"users">,
+      userType: "brand" as const
+    } : "skip"
+  )
+  
+  // Fetch rental statistics with percentage changes
+  const rentalStats = useQuery(
+    api.rentalRequests.getRentalStatsWithChanges,
+    user?.id ? {
+      userId: user.id as Id<"users">,
+      userType: "brand" as const,
+      period: "monthly" as const
+    } : "skip"
+  )
+  
+  // Get active rentals (max 3 for display)
+  const activeRentals = rentalRequests?.filter(r => r.status === "active").slice(0, 3) || []
+  
+  // Format currency helper
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat('en-SA', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
+  }
 
   return (
     <div className="space-y-6">
@@ -48,102 +98,136 @@ export default function BrandDashboardPage() {
         </Alert>
       )}
 
-      {/* Welcome Section - Integrated with Stats */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">{t("brand.dashboard.welcome_to_shelfy")}</h2>
-              <p className="text-muted-foreground">
-                {t("brand.dashboard.monitor_description")}
-              </p>
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button 
-                      className="gap-2"
-                      disabled={!isBrandDataComplete}
-                    >
-                      {!isBrandDataComplete && <Lock className="h-4 w-4" />}
-                      {isBrandDataComplete && <Plus className="h-4 w-4" />}
-                      {t("brand.dashboard.rent_new_shelf")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!isBrandDataComplete && (
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+      {/* Welcome Section Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-2">{t("brand.dashboard.welcome_to_shelfy")}</h2>
+          <p className="text-muted-foreground">
+            {t("brand.dashboard.monitor_description")}
+          </p>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  className="gap-2"
+                  disabled={!isBrandDataComplete}
+                  onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
+                >
+                  {!isBrandDataComplete && <Lock className="h-4 w-4" />}
+                  {isBrandDataComplete && <Plus className="h-4 w-4" />}
+                  {t("brand.dashboard.rent_new_shelf")}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!isBrandDataComplete && (
+              <TooltipContent>
+                <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
-          {/* Stats Section - Integrated within same card */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">{t("brand.dashboard.displayed_products_count")}</span>
-                <Package className="h-4 w-4 text-muted-foreground" />
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {t("brand.dashboard.rented_shelves_count")}
+                </p>
+                <div className="text-3xl font-bold">
+                  {activeRentals.length}
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  {rentalStats?.activeChange !== undefined && rentalStats.activeChange !== 0 ? (
+                    <>
+                      {rentalStats.activeChange > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-600" />
+                      )}
+                      <span className={`text-xs font-medium ${rentalStats.activeChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {rentalStats.activeChange > 0 ? '+' : ''}{rentalStats.activeChange.toFixed(1)}% {t("time.from")} {t("time.last_month")}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      0.0% {t("time.from")} {t("time.last_month")}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">{t("brand.dashboard.increase_from_last_month")}</p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">{t("brand.dashboard.total_sales")}</span>
-                <BarChart className="h-4 w-4 text-muted-foreground" />
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Store className="h-6 w-6 text-primary" />
               </div>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">{t("brand.dashboard.increase_from_last_month")}</p>
             </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">{t("brand.dashboard.rented_shelves_count")}</span>
-                <Store className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {t("brand.dashboard.pending_requests")}
+                </p>
+                <div className="text-3xl font-bold">
+                  {language === "ar" 
+                    ? `${formatPrice(0)} ${t("common.currency")}`
+                    : `${t("common.currency")} ${formatPrice(0)}`
+                  }
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    0.0% {t("time.from")} {t("time.last_month")}
+                  </span>
+                </div>
               </div>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">{t("brand.dashboard.increase_from_last_month")}</p>
+              <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {t("brand.dashboard.total_requests")}
+                </p>
+                <div className="text-3xl font-bold">
+                  0
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    0.0% {t("time.from")} {t("time.last_month")}
+                  </span>
+                </div>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Package className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Empty States */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>{t("brand.dashboard.sales")}</CardTitle>
-            {isBrandDataComplete ? (
-              <Link href="#" className="text-sm text-primary">
-                {t("brand.dashboard.see_more")}
-              </Link>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
-                      {t("brand.dashboard.see_more")}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-64">
-            <Image
-              src="/placeholder.svg?height=100&width=100"
-              alt="Empty state"
-              width={100}
-              height={100}
-              className="mb-4"
-            />
+            <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+              <TrendingUp className="h-10 w-10 text-muted-foreground/50" />
+            </div>
             <p className="text-muted-foreground">{t("brand.dashboard.no_sales_yet")}</p>
           </CardContent>
         </Card>
@@ -151,7 +235,7 @@ export default function BrandDashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t("brand.dashboard.your_rented_shelves")}</CardTitle>
             {isBrandDataComplete ? (
-              <Link href="#" className="text-sm text-primary">
+              <Link href="/brand-dashboard/shelves" className="text-sm text-primary">
                 {t("brand.dashboard.see_more")}
               </Link>
             ) : (
@@ -170,37 +254,84 @@ export default function BrandDashboardPage() {
               </TooltipProvider>
             )}
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center text-center h-64">
-            <Image
-              src="/placeholder.svg?height=100&width=100"
-              alt="Empty state"
-              width={100}
-              height={100}
-              className="mb-4"
-            />
-            <p className="text-muted-foreground mb-2">{t("brand.dashboard.no_shelves_currently")}</p>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button 
-                      variant={!isBrandDataComplete ? "outline" : "link"} 
-                      className={!isBrandDataComplete ? "gap-1" : "text-primary gap-1"}
-                      disabled={!isBrandDataComplete}
-                    >
-                      {!isBrandDataComplete && <Lock className="h-4 w-4" />}
-                      {isBrandDataComplete && <Plus className="h-4 w-4" />}
-                      {t("brand.dashboard.add_new_shelf")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!isBrandDataComplete && (
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
+          <CardContent>
+            {activeRentals.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-start">{t("table.city")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
+                      <TableHead className="text-start">{t("table.operations_count")}</TableHead>
+                      <TableHead className="text-start">{t("table.rental_price")}</TableHead>
+                      <TableHead className="text-start">{t("table.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeRentals.map((rental, index) => (
+                      <TableRow key={rental._id} className="h-[52px]">
+                        <TableCell className="font-medium">
+                          {rental.shelfCity || rental.city || t("common.riyadh")}
+                        </TableCell>
+                        <TableCell>{rental.shelfName || "-"}</TableCell>
+                        <TableCell>{rental.shelfBranch || "-"}</TableCell>
+                        <TableCell>
+                          {language === "ar" ? `${formatPrice(5)} منتجات` : `${formatPrice(5)} products`}
+                        </TableCell>
+                        <TableCell>
+                          {language === "ar" 
+                            ? `${formatPrice(rental.monthlyPrice || rental.shelfPrice || 0)} ${t("common.currency")}`
+                            : `${t("common.currency")} ${formatPrice(rental.monthlyPrice || rental.shelfPrice || 0)}`
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                            {t("status.active")}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {/* Add empty rows to maintain 3 rows */}
+                    {activeRentals.length < 3 && Array.from({ length: 3 - activeRentals.length }).map((_, index) => (
+                      <TableRow key={`empty-${index}`} className="h-[52px]">
+                        <TableCell colSpan={6}>&nbsp;</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-8">
+                <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+                  <Layers className="h-10 w-10 text-muted-foreground/50" />
+                </div>
+                <p className="text-muted-foreground mb-2">{t("brand.dashboard.no_shelves_currently")}</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button 
+                          variant={!isBrandDataComplete ? "outline" : "link"} 
+                          className={!isBrandDataComplete ? "gap-1" : "text-primary gap-1"}
+                          disabled={!isBrandDataComplete}
+                          onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
+                        >
+                          {!isBrandDataComplete && <Lock className="h-4 w-4" />}
+                          {isBrandDataComplete && <Plus className="h-4 w-4" />}
+                          {t("brand.dashboard.add_new_shelf")}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!isBrandDataComplete && (
+                      <TooltipContent>
+                        <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -210,7 +341,7 @@ export default function BrandDashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("brand.dashboard.latest_sales_operations")}</CardTitle>
           {isBrandDataComplete ? (
-            <Link href="#" className="text-sm text-primary">
+            <Link href="/brand-dashboard/sales" className="text-sm text-primary">
               {t("brand.dashboard.see_more")}
             </Link>
           ) : (
@@ -230,13 +361,9 @@ export default function BrandDashboardPage() {
           )}
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center text-center h-64">
-          <Image
-            src="/placeholder.svg?height=100&width=100"
-            alt="Empty state"
-            width={100}
-            height={100}
-            className="mb-4"
-          />
+          <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+            <ShoppingCart className="h-10 w-10 text-muted-foreground/50" />
+          </div>
           <p className="text-muted-foreground">{t("brand.dashboard.no_sales_operations")}</p>
         </CardContent>
       </Card>

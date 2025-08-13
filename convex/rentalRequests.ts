@@ -455,3 +455,89 @@ export const getActiveRentalRequest = query({
     return activeRequest || null
   },
 })
+
+// Get rental statistics with percentage changes
+export const getRentalStatsWithChanges = query({
+  args: {
+    userId: v.id("users"),
+    userType: v.union(v.literal("brand"), v.literal("store")),
+    period: v.union(v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+  },
+  handler: async (ctx, args) => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+    const currentWeek = Math.floor(now.getDate() / 7)
+
+    // Define period boundaries
+    let currentPeriodStart: Date
+    let previousPeriodStart: Date
+    let previousPeriodEnd: Date
+
+    switch (args.period) {
+      case "weekly":
+        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+        previousPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14)
+        previousPeriodEnd = currentPeriodStart
+        break
+      case "monthly":
+        currentPeriodStart = new Date(currentYear, currentMonth, 1)
+        previousPeriodStart = new Date(currentYear, currentMonth - 1, 1)
+        previousPeriodEnd = currentPeriodStart
+        break
+      case "yearly":
+        currentPeriodStart = new Date(currentYear, 0, 1)
+        previousPeriodStart = new Date(currentYear - 1, 0, 1)
+        previousPeriodEnd = currentPeriodStart
+        break
+    }
+
+    // Get all requests for the user
+    const allRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex(args.userType === "brand" ? "by_brand_owner" : "by_store_owner")
+      .filter((q) => 
+        q.eq(
+          q.field(args.userType === "brand" ? "brandOwnerId" : "storeOwnerId"),
+          args.userId
+        )
+      )
+      .collect()
+
+    // Filter requests by period
+    const currentRequests = allRequests.filter(r => {
+      const createdAt = new Date(r.createdAt || r._creationTime)
+      return createdAt >= currentPeriodStart && createdAt <= now
+    })
+
+    const previousRequests = allRequests.filter(r => {
+      const createdAt = new Date(r.createdAt || r._creationTime)
+      return createdAt >= previousPeriodStart && createdAt < previousPeriodEnd
+    })
+
+    // Calculate current stats
+    const currentActive = currentRequests.filter(r => r.status === "active").length
+    const currentPending = currentRequests.filter(r => r.status === "pending").length
+    const currentTotal = currentRequests.length
+
+    // Calculate previous stats
+    const previousActive = previousRequests.filter(r => r.status === "active").length
+    const previousPending = previousRequests.filter(r => r.status === "pending").length
+    const previousTotal = previousRequests.length
+
+    // Calculate percentage changes
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return ((current - previous) / previous) * 100
+    }
+
+    return {
+      active: currentActive,
+      pending: currentPending,
+      total: currentTotal,
+      activeChange: calculateChange(currentActive, previousActive),
+      pendingChange: calculateChange(currentPending, previousPending),
+      totalChange: calculateChange(currentTotal, previousTotal),
+    }
+  },
+})
