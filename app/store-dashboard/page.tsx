@@ -3,9 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Users, BarChart, Send, PlusCircle, AlertTriangle, ArrowRight, Package, Edit2 } from "lucide-react"
+import { Store, TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Edit2, Inbox, Layout, Check, X, Eye, Star } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { useLanguage } from "@/contexts/localization-context"
 import { useRouter } from "next/navigation"
 import { useStoreData } from "@/contexts/store-data-context"
@@ -17,9 +16,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
+import { formatDate, formatDuration } from "@/lib/formatters"
 
 export default function StoreDashboardPage() {
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
   const router = useRouter()
   const { user } = useCurrentUser()
   
@@ -36,8 +36,20 @@ export default function StoreDashboardPage() {
     user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
   )
   
+  // Fetch rental requests for the store owner
+  const rentalRequests = useQuery(
+    api.rentalRequests.getUserRentalRequests,
+    user?.id ? {
+      userId: user.id as Id<"users">,
+      userType: "store" as const
+    } : "skip"
+  )
+  
   // Get recent shelves (max 3)
   const recentShelves = shelves?.slice(0, 3) || []
+  
+  // Get recent rental requests (max 3)
+  const recentRequests = rentalRequests?.slice(0, 3) || []
   
   // Loading state
   const isLoading = storeLoading || !shelves || !shelfStats
@@ -81,13 +93,18 @@ export default function StoreDashboardPage() {
         </Alert>
       )}
 
-      {/* Stats Section - Unified Card Design */}
+      {/* Statistics Section - Same as Shelves Page */}
       <Card>
         <CardContent className="p-6">
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold mb-2">{t("dashboard.manage_store_starts_here")}</h2>
-              <p className="text-muted-foreground">{t("dashboard.monitor_performance_description")}</p>
+              <h2 className="text-xl font-semibold">
+                {t("dashboard.manage_store_starts_here")}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("dashboard.monitor_performance_description")}
+              </p>
             </div>
             <Button 
               className="gap-1" 
@@ -100,33 +117,84 @@ export default function StoreDashboardPage() {
             </Button>
           </div>
 
+          {/* Statistics Cards Grid */}
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="text-sm font-medium">{t("dashboard.currently_rented_brands")}</h3>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</div>
-              <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
-            </div>
+            {/* Rented Shelves Card */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {t("dashboard.currently_rented_brands")}
+                    </p>
+                    <p className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        0.0% {t("time.from")} {t("time.last_month")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="text-sm font-medium">{t("dashboard.total_sales")}</h3>
-                <BarChart className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-bold">{formatCurrency(shelfStats?.totalRevenue || 0)}</div>
-              <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
-            </div>
+            {/* Revenue Card */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {t("dashboard.total_sales")}
+                    </p>
+                    <p className="text-2xl font-bold text-primary">
+                      {formatCurrency(shelfStats?.totalRevenue || 0)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        0.0% {t("time.from")} {t("time.last_month")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="text-sm font-medium">{t("dashboard.incoming_orders")}</h3>
-                <Send className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-bold">{shelfStats?.availableShelves || 0}</div>
-              <p className="text-xs text-muted-foreground">{t("dashboard.increase_from_last_month")}</p>
-            </div>
+            {/* Incoming Orders Card */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {t("dashboard.incoming_orders")}
+                    </p>
+                    <p className="text-2xl font-bold">{rentalRequests?.filter(r => r.status === "pending").length || 0}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {rentalRequests?.filter(r => r.status === "pending").length > 0 ? (
+                        <>
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs font-medium text-green-600">
+                            +100.0% {t("time.from")} {t("time.last_month")}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          0.0% {t("time.from")} {t("time.last_month")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ShoppingBag className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
@@ -144,15 +212,136 @@ export default function StoreDashboardPage() {
               {t("dashboard.see_more")}
             </Link>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center text-center h-64">
-            <Image
-              src="/empty_orders.svg"
-              alt="Empty orders"
-              width={100}
-              height={100}
-              className="mb-4"
-            />
-            <p className="text-muted-foreground">{t("dashboard.no_rental_requests")}</p>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-start">{t("table.store")}</TableHead>
+                      <TableHead className="text-start">{t("table.branch")}</TableHead>
+                      <TableHead className="text-start">{t("table.rental_duration")}</TableHead>
+                      <TableHead className="text-start">{t("table.status")}</TableHead>
+                      <TableHead className="text-start">{t("table.request_date")}</TableHead>
+                      <TableHead className="text-start">{t("table.rating")}</TableHead>
+                      <TableHead className="text-start">{t("table.options")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading || !rentalRequests ? (
+                      // Show 3 skeleton rows while loading
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={`skeleton-request-${index}`} className="h-[72px]">
+                          <TableCell colSpan={7} className="text-center">
+                            <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : recentRequests.length === 0 ? (
+                      // Show empty state with 3 rows
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={`empty-request-${index}`} className="h-[72px]">
+                          {index === 1 ? (
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              <div className="flex items-center justify-center gap-2">
+                                <Inbox className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-sm">{t("dashboard.no_rental_requests")}</span>
+                              </div>
+                            </TableCell>
+                          ) : (
+                            <TableCell colSpan={7}>&nbsp;</TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <>
+                        {/* Show actual rental requests (max 3) */}
+                        {recentRequests.map((request: any) => (
+                          <TableRow key={request._id} className="h-[72px]">
+                            <TableCell className="font-medium">
+                              {request.otherUserName}
+                            </TableCell>
+                            <TableCell>{request.shelfBranch || "-"}</TableCell>
+                            <TableCell>
+                              {request.startDate && request.endDate 
+                                ? formatDuration(request.startDate, request.endDate, language)
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  request.status === "active" || request.status === "approved" ? "default" :
+                                  request.status === "rejected" ? "destructive" :
+                                  request.status === "pending" ? "outline" :
+                                  "secondary"
+                                }
+                              >
+                                {request.status === "approved" 
+                                  ? t("status.active")
+                                  : t(`status.${request.status}`)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {request.createdAt 
+                                ? formatDate(request.createdAt, language)
+                                : formatDate(new Date(request._creationTime), language)}
+                            </TableCell>
+                            <TableCell>
+                              {request.status === "approved" && request.rating ? (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-sm">{request.rating}/5</span>
+                                </div>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {request.status === "pending" && (
+                                  <>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8"
+                                      onClick={() => {/* Handle approve */}}
+                                    >
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8"
+                                      onClick={() => {/* Handle reject */}}
+                                    >
+                                      <X className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => router.push("/store-dashboard/orders")}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {/* Fill remaining rows to always show 3 total */}
+                        {recentRequests.length < 3 && Array.from({ length: 3 - recentRequests.length }).map((_, index) => (
+                          <TableRow key={`empty-row-request-${index}`} className="h-[72px]">
+                            <TableCell colSpan={7}>&nbsp;</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </CardContent>
         </Card>
         
@@ -168,89 +357,125 @@ export default function StoreDashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center text-center h-64">
-                <p className="text-muted-foreground">{t("common.loading")}...</p>
-              </div>
-            ) : recentShelves.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center h-64">
-                <Image
-                  src="/empty_shelves.svg"
-                  alt="Empty shelves"
-                  width={100}
-                  height={100}
-                  className="mb-4"
-                />
-                <p className="text-muted-foreground mb-2">{t("dashboard.no_shelves_displayed")}</p>
-                <Button 
-                  variant="link" 
-                  className="text-primary gap-1"
-                  disabled={isLoading || !isStoreDataComplete}
-                  title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
-                  onClick={() => router.push("/store-dashboard/shelves/new")}
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  {t("dashboard.display_shelf_now")}
-                </Button>
-              </div>
-            ) : (
+            <div className="border rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("shelves.table.shelf_name")}</TableHead>
-                      <TableHead>{t("shelves.table.branch_name")}</TableHead>
-                      <TableHead>{t("shelves.table.price")}</TableHead>
-                      <TableHead>{t("shelves.table.status")}</TableHead>
-                      <TableHead>{t("shelves.table.action")}</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.price")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.next_collection")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.action")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentShelves.map((shelf: any) => (
-                      <TableRow key={shelf._id}>
-                        <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                        <TableCell>{shelf.branch}</TableCell>
-                        <TableCell>
-                          {formatCurrency(shelf.monthlyPrice || 0)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={
-                              shelf.status === "rented" 
-                                ? "default"
-                                : shelf.status === "approved" && shelf.isAvailable
-                                ? "secondary"
-                                : shelf.status === "pending"
-                                ? "outline"
-                                : "secondary"
-                            }
-                          >
-                            {shelf.status === "rented" 
-                              ? t("shelves.status.rented")
-                              : shelf.status === "approved" && shelf.isAvailable
-                              ? t("shelves.status.available")
-                              : shelf.status === "pending"
-                              ? t("shelves.status.pending")
-                              : t("shelves.status.unavailable")
-                            }
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {isLoading ? (
+                      // Show 3 skeleton rows while loading
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={`skeleton-${index}`} className="h-[72px]">
+                          <TableCell colSpan={7} className="text-center">
+                            <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : recentShelves.length === 0 ? (
+                      // Show empty state with 3 rows
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={`empty-shelf-${index}`} className="h-[72px]">
+                          {index === 1 ? (
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              <div className="flex items-center justify-center gap-3">
+                                <Layout className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-sm">{t("dashboard.no_shelves_displayed")}</span>
+                                <Button 
+                                  variant="link" 
+                                  size="sm"
+                                  className="text-primary gap-1 h-auto p-0"
+                                  disabled={isLoading || !isStoreDataComplete}
+                                  title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
+                                  onClick={() => router.push("/store-dashboard/shelves/new")}
+                                >
+                                  <PlusCircle className="h-4 w-4" />
+                                  <span className="text-sm">{t("dashboard.display_shelf_now")}</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          ) : (
+                            <TableCell colSpan={7}>&nbsp;</TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <>
+                        {/* Show actual shelves (max 3) */}
+                        {recentShelves.slice(0, 3).map((shelf: any) => (
+                          <TableRow key={shelf._id} className="h-[72px]">
+                            <TableCell className="font-medium">{shelf.shelfName}</TableCell>
+                            <TableCell>{shelf.branch}</TableCell>
+                            <TableCell>
+                              {shelf.status === "rented" && shelf.renterName ? 
+                                shelf.renterName : 
+                                "-"
+                              }
+                            </TableCell>
+                            <TableCell>
+                              {formatCurrency(shelf.monthlyPrice || 0)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  shelf.status === "rented" 
+                                    ? "default"
+                                    : shelf.status === "approved" && shelf.isAvailable
+                                    ? "secondary"
+                                    : shelf.status === "pending"
+                                    ? "outline"
+                                    : "secondary"
+                                }
+                              >
+                                {shelf.status === "rented" 
+                                  ? t("shelves.status.rented")
+                                  : shelf.status === "approved" && shelf.isAvailable
+                                  ? t("shelves.status.available")
+                                  : shelf.status === "pending"
+                                  ? t("shelves.status.pending")
+                                  : t("shelves.status.unavailable")
+                                }
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {shelf.status === "rented" && shelf.nextCollectionDate ? 
+                                format(new Date(shelf.nextCollectionDate), "dd/MM/yyyy", { locale: language === "ar" ? ar : enUS }) : 
+                                "-"
+                              }
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {/* Fill remaining rows to always show 3 total */}
+                        {recentShelves.length < 3 && Array.from({ length: 3 - recentShelves.length }).map((_, index) => (
+                          <TableRow key={`empty-row-${index}`} className="h-[72px]">
+                            <TableCell colSpan={7}>&nbsp;</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
                   </TableBody>
                 </Table>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
