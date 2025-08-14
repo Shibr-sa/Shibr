@@ -60,7 +60,7 @@ export default function BrandShelvesPage() {
     userId ? {
       userId: userId,
       userType: "brand" as const,
-      period: selectedPeriod === "daily" ? "weekly" : selectedPeriod as "weekly" | "monthly" | "yearly"
+      period: selectedPeriod as "daily" | "weekly" | "monthly" | "yearly"
     } : "skip"
   )
 
@@ -276,12 +276,12 @@ export default function BrandShelvesPage() {
                           <TrendingDown className="h-3 w-3 text-red-600" />
                         )}
                         <span className={`text-xs font-medium ${rentalStats.activeChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {rentalStats.activeChange > 0 ? '+' : ''}{rentalStats.activeChange.toFixed(1)}% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                          {rentalStats.activeChange > 0 ? '+' : ''}{rentalStats.activeChange.toFixed(1)}% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
                         </span>
                       </>
                     ) : (
                       <span className="text-xs text-muted-foreground">
-                        0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                        0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
                       </span>
                     )}
                   </div>
@@ -304,7 +304,7 @@ export default function BrandShelvesPage() {
                   </div>
                   <div className="flex items-center gap-1 mt-1">
                     <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
                     </span>
                   </div>
                 </div>
@@ -329,7 +329,7 @@ export default function BrandShelvesPage() {
                   </div>
                   <div className="flex items-center gap-1 mt-1">
                     <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
                     </span>
                   </div>
                 </div>

@@ -298,6 +298,48 @@ const schema = defineSchema({
     maximumDiscountPercentage: v.number(), // Maximum discount percentage allowed
     updatedAt: v.string(),
   }),
+  
+  // Products
+  products: defineTable({
+    // Owner information
+    ownerId: v.id("users"),
+    
+    // Product information
+    name: v.string(),
+    code: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    
+    // Pricing
+    price: v.number(),
+    cost: v.optional(v.number()),
+    currency: v.string(),
+    
+    // Inventory
+    quantity: v.number(),
+    minQuantity: v.optional(v.number()),
+    sku: v.optional(v.string()),
+    
+    // Images
+    imageId: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    
+    // Tracking
+    totalSales: v.number(),
+    totalRevenue: v.number(),
+    shelfCount: v.number(), // Number of shelves this product is on
+    
+    // Status
+    isActive: v.boolean(),
+    
+    // Timestamps
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_code", ["code"])
+    .index("by_active", ["isActive"])
+    .index("by_created", ["createdAt"]),
 })
 
 export default schema

@@ -1112,6 +1112,7 @@ const translations = {
 
     // Time References
     "time.yesterday": "الأمس",
+    "time.last_day": "الأمس",
     "time.last_week": "الأسبوع الماضي",
     "time.last_month": "الشهر الماضي",
     "time.last_year": "السنة الماضية",
@@ -1137,11 +1138,11 @@ const translations = {
     "brand.awaiting_approval": "بانتظار الموافقة",
     "brand.total_requests": "إجمالي الطلبات",
     "brand.all_requests": "كل الطلبات",
-    "brand.current_shelves": "الرفوف الحالية",
+    "brand.current_shelves": "إدارة رفوفك داخل المحلات",
     "brand.no_matching_shelves": "لا توجد رفوف مطابقة",
     "brand.no_shelves_yet": "لا توجد رفوف حالياً",
     "brand.rent_first_shelf": "استأجر رفك الأول",
-    "brand.current_shelves_description": "عرض وإدارة جميع الرفوف المستأجرة حالياً",
+    "brand.current_shelves_description": "تابع جميع المساحات اللي حجزتها داخل المحلات الواقعية، أضف منتجاتك، حمّل أكواد QR، وتأكد إن عرضك على الأرض شغال بكفاءة.",
 
     // Table Headers
     "table.store": "المتجر",
@@ -2316,6 +2317,7 @@ const translations = {
 
     // Time References
     "time.yesterday": "yesterday",
+    "time.last_day": "yesterday",
     "time.last_week": "last week",
     "time.last_month": "last month",
     "time.last_year": "last year",
@@ -2341,11 +2343,11 @@ const translations = {
     "brand.awaiting_approval": "Awaiting approval",
     "brand.total_requests": "Total Requests",
     "brand.all_requests": "All requests",
-    "brand.current_shelves": "Current Shelves",
+    "brand.current_shelves": "Manage Your In-Store Shelves",
     "brand.no_matching_shelves": "No matching shelves",
     "brand.no_shelves_yet": "No shelves yet",
     "brand.rent_first_shelf": "Rent your first shelf",
-    "brand.current_shelves_description": "View and manage all your currently rented shelves",
+    "brand.current_shelves_description": "Track all your booked spaces in physical stores, add your products, download QR codes, and ensure your on-ground display is running efficiently.",
 
     // Table Headers
     "table.store": "Store",

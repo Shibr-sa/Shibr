@@ -455,7 +455,7 @@ export const getRentalStatsWithChanges = query({
   args: {
     userId: v.id("users"),
     userType: v.union(v.literal("brand"), v.literal("store")),
-    period: v.union(v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
     const now = new Date()
@@ -469,6 +469,13 @@ export const getRentalStatsWithChanges = query({
     let previousPeriodEnd: Date
 
     switch (args.period) {
+      case "daily":
+        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+        previousPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodEnd = currentPeriodStart
+        break
       case "weekly":
         currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
         previousPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14)
