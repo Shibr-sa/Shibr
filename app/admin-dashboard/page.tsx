@@ -93,7 +93,7 @@ export default function AdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("dashboard.total_users")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.total_users")}</CardTitle>
             <Users className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("dashboard.shelves_count")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.shelves_count")}</CardTitle>
             <Package className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("dashboard.total_revenue")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.total_revenue")}</CardTitle>
             <DollarSign className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("dashboard.rental_requests")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.rental_requests")}</CardTitle>
             <FileText className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>{t("dashboard.revenue_rate")}</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t("dashboard.revenue_rate")}</CardTitle>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-purple-600">
                   {t("dashboard.yearly")}
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>{t("dashboard.top_selling_products")}</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t("dashboard.top_selling_products")}</CardTitle>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-purple-600">
                   {t("dashboard.yearly")}
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>{t("dashboard.stores_management")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.stores_management")}</CardTitle>
             <Button variant="ghost" size="sm">
               {t("dashboard.see_more")} ←
             </Button>

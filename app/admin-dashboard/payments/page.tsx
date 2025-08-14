@@ -183,7 +183,7 @@ export default function PaymentsPage() {
       {/* Payments Table */}
       <Card>
         <CardHeader>
-          <CardTitle>جميع المعاملات</CardTitle>
+          <CardTitle className="text-xl font-semibold">جميع المعاملات</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

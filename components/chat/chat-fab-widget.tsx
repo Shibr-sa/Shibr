@@ -188,7 +188,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
                 </Button>
               )}
               <CardTitle className={cn(
-                "text-lg",
+                "text-xl font-semibold",
                               )}>
                 {showConversationsList 
                   ? t("chat.conversations")

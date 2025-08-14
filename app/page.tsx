@@ -150,7 +150,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Store className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.smart_service")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.smart_service")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.smart_service_desc")}</p>
@@ -162,7 +162,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Zap className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.fast_service")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.fast_service")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.fast_service_desc")}</p>
@@ -174,7 +174,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Users className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.integrated_service")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.integrated_service")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.integrated_service_desc")}</p>
@@ -188,7 +188,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Building2 className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.centers.premium_locations")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.centers.premium_locations")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.centers.premium_locations_desc")}</p>
@@ -200,7 +200,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <ShoppingBag className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.centers.high_traffic")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.centers.high_traffic")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.centers.high_traffic_desc")}</p>
@@ -212,7 +212,7 @@ export default function ShibrLandingPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Target className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-center">{t("shelfy.centers.targeted_audience")}</CardTitle>
+                    <CardTitle className="text-xl font-semibold text-center">{t("shelfy.centers.targeted_audience")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-center">{t("shelfy.centers.targeted_audience_desc")}</p>

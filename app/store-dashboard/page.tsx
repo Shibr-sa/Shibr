@@ -248,7 +248,7 @@ export default function StoreDashboardPage() {
       <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{t("dashboard.new_rental_requests")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.new_rental_requests")}</CardTitle>
             <Link 
               href="/store-dashboard/orders" 
               className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}
@@ -373,7 +373,7 @@ export default function StoreDashboardPage() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{t("dashboard.your_shelves")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("dashboard.your_shelves")}</CardTitle>
             <Link 
               href="/store-dashboard/shelves" 
               className={`text-sm ${!isLoading && isStoreDataComplete ? 'text-primary' : 'text-muted-foreground pointer-events-none'}`}

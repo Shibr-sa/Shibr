@@ -132,7 +132,7 @@ export default function ShelfDetailsPage() {
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Package2 className="h-5 w-5 text-primary" />
                 </div>
-                <CardTitle className="text-lg">{formattedData.name}</CardTitle>
+                <CardTitle className="text-xl font-semibold">{formattedData.name}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 <Badge 
@@ -331,7 +331,7 @@ export default function ShelfDetailsPage() {
         {/* Renter Details - Full Width */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-base">{t("shelf_details.seller_details")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("shelf_details.seller_details")}</CardTitle>
             <Button 
               size="sm"
               className="gap-2"
@@ -381,7 +381,7 @@ export default function ShelfDetailsPage() {
         {/* Products Sold Table - Full Width */}
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">{t("shelf_details.sold_products")}</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t("shelf_details.sold_products")}</CardTitle>
               <input
                 type="search"
                 placeholder={t("shelf_details.search_product")}
@@ -439,7 +439,7 @@ export default function ShelfDetailsPage() {
           {/* Payment Records */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{t("shelf_details.payment_records")}</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t("shelf_details.payment_records")}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -474,7 +474,7 @@ export default function ShelfDetailsPage() {
           {/* Previous Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{t("shelf_details.previous_information")}</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t("shelf_details.previous_information")}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>

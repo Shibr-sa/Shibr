@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Package, TrendingUp, Lock, QrCode, Search, Eye, MessageSquare } from "lucide-react"
+import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, ChevronLeft, ChevronRight } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -26,6 +26,9 @@ export default function BrandShelvesPage() {
   const router = useRouter()
   const { user } = useCurrentUser()
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   // Get user ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -39,6 +42,16 @@ export default function BrandShelvesPage() {
     } : "skip"
   )
 
+  // Fetch rental statistics with percentage changes based on selected period
+  const rentalStats = useQuery(
+    api.rentalRequests.getRentalStatsWithChanges,
+    userId ? {
+      userId: userId,
+      userType: "brand" as const,
+      period: selectedPeriod === "daily" ? "weekly" : selectedPeriod as "weekly" | "monthly" | "yearly"
+    } : "skip"
+  )
+
   // Filter rental requests based on search
   const filteredRequests = rentalRequests?.filter(request => {
     const matchesSearch = !searchQuery || 
@@ -46,6 +59,12 @@ export default function BrandShelvesPage() {
       request.shelfName?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSearch
   }) || []
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedRequests = filteredRequests.slice(startIndex, endIndex)
 
   // Calculate statistics from all requests (not filtered)
   const allRequests = rentalRequests || []
@@ -87,262 +106,368 @@ export default function BrandShelvesPage() {
 
   return (
     <div className="w-full space-y-6 overflow-hidden">
-      {/* Statistics Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{t("brand.current_shelves_count")}</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mb-1" />
-                ) : (
-                  <p className="text-xl sm:text-2xl font-bold">{activeRentals}</p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {t("brand.active_shelves")}
-                </p>
-              </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+      {/* Statistics Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl font-semibold">{t("brand.shelves.stats_overview")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("brand.shelves.stats_description")}
+              </p>
+            </div>
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={selectedPeriod === "daily" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setSelectedPeriod("daily")}
+              >
+                {t("time.daily")}
+              </Button>
+              <Button
+                variant={selectedPeriod === "weekly" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setSelectedPeriod("weekly")}
+              >
+                {t("time.weekly")}
+              </Button>
+              <Button
+                variant={selectedPeriod === "monthly" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setSelectedPeriod("monthly")}
+              >
+                {t("time.monthly")}
+              </Button>
+              <Button
+                variant={selectedPeriod === "yearly" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setSelectedPeriod("yearly")}
+              >
+                {t("time.yearly")}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Rented Shelves Count Card */}
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    {t("brand.shelves.rented_count")}
+                  </p>
+                  <div className="text-3xl font-bold">
+                    {rentalStats?.active ?? activeRentals}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    {rentalStats?.activeChange !== undefined && rentalStats.activeChange !== 0 ? (
+                      <>
+                        {rentalStats.activeChange > 0 ? (
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-red-600" />
+                        )}
+                        <span className={`text-xs font-medium ${rentalStats.activeChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {rentalStats.activeChange > 0 ? '+' : ''}{rentalStats.activeChange.toFixed(1)}% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Store className="h-6 w-6 text-primary" />
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
-                  {t("brand.pending_requests")}
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mb-1" />
-                ) : (
-                  <p className="text-xl sm:text-2xl font-bold">{pendingRentals}</p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {t("brand.awaiting_approval")}
-                </p>
-              </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
-                <QrCode className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
+            {/* QR Code Scans Card */}
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    {t("brand.shelves.qr_scans")}
+                  </p>
+                  <div className="text-3xl font-bold">
+                    0
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-xs text-muted-foreground">
+                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <QrCode className="h-6 w-6 text-primary" />
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
-                  {t("brand.total_requests")}
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mb-1" />
-                ) : (
-                  <p className="text-xl sm:text-2xl font-bold">{totalRentals}</p>
-                )}
-                <p className="text-xs text-green-600 mt-1 flex items-center gap-1 truncate">
-                  <TrendingUp className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{t("brand.all_requests")}</span>
-                </p>
-              </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+            {/* Total Sales Card */}
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    {t("brand.shelves.total_sales")}
+                  </p>
+                  <div className="text-3xl font-bold text-primary">
+                    {language === "ar" 
+                      ? `0 ${t("common.currency")}`
+                      : `${t("common.currency")} 0`
+                    }
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-xs text-muted-foreground">
+                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "week" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Banknote className="h-6 w-6 text-primary" />
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Current Shelves Section */}
       <Card className="w-full overflow-hidden">
-        <CardContent className="p-4 sm:p-6">
-          {/* Title and Search Section */}
-          <div className="mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">
-              {t("brand.current_shelves")}
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              {t("brand.current_shelves_description")}
-            </p>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4 sm:mb-6">
-            <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t("ui.search_placeholder")}
-                className="ps-10 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+        <CardHeader className="pb-4">
+          <div className="space-y-4">
+            <div>
+              <CardTitle className="text-xl font-semibold">{t("brand.current_shelves")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("brand.current_shelves_description")}
+              </p>
             </div>
-            <div className="sm:ms-auto">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        if (isBrandDataComplete) {
-                          router.push("/brand-dashboard/shelves/marketplace")
-                        }
-                      }}
-                      disabled={!isBrandDataComplete}
-                      className="w-full sm:w-auto"
-                    >
-                      <Plus className="h-4 w-4 me-2" />
-                      <span className="hidden sm:inline">{t("ui.add_shelf")}</span>
-                      <span className="sm:hidden">{t("ui.add")}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {!isBrandDataComplete && (
-                      <div className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
-                        <span>{t("ui.complete_data_first")}</span>
-                      </div>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="h-[300px] sm:h-[420px] overflow-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader className="sticky top-0 bg-background z-10">
-              <TableRow>
-                <TableHead className={cn("min-w-[120px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.store")}
-                </TableHead>
-                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.location")}
-                </TableHead>
-                <TableHead className={cn("min-w-[80px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.count")}
-                </TableHead>
-                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.start")}
-                </TableHead>
-                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.end")}
-                </TableHead>
-                <TableHead className={cn("min-w-[90px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.status")}
-                </TableHead>
-                <TableHead className={cn("min-w-[100px]", direction === "rtl" ? "text-right" : "text-left")}>
-                  {t("table.actions")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                // Loading state
-                Array.from({ length: 3 }).map((_, index) => (
-                  <TableRow key={`skeleton-${index}`}>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                    <TableCell className="text-end">
-                      <Skeleton className="h-8 w-20 ms-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : filteredRequests.length > 0 ? (
-                filteredRequests.map((request) => (
-                  <TableRow key={request._id}>
-                    <TableCell>
-                      <span className="text-sm font-medium">
-                        {request.otherUserName}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {request.shelfName}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {request.productCount || 0}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {format(new Date(request.startDate), "d MMM", {
-                          locale: language === "ar" ? ar : enUS
-                        })}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {format(new Date(request.endDate), "d MMM", {
-                          locale: language === "ar" ? ar : enUS
-                        })}
-                      </span>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(request.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {request.conversationId && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
-                            onClick={() => router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                          onClick={() => router.push(`/brand-dashboard/shelves/${request._id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : null}
-            </TableBody>
-          </Table>
-          {filteredRequests.length === 0 && !isLoading && (
-            <div className="flex items-center justify-center h-[360px]">
-              <div className="text-center">
-                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  {searchQuery 
-                    ? t("brand.no_matching_shelves")
-                    : t("brand.no_shelves_yet")
-                  }
-                </p>
-                {!searchQuery && isBrandDataComplete && (
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
-                  >
-                    <Plus className="h-4 w-4 me-2" />
-                    {t("brand.rent_first_shelf")}
-                  </Button>
-                )}
+            {/* Search and Add Button */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t("ui.search_placeholder")}
+                  className="ps-10 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="sm:ms-auto">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => {
+                          if (isBrandDataComplete) {
+                            router.push("/brand-dashboard/shelves/marketplace")
+                          }
+                        }}
+                        disabled={!isBrandDataComplete}
+                        className="w-full sm:w-auto"
+                      >
+                        <Plus className="h-4 w-4 me-2" />
+                        {t("ui.rent_new_shelf")}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {!isBrandDataComplete && (
+                        <div className="flex items-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          <span>{t("ui.complete_data_first")}</span>
+                        </div>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
-          )}
           </div>
+        </CardHeader>
+        <CardContent className="pt-0 px-4 pb-4 sm:px-6 sm:pb-6">
+          {/* Table */}
+          <div className="space-y-4">
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="min-h-[432px]"> {/* Fixed height for 5 rows + header */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-start">
+                          {t("table.store_name")}
+                        </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.city")}
+                        </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.sales_count")}
+                        </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.rental_start_date")}
+                        </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.rental_end_date")}
+                        </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.status")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        // Loading state - show 5 skeleton rows
+                        Array.from({ length: itemsPerPage }).map((_, index) => (
+                          <TableRow key={`skeleton-${index}`} className="h-[72px]">
+                            <TableCell colSpan={6} className="text-center">
+                              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : paginatedRequests.length > 0 ? (
+                        // Show paginated requests
+                        <>
+                          {paginatedRequests.map((request) => (
+                      <TableRow key={request._id} className="h-[72px]">
+                        <TableCell className="font-medium">
+                          {request.otherUserName || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {request.city || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {request.salesCount !== undefined ? request.salesCount : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {request.startDate 
+                            ? format(new Date(request.startDate), "d MMM yyyy", {
+                                locale: language === "ar" ? ar : enUS
+                              })
+                            : "-"
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {request.endDate
+                            ? format(new Date(request.endDate), "d MMM yyyy", {
+                                locale: language === "ar" ? ar : enUS
+                              })
+                            : "-"
+                          }
+                        </TableCell>
+                        <TableCell>{request.status ? getStatusBadge(request.status) : "-"}</TableCell>
+                      </TableRow>
+                ))}
+                          {/* Fill remaining rows if less than 5 items */}
+                          {paginatedRequests.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedRequests.length }).map((_, index) => (
+                            <TableRow key={`filler-${index}`} className="h-[72px]">
+                              <TableCell colSpan={6}>&nbsp;</TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      ) : (
+                    // Empty state - show 5 empty rows with message in middle
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={`empty-${index}`} className="h-[72px]">
+                        {index === 2 ? (
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Package className="h-8 w-8 text-muted-foreground" />
+                              <span className="text-sm">
+                                {searchQuery 
+                                  ? t("brand.no_matching_shelves")
+                                  : t("brand.no_shelves_yet")
+                                }
+                              </span>
+                              {!searchQuery && isBrandDataComplete && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
+                                >
+                                  <Plus className="h-4 w-4 me-2" />
+                                  {t("brand.rent_first_shelf")}
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        ) : (
+                          <TableCell colSpan={6}>&nbsp;</TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div> {/* end overflow-x-auto */}
+          </div> {/* end min-h-[432px] */}
+        </div> {/* end border rounded-lg */}
+        
+        {/* Pagination Controls */}
+        {filteredRequests.length > itemsPerPage && (
+          <div className="flex items-center justify-between px-2 py-4">
+              <div className="text-sm text-muted-foreground">
+                {language === "ar" 
+                  ? `عرض ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} من ${filteredRequests.length}`
+                  : `Showing ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} of ${filteredRequests.length}`
+                }
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3"
+                >
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180 me-1" />
+                  {t("common.previous")}
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                      page = i + 1;
+                    } else if (currentPage <= 3) {
+                      page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i;
+                    } else {
+                      page = currentPage - 2 + i;
+                    }
+                    return page;
+                  }).map(page => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="h-8 w-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 px-3"
+                >
+                  {t("common.next")}
+                  <ChevronRight className="h-4 w-4 rtl:rotate-180 ms-1" />
+                </Button>
+            </div>
           </div>
+        )}
+      </div> {/* end space-y-4 */}
         </CardContent>
       </Card>
     </div>

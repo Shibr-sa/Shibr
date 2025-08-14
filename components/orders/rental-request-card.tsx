@@ -101,7 +101,7 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
           <div className="flex items-start justify-between">
             <div>
               <CardTitle className={cn(
-                "text-lg",
+                "text-xl font-semibold",
                               )}>
                 {request.brandOwnerName || t("common.unknown")}
               </CardTitle>

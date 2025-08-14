@@ -34,7 +34,7 @@ export default function SettingsPage() {
         <TabsContent value="general" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Settings className="w-5 h-5" />
                 الإعدادات العامة
               </CardTitle>
@@ -84,7 +84,7 @@ export default function SettingsPage() {
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Bell className="w-5 h-5" />
                 إعدادات الإشعارات
               </CardTitle>
@@ -154,7 +154,7 @@ export default function SettingsPage() {
         <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 إعدادات الأمان
               </CardTitle>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
         <TabsContent value="payments" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
                 إعدادات المدفوعات
               </CardTitle>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
         <TabsContent value="users" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 إعدادات المستخدمين
               </CardTitle>

@@ -49,6 +49,9 @@ const translations = {
     "common.next": "التالي",
     "common.previous": "السابق",
     "common.currency": "ريال",
+    "common.small": "صغير",
+    "common.medium": "متوسط",
+    "common.large": "كبير",
     "common.monthly": "شهرياً",
     "common.july": "يوليو",
     "common.june": "يونيو",
@@ -897,6 +900,11 @@ const translations = {
     "brand.dashboard.table.stores_count": "عدد المحلات",
     "brand.dashboard.table.actions": "خيارات",
     "brand.dashboard.manage_shelves_inside_stores": "إدارة رفوفك داخل المحلات",
+    "brand.shelves.stats_overview": "إدارة رفوفك داخل المحلات",
+    "brand.shelves.stats_description": "تابع جميع المساحات اللي حجزتها داخل المحلات الواقعية",
+    "brand.shelves.total_sales": "إجمالي المبيعات",
+    "brand.shelves.qr_scans": "عدد مسحات QR الإجمالية",
+    "brand.shelves.rented_count": "عدد الرفوف المؤجرة حاليًا",
     "brand.dashboard.table.store_name": "اسم المحل",
     "brand.dashboard.table.city": "المدينة",
     "brand.dashboard.table.operations_count": "عدد العمليات",
@@ -1080,6 +1088,10 @@ const translations = {
     "time.last_month": "الشهر الماضي",
     "time.last_year": "السنة الماضية",
     "time.from": "من",
+    "time.daily": "يومي",
+    "time.weekly": "أسبوع",
+    "time.monthly": "شهري",
+    "time.yearly": "سنوي",
 
     // Chat
     "chat.conversations": "المحادثات",
@@ -1105,6 +1117,15 @@ const translations = {
 
     // Table Headers
     "table.store": "المتجر",
+    "table.store_name": "اسم المحل",
+    "table.city": "المدينة",
+    "table.sales_count": "عدد المبيعات",
+    "table.rental_start_date": "تاريخ الإيجار",
+    "table.rental_end_date": "تاريخ الانتهاء",
+    "table.product_count": "عدد المنتجات",
+    "table.rental_date": "تاريخ الإيجار",
+    "table.end_date": "تاريخ الانتهاء",
+    "table.shelf_size": "حجم الرفوف",
     "table.location": "الموقع",
     "table.count": "العدد",
     "table.start": "البداية",
@@ -1131,6 +1152,7 @@ const translations = {
 
     // Common UI
     "ui.add_shelf": "إضافة رف",
+    "ui.rent_new_shelf": "استئجار رف جديد",
     "ui.add": "إضافة",
     "ui.complete_data_first": "يرجى إكمال بياناتك أولاً",
     "ui.search_placeholder": "بحث...",
@@ -1198,6 +1220,9 @@ const translations = {
     "common.next": "Next",
     "common.previous": "Previous",
     "common.currency": "SAR",
+    "common.small": "Small",
+    "common.medium": "Medium",
+    "common.large": "Large",
     "common.monthly": "monthly",
     "common.july": "July",
     "common.june": "June",
@@ -2050,6 +2075,11 @@ const translations = {
     "brand.dashboard.table.stores_count": "Stores Count",
     "brand.dashboard.table.actions": "Actions",
     "brand.dashboard.manage_shelves_inside_stores": "Manage your shelves inside stores",
+    "brand.shelves.stats_overview": "Manage your shelves inside stores",
+    "brand.shelves.stats_description": "Track all the spaces you've reserved in physical stores",
+    "brand.shelves.total_sales": "Total Sales",
+    "brand.shelves.qr_scans": "Total QR Code Scans",
+    "brand.shelves.rented_count": "Currently Rented Shelves",
     "brand.dashboard.table.store_name": "Store Name",
     "brand.dashboard.table.city": "City",
     "brand.dashboard.table.operations_count": "Operations Count",
@@ -2233,6 +2263,10 @@ const translations = {
     "time.last_month": "last month",
     "time.last_year": "last year",
     "time.from": "from",
+    "time.daily": "Daily",
+    "time.weekly": "Weekly",
+    "time.monthly": "Monthly",
+    "time.yearly": "Yearly",
 
     // Chat
     "chat.conversations": "Conversations",
@@ -2258,6 +2292,15 @@ const translations = {
 
     // Table Headers
     "table.store": "Store",
+    "table.store_name": "Store Name",
+    "table.city": "City",
+    "table.sales_count": "Sales Count",
+    "table.rental_start_date": "Rental Start Date",
+    "table.rental_end_date": "Rental End Date",
+    "table.product_count": "Product Count",
+    "table.rental_date": "Rental Date",
+    "table.end_date": "End Date",
+    "table.shelf_size": "Shelf Size",
     "table.location": "Location",
     "table.count": "Count",
     "table.start": "Start",
@@ -2281,6 +2324,7 @@ const translations = {
 
     // Common UI
     "ui.add_shelf": "Add Shelf",
+    "ui.rent_new_shelf": "Rent New Shelf",
     "ui.add": "Add",
     "ui.complete_data_first": "Please complete your data first",
     "ui.search_placeholder": "Search...",

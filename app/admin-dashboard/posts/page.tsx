@@ -152,7 +152,7 @@ export default function PostsPage() {
       {/* Posts Table */}
       <Card>
         <CardHeader>
-          <CardTitle>جميع المنشورات</CardTitle>
+          <CardTitle className="text-xl font-semibold">جميع المنشورات</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

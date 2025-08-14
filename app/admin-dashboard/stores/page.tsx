@@ -168,7 +168,7 @@ export default function StoresPage() {
       {/* Stores Table */}
       <Card>
         <CardHeader>
-          <CardTitle>جميع المحلات</CardTitle>
+          <CardTitle className="text-xl font-semibold">جميع المحلات</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

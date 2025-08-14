@@ -266,7 +266,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             <Card>
               <form onSubmit={handleSubmit}>
                 <CardHeader>
-                  <CardTitle className="text-xl">
+                  <CardTitle className="text-xl font-semibold">
                     {t("marketplace.details.send_request_title")}
                   </CardTitle>
                   <p className="text-muted-foreground text-sm">
