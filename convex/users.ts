@@ -107,6 +107,7 @@ export const verifyUser = mutation({
       storeName: user.storeName,
       brandName: user.brandName,
       preferredLanguage: user.preferredLanguage,
+      isAdmin: user.accountType === "admin",
     }
   },
 })

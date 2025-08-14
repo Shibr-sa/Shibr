@@ -1,4 +1,5 @@
 import { mutation } from "./_generated/server"
+import { seedDefaultAdmin } from "./admin"
 
 // Sample coordinates for major Saudi cities
 const cityCoordinates = {
@@ -22,12 +23,71 @@ function addRandomOffset(lat: number, lng: number) {
   }
 }
 
+// Master seed function that seeds all initial data
+export const seedAll = mutation({
+  handler: async (ctx) => {
+    const results = []
+    
+    // Seed admin user first
+    const existingAdmin = await ctx.db
+      .query("users")
+      .withIndex("by_account_type", (q) => q.eq("accountType", "admin"))
+      .first()
+    
+    if (!existingAdmin) {
+      const adminId = await ctx.db.insert("users", {
+        email: "admin@shibr.sa",
+        password: "Admin@123", // CHANGE THIS IN PRODUCTION!
+        fullName: "مدير النظام",
+        phoneNumber: "0500000000",
+        accountType: "admin",
+        isActive: true,
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        preferredLanguage: "ar",
+      })
+      results.push({ type: "admin", message: "Admin user created", email: "admin@shibr.sa" })
+    } else {
+      results.push({ type: "admin", message: "Admin already exists", email: existingAdmin.email })
+    }
+    
+    // Seed platform settings
+    const existingSettings = await ctx.db.query("platformSettings").first()
+    if (!existingSettings) {
+      await ctx.db.insert("platformSettings", {
+        platformFeePercentage: 8,
+        minimumShelfPrice: 500,
+        maximumDiscountPercentage: 50,
+        updatedAt: new Date().toISOString(),
+      })
+      results.push({ type: "settings", message: "Platform settings created" })
+    } else {
+      results.push({ type: "settings", message: "Platform settings already exist" })
+    }
+    
+    // Continue with store seeding...
+    const storesResult = await seedStoresInternal(ctx)
+    results.push(storesResult)
+    
+    return {
+      message: "Seeding completed",
+      results
+    }
+  }
+})
+
 export const seedStores = mutation({
   handler: async (ctx) => {
+    return await seedStoresInternal(ctx)
+  }
+})
+
+async function seedStoresInternal(ctx: any) {
     // Check if we already have stores
     const existingStores = await ctx.db.query("shelves").take(1)
     if (existingStores.length > 0) {
-      return { message: "Stores already seeded" }
+      return { type: "stores", message: "Stores already seeded" }
     }
 
     // Create sample store owner users first
@@ -187,8 +247,8 @@ export const seedStores = mutation({
     }
 
     return { 
+      type: "stores",
       message: "Successfully seeded stores", 
       count: shelves.length 
     }
-  },
-})
+}

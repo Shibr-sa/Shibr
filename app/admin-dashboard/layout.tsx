@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, FileText, Store, CreditCard, Settings, ChevronUp, User, LogOut } from "lucide-react"
+import { Home, FileText, Store, CreditCard, Settings, ChevronUp, User, LogOut, Users, Package, TrendingUp, Bell, Search } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/localization-context"
@@ -34,9 +34,10 @@ import {
 } from "@/components/ui/sidebar"
 
 const sidebarItems = [
-  { title: "dashboard.home", href: "/admin-dashboard", icon: Home, pageTitle: "dashboard.home" },
+  { title: "dashboard.home", href: "/admin-dashboard", icon: Home, pageTitle: "dashboard.control_panel" },
   { title: "dashboard.posts", href: "/admin-dashboard/posts", icon: FileText, pageTitle: "dashboard.posts" },
   { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store, pageTitle: "dashboard.stores" },
+  { title: "dashboard.shelves", href: "/admin-dashboard/shelves", icon: Package, pageTitle: "dashboard.shelves" },
   { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard, pageTitle: "dashboard.payments" },
   { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
 ]
@@ -222,34 +223,46 @@ export default function AdminDashboardLayout({
         
         <div className="flex-1 flex flex-col">
           {/* Header */}
-          <header className="h-14 border-b bg-background flex items-center px-4">
-            <SidebarTrigger />
+          <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-6">
+            <SidebarTrigger className="-ms-2" />
             
             <div className="flex-1 flex items-center justify-between ms-4">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  {getBreadcrumbs().map((item, index) => (
-                    <React.Fragment key={item.href}>
-                      {index > 0 && <BreadcrumbSeparator />}
-                      <BreadcrumbItem>
-                        {item.isCurrentPage ? (
-                          <BreadcrumbPage>{item.title}</BreadcrumbPage>
-                        ) : (
-                          <BreadcrumbLink asChild>
-                            <Link href={item.href}>{item.title}</Link>
-                          </BreadcrumbLink>
-                        )}
-                      </BreadcrumbItem>
-                    </React.Fragment>
-                  ))}
-                </BreadcrumbList>
-              </Breadcrumb>
-              <LanguageSwitcher />
+              <div className="flex items-center gap-4">
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    {getBreadcrumbs().map((item, index) => (
+                      <React.Fragment key={item.href}>
+                        {index > 0 && <BreadcrumbSeparator />}
+                        <BreadcrumbItem>
+                          {item.isCurrentPage ? (
+                            <BreadcrumbPage className="font-medium">{item.title}</BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink asChild>
+                              <Link href={item.href}>{item.title}</Link>
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                      </React.Fragment>
+                    ))}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Search className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 relative">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute top-1 end-1 h-2 w-2 bg-destructive rounded-full" />
+                </Button>
+                <LanguageSwitcher />
+              </div>
             </div>
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background">{children}</main>
+          <main className="flex-1 p-6 bg-muted/40">{children}</main>
         </div>
       </div>
     </SidebarProvider>
