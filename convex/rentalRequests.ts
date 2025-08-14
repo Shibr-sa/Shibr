@@ -183,24 +183,16 @@ export const acceptRentalRequest = mutation({
       throw new Error("Request not found")
     }
 
-    // Update request status
+    // Update request status to accepted (requires payment before activation)
     await ctx.db.patch(request._id, {
-      status: "active",
+      status: "accepted",
       storeOwnerResponse: args.storeOwnerResponse,
       respondedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
 
-    // Update shelf as rented
-    await ctx.db.patch(request.shelfId, {
-      isAvailable: false,
-      status: "rented",
-      renterId: request.brandOwnerId,
-      rentalStartDate: request.startDate,
-      rentalEndDate: request.endDate,
-      rentalPrice: request.monthlyPrice,
-      updatedAt: new Date().toISOString(),
-    })
+    // Don't update shelf as rented yet - wait for payment confirmation
+    // The shelf will be marked as rented only after payment is verified
 
     // Update conversation status
     if (request.conversationId) {
@@ -216,21 +208,23 @@ export const acceptRentalRequest = mutation({
       await ctx.db.insert("messages", {
         conversationId: request.conversationId,
         senderId: request.storeOwnerId,
-        text: args.storeOwnerResponse || "تم قبول طلب الإيجار! ✅",
+        text: args.storeOwnerResponse || "تم قبول طلب الإيجار! يرجى إتمام عملية الدفع لتفعيل الإيجار ✅ / Rental request accepted! Please complete payment to activate the rental ✅",
         messageType: "rental_accepted",
         isRead: false,
         createdAt: new Date().toISOString(),
       })
     }
 
-    // Notify brand owner
+    // Notify brand owner about payment requirement
     await ctx.db.insert("notifications", {
       userId: request.brandOwnerId,
-      title: "تم قبول طلب الإيجار",
-      message: "تم قبول طلبك لاستئجار الرف. يمكنك الآن المتابعة مع عملية الدفع.",
-      type: "rental_accepted",
+      title: "تم قبول طلب الإيجار - مطلوب الدفع / Rental Request Accepted - Payment Required",
+      message: "تم قبول طلبك لاستئجار الرف. يرجى إتمام عملية الدفع لتفعيل الإيجار / Your rental request has been accepted. Please complete payment to activate the rental.",
+      type: "payment_required",
       rentalRequestId: request._id,
       conversationId: request.conversationId,
+      actionUrl: `/brand-dashboard/shelves`,
+      actionLabel: "ادفع الآن / Pay Now",
       isRead: false,
       createdAt: new Date().toISOString(),
     })
@@ -343,7 +337,7 @@ export const getUserRentalRequests = query({
         const shelf = await ctx.db.get(request.shelfId)
         const otherUserId = args.userType === "brand" ? request.storeOwnerId : request.brandOwnerId
         const otherUser = await ctx.db.get(otherUserId)
-
+        
         return {
           ...request,
           shelfName: shelf?.shelfName,
@@ -539,5 +533,139 @@ export const getRentalStatsWithChanges = query({
       pendingChange: calculateChange(currentPending, previousPending),
       totalChange: calculateChange(currentTotal, previousTotal),
     }
+  },
+})
+
+// Confirm payment transfer by brand owner
+export const confirmPayment = mutation({
+  args: {
+    requestId: v.id("rentalRequests"),
+    paymentAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Get the rental request
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      throw new Error("Rental request not found")
+    }
+    
+    // Verify the request status is accepted or payment_pending
+    if (request.status !== "accepted" && request.status !== "payment_pending") {
+      throw new Error("Invalid request status for payment confirmation")
+    }
+    
+    // Update the request status to payment_processing
+    await ctx.db.patch(args.requestId, {
+      status: "payment_processing",
+      paymentConfirmedAt: new Date().toISOString(),
+      paymentAmount: args.paymentAmount,
+    })
+    
+    // Get brand and store owner details
+    const brandOwner = await ctx.db.get(request.brandOwnerId)
+    const storeOwner = await ctx.db.get(request.storeOwnerId)
+    
+    // Create notification for store owner that payment is pending verification
+    if (storeOwner) {
+      await ctx.db.insert("notifications", {
+        userId: request.storeOwnerId,
+        title: "تأكيد دفع جديد / New Payment Confirmation",
+        message: `${brandOwner?.fullName || "User"} confirmed bank transfer of ${args.paymentAmount} SAR / أكد ${brandOwner?.fullName || "مستخدم"} إتمام التحويل البنكي بمبلغ ${args.paymentAmount} ريال`,
+        type: "payment_confirmation",
+        rentalRequestId: request._id,
+        actionUrl: `/store-dashboard/orders`,
+        actionLabel: "التحقق من الدفع / Verify Payment",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+    }
+    
+    // Create notification for admin
+    // In production, you would have an admin user or admin notification system
+    // For now, we'll just log this
+    console.log("Admin notification: Payment confirmation pending for request", args.requestId)
+    
+    // Send system message in the conversation
+    if (request.conversationId) {
+      await ctx.db.insert("messages", {
+        conversationId: request.conversationId,
+        senderId: request.brandOwnerId,
+        text: `Bank transfer of ${args.paymentAmount} SAR confirmed. Verifying payment... / تم تأكيد التحويل البنكي بمبلغ ${args.paymentAmount} ريال. جاري التحقق من الدفعة...`,
+        messageType: "payment_confirmed",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+    }
+    
+    return { success: true }
+  },
+})
+
+// Verify payment and activate rental (called by admin after verifying bank transfer)
+export const verifyPaymentAndActivate = mutation({
+  args: {
+    requestId: v.id("rentalRequests"),
+    verifiedBy: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    // Get the rental request
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      throw new Error("Rental request not found")
+    }
+    
+    // Verify the request status is payment_processing
+    if (request.status !== "payment_processing") {
+      throw new Error("Invalid request status for payment verification")
+    }
+    
+    // Update the request status to active
+    await ctx.db.patch(args.requestId, {
+      status: "active",
+      paymentVerifiedAt: new Date().toISOString(),
+      paymentVerifiedBy: args.verifiedBy,
+      activatedAt: new Date().toISOString(),
+    })
+    
+    // Now update the shelf as rented
+    await ctx.db.patch(request.shelfId, {
+      isAvailable: false,
+      status: "rented",
+      renterId: request.brandOwnerId,
+      rentalStartDate: request.startDate,
+      rentalEndDate: request.endDate,
+      rentalPrice: request.monthlyPrice,
+      updatedAt: new Date().toISOString(),
+    })
+    
+    // Get brand owner details
+    const brandOwner = await ctx.db.get(request.brandOwnerId)
+    
+    // Create notification for brand owner that rental is now active
+    await ctx.db.insert("notifications", {
+      userId: request.brandOwnerId,
+      title: "تم تفعيل الإيجار / Rental Activated",
+      message: "تم التحقق من الدفعة وتفعيل إيجار الرف بنجاح / Payment verified and shelf rental activated successfully",
+      type: "rental_activated",
+      rentalRequestId: request._id,
+      actionUrl: `/brand-dashboard/shelves/${request._id}`,
+      actionLabel: "عرض التفاصيل / View Details",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    })
+    
+    // Send system message in the conversation
+    if (request.conversationId) {
+      await ctx.db.insert("messages", {
+        conversationId: request.conversationId,
+        senderId: request.storeOwnerId,
+        text: "تم تفعيل إيجار الرف بنجاح! ✅ / Shelf rental has been activated successfully! ✅",
+        messageType: "rental_activated",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+    }
+    
+    return { success: true }
   },
 })

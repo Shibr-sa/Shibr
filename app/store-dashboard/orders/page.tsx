@@ -98,8 +98,21 @@ function OrdersContent() {
     switch (status) {
       case "pending":
         return (
-          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
             {t("status.pending")}
+          </Badge>
+        )
+      case "accepted":
+      case "payment_pending":
+        return (
+          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+            {t("status.payment_pending")}
+          </Badge>
+        )
+      case "payment_processing":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            {t("status.payment_processing")}
           </Badge>
         )
       case "active":

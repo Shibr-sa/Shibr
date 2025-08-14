@@ -188,6 +188,8 @@ const schema = defineSchema({
       v.literal("rental_request"),
       v.literal("rental_accepted"),
       v.literal("rental_rejected"),
+      v.literal("rental_activated"),
+      v.literal("payment_confirmed"),
       v.literal("system")
     ),
     
@@ -219,14 +221,25 @@ const schema = defineSchema({
     
     // Status
     status: v.union(
-      v.literal("pending"),      // Request is pending review
-      v.literal("active"),       // Request is accepted and active
-      v.literal("rejected")      // Request is rejected
+      v.literal("pending"),           // Request is pending review
+      v.literal("accepted"),          // Request is accepted, awaiting payment
+      v.literal("payment_pending"),   // Alias for accepted state
+      v.literal("payment_processing"), // Payment is being verified
+      v.literal("active"),            // Request is active after payment verified
+      v.literal("rejected"),          // Request is rejected
+      v.literal("expired")            // Request expired after 48 hours
     ),
     
     // Response from store owner
     storeOwnerResponse: v.optional(v.string()),
     respondedAt: v.optional(v.string()),
+    
+    // Payment tracking
+    paymentAmount: v.optional(v.number()),
+    paymentConfirmedAt: v.optional(v.string()),
+    paymentVerifiedAt: v.optional(v.string()),
+    paymentVerifiedBy: v.optional(v.id("users")),
+    activatedAt: v.optional(v.string()),
     
     // Timestamps
     createdAt: v.string(),
@@ -252,6 +265,9 @@ const schema = defineSchema({
       v.literal("rental_accepted"),
       v.literal("rental_rejected"),
       v.literal("rental_expired"),
+      v.literal("rental_activated"),
+      v.literal("payment_required"),
+      v.literal("payment_confirmation"),
       v.literal("payment_received"),
       v.literal("system")
     ),
@@ -259,6 +275,10 @@ const schema = defineSchema({
     // Related entities
     conversationId: v.optional(v.id("conversations")),
     rentalRequestId: v.optional(v.id("rentalRequests")),
+    
+    // Action button
+    actionUrl: v.optional(v.string()),
+    actionLabel: v.optional(v.string()),
     
     // Status
     isRead: v.boolean(),

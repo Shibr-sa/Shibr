@@ -52,6 +52,7 @@ export default function StoreDashboardPage() {
     } : "skip"
   )
   
+  
   // Get recent shelves (max 3)
   const recentShelves = shelves?.slice(0, 3) || []
   
@@ -315,14 +316,16 @@ export default function StoreDashboardPage() {
                             <TableCell>
                               <Badge 
                                 variant={
-                                  request.status === "active" || request.status === "approved" ? "default" :
+                                  request.status === "active" ? "default" :
+                                  request.status === "accepted" || request.status === "payment_pending" ? "warning" :
+                                  request.status === "payment_processing" ? "secondary" :
                                   request.status === "rejected" ? "destructive" :
                                   request.status === "pending" ? "outline" :
                                   "secondary"
                                 }
                               >
-                                {request.status === "approved" 
-                                  ? t("status.active")
+                                {request.status === "accepted" 
+                                  ? t("status.payment_pending")
                                   : t(`status.${request.status}`)}
                               </Badge>
                             </TableCell>

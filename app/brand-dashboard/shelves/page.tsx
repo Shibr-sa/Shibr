@@ -7,7 +7,15 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -19,6 +27,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { PaymentTransferDialog } from "@/components/dialogs/payment-transfer-dialog"
 
 export default function BrandShelvesPage() {
   const { t, direction, language } = useLanguage()
@@ -28,6 +37,8 @@ export default function BrandShelvesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<any>(null)
   const itemsPerPage = 5
 
   // Get user ID from current user
@@ -41,6 +52,7 @@ export default function BrandShelvesPage() {
       userType: "brand" as const
     } : "skip"
   )
+  
 
   // Fetch rental statistics with percentage changes based on selected period
   const rentalStats = useQuery(
@@ -70,6 +82,7 @@ export default function BrandShelvesPage() {
   const allRequests = rentalRequests || []
   const activeRentals = allRequests.filter(r => r.status === "active").length
   const pendingRentals = allRequests.filter(r => r.status === "pending").length
+  const acceptedRentals = allRequests.filter(r => r.status === "accepted" || r.status === "payment_pending" || r.status === "payment_processing").length
   const totalRentals = allRequests.length
   
   // Loading state
@@ -89,6 +102,19 @@ export default function BrandShelvesPage() {
             {t("status.pending")}
           </Badge>
         )
+      case "accepted":
+      case "payment_pending":
+        return (
+          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+            {t("status.payment_pending")}
+          </Badge>
+        )
+      case "payment_processing":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            {t("status.payment_processing")}
+          </Badge>
+        )
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 border-red-200">
@@ -101,6 +127,83 @@ export default function BrandShelvesPage() {
             {status}
           </Badge>
         )
+    }
+  }
+  
+  const handlePaymentClick = (request: any) => {
+    setSelectedPaymentRequest(request)
+    setPaymentDialogOpen(true)
+  }
+  
+  const getActionButton = (request: any) => {
+    switch (request.status) {
+      case "accepted":
+      case "payment_pending":
+        return (
+          <Button 
+            size="sm"
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+            onClick={() => handlePaymentClick(request)}
+          >
+            <CreditCard className="h-4 w-4 me-1" />
+            {t("action.pay_now")}
+          </Button>
+        )
+      
+      case "payment_processing":
+        return (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            disabled
+            className="cursor-not-allowed"
+          >
+            <Clock className="h-4 w-4 me-1 animate-spin" />
+            {t("action.verifying")}
+          </Button>
+        )
+      
+      case "active":
+        return (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => router.push(`/brand-dashboard/shelves/${request._id}`)}
+          >
+            <Eye className="h-4 w-4 me-1" />
+            {t("action.view")}
+          </Button>
+        )
+      
+      case "pending":
+        return (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+              // Navigate to the shelf details page with conversation
+              if (request.conversationId) {
+                router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+              } else {
+                router.push(`/brand-dashboard/shelves/${request._id}`)
+              }
+            }}
+          >
+            <Eye className="h-4 w-4 me-1" />
+            {t("action.view_details")}
+          </Button>
+        )
+      
+      case "rejected":
+      case "expired":
+        return (
+          <span className="text-sm text-muted-foreground">
+            -
+          </span>
+        )
+      
+      default:
+        return null
     }
   }
 
@@ -318,6 +421,9 @@ export default function BrandShelvesPage() {
                         <TableHead className="text-start">
                           {t("table.status")}
                         </TableHead>
+                        <TableHead className="text-start">
+                          {t("table.action")}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -325,7 +431,7 @@ export default function BrandShelvesPage() {
                         // Loading state - show 5 skeleton rows
                         Array.from({ length: itemsPerPage }).map((_, index) => (
                           <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                            <TableCell colSpan={6} className="text-center">
+                            <TableCell colSpan={7} className="text-center">
                               <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
                             </TableCell>
                           </TableRow>
@@ -361,12 +467,13 @@ export default function BrandShelvesPage() {
                           }
                         </TableCell>
                         <TableCell>{request.status ? getStatusBadge(request.status) : "-"}</TableCell>
+                        <TableCell>{getActionButton(request)}</TableCell>
                       </TableRow>
                 ))}
                           {/* Fill remaining rows if less than 5 items */}
                           {paginatedRequests.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedRequests.length }).map((_, index) => (
                             <TableRow key={`filler-${index}`} className="h-[72px]">
-                              <TableCell colSpan={6}>&nbsp;</TableCell>
+                              <TableCell colSpan={7}>&nbsp;</TableCell>
                             </TableRow>
                           ))}
                         </>
@@ -375,7 +482,7 @@ export default function BrandShelvesPage() {
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[72px]">
                         {index === 2 ? (
-                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Package className="h-8 w-8 text-muted-foreground" />
                               <span className="text-sm">
@@ -398,7 +505,7 @@ export default function BrandShelvesPage() {
                             </div>
                           </TableCell>
                         ) : (
-                          <TableCell colSpan={6}>&nbsp;</TableCell>
+                          <TableCell colSpan={7}>&nbsp;</TableCell>
                         )}
                       </TableRow>
                     ))
@@ -409,67 +516,84 @@ export default function BrandShelvesPage() {
           </div> {/* end min-h-[432px] */}
         </div> {/* end border rounded-lg */}
         
-        {/* Pagination Controls */}
-        {filteredRequests.length > itemsPerPage && (
-          <div className="flex items-center justify-between px-2 py-4">
-              <div className="text-sm text-muted-foreground">
-                {language === "ar" 
-                  ? `عرض ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} من ${filteredRequests.length}`
-                  : `Showing ${startIndex + 1}-${Math.min(endIndex, filteredRequests.length)} of ${filteredRequests.length}`
-                }
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+        {/* Pagination Controls - Always visible */}
+        <div className="mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="h-8 px-3"
+                  className={cn(
+                    "cursor-pointer",
+                    (currentPage === 1 || totalPages === 0) && "pointer-events-none opacity-50"
+                  )}
+                  aria-disabled={currentPage === 1 || totalPages === 0}
                 >
-                  <ChevronLeft className="h-4 w-4 rtl:rotate-180 me-1" />
                   {t("common.previous")}
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let page;
-                    if (totalPages <= 5) {
-                      page = i + 1;
-                    } else if (currentPage <= 3) {
-                      page = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      page = totalPages - 4 + i;
-                    } else {
-                      page = currentPage - 2 + i;
-                    }
-                    return page;
-                  }).map(page => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
+                </PaginationPrevious>
+              </PaginationItem>
+              
+              {totalPages > 0 ? (
+                Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return page;
+                }).map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
                       onClick={() => setCurrentPage(page)}
-                      className="h-8 w-8 p-0"
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
                     >
                       {page}
-                    </Button>
-                  ))}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
+                    </PaginationLink>
+                  </PaginationItem>
+                ))
+              ) : (
+                <PaginationItem>
+                  <PaginationLink isActive className="pointer-events-none">
+                    1
+                  </PaginationLink>
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="h-8 px-3"
+                  className={cn(
+                    "cursor-pointer",
+                    (currentPage === totalPages || totalPages <= 1) && "pointer-events-none opacity-50"
+                  )}
+                  aria-disabled={currentPage === totalPages || totalPages <= 1}
                 >
                   {t("common.next")}
-                  <ChevronRight className="h-4 w-4 rtl:rotate-180 ms-1" />
-                </Button>
-            </div>
-          </div>
-        )}
+                </PaginationNext>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div> {/* end space-y-4 */}
         </CardContent>
       </Card>
+      
+      {/* Payment Transfer Dialog */}
+      <PaymentTransferDialog
+        request={selectedPaymentRequest}
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onPaymentConfirmed={() => {
+          // Refresh the data after payment confirmation
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

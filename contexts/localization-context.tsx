@@ -1069,12 +1069,40 @@ const translations = {
     // Status/State Values
     "status.active": "نشط",
     "status.pending": "قيد المراجعة",
+    "status.payment_pending": "بانتظار الدفع",
+    "status.payment_processing": "جاري التحقق من الدفع",
     "status.rejected": "مرفوض",
     "status.online": "متصل",
 
     // Common Actions
     "actions.accept_rental_request": "قبول طلب الإيجار",
     "actions.reject_rental_request": "رفض طلب الإيجار",
+    
+    // Action Buttons
+    "action.pay_now": "ادفع الآن",
+    "action.verifying": "جاري التحقق",
+    "action.view": "عرض",
+    "action.view_details": "عرض التفاصيل",
+    "action.manage": "إدارة",
+    "action.waiting": "بانتظار الموافقة",
+    
+    // Payment Dialog
+    "payment.bank_transfer_title": "التحويل البنكي",
+    "payment.transfer_instructions": "يرجى تحويل المبلغ إلى الحساب البنكي أدناه",
+    "payment.store_name": "اسم المتجر",
+    "payment.shelf_name": "اسم الرف",
+    "payment.amount_due": "المبلغ المستحق",
+    "payment.transfer_to": "التحويل إلى",
+    "payment.bank_name": "اسم البنك",
+    "payment.account_name": "اسم الحساب",
+    "payment.iban": "رقم الآيبان",
+    "payment.iban_copied": "تم نسخ رقم الآيبان",
+    "payment.copy_failed": "فشل نسخ رقم الآيبان",
+    "payment.transfer_notice": "يرجى الاحتفاظ بإيصال التحويل. سيتم تفعيل الرف خلال 24 ساعة بعد التحقق من الدفع.",
+    "payment.confirm_transfer_completed": "تأكيد إتمام التحويل",
+    "payment.confirmation_success_title": "تم تأكيد التحويل",
+    "payment.confirmation_success_description": "سيتم التحقق من الدفعة وتفعيل الرف خلال 24 ساعة",
+    "payment.confirmation_failed": "فشل تأكيد التحويل. يرجى المحاولة مرة أخرى.",
 
     // Time Periods
     "period.daily": "يومي",
@@ -1131,6 +1159,7 @@ const translations = {
     "table.start": "البداية",
     "table.end": "النهاية",
     "table.status": "الحالة",
+    "table.action": "الإجراء",
     "table.actions": "إجراءات",
     "table.branch": "الفرع",
     "table.rental_duration": "مدة الإيجار",
@@ -2244,12 +2273,40 @@ const translations = {
     // Status/State Values
     "status.active": "Active",
     "status.pending": "Pending",
+    "status.payment_pending": "Payment Required",
+    "status.payment_processing": "Verifying Payment",
     "status.rejected": "Rejected",
     "status.online": "Online",
 
     // Common Actions
     "actions.accept_rental_request": "Accept Rental Request",
     "actions.reject_rental_request": "Reject Rental Request",
+    
+    // Action Buttons
+    "action.pay_now": "Pay Now",
+    "action.verifying": "Verifying",
+    "action.view": "View",
+    "action.view_details": "View Details",
+    "action.manage": "Manage",
+    "action.waiting": "Waiting",
+    
+    // Payment Dialog
+    "payment.bank_transfer_title": "Bank Transfer",
+    "payment.transfer_instructions": "Please transfer the amount to the bank account below",
+    "payment.store_name": "Store Name",
+    "payment.shelf_name": "Shelf Name",
+    "payment.amount_due": "Amount Due",
+    "payment.transfer_to": "Transfer To",
+    "payment.bank_name": "Bank Name",
+    "payment.account_name": "Account Name",
+    "payment.iban": "IBAN",
+    "payment.iban_copied": "IBAN copied to clipboard",
+    "payment.copy_failed": "Failed to copy IBAN",
+    "payment.transfer_notice": "Please keep your transfer receipt. The shelf will be activated within 24 hours after payment verification.",
+    "payment.confirm_transfer_completed": "Confirm Transfer Completed",
+    "payment.confirmation_success_title": "Transfer Confirmed",
+    "payment.confirmation_success_description": "Your payment will be verified and the shelf will be activated within 24 hours",
+    "payment.confirmation_failed": "Failed to confirm transfer. Please try again.",
 
     // Time Periods
     "period.daily": "Daily",
@@ -2306,6 +2363,7 @@ const translations = {
     "table.start": "Start",
     "table.end": "End",
     "table.status": "Status",
+    "table.action": "Action",
     "table.actions": "Actions",
     "table.branch": "Branch",
     "table.rental_duration": "Rental Duration",
