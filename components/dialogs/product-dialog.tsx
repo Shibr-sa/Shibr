@@ -116,14 +116,14 @@ export function ProductDialog({
     if (file) {
       // Check file type
       if (!file.type.startsWith("image/")) {
-        toast.error(t("errors.invalid_image_type"))
+        toast.error("نوع الصورة غير صالح. يرجى استخدام JPG أو PNG")
         e.target.value = "" // Reset input value
         return
       }
       
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error(t("errors.image_too_large"))
+        toast.error("حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت")
         e.target.value = "" // Reset input value
         return
       }
@@ -157,7 +157,7 @@ export function ProductDialog({
           description: data.description,
           imageUrl: imagePreview || undefined,
         })
-        toast.success(t("success.product_updated"))
+        toast.success("تم تحديث المنتج بنجاح")
       } else {
         await createProduct({
           ownerId,
@@ -169,14 +169,14 @@ export function ProductDialog({
           imageUrl: imagePreview || undefined,
           currency: "SAR",
         })
-        toast.success(t("success.product_created"))
+        toast.success("تم إضافة المنتج بنجاح")
       }
 
       // Close dialog - the useEffect will handle resetting everything
       onOpenChange(false)
     } catch (error) {
       console.error("Error saving product:", error)
-      toast.error(t("errors.product_save_failed"))
+      toast.error("فشل في حفظ المنتج. يرجى المحاولة مرة أخرى")
     } finally {
       setIsSubmitting(false)
     }
@@ -337,7 +337,7 @@ export function ProductDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("brand.products.description")} ({t("common.optional")})</FormLabel>
+                  <FormLabel>{t("brand.products.description")}</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}

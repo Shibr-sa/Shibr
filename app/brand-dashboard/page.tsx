@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { 
   Package, 
-  BarChart, 
   Store, 
   Plus, 
   AlertTriangle, 
@@ -29,6 +28,8 @@ import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { Id } from "@/convex/_generated/dataModel"
 import { formatCurrency } from "@/lib/formatters"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 export default function BrandDashboardPage() {
   const { t, direction, language } = useLanguage()
@@ -57,8 +58,49 @@ export default function BrandDashboardPage() {
     } : "skip"
   )
   
+  // Fetch products data
+  const products = useQuery(
+    api.products.getOwnerProducts,
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
+  
+  // Fetch product statistics
+  const productStats = useQuery(
+    api.products.getProductStats,
+    user?.id ? { 
+      ownerId: user.id as Id<"users">,
+      period: "monthly" as const
+    } : "skip"
+  )
+  
+  // Fetch sales chart data
+  const salesChartDataRaw = useQuery(
+    api.products.getSalesChartData,
+    user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
+  )
+  
   // Get active rentals (max 3 for display)
   const activeRentals = rentalRequests?.filter(r => r.status === "active").slice(0, 3) || []
+  
+  // Calculate statistics
+  const pendingRequests = rentalRequests?.filter(r => r.status === "pending").length || 0
+  const totalRevenue = productStats?.totalRevenue || 0
+  const totalSales = productStats?.totalSales || 0
+  
+  // Prepare chart data - use real data if available, otherwise show empty state
+  const salesChartData = salesChartDataRaw || []
+  
+  // Chart configuration for shadcn/ui
+  const chartConfig = {
+    revenue: {
+      label: t("brand.dashboard.revenue"),
+      color: "#725CAD",
+    },
+    sales: {
+      label: t("brand.dashboard.sales_count"),
+      color: "#A899DD",
+    },
+  }
   
   // Format currency helper
   const formatPrice = (amount: number) => {
@@ -172,18 +214,31 @@ export default function BrandDashboardPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    {t("brand.dashboard.pending_requests")}
+                    {t("brand.dashboard.total_sales")}
                   </p>
-                  <div className="text-3xl font-bold">
+                  <div className="text-3xl font-bold text-primary">
                     {language === "ar" 
-                      ? `${formatPrice(0)} ${t("common.currency")}`
-                      : `${t("common.currency")} ${formatPrice(0)}`
+                      ? `${formatPrice(totalRevenue)} ${t("common.currency")}`
+                      : `${t("common.currency")} ${formatPrice(totalRevenue)}`
                     }
                   </div>
                   <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t("time.last_month")}
-                    </span>
+                    {productStats?.revenueChange !== undefined && productStats.revenueChange !== 0 ? (
+                      <>
+                        {productStats.revenueChange > 0 ? (
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-red-600" />
+                        )}
+                        <span className={`text-xs font-medium ${productStats.revenueChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {productStats.revenueChange > 0 ? '+' : ''}{productStats.revenueChange.toFixed(1)}% {t("time.from")} {t("time.last_month")}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        0.0% {t("time.from")} {t("time.last_month")}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -196,15 +251,28 @@ export default function BrandDashboardPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    {t("brand.dashboard.total_requests")}
+                    {t("brand.dashboard.total_products")}
                   </p>
                   <div className="text-3xl font-bold">
-                    0
+                    {products?.length || 0}
                   </div>
                   <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t("time.last_month")}
-                    </span>
+                    {productStats?.productsChange !== undefined && productStats.productsChange !== 0 ? (
+                      <>
+                        {productStats.productsChange > 0 ? (
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-red-600" />
+                        )}
+                        <span className={`text-xs font-medium ${productStats.productsChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {productStats.productsChange > 0 ? '+' : ''}{productStats.productsChange.toFixed(1)}% {t("time.from")} {t("time.last_month")}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        0.0% {t("time.from")} {t("time.last_month")}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -216,17 +284,59 @@ export default function BrandDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Empty States */}
+      {/* Sales and Shelves Section */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">{t("brand.dashboard.sales")}</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center text-center h-64">
-            <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
-              <TrendingUp className="h-10 w-10 text-muted-foreground/50" />
-            </div>
-            <p className="text-muted-foreground">{t("brand.dashboard.no_sales_yet")}</p>
+          <CardContent>
+            {salesChartData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <BarChart 
+                  data={salesChartData}
+                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    hide={true}
+                  />
+                  <YAxis 
+                    hide={true}
+                  />
+                  <ChartTooltip 
+                    content={
+                      <ChartTooltipContent 
+                        formatter={(value) => 
+                          language === 'ar' 
+                            ? `${formatPrice(Number(value))} ${t("common.currency")}` 
+                            : `${t("common.currency")} ${formatPrice(Number(value))}`
+                        }
+                      />
+                    }
+                  />
+                  <Bar 
+                    dataKey="revenue" 
+                    fill="var(--color-revenue)"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center h-[280px]">
+                <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+                  <BarChart3 className="h-10 w-10 text-muted-foreground/50" />
+                </div>
+                <p className="text-muted-foreground mb-2">{t("brand.dashboard.no_sales_data")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {products && products.length > 0 
+                    ? t("brand.dashboard.sales_will_appear_here")
+                    : t("brand.dashboard.add_products_first")
+                  }
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -275,7 +385,7 @@ export default function BrandDashboardPage() {
                         <TableCell>{rental.shelfName || "-"}</TableCell>
                         <TableCell>{rental.shelfBranch || "-"}</TableCell>
                         <TableCell>
-                          {language === "ar" ? `${formatPrice(5)} منتجات` : `${formatPrice(5)} products`}
+                          {language === "ar" ? `${formatPrice(rental.productCount || 0)} منتجات` : `${formatPrice(rental.productCount || 0)} products`}
                         </TableCell>
                         <TableCell>
                           {language === "ar" 

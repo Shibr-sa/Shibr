@@ -17,6 +17,83 @@ export const getOwnerProducts = query({
   },
 })
 
+// Get sales chart data for dashboard
+export const getSalesChartData = query({
+  args: {
+    ownerId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get all products for the owner
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .collect()
+    
+    // Sort by revenue and take top products
+    const topProducts = products
+      .filter(p => p.totalRevenue > 0)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+    
+    // Create array for 6 items
+    const chartData = []
+    
+    // If we have products with sales, add them
+    if (topProducts.length > 0) {
+      for (let i = 0; i < 6; i++) {
+        if (i < topProducts.length) {
+          chartData.push({
+            name: topProducts[i].name,
+            revenue: topProducts[i].totalRevenue,
+            sales: topProducts[i].totalSales,
+            percentage: Math.round((topProducts[i].totalRevenue / topProducts[0].totalRevenue) * 100),
+          })
+        } else {
+          // Add empty bar placeholder
+          chartData.push({
+            name: "",
+            revenue: 0,
+            sales: 0,
+            percentage: 0,
+          })
+        }
+      }
+      return chartData
+    }
+    
+    // Otherwise return products sorted by price potential
+    const estimatedProducts = products
+      .map(product => ({
+        name: product.name,
+        revenue: product.price * Math.min(product.quantity, 10), // Estimate based on price
+        sales: 0,
+        percentage: 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+    
+    // Create array with exactly 6 items
+    const result = []
+    for (let i = 0; i < 6; i++) {
+      if (i < estimatedProducts.length) {
+        const product = estimatedProducts[i]
+        if (estimatedProducts[0].revenue > 0) {
+          product.percentage = Math.round((product.revenue / estimatedProducts[0].revenue) * 100)
+        }
+        result.push(product)
+      } else {
+        // Add empty bar placeholder
+        result.push({
+          name: "",
+          revenue: 0,
+          sales: 0,
+          percentage: 0,
+        })
+      }
+    }
+    
+    return result
+  },
+})
+
 // Get product statistics for dashboard
 export const getProductStats = query({
   args: {
