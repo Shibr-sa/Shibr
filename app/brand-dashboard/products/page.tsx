@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -27,6 +28,8 @@ export default function BrandProductsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
+  const [productDialogOpen, setProductDialogOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const itemsPerPage = 5
 
   // Get user ID from current user
@@ -85,7 +88,13 @@ export default function BrandProductsPage() {
                 <Upload className="h-4 w-4 me-2" />
                 {t("brand.dashboard.import_products_excel")}
               </Button>
-              <Button size="sm">
+              <Button 
+                size="sm"
+                onClick={() => {
+                  setSelectedProduct(null)
+                  setProductDialogOpen(true)
+                }}
+              >
                 <Plus className="h-4 w-4 me-2" />
                 {t("brand.dashboard.add_new_product")}
               </Button>
@@ -218,8 +227,16 @@ export default function BrandProductsPage() {
                           {paginatedProducts.map((product, index) => (
                             <TableRow key={product._id} className={`h-[72px] ${index < paginatedProducts.length - 1 ? 'border-b' : ''}`}>
                               <TableCell className="py-3">
-                                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                                  {product.imageUrl ? (
+                                    <img 
+                                      src={product.imageUrl} 
+                                      alt={product.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="font-medium py-3">
@@ -237,7 +254,15 @@ export default function BrandProductsPage() {
                               <TableCell className="py-3">{product.shelfCount}</TableCell>
                               <TableCell className="py-3">
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8"
+                                    onClick={() => {
+                                      setSelectedProduct(product)
+                                      setProductDialogOpen(true)
+                                    }}
+                                  >
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
@@ -366,6 +391,17 @@ export default function BrandProductsPage() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Product Dialog */}
+      {userId && (
+        <ProductDialog
+          open={productDialogOpen}
+          onOpenChange={setProductDialogOpen}
+          ownerId={userId}
+          product={selectedProduct}
+          mode={selectedProduct ? "edit" : "create"}
+        />
+      )}
     </div>
   )
 }

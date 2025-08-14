@@ -930,6 +930,24 @@ const translations = {
     "brand.dashboard.sales_count": "المبيعات",
     "brand.dashboard.stores_count": "المتاجر",
     "brand.dashboard.actions": "الإجراءات",
+    
+    // Product Dialog
+    "brand.products.add_new_product": "إضافة منتج جديد",
+    "brand.products.edit_product": "تعديل المنتج",
+    "brand.products.product_image": "صورة المنتج",
+    "brand.products.product_name": "اسم المنتج",
+    "brand.products.product_name_placeholder": "مثال: تيشرت أبيض",
+    "brand.products.product_code": "كود المنتج",
+    "brand.products.price": "السعر",
+    "brand.products.cost": "التكلفة",
+    "brand.products.quantity": "الكمية",
+    "brand.products.description": "الوصف (اختياري)",
+    "brand.products.description_placeholder": "أضف وصف مختصر ووواضح",
+    "brand.products.save_product": "حفظ المنتج",
+    "brand.products.image_hint": "صورة واضحة بصيغة JPG أو PNG",
+    "brand.no_matching_products": "لا توجد منتجات مطابقة",
+    "brand.no_products_yet": "لا توجد منتجات حالياً",
+    "brand.add_first_product": "أضف منتجك الأول",
 
     // Marketplace
     "marketplace.title": "السوق",
@@ -2135,6 +2153,24 @@ const translations = {
     "brand.dashboard.sales_count": "Sales",
     "brand.dashboard.stores_count": "Stores",
     "brand.dashboard.actions": "Actions",
+    
+    // Product Dialog
+    "brand.products.add_new_product": "Add New Product",
+    "brand.products.edit_product": "Edit Product",
+    "brand.products.product_image": "Product Image",
+    "brand.products.product_name": "Product Name",
+    "brand.products.product_name_placeholder": "e.g., White T-Shirt",
+    "brand.products.product_code": "Product Code",
+    "brand.products.price": "Price",
+    "brand.products.cost": "Cost",
+    "brand.products.quantity": "Quantity",
+    "brand.products.description": "Description (Optional)",
+    "brand.products.description_placeholder": "Add a brief and clear description",
+    "brand.products.save_product": "Save Product",
+    "brand.products.image_hint": "Clear image in JPG or PNG format",
+    "brand.no_matching_products": "No matching products",
+    "brand.no_products_yet": "No products yet",
+    "brand.add_first_product": "Add your first product",
 
     // Marketplace
     "marketplace.title": "Marketplace",
