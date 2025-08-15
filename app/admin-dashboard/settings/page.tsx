@@ -9,317 +9,395 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings, Bell, Shield, CreditCard, Users } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Camera, Save, Settings, Users, Search, Trash2, UserPlus } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useState } from "react"
 
 export default function SettingsPage() {
-  const { language } = useLanguage()
+  const { t, language } = useLanguage()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false)
+  const [newAdminData, setNewAdminData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    permission: "admin"
+  })
+
+  // Mock admin users data
+  const adminUsers = [
+    {
+      id: 1,
+      username: "admin",
+      email: "admin@shibr.com",
+      permission: "super_admin",
+      status: "active"
+    },
+    {
+      id: 2,
+      username: "محمد أحمد",
+      email: "mohammed@shibr.com",
+      permission: "admin",
+      status: "active"
+    },
+    {
+      id: 3,
+      username: "سارة عبدالله",
+      email: "sara@shibr.com",
+      permission: "admin",
+      status: "active"
+    },
+    {
+      id: 4,
+      username: "خالد محمد",
+      email: "khalid@shibr.com",
+      permission: "admin",
+      status: "inactive"
+    }
+  ]
+
+  const filteredUsers = adminUsers.filter(user => 
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">إعدادات النظام</h1>
-        <p className="text-gray-600">إدارة إعدادات المنصة والتحكم في الخصائص</p>
+        <h1 className="text-2xl font-bold">{t("admin.settings.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.settings.description")}</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general">عام</TabsTrigger>
-          <TabsTrigger value="notifications">الإشعارات</TabsTrigger>
-          <TabsTrigger value="security">الأمان</TabsTrigger>
-          <TabsTrigger value="payments">المدفوعات</TabsTrigger>
-          <TabsTrigger value="users">المستخدمين</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general">{t("admin.settings.general")}</TabsTrigger>
+          <TabsTrigger value="users">{t("admin.settings.users")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                الإعدادات العامة
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="platform-name">اسم المنصة</Label>
-                  <Input id="platform-name" defaultValue="شيلفي" />
+            <CardContent className="space-y-6 pt-6">
+              {/* Platform Logo Section */}
+              <div className="flex items-center gap-6">
+                <Avatar className="h-24 w-24 flex-shrink-0">
+                  <AvatarImage src="/placeholder.svg?height=96&width=96" alt="Platform Logo" />
+                  <AvatarFallback className="text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="h-12 w-12"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                      />
+                    </svg>
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-3 text-start flex-1">
+                  <h3 className="text-lg font-semibold">{language === "ar" ? "تحميل شعار المنصة" : "Upload Platform Logo"}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "ar" ? "أضف شعار المنصة. يُنصح بصورة مربعة بدقة 400x400 بكسل" : "Add platform logo. Square image 400x400px recommended"}
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    {language === "ar" ? "تغيير الصورة" : "Change Photo"}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="platform-url">رابط المنصة</Label>
-                  <Input id="platform-url" defaultValue="https://shibr.com" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="platform-description">وصف المنصة</Label>
-                <Textarea
-                  id="platform-description"
-                  defaultValue="منصة شيلفي لتأجير الرفوف التجارية وعرض المنتجات"
-                  rows={3}
-                />
               </div>
 
               <Separator />
 
+              {/* Contact Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">إعدادات اللغة والمنطقة</h3>
+                <h3 className="text-lg font-semibold text-start">
+                  {language === "ar" ? "معلومات الاتصال" : "Contact Information"}
+                </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="default-language">اللغة الافتراضية</Label>
-                    <Input id="default-language" defaultValue="العربية" />
+                    <Label htmlFor="adminName" className="text-start block">
+                      {language === "ar" ? "اسم المسؤول" : "Admin Name"}
+                    </Label>
+                    <Input 
+                      id="adminName" 
+                      defaultValue="محمد أحمد"
+                      className="text-start" 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="timezone">المنطقة الزمنية</Label>
-                    <Input id="timezone" defaultValue="Asia/Riyadh" />
-                  </div>
-                </div>
-              </div>
-
-              <Button>حفظ التغييرات</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                إعدادات الإشعارات
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="email-notifications">إشعارات البريد الإلكتروني</Label>
-                    <p className="text-sm text-gray-500">إرسال إشعارات عبر البريد الإلكتروني</p>
-                  </div>
-                  <Switch id="email-notifications" defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="sms-notifications">إشعارات الرسائل النصية</Label>
-                    <p className="text-sm text-gray-500">إرسال إشعارات عبر الرسائل النصية</p>
-                  </div>
-                  <Switch id="sms-notifications" />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="push-notifications">الإشعارات الفورية</Label>
-                    <p className="text-sm text-gray-500">إشعارات فورية في المتصفح</p>
-                  </div>
-                  <Switch id="push-notifications" defaultChecked />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">أنواع الإشعارات</h3>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>طلبات جديدة</Label>
-                    <p className="text-sm text-gray-500">عند وصول طلبات إيجار جديدة</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>مدفوعات جديدة</Label>
-                    <p className="text-sm text-gray-500">عند استلام مدفوعات جديدة</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>تسجيل محلات جديدة</Label>
-                    <p className="text-sm text-gray-500">عند تسجيل محلات جديدة</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </div>
-
-              <Button>حفظ الإعدادات</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                إعدادات الأمان
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>المصادقة الثنائية</Label>
-                    <p className="text-sm text-gray-500">تفعيل المصادقة الثنائية للحسابات</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>تشفير البيانات</Label>
-                    <p className="text-sm text-gray-500">تشفير جميع البيانات الحساسة</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>تسجيل العمليات</Label>
-                    <p className="text-sm text-gray-500">تسجيل جميع العمليات الحساسة</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">كلمات المرور</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="min-password-length">الحد الأدنى لطول كلمة المرور</Label>
-                    <Input id="min-password-length" type="number" defaultValue="8" />
+                    <Label htmlFor="phoneNumber" className="text-start block">
+                      {language === "ar" ? "رقم الهاتف" : "Phone Number"}
+                    </Label>
+                    <Input 
+                      id="phoneNumber" 
+                      type="tel" 
+                      defaultValue="+966 50 123 4567"
+                      placeholder="+966 5X XXX XXXX" 
+                      className="text-start" 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password-expiry">انتهاء صلاحية كلمة المرور (أيام)</Label>
-                    <Input id="password-expiry" type="number" defaultValue="90" />
-                  </div>
-                </div>
-              </div>
-
-              <Button>حفظ إعدادات الأمان</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payments" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                إعدادات المدفوعات
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="commission-rate">نسبة العمولة (%)</Label>
-                    <Input id="commission-rate" type="number" defaultValue="10" />
+                    <Label htmlFor="email" className="text-start block">
+                      {language === "ar" ? "البريد الإلكتروني" : "Email"}
+                    </Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      defaultValue="admin@shibr.com"
+                      className="text-start" 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="min-payment">الحد الأدنى للدفع</Label>
-                    <Input id="min-payment" type="number" defaultValue="100" />
+                    <Label htmlFor="password" className="text-start block">
+                      {language === "ar" ? "كلمة المرور" : "Password"}
+                    </Label>
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className="text-start" 
+                    />
                   </div>
                 </div>
               </div>
 
-              <Separator />
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">طرق الدفع المتاحة</h3>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>البطاقات الائتمانية</Label>
-                    <p className="text-sm text-gray-500">فيزا، ماستركارد، أمريكان إكسبريس</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>التحويل البنكي</Label>
-                    <p className="text-sm text-gray-500">التحويل المباشر من البنك</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>المحافظ الرقمية</Label>
-                    <p className="text-sm text-gray-500">STC Pay، Apple Pay، Google Pay</p>
-                  </div>
-                  <Switch />
-                </div>
+              <div className="flex justify-end">
+                <Button className="gap-2">
+                  <Save className="h-4 w-4" />
+                  {language === "ar" ? "حفظ التغييرات" : "Save Changes"}
+                </Button>
               </div>
-
-              <Button>حفظ إعدادات المدفوعات</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                إعدادات المستخدمين
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="text-xl font-semibold">
+                {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
               </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
+                    className="w-[300px] ps-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Button className="gap-2" onClick={() => setIsAddAdminDialogOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                  {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>السماح بالتسجيل الجديد</Label>
-                    <p className="text-sm text-gray-500">السماح للمستخدمين الجدد بالتسجيل</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>تفعيل البريد الإلكتروني مطلوب</Label>
-                    <p className="text-sm text-gray-500">يجب تفعيل البريد قبل استخدام الحساب</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>مراجعة المحلات الجديدة</Label>
-                    <p className="text-sm text-gray-500">مراجعة المحلات قبل الموافقة عليها</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
+            <CardContent className="p-0">
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="h-12 text-start font-medium">
+                        {language === "ar" ? "اسم المستخدم" : "Username"}
+                      </TableHead>
+                      <TableHead className="h-12 text-start font-medium">
+                        {language === "ar" ? "البريد الإلكتروني" : "Email"}
+                      </TableHead>
+                      <TableHead className="h-12 text-start font-medium">
+                        {language === "ar" ? "الصلاحية" : "Permission"}
+                      </TableHead>
+                      <TableHead className="h-12 text-start font-medium">
+                        {language === "ar" ? "الحالة" : "Status"}
+                      </TableHead>
+                      <TableHead className="h-12 text-start font-medium">
+                        {language === "ar" ? "الإجراء" : "Action"}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="h-[72px]">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {user.username.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="font-medium">{user.username}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={user.permission === "super_admin" ? "destructive" : "secondary"}
+                            className={user.permission === "super_admin" ? "bg-purple-600 hover:bg-purple-700" : ""}
+                          >
+                            {user.permission === "super_admin" ? 
+                              (language === "ar" ? "مسؤول رئيسي" : "Super Admin") : 
+                              (language === "ar" ? "مسؤول" : "Admin")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={user.status === "active" ? "default" : "secondary"}
+                            className={user.status === "active" ? "bg-green-500 hover:bg-green-600" : ""}
+                          >
+                            {user.status === "active" ? 
+                              (language === "ar" ? "نشط" : "Active") : 
+                              (language === "ar" ? "غير نشط" : "Inactive")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            disabled={user.permission === "super_admin"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">حدود المستخدمين</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="max-stores-per-user">الحد الأقصى للمحلات لكل مستخدم</Label>
-                    <Input id="max-stores-per-user" type="number" defaultValue="5" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="max-shelves-per-store">الحد الأقصى للرفوف لكل محل</Label>
-                    <Input id="max-shelves-per-store" type="number" defaultValue="20" />
-                  </div>
-                </div>
-              </div>
-
-              <Button>حفظ إعدادات المستخدمين</Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Admin Dialog */}
+      <Dialog open={isAddAdminDialogOpen} onOpenChange={setIsAddAdminDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              {language === "ar" ? "إضافة مسؤول جديد" : "Add New Admin"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Username */}
+            <div className="space-y-2">
+              <Label htmlFor="admin-username" className="text-start block">
+                {language === "ar" ? "اسم المستخدم" : "Username"} *
+              </Label>
+              <Input
+                id="admin-username"
+                value={newAdminData.username}
+                onChange={(e) => setNewAdminData({...newAdminData, username: e.target.value})}
+                placeholder={language === "ar" ? "أدخل اسم المستخدم" : "Enter username"}
+                className="w-full"
+                required
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="admin-email" className="text-start block">
+                {language === "ar" ? "البريد الإلكتروني" : "Email"} *
+              </Label>
+              <Input
+                id="admin-email"
+                type="email"
+                value={newAdminData.email}
+                onChange={(e) => setNewAdminData({...newAdminData, email: e.target.value})}
+                placeholder={language === "ar" ? "example@shibr.com" : "example@shibr.com"}
+                className="w-full"
+                required
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <Label htmlFor="admin-password" className="text-start block">
+                {language === "ar" ? "كلمة المرور" : "Password"} *
+              </Label>
+              <Input
+                id="admin-password"
+                type="password"
+                value={newAdminData.password}
+                onChange={(e) => setNewAdminData({...newAdminData, password: e.target.value})}
+                placeholder={language === "ar" ? "أدخل كلمة مرور قوية" : "Enter a strong password"}
+                className="w-full"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                {language === "ar" ? "يجب أن تكون كلمة المرور 8 أحرف على الأقل" : "Password must be at least 8 characters"}
+              </p>
+            </div>
+
+            {/* Permission Level */}
+            <div className="space-y-2">
+              <Label htmlFor="admin-permission" className="text-start block">
+                {language === "ar" ? "مستوى الصلاحية" : "Permission Level"} *
+              </Label>
+              <Select 
+                value={newAdminData.permission} 
+                onValueChange={(value) => setNewAdminData({...newAdminData, permission: value})}
+              >
+                <SelectTrigger id="admin-permission" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    {language === "ar" ? "مسؤول" : "Admin"}
+                  </SelectItem>
+                  <SelectItem value="super_admin">
+                    {language === "ar" ? "مسؤول رئيسي" : "Super Admin"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {newAdminData.permission === "super_admin" ? 
+                  (language === "ar" ? "المسؤول الرئيسي لديه صلاحيات كاملة على النظام" : "Super Admin has full system privileges") :
+                  (language === "ar" ? "المسؤول لديه صلاحيات محدودة" : "Admin has limited privileges")
+                }
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddAdminDialogOpen(false)
+                setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+              }}
+            >
+              {language === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button 
+              onClick={() => {
+                // Here you would handle the admin creation
+                console.log("Creating admin:", newAdminData)
+                setIsAddAdminDialogOpen(false)
+                setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+              }}
+              disabled={!newAdminData.username || !newAdminData.email || !newAdminData.password || newAdminData.password.length < 8}
+            >
+              {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

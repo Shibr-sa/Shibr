@@ -181,96 +181,89 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.control_panel")}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t("dashboard.platform_overview")}
-        </p>
-      </div>
+    <div className="space-y-6">
+      {/* Header and Stats in Single Card */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <h1 className="text-2xl font-bold">{t("dashboard.control_panel")}</h1>
+          <p className="text-muted-foreground mt-1">
+            {t("dashboard.platform_overview")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">
+                  {t("dashboard.total_users")}
+                </div>
+                <div className="text-2xl font-bold">{formatNumber(2845)}</div>
+                <div className="flex items-center gap-1 mt-1">
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600 font-medium">+12.5%</span>
+                  <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
+                </div>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+            </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.total_users")}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">
+                  {t("dashboard.shelves_count")}
+                </div>
+                <div className="text-2xl font-bold">{formatNumber(890)}</div>
+                <div className="mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    {language === "ar" ? 
+                      `منها 620 مؤجر و270 متاح` : 
+                      `620 rented, 270 available`}
+                  </span>
+                </div>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(2845)}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-green-600 font-medium">+12.5%</span>
-              <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.shelves_count")}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-              <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">
+                  {t("dashboard.total_revenue")}
+                </div>
+                <div className="text-2xl font-bold">{formatCurrency(1450000)}</div>
+                <div className="flex items-center gap-1 mt-1">
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600 font-medium">+8.2%</span>
+                  <span className="text-xs text-muted-foreground">{t("dashboard.from_rentals")}</span>
+                </div>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-primary" />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(890)}</div>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="secondary" className="text-xs px-2 py-0">
-                620 {t("dashboard.rented")}
-              </Badge>
-              <Badge variant="outline" className="text-xs px-2 py-0">
-                270 {t("dashboard.available")}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.total_revenue")}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">
+                  {t("dashboard.rental_requests")}
+                </div>
+                <div className="text-2xl font-bold">{formatNumber(145)}</div>
+                <div className="flex items-center gap-1 mt-1">
+                  <ArrowDownRight className="h-4 w-4 text-red-600" />
+                  <span className="text-xs text-red-600 font-medium">-3.1%</span>
+                  <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
+                </div>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(1450000)}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-green-600 font-medium">+8.2%</span>
-              <span className="text-xs text-muted-foreground">{t("dashboard.from_rentals")}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.rental_requests")}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(145)}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <ArrowDownRight className="h-4 w-4 text-red-600" />
-              <span className="text-xs text-red-600 font-medium">-3.1%</span>
-              <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Charts Section */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">

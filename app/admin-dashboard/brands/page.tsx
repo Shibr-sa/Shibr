@@ -17,69 +17,101 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Search, Eye, Store, CheckCircle, XCircle } from "lucide-react"
+import { Search, Eye, Package, TrendingUp, ShoppingBag, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const storesData = [
+const brandsData = [
   {
     id: 1,
-    name: "Store X",
-    shelves: 12,
-    rentals: 45,
+    name: "Nike",
+    logo: "N",
+    category: "sports",
+    products: 156,
+    stores: 45,
+    revenue: 125000,
     status: "active",
+    joinDate: "January 15, 2023",
   },
   {
     id: 2,
-    name: "Glow Cosmetics",
-    shelves: 8,
-    rentals: 32,
+    name: "Apple Store",
+    logo: "A",
+    category: "electronics",
+    products: 89,
+    stores: 32,
+    revenue: 250000,
     status: "active",
+    joinDate: "February 22, 2023",
   },
   {
     id: 3,
-    name: "Nova Perfumes",
-    shelves: 15,
-    rentals: 58,
-    status: "suspended",
+    name: "Zara",
+    logo: "Z",
+    category: "fashion",
+    products: 234,
+    stores: 67,
+    revenue: 180000,
+    status: "active",
+    joinDate: "March 10, 2023",
   },
   {
     id: 4,
-    name: "FitZone",
-    shelves: 6,
-    rentals: 23,
-    status: "active",
+    name: "Samsung",
+    logo: "S",
+    category: "electronics",
+    products: 112,
+    stores: 28,
+    revenue: 195000,
+    status: "suspended",
+    joinDate: "April 5, 2023",
   },
   {
     id: 5,
-    name: "Coffee Box",
-    shelves: 4,
-    rentals: 12,
-    status: "under_review",
+    name: "Adidas",
+    logo: "A",
+    category: "sports",
+    products: 143,
+    stores: 41,
+    revenue: 115000,
+    status: "active",
+    joinDate: "May 18, 2023",
   },
   {
     id: 6,
-    name: "Tech Hub",
-    shelves: 10,
-    rentals: 38,
+    name: "L'Oreal",
+    logo: "L",
+    category: "beauty",
+    products: 78,
+    stores: 23,
+    revenue: 95000,
     status: "active",
+    joinDate: "June 12, 2023",
   },
   {
     id: 7,
-    name: "Fashion Plus",
-    shelves: 7,
-    rentals: 28,
+    name: "H&M",
+    logo: "H",
+    category: "fashion",
+    products: 198,
+    stores: 54,
+    revenue: 145000,
     status: "active",
+    joinDate: "July 8, 2023",
   },
   {
     id: 8,
-    name: "Home Essentials",
-    shelves: 9,
-    rentals: 35,
+    name: "Sony",
+    logo: "S",
+    category: "electronics",
+    products: 95,
+    stores: 30,
+    revenue: 175000,
     status: "active",
+    joinDate: "August 3, 2023",
   },
 ]
 
-export default function StoresPage() {
+export default function BrandsPage() {
   const { t, language } = useLanguage()
   const [timePeriod, setTimePeriod] = useState("monthly")
   const [currentPage, setCurrentPage] = useState(1)
@@ -90,8 +122,6 @@ export default function StoresPage() {
     switch (status) {
       case "active":
         return "default"
-      case "under_review":
-        return "secondary"
       case "suspended":
         return "destructive"
       default:
@@ -99,16 +129,39 @@ export default function StoresPage() {
     }
   }
 
-  // Filter stores based on search query
-  const filteredStores = storesData.filter(store =>
-    store.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString()} ${t("common.currency")}`
+  }
+
+  // Filter brands based on search query
+  const filteredBrands = brandsData.filter(brand =>
+    brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    brand.category.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredStores.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredBrands.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedStores = filteredStores.slice(startIndex, endIndex)
+  const paginatedBrands = filteredBrands.slice(startIndex, endIndex)
+
+  const getTranslatedData = (brand: any) => {
+    if (language === "ar") {
+      return {
+        joinDate: brand.id === 1 ? "15 يناير 2023" :
+                  brand.id === 2 ? "22 فبراير 2023" :
+                  brand.id === 3 ? "10 مارس 2023" :
+                  brand.id === 4 ? "5 أبريل 2023" :
+                  brand.id === 5 ? "18 مايو 2023" :
+                  brand.id === 6 ? "12 يونيو 2023" :
+                  brand.id === 7 ? "8 يوليو 2023" :
+                  "3 أغسطس 2023",
+      }
+    }
+    return {
+      joinDate: brand.joinDate,
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -117,8 +170,8 @@ export default function StoresPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl font-bold">{t("stores.title")}</CardTitle>
-              <p className="text-muted-foreground mt-1">{t("stores.description")}</p>
+              <CardTitle className="text-2xl font-bold">{t("brands.title")}</CardTitle>
+              <p className="text-muted-foreground mt-1">{t("brands.description")}</p>
             </div>
             <Tabs value={timePeriod} onValueChange={setTimePeriod} className="w-auto">
               <TabsList className="grid grid-cols-4 w-auto bg-muted">
@@ -143,14 +196,14 @@ export default function StoresPage() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.total_stores")}</p>
-                  <p className="text-2xl font-bold">248</p>
+                  <p className="text-sm text-muted-foreground">{t("brands.total_brands")}</p>
+                  <p className="text-2xl font-bold">342</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +20.1% {t("dashboard.from_last_month")}
+                    +12.5% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Store className="h-6 w-6 text-primary" />
+                  <Package className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </div>
@@ -158,14 +211,14 @@ export default function StoresPage() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.active_stores")}</p>
-                  <p className="text-2xl font-bold">189</p>
+                  <p className="text-sm text-muted-foreground">{t("brands.total_products")}</p>
+                  <p className="text-2xl font-bold">1,234</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +15.3% {t("dashboard.from_last_month")}
+                    +18.2% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-primary" />
+                  <ShoppingBag className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </div>
@@ -173,14 +226,14 @@ export default function StoresPage() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.suspended")}</p>
-                  <p className="text-2xl font-bold">24</p>
+                  <p className="text-sm text-muted-foreground">{t("brands.total_revenue")}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(1850000)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    -5.2% {t("dashboard.from_last_month")}
+                    +25.4% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <XCircle className="h-6 w-6 text-primary" />
+                  <DollarSign className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </div>
@@ -188,15 +241,15 @@ export default function StoresPage() {
         </CardContent>
       </Card>
 
-      {/* Stores Table */}
+      {/* Brands Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">{t("stores.all_stores")}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t("brands.all_brands")}</CardTitle>
             <div className="relative w-80">
               <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input 
-                placeholder={t("stores.search_placeholder")} 
+                placeholder={t("brands.search_placeholder")} 
                 className="pe-10"
                 value={searchQuery}
                 onChange={(e) => {
@@ -214,16 +267,22 @@ export default function StoresPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="h-12 text-start font-medium">
-                      {t("stores.table.store")}
+                      {t("brands.table.brand")}
                     </TableHead>
                     <TableHead className="h-12 text-start font-medium">
-                      {t("stores.table.shelves")}
+                      {t("brands.table.category")}
                     </TableHead>
                     <TableHead className="h-12 text-start font-medium">
-                      {t("stores.table.rentals")}
+                      {t("brands.table.products")}
                     </TableHead>
                     <TableHead className="h-12 text-start font-medium">
-                      {t("stores.table.status")}
+                      {t("brands.table.stores")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("brands.table.revenue")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("brands.table.status")}
                     </TableHead>
                     <TableHead className="h-12 text-start font-medium">
                       {t("dashboard.options")}
@@ -231,39 +290,53 @@ export default function StoresPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedStores.length > 0 ? (
+                  {paginatedBrands.length > 0 ? (
                     <>
-                      {paginatedStores.map((store, index) => (
-                        <TableRow 
-                          key={store.id}
-                          className={`h-[72px] ${index < paginatedStores.length - 1 ? 'border-b' : ''}`}
-                        >
-                          <TableCell className="py-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="w-10 h-10">
-                                <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${store.name.charAt(0)}`} />
-                                <AvatarFallback>{store.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="font-medium">{store.name}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3 text-muted-foreground">{store.shelves}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground">{store.rentals}</TableCell>
-                          <TableCell className="py-3">
-                            <Badge variant={getStatusVariant(store.status)} className="font-normal">
-                              {t(`stores.status.${store.status}`)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="py-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {paginatedBrands.map((brand, index) => {
+                        const translatedData = getTranslatedData(brand)
+                        return (
+                          <TableRow 
+                            key={brand.id}
+                            className={`h-[72px] ${index < paginatedBrands.length - 1 ? 'border-b' : ''}`}
+                          >
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-10 h-10">
+                                  <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${brand.logo}`} />
+                                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                    {brand.logo}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{brand.name}</div>
+                                  <div className="text-sm text-muted-foreground">{translatedData.joinDate}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <Badge variant="outline">{t(`brands.category.${brand.category}`)}</Badge>
+                            </TableCell>
+                            <TableCell className="py-3 text-muted-foreground">{brand.products}</TableCell>
+                            <TableCell className="py-3 text-muted-foreground">{brand.stores}</TableCell>
+                            <TableCell className="py-3 font-medium">{formatCurrency(brand.revenue)}</TableCell>
+                            <TableCell className="py-3">
+                              <Badge variant={getStatusVariant(brand.status)} className="font-normal">
+                                {t(`brands.status.${brand.status}`)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                       {/* Fill remaining rows if less than 5 items */}
-                      {paginatedStores.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedStores.length }).map((_, index) => (
-                        <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedStores.length - 1 ? 'border-b' : ''}`}>
+                      {paginatedBrands.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedBrands.length }).map((_, index) => (
+                        <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedBrands.length - 1 ? 'border-b' : ''}`}>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
                           <TableCell className="py-3">&nbsp;</TableCell>
                           <TableCell className="py-3">&nbsp;</TableCell>
                           <TableCell className="py-3">&nbsp;</TableCell>
@@ -276,8 +349,8 @@ export default function StoresPage() {
                     // Empty state - show 5 empty rows
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[72px]">
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          {index === 2 && t("stores.no_results")}
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          {index === 2 && t("brands.no_results")}
                         </TableCell>
                       </TableRow>
                     ))

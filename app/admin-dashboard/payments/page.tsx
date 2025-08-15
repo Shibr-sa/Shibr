@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,174 +9,230 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import {
   Search,
-  Filter,
-  MoreHorizontal,
   Eye,
-  Download,
   CreditCard,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
+  Check,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const paymentsData = [
   {
-    id: "PAY-001",
+    invoiceNumber: "INV-2024-001",
+    merchant: "Ahmed Mohammed",
     store: "Store X",
+    date: "June 24, 2023",
     amount: 2500,
-    type: "إيجار رف",
-    method: "بطاقة ائتمان",
-    status: "مكتمل",
-    date: "24 يونيو 2023",
-    commission: 250,
+    percentage: 10,
+    method: "credit_card",
+    status: "paid",
   },
   {
-    id: "PAY-002",
+    invoiceNumber: "INV-2024-002",
+    merchant: "Fatima Ali",
     store: "Glow Cosmetics",
+    date: "June 23, 2023",
     amount: 1800,
-    type: "إيجار رف",
-    method: "تحويل بنكي",
-    status: "معلق",
-    date: "23 يونيو 2023",
-    commission: 180,
+    percentage: 10,
+    method: "bank_transfer",
+    status: "unpaid",
   },
   {
-    id: "PAY-003",
+    invoiceNumber: "INV-2024-003",
+    merchant: "Khalid Saeed",
     store: "Nova Perfumes",
+    date: "June 22, 2023",
     amount: 3200,
-    type: "إيجار رف",
-    method: "محفظة رقمية",
-    status: "مكتمل",
-    date: "22 يونيو 2023",
-    commission: 320,
+    percentage: 10,
+    method: "digital_wallet",
+    status: "paid",
   },
   {
-    id: "PAY-004",
+    invoiceNumber: "INV-2024-004",
+    merchant: "Sara Ahmed",
     store: "FitZone",
+    date: "June 21, 2023",
     amount: 1500,
-    type: "إيجار رف",
-    method: "بطاقة ائتمان",
-    status: "فاشل",
-    date: "21 يونيو 2023",
-    commission: 0,
+    percentage: 10,
+    method: "credit_card",
+    status: "unpaid",
   },
   {
-    id: "PAY-005",
+    invoiceNumber: "INV-2024-005",
+    merchant: "Mohammed Hassan",
     store: "Coffee Box",
+    date: "June 20, 2023",
     amount: 900,
-    type: "إيجار رف",
-    method: "تحويل بنكي",
-    status: "مكتمل",
-    date: "20 يونيو 2023",
-    commission: 90,
+    percentage: 10,
+    method: "bank_transfer",
+    status: "paid",
+  },
+  {
+    invoiceNumber: "INV-2024-006",
+    merchant: "Layla Ibrahim",
+    store: "Tech Hub",
+    date: "June 19, 2023",
+    amount: 2100,
+    percentage: 10,
+    method: "credit_card",
+    status: "paid",
+  },
+  {
+    invoiceNumber: "INV-2024-007",
+    merchant: "Omar Abdullah",
+    store: "Fashion Plus",
+    date: "June 18, 2023",
+    amount: 1650,
+    percentage: 10,
+    method: "digital_wallet",
+    status: "unpaid",
+  },
+  {
+    invoiceNumber: "INV-2024-008",
+    merchant: "Noor Youssef",
+    store: "Home Essentials",
+    date: "June 17, 2023",
+    amount: 2800,
+    percentage: 10,
+    method: "bank_transfer",
+    status: "paid",
   },
 ]
 
 export default function PaymentsPage() {
-  const { language } = useLanguage()
+  const { t, language } = useLanguage()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case "paid":
+        return "default"
+      case "unpaid":
+        return "destructive"
+      default:
+        return "outline"
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString()} ${t("common.currency")}`
+  }
+
+  const getTranslatedDate = (date: string, index: number) => {
+    if (language === "ar") {
+      const arabicDates = [
+        "24 يونيو 2023",
+        "23 يونيو 2023",
+        "22 يونيو 2023",
+        "21 يونيو 2023",
+        "20 يونيو 2023",
+        "19 يونيو 2023",
+        "18 يونيو 2023",
+        "17 يونيو 2023",
+      ]
+      return arabicDates[index] || date
+    }
+    return date
+  }
+
+  // Filter payments based on search query and status
+  const filteredPayments = paymentsData.filter(payment => {
+    const matchesSearch = !searchQuery || 
+      payment.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.merchant.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.store.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesStatus = filterStatus === "all" || payment.status === filterStatus
+    
+    return matchesSearch && matchesStatus
+  })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedPayments = filteredPayments.slice(startIndex, endIndex)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">المدفوعات والتحصيلات</h1>
-          <p className="text-gray-600">إدارة جميع المعاملات المالية والعمولات</p>
-        </div>
-        <Button>
-          <Download className="w-4 h-4 me-2" />
-          تصدير التقرير
-        </Button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <DollarSign className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
-                <p className="text-2xl font-bold">320,000 ر.س</p>
-                <div className="flex items-center gap-1 text-green-600 text-sm">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>+12.5%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <CreditCard className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">العمولات</p>
-                <p className="text-2xl font-bold">32,000 ر.س</p>
-                <div className="flex items-center gap-1 text-blue-600 text-sm">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>+8.2%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/10 rounded-lg">
-                <CreditCard className="w-5 h-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">معاملات معلقة</p>
-                <p className="text-2xl font-bold">15</p>
-                <div className="flex items-center gap-1 text-orange-600 text-sm">
-                  <TrendingDown className="w-3 h-3" />
-                  <span>-2.1%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-destructive/10 rounded-lg">
-                <CreditCard className="w-5 h-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">معاملات فاشلة</p>
-                <p className="text-2xl font-bold">8</p>
-                <div className="flex items-center gap-1 text-red-600 text-sm">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>+1.5%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
+      {/* Header Card with Stats */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input placeholder="البحث في المعاملات..." className="pe-10" />
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">{t("payments.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("payments.total_received")}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(485000)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    +18.3% {t("dashboard.from_last_month")}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-primary" />
+                </div>
+              </div>
             </div>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 me-2" />
-              تصفية
-            </Button>
+
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("payments.current_month")}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(68500)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    +22.7% {t("dashboard.from_last_month")}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("payments.pending_payments")}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(12300)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    -5.2% {t("dashboard.from_last_month")}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("payments.invoices_issued")}</p>
+                  <p className="text-2xl font-bold">234</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    +15.8% {t("dashboard.from_last_month")}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -183,69 +240,246 @@ export default function PaymentsPage() {
       {/* Payments Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">جميع المعاملات</CardTitle>
+          <div className="flex flex-col gap-4">
+            <CardTitle className="text-xl font-semibold">{t("payments.all_transactions")}</CardTitle>
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input 
+                  placeholder={t("payments.search_placeholder")} 
+                  className="pe-10"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                />
+              </div>
+              
+              {/* Filter Pills */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setFilterStatus("all")
+                    setCurrentPage(1)
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
+                    filterStatus === "all" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                  {filterStatus === "all" && <Check className="h-3 w-3" />}
+                  {t("payments.filter_all")}
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterStatus("paid")
+                    setCurrentPage(1)
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
+                    filterStatus === "paid" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                  {filterStatus === "paid" && <Check className="h-3 w-3" />}
+                  {t("payments.filter_paid")}
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterStatus("unpaid")
+                    setCurrentPage(1)
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
+                    filterStatus === "unpaid" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                  {filterStatus === "unpaid" && <Check className="h-3 w-3" />}
+                  {t("payments.filter_unpaid")}
+                </button>
+              </div>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-end">رقم المعاملة</TableHead>
-                <TableHead className="text-end">المحل</TableHead>
-                <TableHead className="text-end">المبلغ</TableHead>
-                <TableHead className="text-end">النوع</TableHead>
-                <TableHead className="text-end">طريقة الدفع</TableHead>
-                <TableHead className="text-end">الحالة</TableHead>
-                <TableHead className="text-end">العمولة</TableHead>
-                <TableHead className="text-end">التاريخ</TableHead>
-                <TableHead className="text-end">الإجراءات</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paymentsData.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-medium">{payment.id}</TableCell>
-                  <TableCell>{payment.store}</TableCell>
-                  <TableCell className="font-medium">{payment.amount.toLocaleString()} ر.س</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{payment.type}</Badge>
-                  </TableCell>
-                  <TableCell>{payment.method}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        payment.status === "مكتمل" ? "default" : payment.status === "معلق" ? "secondary" : "destructive"
-                      }
+        <CardContent className="space-y-4">
+          <div className="rounded-md border">
+            <div className="min-h-[420px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.invoice_number")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.merchant")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.store")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.date")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.amount")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.percentage")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.method")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.status")}
+                    </TableHead>
+                    <TableHead className="h-12 text-start font-medium">
+                      {t("payments.table.options")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedPayments.length > 0 ? (
+                    <>
+                      {paginatedPayments.map((payment, index) => (
+                        <TableRow 
+                          key={payment.invoiceNumber}
+                          className={`h-[72px] ${index < paginatedPayments.length - 1 ? 'border-b' : ''}`}
+                        >
+                          <TableCell className="py-3 font-medium">{payment.invoiceNumber}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {language === "ar" ? 
+                              (payment.merchant === "Ahmed Mohammed" ? "أحمد محمد" :
+                               payment.merchant === "Fatima Ali" ? "فاطمة علي" :
+                               payment.merchant === "Khalid Saeed" ? "خالد سعيد" :
+                               payment.merchant === "Sara Ahmed" ? "سارة أحمد" :
+                               payment.merchant === "Mohammed Hassan" ? "محمد حسن" :
+                               payment.merchant === "Layla Ibrahim" ? "ليلى إبراهيم" :
+                               payment.merchant === "Omar Abdullah" ? "عمر عبدالله" :
+                               payment.merchant === "Noor Youssef" ? "نور يوسف" :
+                               payment.merchant)
+                              : payment.merchant
+                            }
+                          </TableCell>
+                          <TableCell className="py-3">{payment.store}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {getTranslatedDate(payment.date, paymentsData.indexOf(payment))}
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">{formatCurrency(payment.amount)}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground">{payment.percentage}%</TableCell>
+                          <TableCell className="py-3">
+                            <Badge variant="outline" className="font-normal">
+                              {t(`payments.method.${payment.method}`)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge
+                              variant={getStatusVariant(payment.status)}
+                              className="font-normal"
+                            >
+                              {t(`payments.status.${payment.status}`)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Fill remaining rows if less than 5 items */}
+                      {paginatedPayments.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedPayments.length }).map((_, index) => (
+                        <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedPayments.length - 1 ? 'border-b' : ''}`}>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">&nbsp;</TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ) : (
+                    // Empty state
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={`empty-${index}`} className="h-[72px]">
+                        <TableCell colSpan={9} className="text-center text-muted-foreground">
+                          {index === 2 && t("payments.no_results")}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Pagination Controls */}
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className={cn(
+                    "cursor-pointer",
+                    (currentPage === 1 || totalPages === 0) && "pointer-events-none opacity-50"
+                  )}
+                  aria-disabled={currentPage === 1 || totalPages === 0}
+                >
+                  {t("common.previous")}
+                </PaginationPrevious>
+              </PaginationItem>
+              
+              {totalPages > 0 ? (
+                Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return page;
+                }).map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
                     >
-                      {payment.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {payment.commission > 0 ? `${payment.commission} ر.س` : "-"}
-                  </TableCell>
-                  <TableCell>{payment.date}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="w-4 h-4 me-2" />
-                          عرض التفاصيل
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="w-4 h-4 me-2" />
-                          تحميل الإيصال
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))
+              ) : (
+                <PaginationItem>
+                  <PaginationLink isActive className="pointer-events-none">
+                    1
+                  </PaginationLink>
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className={cn(
+                    "cursor-pointer",
+                    (currentPage === totalPages || totalPages <= 1) && "pointer-events-none opacity-50"
+                  )}
+                  aria-disabled={currentPage === totalPages || totalPages <= 1}
+                >
+                  {t("common.next")}
+                </PaginationNext>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </CardContent>
       </Card>
     </div>
