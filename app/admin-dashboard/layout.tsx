@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, FileText, Store, CreditCard, Settings, ChevronUp, User, LogOut, Users, Package, TrendingUp, Bell, Search } from "lucide-react"
+import { Home, FileText, Store, CreditCard, Settings, ChevronUp, User, LogOut, Users, Package, TrendingUp } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/localization-context"
@@ -249,13 +249,6 @@ export default function AdminDashboardLayout({
               </div>
               
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Search className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute top-1 end-1 h-2 w-2 bg-destructive rounded-full" />
-                </Button>
                 <LanguageSwitcher />
               </div>
             </div>
