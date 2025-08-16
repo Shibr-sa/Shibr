@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/pagination"
 import { Search, Eye, Package, TrendingUp, ShoppingBag, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BrandDetailsDialog } from "@/components/dialogs/brand-details-dialog"
 
 const brandsData = [
   {
@@ -116,6 +117,8 @@ export default function BrandsPage() {
   const [timePeriod, setTimePeriod] = useState("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedBrand, setSelectedBrand] = useState<typeof brandsData[0] | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
 
   const getStatusVariant = (status: string) => {
@@ -325,7 +328,15 @@ export default function BrandsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3">
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setSelectedBrand(brand)
+                                  setDialogOpen(true)
+                                }}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -424,6 +435,15 @@ export default function BrandsPage() {
           </Pagination>
         </CardContent>
       </Card>
+
+      {/* Brand Details Dialog */}
+      {selectedBrand && (
+        <BrandDetailsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          brand={selectedBrand}
+        />
+      )}
     </div>
   )
 }

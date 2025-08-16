@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/pagination"
 import { Search, Eye, Store, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { StoreDetailsDialog } from "@/components/dialogs/store-details-dialog"
 
 const storesData = [
   {
@@ -84,6 +85,8 @@ export default function StoresPage() {
   const [timePeriod, setTimePeriod] = useState("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedStore, setSelectedStore] = useState<typeof storesData[0] | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
 
   const getStatusVariant = (status: string) => {
@@ -255,7 +258,15 @@ export default function StoresPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setSelectedStore(store)
+                                setDialogOpen(true)
+                              }}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -351,6 +362,15 @@ export default function StoresPage() {
           </Pagination>
         </CardContent>
       </Card>
+
+      {/* Store Details Dialog */}
+      {selectedStore && (
+        <StoreDetailsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          store={selectedStore}
+        />
+      )}
     </div>
   )
 }

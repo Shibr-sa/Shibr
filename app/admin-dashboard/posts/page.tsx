@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/pagination"
 import { Search, Eye, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PostDetailsDialog } from "@/components/dialogs/post-details-dialog"
 
 const postsData = [
   {
@@ -98,6 +99,8 @@ export default function PostsPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedPost, setSelectedPost] = useState<typeof postsData[0] | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
 
   const getStatusVariant = (status: string) => {
@@ -132,7 +135,8 @@ export default function PostsPage() {
   const paginatedPosts = filteredPosts.slice(startIndex, endIndex)
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-bold">{t("posts.title")}</CardTitle>
         <p className="text-muted-foreground">{t("posts.description")}</p>
@@ -316,7 +320,15 @@ export default function PostsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setSelectedPost(post)
+                                setDialogOpen(true)
+                              }}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -415,5 +427,15 @@ export default function PostsPage() {
         </div>
       </CardContent>
     </Card>
+
+    {/* Post Details Dialog */}
+    {selectedPost && (
+      <PostDetailsDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        post={selectedPost}
+      />
+    )}
+    </>
   )
 }
