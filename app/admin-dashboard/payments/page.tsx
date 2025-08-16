@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,95 +27,22 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const paymentsData = [
-  {
-    invoiceNumber: "INV-2024-001",
-    merchant: "Ahmed Mohammed",
-    store: "Store X",
-    date: "June 24, 2023",
-    amount: 2500,
-    percentage: 10,
-    method: "credit_card",
-    status: "paid",
-  },
-  {
-    invoiceNumber: "INV-2024-002",
-    merchant: "Fatima Ali",
-    store: "Glow Cosmetics",
-    date: "June 23, 2023",
-    amount: 1800,
-    percentage: 10,
-    method: "bank_transfer",
-    status: "unpaid",
-  },
-  {
-    invoiceNumber: "INV-2024-003",
-    merchant: "Khalid Saeed",
-    store: "Nova Perfumes",
-    date: "June 22, 2023",
-    amount: 3200,
-    percentage: 10,
-    method: "digital_wallet",
-    status: "paid",
-  },
-  {
-    invoiceNumber: "INV-2024-004",
-    merchant: "Sara Ahmed",
-    store: "FitZone",
-    date: "June 21, 2023",
-    amount: 1500,
-    percentage: 10,
-    method: "credit_card",
-    status: "unpaid",
-  },
-  {
-    invoiceNumber: "INV-2024-005",
-    merchant: "Mohammed Hassan",
-    store: "Coffee Box",
-    date: "June 20, 2023",
-    amount: 900,
-    percentage: 10,
-    method: "bank_transfer",
-    status: "paid",
-  },
-  {
-    invoiceNumber: "INV-2024-006",
-    merchant: "Layla Ibrahim",
-    store: "Tech Hub",
-    date: "June 19, 2023",
-    amount: 2100,
-    percentage: 10,
-    method: "credit_card",
-    status: "paid",
-  },
-  {
-    invoiceNumber: "INV-2024-007",
-    merchant: "Omar Abdullah",
-    store: "Fashion Plus",
-    date: "June 18, 2023",
-    amount: 1650,
-    percentage: 10,
-    method: "digital_wallet",
-    status: "unpaid",
-  },
-  {
-    invoiceNumber: "INV-2024-008",
-    merchant: "Noor Youssef",
-    store: "Home Essentials",
-    date: "June 17, 2023",
-    amount: 2800,
-    percentage: 10,
-    method: "bank_transfer",
-    status: "paid",
-  },
-]
-
 export default function PaymentsPage() {
   const { t, language } = useLanguage()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
+  
+  // Fetch real data from Convex
+  const paymentsResult = useQuery(api.admin.getPayments, {
+    searchQuery,
+    status: filterStatus,
+    page: currentPage,
+    limit: itemsPerPage,
+  })
+  
+  const paymentsData = paymentsResult?.payments || []
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -147,23 +76,10 @@ export default function PaymentsPage() {
     return date
   }
 
-  // Filter payments based on search query and status
-  const filteredPayments = paymentsData.filter(payment => {
-    const matchesSearch = !searchQuery || 
-      payment.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.merchant.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.store.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesStatus = filterStatus === "all" || payment.status === filterStatus
-    
-    return matchesSearch && matchesStatus
-  })
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedPayments = filteredPayments.slice(startIndex, endIndex)
+  // Use data from Convex query
+  const filteredPayments = paymentsData
+  const totalPages = paymentsResult?.totalPages || 1
+  const paginatedPayments = paymentsData
 
   return (
     <div className="space-y-6">
@@ -178,9 +94,9 @@ export default function PaymentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("payments.total_received")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(485000)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.totalReceived || 0)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +18.3% {t("dashboard.from_last_month")}
+                    {paymentsResult?.stats?.totalReceivedChange > 0 ? "+" : ""}{paymentsResult?.stats?.totalReceivedChange || 0}% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -193,9 +109,9 @@ export default function PaymentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("payments.current_month")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(68500)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.currentMonthPayments || 0)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +22.7% {t("dashboard.from_last_month")}
+                    {paymentsResult?.stats?.currentMonthChange > 0 ? "+" : ""}{paymentsResult?.stats?.currentMonthChange || 0}% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -208,9 +124,9 @@ export default function PaymentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("payments.pending_payments")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(12300)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.pendingPayments || 0)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    -5.2% {t("dashboard.from_last_month")}
+                    {paymentsResult?.stats?.pendingChange > 0 ? "+" : ""}{paymentsResult?.stats?.pendingChange || 0}% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -223,9 +139,9 @@ export default function PaymentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("payments.invoices_issued")}</p>
-                  <p className="text-2xl font-bold">234</p>
+                  <p className="text-2xl font-bold">{paymentsResult?.stats?.invoicesIssued || 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +15.8% {t("dashboard.from_last_month")}
+                    {paymentsResult?.stats?.invoicesChange > 0 ? "+" : ""}{paymentsResult?.stats?.invoicesChange || 0}% {t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">

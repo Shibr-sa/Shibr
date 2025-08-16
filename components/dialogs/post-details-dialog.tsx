@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
 import { 
   Store,
   MapPin,
@@ -29,44 +31,53 @@ interface PostDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   post: {
-    id: number
+    id: string
     storeName: string
+    storeOwnerName?: string
+    storeOwnerEmail?: string
+    storeOwnerPhone?: string
+    businessRegistration?: string
     branch: string
     shelfName: string
     percentage: number
+    price: number
     addedDate: string
     status: string
+    city?: string
+    address?: string
+    dimensions?: string
+    productType?: string
+    description?: string
+    availableFrom?: string
+    images?: string[]
   }
 }
 
-// Mock data for post details - same as what store owner posted
+// Transform post data for display
 const getPostDetailsData = (language: string, post: any) => ({
-  storeName: language === "ar" ? "متجر الأزياء" : "Fashion Store",
-  storeOwnerName: language === "ar" ? "عناية بالبشرة" : "Skin Care",
-  storeBranch: language === "ar" ? "الفرع" : "Branch",
-  storeReview: language === "ar" ? "1 يونيو" : "June 1",
+  storeName: post.storeName,
+  storeOwnerName: post.storeOwnerName || post.storeName,
+  storeBranch: post.branch,
+  storeReview: new Date(post.addedDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US"),
   storeType: language === "ar" ? "طريقة التأجير" : "Rental Method",
   rentalMethod: language === "ar" ? "إيجار شهري" : "Monthly Rental",
   contactMethod: language === "ar" ? "وسيلة التواصل" : "Contact Method",
-  contactDetails: "glow@example.com — 05XXXXXXXX",
-  commercialRegistry: language === "ar" ? "السجل التجاري" : "Commercial Registry",
-  branch: language === "ar" ? "الرياض - حي النخيل" : "Riyadh - Al Nakheel",
-  shelfName: language === "ar" ? "رف العرض الأمامي" : "Front Display Shelf",
+  contactDetails: `${post.storeOwnerPhone || "05XXXXXXXX"}\n${post.storeOwnerEmail || "email@store.com"}`,
+  commercialRegistry: post.businessRegistration || "1234567890",
+  branch: post.branch || post.city,
+  shelfName: post.shelfName,
   shelfSize: language === "ar" ? "كبير" : "Large",
-  rentalPrice: 2500,
-  percentage: post.percentage,
+  rentalPrice: post.price || 0,
+  percentage: post.percentage || 0,
   rentalPeriod: language === "ar" ? "3 أشهر" : "3 months",
-  address: language === "ar" ? "شارع الملك فهد، مبنى 23، الطابق الأرضي" : "King Fahd Street, Building 23, Ground Floor",
-  addedDate: language === "ar" ? "15 ديسمبر 2024" : "December 15, 2024",
-  shelfDimensions: language === "ar" ? "180سم × 90سم × 45سم" : "180cm × 90cm × 45cm",
-  suitableProducts: language === "ar" ? "ملابس، إكسسوارات، أحذية، حقائب" : "Clothing, Accessories, Shoes, Bags",
-  description: language === "ar" ? 
-    "رف عرض أمامي في موقع استراتيجي عند مدخل المحل، مناسب لعرض المنتجات الترويجية والعروض الخاصة. يتمتع بإضاءة ممتازة ومساحة واسعة لعرض مجموعة متنوعة من المنتجات." :
-    "Front display shelf in a strategic location at the store entrance, suitable for displaying promotional products and special offers. Features excellent lighting and ample space for displaying a variety of products.",
-  images: [
-    "/shelf-image-1.jpg",
-    "/shelf-image-2.jpg",
-    "/shelf-image-3.jpg",
+  address: post.address || (language === "ar" ? "العنوان غير متوفر" : "Address not available"),
+  addedDate: new Date(post.addedDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US"),
+  shelfDimensions: post.dimensions || (language === "ar" ? "الأبعاد غير متوفرة" : "Dimensions not available"),
+  suitableProducts: post.productType || (language === "ar" ? "غير محدد" : "Not specified"),
+  description: post.description || (language === "ar" ? 
+    "لا يوجد وصف متاح" :
+    "No description available"),
+  images: post.images || [
   ]
 })
 
@@ -117,6 +128,8 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
             ))}
           </div>
 
+          <Separator className="my-4" />
+
           {/* Combined Shelf Information Card */}
           <Card>
             <CardContent className="pt-6 space-y-4">
@@ -125,7 +138,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.shelf_name")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.shelf_name")}</Label>
                   </div>
                   <p className="font-medium ps-6">{postDetails.shelfName}</p>
                 </div>
@@ -134,7 +147,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.price_with_percentage")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.price_with_percentage")}</Label>
                   </div>
                   <p className="font-medium ps-6">
                     {formatCurrency(postDetails.rentalPrice)}
@@ -148,7 +161,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.address")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.address")}</Label>
                   </div>
                   <p className="font-medium ps-6">{postDetails.address}</p>
                 </div>
@@ -157,7 +170,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.added_date")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.added_date")}</Label>
                   </div>
                   <p className="font-medium ps-6">{postDetails.addedDate}</p>
                 </div>
@@ -166,7 +179,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Ruler className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.shelf_dimensions")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.shelf_dimensions")}</Label>
                   </div>
                   <p className="font-medium ps-6">{postDetails.shelfDimensions}</p>
                 </div>
@@ -175,7 +188,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Store className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{t("posts.suitable_products")}</span>
+                    <Label className="text-sm text-muted-foreground">{t("posts.suitable_products")}</Label>
                   </div>
                   <p className="font-medium ps-6">{postDetails.suitableProducts}</p>
                 </div>
@@ -206,11 +219,10 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
                       </td>
                       <td className="px-4 py-3 text-sm">{postDetails.storeBranch}</td>
                       <td className="px-4 py-3 text-sm">{postDetails.rentalMethod}</td>
-                      <td className="px-4 py-3 text-sm">{postDetails.contactDetails}</td>
+                      <td className="px-4 py-3 text-sm whitespace-pre-line">{postDetails.contactDetails}</td>
                       <td className="px-4 py-3">
-                        <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Download className="h-4 w-4 me-1" />
-                          {t("posts.download_registry")}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary">
+                          <Download className="h-4 w-4" />
                         </Button>
                       </td>
                     </tr>

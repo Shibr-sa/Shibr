@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,6 +20,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Search, Eye, Store, CheckCircle, XCircle } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { StoreDetailsDialog } from "@/components/dialogs/store-details-dialog"
 
@@ -85,9 +88,19 @@ export default function StoresPage() {
   const [timePeriod, setTimePeriod] = useState("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedStore, setSelectedStore] = useState<typeof storesData[0] | null>(null)
+  const [selectedStore, setSelectedStore] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
+  
+  // Fetch real data from Convex
+  const storesResult = useQuery(api.admin.getStores, {
+    searchQuery,
+    page: currentPage,
+    limit: itemsPerPage,
+    timePeriod,
+  })
+  
+  const storesData = storesResult?.stores || []
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -102,16 +115,10 @@ export default function StoresPage() {
     }
   }
 
-  // Filter stores based on search query
-  const filteredStores = storesData.filter(store =>
-    store.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredStores.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedStores = filteredStores.slice(startIndex, endIndex)
+  // Use data from Convex query
+  const filteredStores = storesData
+  const totalPages = storesResult?.totalPages || 1
+  const paginatedStores = storesData
 
   return (
     <div className="space-y-6">
@@ -147,9 +154,9 @@ export default function StoresPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("stores.total_stores")}</p>
-                  <p className="text-2xl font-bold">248</p>
+                  <p className="text-2xl font-bold">{storesResult?.stats?.totalStores || storesResult?.total || 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +20.1% {t("dashboard.from_last_month")}
+                    {(storesResult?.stats?.totalChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.totalChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -162,9 +169,9 @@ export default function StoresPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("stores.active_stores")}</p>
-                  <p className="text-2xl font-bold">189</p>
+                  <p className="text-2xl font-bold">{storesResult?.stats?.activeStores || storesData.filter(s => s.status === "active").length || 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    +15.3% {t("dashboard.from_last_month")}
+                    {(storesResult?.stats?.activeChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.activeChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -177,9 +184,9 @@ export default function StoresPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("stores.suspended")}</p>
-                  <p className="text-2xl font-bold">24</p>
+                  <p className="text-2xl font-bold">{storesResult?.stats?.suspendedStores || storesData.filter(s => s.status === "suspended").length || 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    -5.2% {t("dashboard.from_last_month")}
+                    {(storesResult?.stats?.suspendedChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.suspendedChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -272,24 +279,44 @@ export default function StoresPage() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {/* Fill remaining rows if less than 5 items */}
+                      {/* Fill remaining rows with skeletons if less than 5 items */}
                       {paginatedStores.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedStores.length }).map((_, index) => (
                         <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedStores.length - 1 ? 'border-b' : ''}`}>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="w-10 h-10 rounded-full" />
+                              <Skeleton className="h-4 w-32" />
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Empty state - show 5 empty rows
+                    // Empty state - show message with skeleton rows
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[72px]">
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          {index === 2 && t("stores.no_results")}
-                        </TableCell>
+                        {index === 2 ? (
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
+                            {t("stores.no_results")}
+                          </TableCell>
+                        ) : (
+                          <>
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-3">
+                                <Skeleton className="w-10 h-10 rounded-full" />
+                                <Skeleton className="h-4 w-32" />
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                          </>
+                        )}
                       </TableRow>
                     ))
                   )}

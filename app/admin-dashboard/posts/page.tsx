@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,11 +17,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Search, Eye, Check } from "lucide-react"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Search, Eye } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { PostDetailsDialog } from "@/components/dialogs/post-details-dialog"
 
-const postsData = [
+// Hardcoded data removed - using real data from Convex
+const _unusedPostsData = [
   {
     id: 1,
     storeName: "Store X",
@@ -99,40 +104,35 @@ export default function PostsPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedPost, setSelectedPost] = useState<typeof postsData[0] | null>(null)
+  const [selectedPost, setSelectedPost] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
+  
+  // Fetch real data from Convex
+  const postsResult = useQuery(api.admin.getPosts, {
+    searchQuery,
+    status: filterStatus,
+    page: currentPage,
+    limit: itemsPerPage,
+  })
+  
+  const postsData = postsResult?.posts || []
 
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "published":
         return "default"
       case "rented":
-        return "default"
-      case "under_review":
         return "secondary"
-      case "rejected":
-        return "destructive"
       default:
         return "outline"
     }
   }
 
-  // Filter posts based on status and search query
-  const filteredPosts = postsData.filter(post => {
-    const matchesStatus = filterStatus === "all" || post.status === filterStatus
-    const matchesSearch = !searchQuery || 
-      post.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.shelfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.branch.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredPosts.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedPosts = filteredPosts.slice(startIndex, endIndex)
+  // Use data from Convex query
+  const filteredPosts = postsData
+  const totalPages = postsResult?.totalPages || 1
+  const paginatedPosts = postsData
 
   return (
     <>
@@ -159,78 +159,27 @@ export default function PostsPage() {
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setFilterStatus("all")
+          <ToggleGroup 
+            type="single" 
+            value={filterStatus}
+            onValueChange={(value) => {
+              if (value) {
+                setFilterStatus(value)
                 setCurrentPage(1)
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                filterStatus === "all" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              {filterStatus === "all" && <Check className="h-3 w-3" />}
+              }
+            }}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="all" aria-label="Show all posts">
               {t("posts.filter_all")}
-            </button>
-            <button
-              onClick={() => {
-                setFilterStatus("rented")
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                filterStatus === "rented" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              {filterStatus === "rented" && <Check className="h-3 w-3" />}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="rented" aria-label="Show rented posts">
               {t("posts.status.rented")}
-            </button>
-            <button
-              onClick={() => {
-                setFilterStatus("published")
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                filterStatus === "published" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              {filterStatus === "published" && <Check className="h-3 w-3" />}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="published" aria-label="Show published posts">
               {t("posts.status.published")}
-            </button>
-            <button
-              onClick={() => {
-                setFilterStatus("under_review")
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                filterStatus === "under_review" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              {filterStatus === "under_review" && <Check className="h-3 w-3" />}
-              {t("posts.status.under_review")}
-            </button>
-            <button
-              onClick={() => {
-                setFilterStatus("rejected")
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                filterStatus === "rejected" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              {filterStatus === "rejected" && <Check className="h-3 w-3" />}
-              {t("posts.status.rejected")}
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {/* Posts Table */}
@@ -334,26 +283,38 @@ export default function PostsPage() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {/* Fill remaining rows if less than 5 items */}
+                      {/* Fill remaining rows with skeletons if less than 5 items */}
                       {paginatedPosts.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedPosts.length }).map((_, index) => (
                         <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedPosts.length - 1 ? 'border-b' : ''}`}>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Empty state - show 5 empty rows
+                    // Empty state - show message with skeleton rows
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[72px]">
-                        <TableCell colSpan={7} className="text-center text-muted-foreground">
-                          {index === 2 && t("posts.no_results")}
-                        </TableCell>
+                        {index === 2 ? (
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                            {t("posts.no_results")}
+                          </TableCell>
+                        ) : (
+                          <>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                          </>
+                        )}
                       </TableRow>
                     ))
                   )}

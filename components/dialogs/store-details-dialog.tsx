@@ -13,8 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Card, CardContent } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
 import {
   Pagination,
   PaginationContent,
@@ -45,28 +49,35 @@ interface StoreDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   store: {
-    id: number
+    id: string
     name: string
+    email?: string
+    phoneNumber?: string
     shelves: number
+    rentedShelves?: number
     rentals: number
+    revenue?: number
     status: string
+    joinDate?: string
+    businessRegistration?: string
+    businessRegistrationUrl?: string
   }
 }
 
-// Mock data for store details
-const getStoreDetailsData = (language: string) => ({
-  owner: language === "ar" ? "أحمد محمد" : "Ahmed Mohammed",
-  ownerEmail: "ahmed@example.com",
-  ownerPhone: "+966 50 123 4567",
-  location: language === "ar" ? "الرياض، شارع الملك فهد" : "Riyadh, King Fahd Street",
-  joinDate: language === "ar" ? "يناير 15, 2024" : "January 15, 2024",
-  registrationDate: language === "ar" ? "يناير 15, 2024" : "January 15, 2024",
-  commercialRegistryNumber: "1234567890",
-  commercialRegistry: "PDF",
-  branchesCount: 2,
-  totalRevenue: 485000,
-  monthlyRevenue: 68500,
-  shelfUtilization: 75,
+// Transform store data for display
+const getStoreDetailsData = (language: string, store: any) => ({
+  owner: store.name,
+  ownerEmail: store.email || "email@store.com",
+  ownerPhone: store.phoneNumber || "05XXXXXXXX",
+  location: language === "ar" ? "الرياض" : "Riyadh",
+  joinDate: store.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
+  registrationDate: store.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
+  commercialRegistryNumber: store.businessRegistration || "1234567890",
+  commercialRegistry: store.businessRegistrationUrl ? "PDF" : "-",
+  branchesCount: 1,
+  totalRevenue: store.revenue || 0,
+  monthlyRevenue: Math.round((store.revenue || 0) / 3), // Estimate based on 3 months
+  shelfUtilization: store.shelves > 0 ? Math.round(((store.rentedShelves || 0) / store.shelves) * 100) : 0,
   branches: [
     { 
       name: language === "ar" ? "الفرع الرئيسي" : "Main Branch", 
@@ -250,7 +261,7 @@ export function StoreDetailsDialog({ open, onOpenChange, store }: StoreDetailsDi
   const [searchQuery, setSearchQuery] = useState("")
   const [rentalPage, setRentalPage] = useState(1)
   const [paymentPage, setPaymentPage] = useState(1)
-  const storeDetailsData = getStoreDetailsData(language)
+  const storeDetailsData = getStoreDetailsData(language, store)
   const itemsPerPage = 3
   const rentalItemsPerPage = 5
   const paymentItemsPerPage = 5
@@ -314,40 +325,24 @@ export function StoreDetailsDialog({ open, onOpenChange, store }: StoreDetailsDi
           <TabsContent value="overview" className="space-y-4 mt-4">
             {/* Statistics */}
             <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{t("stores.total_revenue")}</p>
-                      <p className="text-2xl font-bold">{formatCurrency(storeDetailsData.totalRevenue)}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-primary/20" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{t("stores.shelves_count")}</p>
-                      <p className="text-2xl font-bold">{store.shelves}</p>
-                    </div>
-                    <Package className="h-8 w-8 text-primary/20" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{t("stores.renters_count")}</p>
-                      <p className="text-2xl font-bold">{store.rentals}</p>
-                    </div>
-                    <ShoppingCart className="h-8 w-8 text-primary/20" />
-                  </div>
-                </CardContent>
-              </Card>
+              <StatCard
+                title={t("stores.total_revenue")}
+                value={formatCurrency(storeDetailsData.totalRevenue)}
+                icon={<DollarSign className="h-6 w-6 text-primary" />}
+              />
+              <StatCard
+                title={t("stores.shelves_count")}
+                value={store.shelves}
+                icon={<Package className="h-6 w-6 text-primary" />}
+              />
+              <StatCard
+                title={t("stores.renters_count")}
+                value={store.rentals}
+                icon={<ShoppingCart className="h-6 w-6 text-primary" />}
+              />
             </div>
+
+            <Separator className="my-4" />
 
             {/* Store Info */}
             <Card>
@@ -356,34 +351,34 @@ export function StoreDetailsDialog({ open, onOpenChange, store }: StoreDetailsDi
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Store className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.store_name")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.store_name")}</Label>
                       <span className="text-sm font-medium">{store.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Store className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.store_owner")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.store_owner")}</Label>
                       <span className="text-sm font-medium">{storeDetailsData.owner}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.branches_count")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.branches_count")}</Label>
                       <span className="text-sm font-medium">{storeDetailsData.branchesCount}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.registration_date")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.registration_date")}</Label>
                       <span className="text-sm font-medium">{storeDetailsData.registrationDate}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.commercial_registry_number")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.commercial_registry_number")}</Label>
                       <span className="text-sm font-medium">{storeDetailsData.commercialRegistryNumber}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("stores.commercial_registry")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("stores.commercial_registry")}</Label>
                       <span className="text-sm font-medium text-primary cursor-pointer hover:underline">{storeDetailsData.commercialRegistry}</span>
                     </div>
                   </div>
@@ -412,25 +407,26 @@ export function StoreDetailsDialog({ open, onOpenChange, store }: StoreDetailsDi
                       />
                     </div>
                     
-                    <div className="flex gap-2">
-                      {["all", "rented", "available"].map((filter) => (
-                        <Button
-                          key={filter}
-                          variant={shelfFilter === filter ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setShelfFilter(filter)
-                            setCurrentPage(1)
-                          }}
-                          className="h-8"
-                        >
-                          {filter === "all" ? 
-                            t("stores.filter.all") : 
-                            t(`stores.shelf_status.${filter}`)
-                          }
-                        </Button>
-                      ))}
-                    </div>
+                    <ToggleGroup 
+                      type="single" 
+                      value={shelfFilter}
+                      onValueChange={(value) => {
+                        if (value) {
+                          setShelfFilter(value)
+                          setCurrentPage(1)
+                        }
+                      }}
+                    >
+                      <ToggleGroupItem value="all" aria-label="Show all shelves">
+                        {t("stores.filter.all")}
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="rented" aria-label="Show rented shelves">
+                        {t("stores.shelf_status.rented")}
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="available" aria-label="Show available shelves">
+                        {t("stores.shelf_status.available")}
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                 </div>
                 <div className="rounded-md border">

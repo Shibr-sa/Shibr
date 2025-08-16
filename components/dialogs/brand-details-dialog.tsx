@@ -13,8 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
+import { StatCard } from "@/components/ui/stat-card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Pagination,
   PaginationContent,
@@ -41,27 +45,34 @@ interface BrandDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   brand: {
-    id: number
+    id: string
     name: string
+    email?: string
+    phoneNumber?: string
     products: number
     stores: number
+    rentals?: number
     revenue: number
     status: string
+    category?: string
+    joinDate?: string
+    businessRegistration?: string
+    businessRegistrationUrl?: string
   }
 }
 
-// Mock data for brand details
-const getBrandDetailsData = (language: string) => ({
-  owner: language === "ar" ? "محمد العلي" : "Mohammed Al-Ali",
-  ownerEmail: "mohammed@brand.com",
-  ownerPhone: "+966 55 123 4567",
+// Transform brand data for display
+const getBrandDetailsData = (language: string, brand: any) => ({
+  owner: brand.name,
+  ownerEmail: brand.email || "email@brand.com",
+  ownerPhone: brand.phoneNumber || "05XXXXXXXX",
   website: "www.brand-store.com",
-  contactMethod: "+966 55 123 4567",
-  registrationDate: language === "ar" ? "يناير 15, 2024" : "January 15, 2024",
-  commercialRegistryNumber: "9876543210",
-  commercialRegistry: "PDF",
-  totalPaymentsDue: 785000,
-  rentedShelvesCount: 24,
+  contactMethod: brand.phoneNumber || "05XXXXXXXX",
+  registrationDate: brand.joinDate ? new Date(brand.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
+  commercialRegistryNumber: brand.businessRegistration || "9876543210",
+  commercialRegistry: brand.businessRegistrationUrl ? "PDF" : "-",
+  totalPaymentsDue: brand.revenue || 0,
+  rentedShelvesCount: brand.rentals || 0,
   
   products: [
     {
@@ -180,7 +191,7 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
   const [productSearch, setProductSearch] = useState("")
   const [paymentPage, setPaymentPage] = useState(1)
   
-  const brandDetailsData = getBrandDetailsData(language)
+  const brandDetailsData = getBrandDetailsData(language, brand)
   const productItemsPerPage = 5
   const paymentItemsPerPage = 3
 
@@ -248,29 +259,19 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
           <TabsContent value="overview" className="space-y-4 mt-4">
             {/* Statistics */}
             <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{t("brands.total_payments_due")}</p>
-                      <p className="text-2xl font-bold">{formatCurrency(brandDetailsData.totalPaymentsDue)}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-primary/20" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{t("brands.rented_shelves_count")}</p>
-                      <p className="text-2xl font-bold">{brandDetailsData.rentedShelvesCount}</p>
-                    </div>
-                    <Package className="h-8 w-8 text-primary/20" />
-                  </div>
-                </CardContent>
-              </Card>
+              <StatCard
+                title={t("brands.total_payments_due")}
+                value={formatCurrency(brandDetailsData.totalPaymentsDue)}
+                icon={<DollarSign className="h-6 w-6 text-primary" />}
+              />
+              <StatCard
+                title={t("brands.rented_shelves_count")}
+                value={brandDetailsData.rentedShelvesCount}
+                icon={<Package className="h-6 w-6 text-primary" />}
+              />
             </div>
+
+            <Separator className="my-4" />
 
             {/* Brand Info */}
             <Card>
@@ -279,34 +280,34 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Store className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.store_owner")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.store_owner")}</Label>
                       <span className="text-sm font-medium">{brandDetailsData.owner}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.website")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.website")}</Label>
                       <span className="text-sm font-medium text-primary cursor-pointer hover:underline">{brandDetailsData.website}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.rented_shelves_count")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.rented_shelves_count")}</Label>
                       <span className="text-sm font-medium">{brandDetailsData.rentedShelvesCount}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.contact_method")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.contact_method")}</Label>
                       <span className="text-sm font-medium">{brandDetailsData.contactMethod}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.commercial_registry_number")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.commercial_registry_number")}</Label>
                       <span className="text-sm font-medium">{brandDetailsData.commercialRegistryNumber}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{t("brands.commercial_registry")}</span>
+                      <Label className="text-sm text-muted-foreground">{t("brands.commercial_registry")}</Label>
                       <span className="text-sm font-medium text-primary cursor-pointer hover:underline">{t("brands.download")}</span>
                     </div>
                   </div>
@@ -314,10 +315,12 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
               </CardContent>
             </Card>
             
+            <Separator className="my-4" />
+            
             {/* Payment Operations Log */}
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <h3 className="font-semibold mb-4">{t("brands.payment_operations_log")}</h3>
+                <CardTitle className="text-lg mb-4">{t("brands.payment_operations_log")}</CardTitle>
                 <div className="rounded-md border">
                   <div className="min-h-[250px]"> {/* Fixed height for 3 rows */}
                     <Table>
@@ -374,12 +377,12 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
                               {/* Fill remaining rows if less than 3 items */}
                               {paginatedPayments.length < paymentItemsPerPage && Array.from({ length: paymentItemsPerPage - paginatedPayments.length }).map((_, index) => (
                                 <TableRow key={`filler-${index}`} className={`h-[72px] ${index < paymentItemsPerPage - paginatedPayments.length - 1 ? 'border-b' : ''}`}>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-6 w-20" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-8 w-8" /></TableCell>
                                 </TableRow>
                               ))}
                             </>
@@ -465,7 +468,7 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
               <CardContent className="pt-6 space-y-4">
                 {/* Header with Search in single row */}
                 <div className="flex items-center justify-between gap-4 mb-4">
-                  <h3 className="font-semibold shrink-0">{t("brands.products_displayed")}</h3>
+                  <CardTitle className="text-lg shrink-0">{t("brands.products_displayed")}</CardTitle>
                   
                   <div className="relative max-w-xs">
                     <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -519,12 +522,12 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
                               {/* Fill remaining rows */}
                               {paginatedProducts.length < productItemsPerPage && Array.from({ length: productItemsPerPage - paginatedProducts.length }).map((_, index) => (
                                 <TableRow key={`filler-${index}`} className={`h-[72px] ${index < productItemsPerPage - paginatedProducts.length - 1 ? 'border-b' : ''}`}>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
-                                  <TableCell className="py-3">&nbsp;</TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                                  <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
                                 </TableRow>
                               ))}
                             </>

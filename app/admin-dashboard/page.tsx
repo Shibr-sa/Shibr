@@ -1,7 +1,11 @@
 "use client"
 
+import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -171,6 +175,10 @@ const storesData = [
 
 export default function AdminDashboard() {
   const { language, t, direction } = useLanguage()
+  const [timePeriod, setTimePeriod] = useState("monthly")
+  
+  // Fetch real stats from Convex
+  const adminStats = useQuery(api.admin.getAdminStats, { timePeriod })
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num)
@@ -185,82 +193,83 @@ export default function AdminDashboard() {
       {/* Header and Stats in Single Card */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
-          <h1 className="text-2xl font-bold">{t("dashboard.control_panel")}</h1>
-          <p className="text-muted-foreground mt-1">
-            {t("dashboard.platform_overview")}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">{t("dashboard.control_panel")}</h1>
+              <p className="text-muted-foreground mt-1">
+                {t("dashboard.platform_overview")}
+              </p>
+            </div>
+            <Tabs value={timePeriod} onValueChange={setTimePeriod} className="w-auto">
+              <TabsList className="grid grid-cols-4 w-auto bg-muted">
+                <TabsTrigger value="daily" className="px-4">
+                  {t("dashboard.daily")}
+                </TabsTrigger>
+                <TabsTrigger value="weekly" className="px-4">
+                  {t("dashboard.weekly")}
+                </TabsTrigger>
+                <TabsTrigger value="monthly" className="px-4">
+                  {t("dashboard.monthly")}
+                </TabsTrigger>
+                <TabsTrigger value="yearly" className="px-4">
+                  {t("dashboard.yearly")}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground">
-                  {t("dashboard.total_users")}
-                </div>
-                <div className="text-2xl font-bold">{formatNumber(2845)}</div>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-green-600 font-medium">+12.5%</span>
-                  <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+            <StatCard
+              title={t("dashboard.total_users")}
+              value={formatNumber(adminStats?.users?.totalUsers || 0)}
+              trend={{
+                value: adminStats?.users?.change || 0,
+                label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
+                       timePeriod === "weekly" ? t("dashboard.from_last_week") :
+                       timePeriod === "yearly" ? t("dashboard.from_last_year") :
+                       t("dashboard.from_last_month")
+              }}
+              icon={<Users className="h-6 w-6 text-primary" />}
+              className="bg-muted/50 border-0"
+            />
 
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground">
-                  {t("dashboard.shelves_count")}
-                </div>
-                <div className="text-2xl font-bold">{formatNumber(890)}</div>
-                <div className="mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    {language === "ar" ? 
-                      `منها 620 مؤجر و270 متاح` : 
-                      `620 rented, 270 available`}
-                  </span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+            <StatCard
+              title={t("dashboard.shelves_count")}
+              value={formatNumber(adminStats?.shelves?.total || 0)}
+              description={
+                language === "ar" ? 
+                  `${adminStats?.shelves?.rented || 0} مؤجر، ${adminStats?.shelves?.available || 0} متاح` : 
+                  `${adminStats?.shelves?.rented || 0} rented, ${adminStats?.shelves?.available || 0} available`
+              }
+              icon={<Package className="h-6 w-6 text-primary" />}
+              className="bg-muted/50 border-0"
+            />
 
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground">
-                  {t("dashboard.total_revenue")}
-                </div>
-                <div className="text-2xl font-bold">{formatCurrency(1450000)}</div>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-green-600 font-medium">+8.2%</span>
-                  <span className="text-xs text-muted-foreground">{t("dashboard.from_rentals")}</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+            <StatCard
+              title={t("dashboard.total_revenue")}
+              value={formatCurrency(adminStats?.revenue?.totalRevenue || 0)}
+              trend={{
+                value: adminStats?.revenue?.change || 0,
+                label: t("dashboard.from_rentals")
+              }}
+              icon={<DollarSign className="h-6 w-6 text-primary" />}
+              className="bg-muted/50 border-0"
+            />
 
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground">
-                  {t("dashboard.rental_requests")}
-                </div>
-                <div className="text-2xl font-bold">{formatNumber(145)}</div>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowDownRight className="h-4 w-4 text-red-600" />
-                  <span className="text-xs text-red-600 font-medium">-3.1%</span>
-                  <span className="text-xs text-muted-foreground">{t("dashboard.from_last_month")}</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+            <StatCard
+              title={t("dashboard.rental_requests")}
+              value={formatNumber(adminStats?.rentals?.total || 0)}
+              trend={{
+                value: adminStats?.rentals?.change || 0,
+                label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
+                       timePeriod === "weekly" ? t("dashboard.from_last_week") :
+                       timePeriod === "yearly" ? t("dashboard.from_last_year") :
+                       t("dashboard.from_last_month")
+              }}
+              icon={<FileText className="h-6 w-6 text-primary" />}
+              className="bg-muted/50 border-0"
+            />
           </div>
         </CardContent>
       </Card>
@@ -306,7 +315,7 @@ export default function AdminDashboard() {
               className="h-[350px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
+                <AreaChart data={adminStats?.charts?.revenueByMonth || revenueData}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
@@ -356,27 +365,27 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topStores.map((store, index) => (
+                {(adminStats?.charts?.topStores || topStores).slice(0, 5).map((store, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={store.avatar} />
-                        <AvatarFallback>{store.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{store.name?.slice(0, 2).toUpperCase() || "ST"}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium leading-none">{store.name}</p>
+                        <p className="text-sm font-medium leading-none">{store.name || "Unknown Store"}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatCurrency(store.revenue)}
+                          {formatCurrency(store.revenue || 0)}
                         </p>
                       </div>
                     </div>
-                    <div className={`flex items-center gap-1 ${store.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {store.growth >= 0 ? (
+                    <div className={`flex items-center gap-1 ${(store.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {(store.growth || 0) >= 0 ? (
                         <TrendingUp className="h-3 w-3" />
                       ) : (
                         <TrendingDown className="h-3 w-3" />
                       )}
-                      <span className="text-xs font-medium">{Math.abs(store.growth)}%</span>
+                      <span className="text-xs font-medium">{Math.abs(store.growth || 0)}%</span>
                     </div>
                   </div>
                 ))}
