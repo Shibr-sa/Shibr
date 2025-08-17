@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, FileText, Store, CreditCard, Settings, ChevronUp, User, LogOut, Users, Package, TrendingUp } from "lucide-react"
+import { Home, FileText, Store, CreditCard, Settings, ChevronUp, LogOut, Users, Package, TrendingUp } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/localization-context"
@@ -145,7 +145,7 @@ export default function AdminDashboardLayout({
                     </div>
                     <div className="flex flex-col gap-0.5 leading-none">
                       <span className="font-semibold">{t("common.shibr")}</span>
-                      <span className="text-xs text-muted-foreground">{t("dashboard.admin")}</span>
+                      <span className="text-xs">{t("dashboard.admin")}</span>
                     </div>
                   </Link>
                 </SidebarMenuButton>
@@ -190,7 +190,7 @@ export default function AdminDashboardLayout({
                         <span className="text-sm font-medium">
                           {user?.fullName || t("dashboard.user.name")}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs">
                           {user?.email || "admin@example.com"}
                         </span>
                       </div>
@@ -202,14 +202,6 @@ export default function AdminDashboardLayout({
                     align="end" 
                     className="w-56"
                   >
-                    <DropdownMenuItem>
-                      <User className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.user.profile")}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="me-2 h-4 w-4" />
-                      <span>{t("dashboard.user.settings")}</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                       <LogOut className="me-2 h-4 w-4" />
                       <span>{t("dashboard.logout")}</span>

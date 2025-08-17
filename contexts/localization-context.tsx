@@ -1385,6 +1385,9 @@ const translations = {
     "notifications.title": "الإشعارات",
     "notifications.mark_all_read": "قراءة الكل",
     "notifications.no_notifications": "لا توجد إشعارات",
+    "notifications.new_notifications": "إشعارات جديدة",
+    "notifications.notifications": "الإشعارات",
+    "notifications.no_new": "لا جديد",
 
     // Status/State Values
     "status.active": "نشط",
@@ -1446,6 +1449,7 @@ const translations = {
     "chat.conversations": "المحادثات",
     "chat.chat": "محادثة",
     "chat.no_conversations": "لا توجد محادثات",
+    "chat.no_messages_yet": "لا توجد رسائل بعد",
     "chat.type_message_placeholder": "اكتب رسالتك...",
     "chat.status.new": "جديد",
     "chat.request_accepted_message": "مرحباً! تم قبول طلبك...",
@@ -2910,6 +2914,9 @@ const translations = {
     "notifications.title": "Notifications",
     "notifications.mark_all_read": "Mark all read",
     "notifications.no_notifications": "No notifications",
+    "notifications.new_notifications": "new notifications",
+    "notifications.notifications": "Notifications",
+    "notifications.no_new": "No new",
 
     // Status/State Values
     "status.active": "Active",
@@ -2971,6 +2978,7 @@ const translations = {
     "chat.conversations": "Conversations",
     "chat.chat": "Chat",
     "chat.no_conversations": "No conversations yet",
+    "chat.no_messages_yet": "No messages yet",
     "chat.type_message_placeholder": "Type your message...",
     "chat.status.new": "New",
     "chat.request_accepted_message": "Welcome! Your request has been accepted...",

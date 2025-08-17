@@ -42,9 +42,9 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
   // Get userId as Convex Id
   const userId = user?.id ? (user.id as Id<"users">) : null
 
-  // Fetch conversations
+  // Fetch conversations - use admin-only for store owners
   const conversations = useQuery(
-    api.chats.getUserConversations,
+    user?.accountType === "store-owner" ? api.chats.getAdminConversations : api.chats.getUserConversations,
     userId ? { userId } : "skip"
   )
 
@@ -133,6 +133,11 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
   }
 
   if (!userId) return null
+
+  // For store owners, only show FAB if there are admin conversations with unread messages
+  if (user?.accountType === "store-owner" && (!conversations || conversations.length === 0)) {
+    return null
+  }
 
   return (
     <>

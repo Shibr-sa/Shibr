@@ -91,6 +91,7 @@ export const sendMessage = mutation({
       message: args.text.substring(0, 100) + (args.text.length > 100 ? "..." : ""),
       type: "new_message",
       conversationId: args.conversationId,
+      rentalRequestId: conversation.rentalRequestId, // Add the rental request ID if exists
       isRead: false,
       createdAt: new Date().toISOString(),
     })
@@ -202,6 +203,56 @@ export const getUserConversations = query({
           otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName || "Unknown",
           shelfName: shelf?.shelfName || "Unknown Shelf",
           unreadCount: user.accountType === "brand-owner" ? conv.brandOwnerUnreadCount : conv.storeOwnerUnreadCount,
+        }
+      })
+    )
+
+    // Sort by last message time
+    return conversationsWithDetails.sort((a, b) => 
+      (b.lastMessageTime || b.updatedAt).localeCompare(a.lastMessageTime || a.updatedAt)
+    )
+  },
+})
+
+// Get admin conversations only (for store owners)
+export const getAdminConversations = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get user to check their account type
+    const user = await ctx.db.get(args.userId)
+    if (!user || user.accountType !== "store-owner") return []
+
+    // Get all users to find admin users
+    const allUsers = await ctx.db.query("users").collect()
+    const adminUsers = allUsers.filter(u => u.accountType === "admin")
+    const adminUserIds = adminUsers.map(u => u._id)
+
+    // Get conversations where the other party is an admin
+    const conversations = await ctx.db
+      .query("conversations")
+      .withIndex("by_store_owner")
+      .filter((q) => q.eq(q.field("storeOwnerId"), args.userId))
+      .collect()
+
+    // Filter for admin conversations only
+    const adminConversations = conversations.filter(conv => 
+      adminUserIds.includes(conv.brandOwnerId)
+    )
+
+    // Get additional info for each conversation
+    const conversationsWithDetails = await Promise.all(
+      adminConversations.map(async (conv) => {
+        const adminUser = await ctx.db.get(conv.brandOwnerId)
+        const shelf = await ctx.db.get(conv.shelfId)
+
+        return {
+          ...conv,
+          otherUserId: conv.brandOwnerId,
+          otherUserName: adminUser?.fullName || "Admin Support",
+          shelfName: shelf?.shelfName || "Support",
+          unreadCount: conv.storeOwnerUnreadCount,
         }
       })
     )

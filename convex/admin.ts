@@ -1,6 +1,30 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 
+// Helper function to get date ranges based on time period
+function getDateRange(endDate: Date, period: string): { startDate: Date; endDate: Date } {
+  const startDate = new Date(endDate);
+  
+  switch (period) {
+    case "daily":
+      startDate.setDate(startDate.getDate() - 1);
+      break;
+    case "weekly":
+      startDate.setDate(startDate.getDate() - 7);
+      break;
+    case "monthly":
+      startDate.setMonth(startDate.getMonth() - 1);
+      break;
+    case "yearly":
+      startDate.setFullYear(startDate.getFullYear() - 1);
+      break;
+    default:
+      startDate.setMonth(startDate.getMonth() - 1);
+  }
+  
+  return { startDate, endDate: new Date(endDate) };
+}
+
 // Create an admin user
 export const createAdminUser = mutation({
   args: {

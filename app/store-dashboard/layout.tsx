@@ -1,20 +1,22 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, Package, ShoppingCart, Settings, ChevronUp, User, LogOut } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
-import { NotificationBell } from "@/components/notifications/notification-bell"
 import { ChatFabWidget } from "@/components/chat/chat-fab-widget"
 import { Id } from "@/convex/_generated/dataModel"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -51,6 +53,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { t, direction } = useLanguage()
   const { user, getInitials: getSessionInitials } = useCurrentUser()
   const { userData } = useStoreData()
+  
+  // Get userId as a Convex Id
+  const userId = user?.id ? (user.id as Id<"users">) : null
+  
+  // Get total order-related notifications (including messages)
+  const totalOrderNotifications = useQuery(
+    api.notifications.getTotalOrderNotifications,
+    userId ? { userId: userId } : "skip"
+  ) || 0
 
   // Use userData from context if available, fallback to user from session
   const displayUser = userData || user
@@ -163,7 +174,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">{t("common.shibr")}</span>
-                    <span className="text-xs text-muted-foreground">{t("dashboard.store")}</span>
+                    <span className="text-xs">{t("dashboard.store")}</span>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -183,7 +194,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     >
                       <Link href={item.href}>
                         <item.icon className="size-4" />
-                        <span>{t(item.title)}</span>
+                        <span className="flex-1">{t(item.title)}</span>
+                        {item.href === "/store-dashboard/orders" && totalOrderNotifications > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="h-5 min-w-[20px] rounded-full px-1.5 text-[10px] animate-pulse"
+                          >
+                            {totalOrderNotifications}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -208,7 +227,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       <span className="text-sm font-medium">
                         {displayUser?.ownerName || displayUser?.fullName || t("dashboard.user.name")}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs">
                         {displayUser?.email || "store@example.com"}
                       </span>
                     </div>
@@ -220,14 +239,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   align="end" 
                   className="w-56"
                 >
-                  <DropdownMenuItem>
-                    <User className="me-2 h-4 w-4" />
-                    <span>{t("dashboard.user.profile")}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="me-2 h-4 w-4" />
-                    <span>{t("dashboard.user.settings")}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                     <LogOut className="me-2 h-4 w-4" />
                     <span>{t("dashboard.logout")}</span>
@@ -264,12 +275,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="flex items-center gap-2">
-              {user?.id && (
-                <NotificationBell 
-                  userId={user.id as Id<"users">} 
-                  userType="store-owner"
-                />
-              )}
               <LanguageSwitcher />
             </div>
           </div>

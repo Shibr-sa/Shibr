@@ -312,78 +312,82 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
               </div>
               
               {/* Messages Area */}
-              <ScrollArea className="h-[300px] p-4 bg-background">
+              <div className="h-[300px] bg-background relative">
                 {messages && messages.length > 0 ? (
-                  <div className="space-y-3">
-                    {messages.map((msg) => {
-                      const isCurrentUser = msg.senderId === userId
-                      const messageDate = new Date(msg.createdAt)
-                      
-                      return (
-                        <div
-                          key={msg._id}
-                          className={cn(
-                            "flex gap-2",
-                            isCurrentUser ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          {!isCurrentUser && (
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs">
-                                {msg.senderName?.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
+                  <ScrollArea className="h-full p-4">
+                    <div className="space-y-3">
+                      {messages.map((msg) => {
+                        const isCurrentUser = msg.senderId === userId
+                        const messageDate = new Date(msg.createdAt)
+                        
+                        return (
                           <div
+                            key={msg._id}
                             className={cn(
-                              "max-w-[60%] rounded-lg p-3",
-                              isCurrentUser
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted"
+                              "flex gap-2",
+                              isCurrentUser ? "justify-end" : "justify-start"
                             )}
                           >
                             {!isCurrentUser && (
-                              <p className="text-xs font-medium mb-1">
-                                {msg.senderName}
-                              </p>
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="text-xs">
+                                  {msg.senderName?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
                             )}
-                            <p className="text-sm whitespace-pre-wrap">
-                              {msg.text}
-                            </p>
-                            <p className={cn(
-                              "text-xs mt-1",
-                              isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
-                            )}>
-                              {messageDate.toLocaleTimeString(language === "ar" ? "ar-SA" : "en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })}
-                            </p>
+                            <div
+                              className={cn(
+                                "max-w-[60%] rounded-lg p-3",
+                                isCurrentUser
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              )}
+                            >
+                              {!isCurrentUser && (
+                                <p className="text-xs font-medium mb-1">
+                                  {msg.senderName}
+                                </p>
+                              )}
+                              <p className="text-sm whitespace-pre-wrap">
+                                {msg.text}
+                              </p>
+                              <p className={cn(
+                                "text-xs mt-1",
+                                isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                              )}>
+                                {messageDate.toLocaleTimeString(language === "ar" ? "ar-SA" : "en-US", {
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </p>
+                            </div>
+                            {isCurrentUser && (
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="text-xs">
+                                  {user?.fullName?.charAt(0).toUpperCase() || "S"}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
-                          {isCurrentUser && (
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs">
-                                {user?.fullName?.charAt(0).toUpperCase() || "S"}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                      )
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
+                        )
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {t("chat.no_messages_yet")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("orders.start_conversation_description")}
-                    </p>
+                  <div className="flex items-center justify-center h-full">
+                    <div className="flex flex-col items-center text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        {t("chat.no_messages_yet")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("orders.start_conversation_description")}
+                      </p>
+                    </div>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
               
               {/* Message Input */}
               <div className="p-4 border-t bg-background">

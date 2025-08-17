@@ -2,16 +2,29 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft } from "lucide-react"
+import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { formatCurrency } from "@/lib/formatters"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
-import { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -19,6 +32,18 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Id } from "@/convex/_generated/dataModel"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
+
+// Helper function to get badge variant based on shelf status
+function getShelfBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
+  if (shelf.status === "rented") {
+    return "default"
+  } else if (shelf.status === "approved" && shelf.isAvailable) {
+    return "secondary"
+  } else if (shelf.status === "pending") {
+    return "outline"
+  }
+  return "secondary"
+}
 
 export default function StoreDashboardShelvesPage() {
   const { t, language, direction } = useLanguage()
@@ -95,15 +120,6 @@ export default function StoreDashboardShelvesPage() {
   
   // Loading state
   const isLoading = storeLoading || !shelves || !shelfStats
-  
-  // Format currency - always use Western numerals
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SA', {
-      style: 'currency',
-      currency: 'SAR',
-      minimumFractionDigits: 2
-    }).format(amount)
-  }
 
   // Get percentage changes from real data
   const getPercentageChange = (metric: string) => {
@@ -169,9 +185,7 @@ export default function StoreDashboardShelvesPage() {
                 {t("store.your_statistics")}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {language === "ar" 
-                  ? "تابع كل رف في فروعك، وابدأ بتأجير المساحات المتاحة لزيادة دخلك بسهولة"
-                  : "Track every shelf in your branches, and start renting available spaces to easily increase your income"}
+                {t("shelves.manage_description")}
               </p>
             </div>
             <Tabs value={statsPeriod} onValueChange={setStatsPeriod}>
@@ -195,102 +209,61 @@ export default function StoreDashboardShelvesPage() {
           {/* Statistics Cards Grid */}
           <div className="grid gap-4 md:grid-cols-3">
             {/* Rented Shelves Card */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">{t("shelves.total_rented_shelves")}</p>
-                    <p className="text-2xl font-bold">{shelfStats?.rentedShelves || 0}</p>
-                    {(() => {
-                      const change = getPercentageChange("rented")
-                      const trend = getTrendInfo(change)
-                      return (
-                        <div className="flex items-center gap-1 mt-1">
-                          {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
-                          <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {t("time.from")} {
-                              statsPeriod === "daily" ? t("time.yesterday") :
-                              statsPeriod === "weekly" ? t("time.last_week") :
-                              statsPeriod === "monthly" ? t("time.last_month") :
-                              t("time.last_year")
-                            }
-                          </span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title={t("shelves.total_rented_shelves")}
+              value={shelfStats?.rentedShelves || 0}
+              trend={(() => {
+                const change = getPercentageChange("rented")
+                return change !== 0 ? {
+                  value: change,
+                  label: `${t("time.from")} ${
+                    statsPeriod === "daily" ? t("time.yesterday") :
+                    statsPeriod === "weekly" ? t("time.last_week") :
+                    statsPeriod === "monthly" ? t("time.last_month") :
+                    t("time.last_year")
+                  }`
+                } : undefined
+              })()}
+              icon={<Package className="h-5 w-5 text-primary" />}
+            />
 
             {/* Revenue Card */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">{t("shelves.total_sales")}</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(shelfStats?.totalRevenue || 0)}
-                    </p>
-                    {(() => {
-                      const change = getPercentageChange("revenue")
-                      const trend = getTrendInfo(change)
-                      return (
-                        <div className="flex items-center gap-1 mt-1">
-                          {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
-                          <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {t("time.from")} {
-                              statsPeriod === "daily" ? t("time.yesterday") :
-                              statsPeriod === "weekly" ? t("time.last_week") :
-                              statsPeriod === "monthly" ? t("time.last_month") :
-                              t("time.last_year")
-                            }
-                          </span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title={t("shelves.total_sales")}
+              value={formatCurrency(shelfStats?.totalRevenue || 0, language)}
+              trend={(() => {
+                const change = getPercentageChange("revenue")
+                return change !== 0 ? {
+                  value: change,
+                  label: `${t("time.from")} ${
+                    statsPeriod === "daily" ? t("time.yesterday") :
+                    statsPeriod === "weekly" ? t("time.last_week") :
+                    statsPeriod === "monthly" ? t("time.last_month") :
+                    t("time.last_year")
+                  }`
+                } : undefined
+              })()}
+              icon={<BarChart3 className="h-5 w-5 text-primary" />}
+            />
 
             {/* Available Shelves Card */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">{t("shelves.available_shelves")}</p>
-                    <p className="text-2xl font-bold">{shelfStats?.availableShelves || 0}</p>
-                    {(() => {
-                      const change = getPercentageChange("available")
-                      const trend = getTrendInfo(change)
-                      return (
-                        <div className="flex items-center gap-1 mt-1">
-                          {trend.icon && <trend.icon className={`h-3 w-3 ${trend.className}`} />}
-                          <span className={`text-xs font-medium ${trend.className}`}>
-                            {formatPercentage(change)} {t("time.from")} {
-                              statsPeriod === "daily" ? t("time.yesterday") :
-                              statsPeriod === "weekly" ? t("time.last_week") :
-                              statsPeriod === "monthly" ? t("time.last_month") :
-                              t("time.last_year")
-                            }
-                          </span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title={t("shelves.available_shelves")}
+              value={shelfStats?.availableShelves || 0}
+              trend={(() => {
+                const change = getPercentageChange("available")
+                return change !== 0 ? {
+                  value: change,
+                  label: `${t("time.from")} ${
+                    statsPeriod === "daily" ? t("time.yesterday") :
+                    statsPeriod === "weekly" ? t("time.last_week") :
+                    statsPeriod === "monthly" ? t("time.last_month") :
+                    t("time.last_year")
+                  }`
+                } : undefined
+              })()}
+              icon={<DollarSign className="h-5 w-5 text-primary" />}
+            />
           </div>
         </CardContent>
       </Card>
@@ -306,15 +279,27 @@ export default function StoreDashboardShelvesPage() {
                 {t("shelves.manage_description")}
               </p>
             </div>
-            <Button 
-              className="gap-2 bg-primary hover:bg-primary/90 flex-shrink-0"
-              disabled={isLoading || !isStoreDataComplete}
-              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : ""}
-              onClick={() => router.push("/store-dashboard/shelves/new")}
-            >
-              <Plus className="h-4 w-4" />
-              {t("shelves.display_shelf_now")}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button 
+                      className="gap-2"
+                      disabled={isLoading || !isStoreDataComplete}
+                      onClick={() => router.push("/store-dashboard/shelves/new")}
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t("shelves.display_shelf_now")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!isStoreDataComplete && !isLoading && (
+                  <TooltipContent>
+                    <p>{t("dashboard.complete_profile_first")}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
           {/* Search and Filter */}
           <div className="flex items-center justify-between mb-6">
@@ -366,9 +351,13 @@ export default function StoreDashboardShelvesPage() {
                     // Show 5 skeleton rows while loading
                     Array.from({ length: itemsPerPage }).map((_, index) => (
                       <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                        <TableCell colSpan={7} className="text-center">
-                          <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
-                        </TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
                   ) : paginatedShelves.length === 0 && currentPage === 1 ? (
@@ -400,20 +389,10 @@ export default function StoreDashboardShelvesPage() {
                             }
                           </TableCell>
                           <TableCell>
-                            {formatCurrency(shelf.monthlyPrice || 0)} / {t("common.monthly")}
+                            {formatCurrency(shelf.monthlyPrice || 0, language)} / {t("common.monthly")}
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              variant={
-                                shelf.status === "rented" 
-                                  ? "default"
-                                  : shelf.status === "approved" && shelf.isAvailable
-                                  ? "secondary"
-                                  : shelf.status === "pending"
-                                  ? "outline"
-                                  : "secondary"
-                              }
-                            >
+                            <Badge variant={getShelfBadgeVariant(shelf)}>
                               {shelf.status === "rented" 
                                 ? t("shelves.status.rented")
                                 : shelf.status === "approved" && shelf.isAvailable
@@ -431,23 +410,37 @@ export default function StoreDashboardShelvesPage() {
                             }
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8"
-                              disabled={isLoading || !isStoreDataComplete}
-                              title={!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : t("store.view_details")}
-                              onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8"
+                                    disabled={isLoading || !isStoreDataComplete}
+                                    onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{!isStoreDataComplete && !isLoading ? t("dashboard.complete_profile_first") : t("store.view_details")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                         </TableRow>
                       ))}
                       {/* Add empty rows to maintain fixed height */}
                       {emptyRows > 0 && Array.from({ length: emptyRows }).map((_, index) => (
                         <TableRow key={`empty-${index}`} className="h-[72px]">
-                          <TableCell colSpan={7}>&nbsp;</TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))}
                     </>
@@ -458,48 +451,75 @@ export default function StoreDashboardShelvesPage() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              {language === "ar" 
-                ? `عرض ${paginatedShelves.length} من ${filteredShelves.length} رف`
-                : `Showing ${paginatedShelves.length} of ${filteredShelves.length} shelves`}
-            </p>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8"
-              >
-                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map(page => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {page}
-                  </Button>
-                ))}
-              </div>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(prev => Math.min(Math.max(1, totalPages), prev + 1))}
-                disabled={currentPage === totalPages || totalPages <= 1}
-                className="h-8 w-8"
-              >
-                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
-              </Button>
-            </div>
+          <div className="flex items-center justify-end mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setCurrentPage(prev => Math.max(1, prev - 1))
+                    }}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map(page => {
+                  // Show first page, last page, current page, and pages around current
+                  const showPage = 
+                    page === 1 || 
+                    page === totalPages || 
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  
+                  // Show ellipsis after first page if there's a gap
+                  const showEllipsisBefore = page === currentPage - 1 && currentPage > 3
+                  
+                  // Show ellipsis before last page if there's a gap  
+                  const showEllipsisAfter = page === currentPage + 1 && currentPage < totalPages - 2
+                  
+                  if (!showPage && !showEllipsisBefore && !showEllipsisAfter) return null
+                  
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsisBefore && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      {showPage && (
+                        <PaginationItem>
+                          <PaginationLink
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setCurrentPage(page)
+                            }}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      {showEllipsisAfter && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setCurrentPage(prev => Math.min(Math.max(1, totalPages), prev + 1))
+                    }}
+                    className={currentPage === totalPages || totalPages <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         </CardContent>
       </Card>

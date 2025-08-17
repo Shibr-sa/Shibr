@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, Suspense, useCallback, useMemo } from "react"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { Card, CardContent } from "@/components/ui/card"
@@ -30,11 +30,40 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { formatDate, formatDuration } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
+
+// Helper function to get badge variant based on status
+function getOrderStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case "active":
+      return "default"
+    case "pending":
+      return "outline"
+    case "rejected":
+      return "destructive"
+    case "accepted":
+    case "payment_pending":
+    case "payment_processing":
+      return "secondary"
+    default:
+      return "secondary"
+  }
+}
 
 function OrdersContent() {
   const { t, direction, language } = useLanguage()
@@ -45,6 +74,7 @@ function OrdersContent() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<RentalRequestDetails | null>(null)
   const itemsPerPage = 5
+  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
   // Get the userId as a Convex Id
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -57,6 +87,26 @@ function OrdersContent() {
       userType: "store" as const
     } : "skip"
   )
+
+  // Get all rental request IDs for notification counts
+  const rentalRequestIds = useMemo(() => {
+    return rentalRequests?.map(r => r._id) || []
+  }, [rentalRequests])
+
+  // Fetch notification counts for all rental requests
+  const notificationCounts = useQuery(
+    api.notifications.getUnreadCountByRentalRequests,
+    userId && rentalRequestIds.length > 0 ? {
+      userId: userId,
+      rentalRequestIds: rentalRequestIds
+    } : "skip"
+  )
+
+  // Calculate total unread notifications
+  const totalUnreadNotifications = useMemo(() => {
+    if (!notificationCounts) return 0
+    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
+  }, [notificationCounts])
 
   // Filter options for orders section
   const ordersFilterOptions = [
@@ -95,45 +145,14 @@ function OrdersContent() {
   }, [filter, searchQuery])
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            {t("status.pending")}
-          </Badge>
-        )
-      case "accepted":
-      case "payment_pending":
-        return (
-          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
-            {t("status.payment_pending")}
-          </Badge>
-        )
-      case "payment_processing":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            {t("status.payment_processing")}
-          </Badge>
-        )
-      case "active":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            {t("status.active")}
-          </Badge>
-        )
-      case "rejected":
-        return (
-          <Badge className="bg-red-100 text-red-800 border-red-200">
-            {t("status.rejected")}
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="secondary">
-            {status}
-          </Badge>
-        )
-    }
+    const variant = getOrderStatusVariant(status)
+    const label = status === "accepted" || status === "payment_pending"
+      ? t("status.payment_pending")
+      : status === "payment_processing"
+      ? t("status.payment_processing")
+      : t(`status.${status}`)
+    
+    return <Badge variant={variant}>{label}</Badge>
   }
 
   const calculateDuration = (startDate: string, endDate: string) => {
@@ -157,12 +176,16 @@ function OrdersContent() {
         <CardContent className="p-6">
         {/* Header Section */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">
-            {t("store.incoming_requests")}
-          </h1>
-          <p className="text-muted-foreground">
-            {t("store.incoming_requests_description")}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">
+                {t("store.incoming_requests")}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("store.incoming_requests_description")}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Search and Filter Section */}
@@ -270,23 +293,43 @@ function OrdersContent() {
                               {[1, 2, 3, 4].map((star) => (
                                 <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                               ))}
-                              <Star className="h-3 w-3 text-gray-300" />
+                              <Star className="h-3 w-3 text-muted" />
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                            title={t("orders.view_details")}
-                            onClick={() => {
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 relative"
+                                  onClick={async () => {
                               setSelectedRequest(request)
                               setShowDetailsDialog(true)
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                              // Mark notifications as read when viewing details
+                              if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
+                                await markNotificationsAsRead({
+                                  userId: userId,
+                                  rentalRequestId: request._id
+                                })
+                              }
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  {notificationCounts && notificationCounts[request._id] > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
+                                      {notificationCounts[request._id]}
+                                    </span>
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{t("orders.view_details")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -295,7 +338,13 @@ function OrdersContent() {
                       const emptyRows = itemsPerPage - paginatedRequests.length
                       return emptyRows > 0 && Array.from({ length: emptyRows }).map((_, index) => (
                         <TableRow key={`empty-${index}`} className="h-[72px]">
-                          <TableCell colSpan={7}>&nbsp;</TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))
                     })()}
@@ -307,48 +356,75 @@ function OrdersContent() {
         </div>
 
         {/* Pagination Controls */}
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-muted-foreground">
-            {language === "ar" 
-              ? `عرض ${paginatedRequests.length} من ${filteredRequests.length} طلب`
-              : `Showing ${paginatedRequests.length} of ${filteredRequests.length} requests`}
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="h-8 w-8"
-            >
-              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-            </Button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map(page => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                  className="h-8 w-8 p-0"
-                >
-                  {page}
-                </Button>
-              ))}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(prev => Math.min(Math.max(1, totalPages), prev + 1))}
-              disabled={currentPage === totalPages || totalPages <= 1}
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
-            </Button>
-          </div>
+        <div className="flex items-center justify-end mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(prev => Math.max(1, prev - 1))
+                  }}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map(page => {
+                // Show first page, last page, current page, and pages around current
+                const showPage = 
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                
+                // Show ellipsis after first page if there's a gap
+                const showEllipsisBefore = page === currentPage - 1 && currentPage > 3
+                
+                // Show ellipsis before last page if there's a gap  
+                const showEllipsisAfter = page === currentPage + 1 && currentPage < totalPages - 2
+                
+                if (!showPage && !showEllipsisBefore && !showEllipsisAfter) return null
+                
+                return (
+                  <React.Fragment key={page}>
+                    {showEllipsisBefore && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    {showPage && (
+                      <PaginationItem>
+                        <PaginationLink
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setCurrentPage(page)
+                          }}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+                    {showEllipsisAfter && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(prev => Math.min(Math.max(1, totalPages), prev + 1))
+                  }}
+                  className={currentPage === totalPages || totalPages <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </CardContent>
     </Card>
