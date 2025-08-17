@@ -17,6 +17,30 @@ export const getOwnerProducts = query({
   },
 })
 
+// Get products for the current user
+export const getUserProducts = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
+      .collect()
+    
+    return products.map(p => ({
+      _id: p._id,
+      name: p.name,
+      code: p.code,
+      category: p.category,
+      price: p.price,
+      quantity: p.quantity,
+      imageUrl: p.imageUrl,
+      isActive: p.isActive
+    }))
+  },
+})
+
 // Get sales chart data for dashboard
 export const getSalesChartData = query({
   args: {

@@ -14,6 +14,7 @@ export const createRentalRequest = mutation({
     productCount: v.number(),
     additionalNotes: v.optional(v.string()),
     conversationId: v.id("conversations"),
+    selectedProductIds: v.optional(v.array(v.id("products"))),
   },
   handler: async (ctx, args) => {
     // Get shelf details
@@ -56,6 +57,7 @@ export const createRentalRequest = mutation({
         productDescription: args.productDescription,
         productCount: args.productCount,
         additionalNotes: args.additionalNotes,
+        selectedProductIds: args.selectedProductIds,
         monthlyPrice: shelf.monthlyPrice,
         totalPrice: totalPrice,
         updatedAt: new Date().toISOString(),
@@ -76,6 +78,7 @@ export const createRentalRequest = mutation({
         productDescription: args.productDescription,
         productCount: args.productCount,
         additionalNotes: args.additionalNotes,
+        selectedProductIds: args.selectedProductIds,
         monthlyPrice: shelf.monthlyPrice,
         totalPrice: totalPrice,
         status: "pending",

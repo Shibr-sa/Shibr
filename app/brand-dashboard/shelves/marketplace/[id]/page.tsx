@@ -5,9 +5,9 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Select,
@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
@@ -76,12 +77,17 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   }) as StoreDetails | undefined
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
   const [productType, setProductType] = useState("")
   const [productDescription, setProductDescription] = useState("")
   const [productCount, setProductCount] = useState("")
-  const [additionalNotes, setAdditionalNotes] = useState("")
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(false)
+  
+  // Fetch user's products
+  const userProducts = useQuery(api.products.getUserProducts, 
+    userId ? { userId } : "skip"
+  )
   
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
@@ -106,7 +112,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!dateRange?.from || !dateRange?.to || !productType || !productDescription || !productCount) {
+    if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0 || !productType) {
       alert(t("form.fill_required_fields"))
       return
     }
@@ -128,17 +134,26 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         setConversationId(convId)
       }
       
+      // Get selected product details for the request
+      const selectedProductDetails = selectedProducts.map(sp => {
+        const product = userProducts?.find(p => p._id === sp.id)
+        return product ? `${product.name} (${sp.quantity})` : ""
+      }).filter(Boolean).join(", ")
+      
+      const totalQuantity = selectedProducts.reduce((total, p) => total + p.quantity, 0)
+      
       // Create or update rental request
       const result = await createRentalRequest({
         shelfId: resolvedParams.id as Id<"shelves">,
         brandOwnerId: userId,
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
-        productType,
-        productDescription,
-        productCount: parseInt(productCount),
-        additionalNotes,
+        productType: productType,
+        productDescription: `${selectedProductDetails}${productDescription ? ` - ${productDescription}` : ""}`,
+        productCount: totalQuantity,
+        additionalNotes: "",
         conversationId: convId,
+        selectedProductIds: selectedProducts.map(p => p.id) as Id<"products">[],
       })
       
       // Show success message based on whether it was created or updated
@@ -153,10 +168,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       
       // Reset form fields
       setDateRange(undefined)
+      setSelectedProducts([])
       setProductType("")
       setProductDescription("")
-      setProductCount("")
-      setAdditionalNotes("")
     } catch (error) {
       console.error("Failed to submit rental request:", error)
       alert(t("form.submit_error"))
@@ -336,9 +350,210 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
 
-          {/* Bottom Section: Form and Chat */}
+          {/* Middle Section: Product Selection and Form */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Rental Form */}
+            {/* Left Column */}
+            <div className="flex flex-col gap-4">
+              {/* Product Selection Card */}
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">
+                    {t("marketplace.details.select_products")}
+                  </CardTitle>
+                  <p className="text-muted-foreground text-sm">
+                    {t("marketplace.details.select_products_description")}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {!userProducts || userProducts.length === 0 ? (
+                    <div className="min-h-[320px] flex items-center justify-center px-6">
+                      <div className="text-center">
+                        <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                        <p className="text-muted-foreground">
+                          {language === "ar" 
+                            ? "لم تقم بإضافة منتجات بعد" 
+                            : "You haven't added any products yet"}
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-4"
+                          onClick={() => router.push("/brand-dashboard/products")}
+                        >
+                          {t("products.add_product")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 pt-0 pb-4 overflow-y-auto max-h-[400px]">
+                      <div className="grid gap-2">
+                        {userProducts.map((product) => {
+                          const selectedProduct = selectedProducts.find(p => p.id === product._id)
+                          const isSelected = !!selectedProduct
+                          
+                          return (
+                            <div 
+                              key={product._id} 
+                              className={`relative border rounded-lg transition-all ${
+                                isSelected 
+                                  ? 'border-primary bg-primary/5 shadow-sm' 
+                                  : 'border-border hover:border-primary/50 hover:shadow-sm'
+                              }`}
+                            >
+                              <div className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <Checkbox 
+                                    id={product._id}
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
+                                      } else {
+                                        setSelectedProducts(selectedProducts.filter(p => p.id !== product._id))
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex-1">
+                                    <label 
+                                      htmlFor={product._id} 
+                                      className="cursor-pointer flex-1"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-sm">{product.name}</span>
+                                          <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+                                            <Layers className="h-3 w-3" />
+                                            {t("products.stock")}: {product.quantity}
+                                          </span>
+                                        </div>
+                                        <span className="text-sm font-medium ml-auto">
+                                          {t("common.currency_symbol")} {product.price}
+                                        </span>
+                                      </div>
+                                    </label>
+                                  </div>
+                                </div>
+                                
+                                {isSelected && (
+                                  <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">
+                                      {t("marketplace.details.quantity")}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => {
+                                          const currentQty = selectedProduct?.quantity || 1
+                                          if (currentQty > 1) {
+                                            setSelectedProducts(selectedProducts.map(p => 
+                                              p.id === product._id 
+                                                ? {...p, quantity: currentQty - 1}
+                                                : p
+                                            ))
+                                          }
+                                        }}
+                                      >
+                                        <span className="text-lg">−</span>
+                                      </Button>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        max={product.quantity}
+                                        value={selectedProduct?.quantity || 1}
+                                        onChange={(e) => {
+                                          const newQuantity = parseInt(e.target.value) || 1
+                                          setSelectedProducts(selectedProducts.map(p => 
+                                            p.id === product._id 
+                                              ? {...p, quantity: Math.min(newQuantity, product.quantity)}
+                                              : p
+                                          ))
+                                        }}
+                                        className="w-16 h-7 text-center"
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => {
+                                          const currentQty = selectedProduct?.quantity || 1
+                                          if (currentQty < product.quantity) {
+                                            setSelectedProducts(selectedProducts.map(p => 
+                                              p.id === product._id 
+                                                ? {...p, quantity: currentQty + 1}
+                                                : p
+                                            ))
+                                          }
+                                        }}
+                                      >
+                                        <span className="text-lg">+</span>
+                                      </Button>
+                                      <span className="text-xs text-muted-foreground ml-1">
+                                        {language === "ar" ? "من" : "of"} {product.quantity}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Selected Products Summary - Separate Card at Bottom */}
+              <Card className="bg-primary/5">
+                <CardContent className="p-4">
+                  <h4 className="font-medium text-sm flex items-center gap-2 mb-3">
+                    <Package className="h-4 w-4" />
+                    {t("marketplace.details.selected_products_summary")}
+                  </h4>
+                  {selectedProducts.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-primary">{selectedProducts.length}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t("marketplace.details.products_selected")}
+                        </p>
+                      </div>
+                      <div className="text-center border-x">
+                        <p className="text-2xl font-bold">
+                          {selectedProducts.reduce((total, p) => total + p.quantity, 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t("marketplace.details.total_items")}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-primary">
+                          {selectedProducts.reduce((total, selectedProduct) => {
+                            const product = userProducts.find(p => p._id === selectedProduct.id)
+                            return total + ((product?.price || 0) * selectedProduct.quantity)
+                          }, 0).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t("marketplace.details.total_value")} {t("common.currency_symbol")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {language === "ar" 
+                        ? "لم يتم اختيار أي منتجات بعد"
+                        : "No products selected yet"}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right: Rental Form */}
             <Card>
               <form onSubmit={handleSubmit}>
                 <CardHeader>
@@ -403,76 +618,48 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </PopoverContent>
                     </Popover>
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="product-type">
                       {t("marketplace.details.product_type")}*
                     </Label>
-                    <Select value={productType} onValueChange={setProductType} required>
-                      <SelectTrigger 
-                        id="product-type"
-                      >
+                    <Select 
+                      value={productType} 
+                      onValueChange={setProductType}
+                      required
+                    >
+                      <SelectTrigger id="product-type">
                         <SelectValue placeholder={t("marketplace.details.select_product_type")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beauty" >
-                          {t("marketplace.category_beauty")}
-                        </SelectItem>
-                        <SelectItem value="fashion" >
-                          {t("marketplace.category_fashion")}
-                        </SelectItem>
-                        <SelectItem value="electronics" >
-                          {t("marketplace.category_electronics")}
-                        </SelectItem>
-                        <SelectItem value="grocery" >
-                          {t("marketplace.category_grocery")}
-                        </SelectItem>
-                        <SelectItem value="general" >
-                          {t("marketplace.category_general")}
-                        </SelectItem>
+                        <SelectItem value="beauty">{t("marketplace.category_beauty")}</SelectItem>
+                        <SelectItem value="fashion">{t("marketplace.category_fashion")}</SelectItem>
+                        <SelectItem value="electronics">{t("marketplace.category_electronics")}</SelectItem>
+                        <SelectItem value="grocery">{t("marketplace.category_grocery")}</SelectItem>
+                        <SelectItem value="sports">{t("marketplace.category_sports")}</SelectItem>
+                        <SelectItem value="home">{t("marketplace.category_home")}</SelectItem>
+                        <SelectItem value="toys">{t("marketplace.category_toys")}</SelectItem>
+                        <SelectItem value="books">{t("marketplace.category_books")}</SelectItem>
+                        <SelectItem value="general">{t("marketplace.category_general")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="product-desc" >
-                      {t("marketplace.details.product_description")}*
-                    </Label>
-                    <Textarea
-                      id="product-desc"
-                      value={productDescription}
-                      onChange={(e) => setProductDescription(e.target.value)}
-                      placeholder={t("marketplace.details.product_description_placeholder")}
-                      className={` min-h-[60px] h-[60px]`}
-                      rows={2}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="product-count" >
-                      {t("marketplace.details.product_count")}*
-                    </Label>
-                    <Input
-                      id="product-count"
-                      type="number"
-                      min="1"
-                      value={productCount}
-                      onChange={(e) => setProductCount(e.target.value)}
-                      placeholder="50"
-                                            required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes" >
-                      {t("marketplace.details.additional_notes")}
+                    <Label htmlFor="additional-details">
+                      {t("marketplace.details.additional_product_details")}
                     </Label>
                     <Textarea 
-                      id="notes" 
-                      value={additionalNotes}
-                      onChange={(e) => setAdditionalNotes(e.target.value)}
-                      placeholder={t("marketplace.details.additional_notes_placeholder")}
-                      className={` min-h-[60px] h-[60px]`}
-                      rows={2}
+                      id="additional-details" 
+                      value={productDescription}
+                      onChange={(e) => setProductDescription(e.target.value)}
+                      placeholder={language === "ar" 
+                        ? "أضف أي تفاصيل إضافية حول المنتجات المختارة..."
+                        : "Add any additional details about the selected products..."}
+                      className="min-h-[80px]"
                     />
                   </div>
+
                   <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
                     <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <AlertDescription className={` text-amber-800 dark:text-amber-200 font-medium`}>
@@ -485,39 +672,55 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 </CardContent>
               </form>
             </Card>
+          </div>
 
-            {/* Chat - Only show after rental request submission */}
-            {hasSubmittedRequest && conversationId && userId ? (
-              <div className="h-[600px]">
-                <ChatInterface
-                  conversationId={conversationId}
-                  currentUserId={userId}
-                  currentUserType="brand-owner"
-                  otherUserName={storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
-                  shelfName={storeDetails.shelfName}
-                />
-              </div>
-            ) : (
-              <Card className="h-[600px] flex items-center justify-center">
-                <div className="text-center p-6 space-y-3">
-                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                  <div>
-                    <p className={`font-semibold text-lg `}>
-                      {t("form.chat_unavailable")}
-                    </p>
-                    <p className={`text-muted-foreground text-sm mt-2 `}>
-                      {!userId 
-                        ? t("form.login_first")
-                        : (language === "ar" 
-                          ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر" 
-                          : "Submit a rental request first to chat with the store owner")
-                      }
-                    </p>
+          {/* Bottom Section: Communication */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                {t("marketplace.details.communication_title")}
+              </CardTitle>
+              <p className="text-muted-foreground text-sm">
+                {t("marketplace.details.communication_description")}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {/* Chat - Only show after rental request submission */}
+              {hasSubmittedRequest && conversationId && userId ? (
+                <div className="h-[500px]">
+                  <ChatInterface
+                    conversationId={conversationId}
+                    currentUserId={userId}
+                    currentUserType="brand-owner"
+                    otherUserName={storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
+                    shelfName={storeDetails.shelfName}
+                  />
+                </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center border rounded-lg bg-muted/10">
+                  <div className="text-center p-6 space-y-3">
+                    <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">
+                        {t("form.chat_unavailable")}
+                      </p>
+                      <p className="text-muted-foreground text-sm mt-2 max-w-sm mx-auto">
+                        {!userId 
+                          ? t("form.login_first")
+                          : (language === "ar" 
+                            ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر" 
+                            : "Submit a rental request first to chat with the store owner")
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </Card>
-            )}
-          </div>
+              )}
+            </CardContent>
+          </Card>
     </div>
   )
 }

@@ -214,6 +214,7 @@ const schema = defineSchema({
     productDescription: v.string(),
     productCount: v.number(),
     additionalNotes: v.optional(v.string()),
+    selectedProductIds: v.optional(v.array(v.id("products"))),
     
     // Pricing
     monthlyPrice: v.number(),
