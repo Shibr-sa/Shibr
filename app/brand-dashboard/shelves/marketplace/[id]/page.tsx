@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils"
 import { format, addDays } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
-import Image from "next/image"
 import { useLanguage } from "@/contexts/localization-context"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -51,7 +50,10 @@ interface StoreDetails {
   length: string
   depth: string
   ownerName?: string
-  shelfImage?: string
+  shelfImage?: string | null
+  exteriorImage?: string | null
+  interiorImage?: string | null
+  ownerId?: string
 }
 
 export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -64,6 +66,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   // Get user ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
+  
+  // State for selected image
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   
   // Fetch store details from backend
   const storeDetails = useQuery(api.stores.getStoreById, { 
@@ -194,13 +199,84 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-6">
-                <Image
-                  src={storeDetails.shelfImage || "/placeholder.svg"}
-                  alt={storeDetails.shelfName}
-                  width={500}
-                  height={300}
-                  className="w-full md:w-1/3 h-64 object-cover rounded-lg"
-                />
+                {/* Image Gallery */}
+                <div className="w-full md:w-1/3">
+                  {(storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage) ? (
+                    <div className="space-y-2">
+                      {/* Main Image */}
+                      <div className="relative">
+                        <img
+                          src={selectedImage || storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage || ""}
+                          alt={storeDetails.shelfName}
+                          className="w-full h-64 object-cover rounded-lg store-main-image"
+                        />
+                        <Badge className="absolute top-2 start-2 bg-background/90 backdrop-blur-sm">
+                          {selectedImage === storeDetails.shelfImage || (!selectedImage && storeDetails.shelfImage === (storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage)) ? t("marketplace.shelf_image") :
+                           selectedImage === storeDetails.exteriorImage || (!selectedImage && !storeDetails.shelfImage && storeDetails.exteriorImage) ? t("marketplace.exterior_image") :
+                           t("marketplace.interior_image")}
+                        </Badge>
+                      </div>
+                      
+                      {/* Thumbnail Images - Only show if multiple images exist */}
+                      {[storeDetails.shelfImage, storeDetails.exteriorImage, storeDetails.interiorImage].filter(Boolean).length > 1 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {storeDetails.shelfImage && (
+                            <div 
+                              className="relative group cursor-pointer"
+                              onClick={() => setSelectedImage(storeDetails.shelfImage)}
+                            >
+                              <img
+                                src={storeDetails.shelfImage}
+                                alt={`${storeDetails.shelfName} - Shelf`}
+                                className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
+                                  (selectedImage === storeDetails.shelfImage || (!selectedImage && storeDetails.shelfImage === (storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage)))
+                                    ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                                }`}
+                              />
+                              <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          )}
+                          {storeDetails.exteriorImage && (
+                            <div 
+                              className="relative group cursor-pointer"
+                              onClick={() => setSelectedImage(storeDetails.exteriorImage)}
+                            >
+                              <img
+                                src={storeDetails.exteriorImage}
+                                alt={`${storeDetails.shelfName} - Exterior`}
+                                className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
+                                  selectedImage === storeDetails.exteriorImage 
+                                    ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                                }`}
+                              />
+                              <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          )}
+                          {storeDetails.interiorImage && (
+                            <div 
+                              className="relative group cursor-pointer"
+                              onClick={() => setSelectedImage(storeDetails.interiorImage)}
+                            >
+                              <img
+                                src={storeDetails.interiorImage}
+                                alt={`${storeDetails.shelfName} - Interior`}
+                                className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
+                                  selectedImage === storeDetails.interiorImage 
+                                    ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                                }`}
+                              />
+                              <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
+                      <Store className="h-16 w-16 text-muted-foreground/50" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-bold mb-2">
                     {storeDetails.shelfName}

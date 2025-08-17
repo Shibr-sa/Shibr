@@ -85,12 +85,31 @@ export const getMarketplaceStores = query({
       )
     }
 
-    // Get owner information for each shelf
+    // Get owner information and image URLs for each shelf
     const shelvesWithOwners = await Promise.all(
       shelves.map(async (shelf) => {
         const owner = await ctx.db.get(shelf.ownerId)
+        
+        // Convert storage IDs to URLs
+        let shelfImageUrl = null
+        let exteriorImageUrl = null
+        let interiorImageUrl = null
+        
+        if (shelf.shelfImage) {
+          shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage as Id<"_storage">)
+        }
+        if (shelf.exteriorImage) {
+          exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage as Id<"_storage">)
+        }
+        if (shelf.interiorImage) {
+          interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage as Id<"_storage">)
+        }
+        
         return {
           ...shelf,
+          shelfImage: shelfImageUrl,
+          exteriorImage: exteriorImageUrl,
+          interiorImage: interiorImageUrl,
           ownerName: owner?.storeName || owner?.fullName || "Unknown",
           ownerEmail: owner?.email,
           storeType: owner?.storeType,
@@ -144,9 +163,27 @@ export const getStoreById = query({
       ? await ctx.db.get(shelf.ownerId as Id<"users">)
       : null
     
-    // Return the shelf with owner information
+    // Convert storage IDs to URLs
+    let shelfImageUrl = null
+    let exteriorImageUrl = null
+    let interiorImageUrl = null
+    
+    if (shelf.shelfImage) {
+      shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage as Id<"_storage">)
+    }
+    if (shelf.exteriorImage) {
+      exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage as Id<"_storage">)
+    }
+    if (shelf.interiorImage) {
+      interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage as Id<"_storage">)
+    }
+    
+    // Return the shelf with owner information and image URLs
     return {
       ...shelf,
+      shelfImage: shelfImageUrl,
+      exteriorImage: exteriorImageUrl,
+      interiorImage: interiorImageUrl,
       ownerName: owner?.storeName || owner?.fullName || "Store Owner",
       ownerEmail: owner?.email,
       storeType: owner?.storeType,

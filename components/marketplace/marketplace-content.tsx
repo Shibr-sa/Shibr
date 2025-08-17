@@ -13,6 +13,16 @@ import { Search, MapPin, ChevronLeft, Store, Loader2, Package, Ruler, Calendar, 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { useLanguage } from "@/contexts/localization-context"
 import { useDebounce } from "@/hooks/use-debounce"
 
@@ -46,6 +56,8 @@ interface Store {
   depth: string
   ownerName?: string
   shelfImage?: string
+  exteriorImage?: string
+  interiorImage?: string
 }
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
@@ -370,91 +382,105 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                         <CardContent className="p-0 h-full">
                           <div className="flex h-full">
                             {/* Store Image */}
-                            <div className="w-2/5 relative bg-gradient-to-br from-primary/5 via-primary/10 to-primary/20">
-                              {store.shelfImage ? (
-                                <img 
-                                  src={store.shelfImage} 
-                                  alt={store.shelfName}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className="relative">
-                                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-                                    <Store className="h-16 w-16 text-primary/40 relative" />
+                            <div className="w-1/3 relative bg-gradient-to-br from-muted/50 to-muted">
+                              <AspectRatio ratio={3/4} className="h-full">
+                                {(store.shelfImage || store.exteriorImage || store.interiorImage) ? (
+                                  <img 
+                                    src={store.shelfImage || store.exteriorImage || store.interiorImage} 
+                                    alt={store.shelfName}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Store className="h-12 w-12 text-muted-foreground/50" />
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </AspectRatio>
                             </div>
 
-                            {/* Store Info */}
-                            <div className="flex-1 p-3 flex flex-col">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-start justify-between">
-                                  <h3 className="text-sm font-semibold text-foreground line-clamp-1 flex-1">
+                            {/* Store Info - Simplified and Clear */}
+                            <div className="flex-1 p-4 flex flex-col">
+                              {/* Header with Name and Location */}
+                              <div className="mb-3">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <h3 className="text-base font-semibold text-foreground">
                                     {store.shelfName}
                                   </h3>
                                   {store.isVerified && (
-                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                                      <Check className="h-2.5 w-2.5 me-0.5" />
+                                    <Badge variant="secondary" className="shrink-0">
+                                      <Check className="h-3 w-3 me-1" />
                                       {t("marketplace.verified")}
                                     </Badge>
                                   )}
                                 </div>
-                                
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                                    {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground">/ {t("marketplace.month")}</span>
-                                  {store.discountPercentage > 0 && (
-                                    <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
-                                      {t("marketplace.save")} {store.discountPercentage}%
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    <span className="line-clamp-1">
-                                      {store.address || `${store.city}, ${store.branch}`}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1.5 text-[11px]">
-                                    <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50">
-                                      <Package className="h-3 w-3 text-primary flex-shrink-0" />
-                                      <span className="text-muted-foreground">{t("marketplace.type")}:</span>
-                                      <span className="font-medium text-foreground truncate">{store.productType || t("marketplace.general")}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50 flex-1">
-                                        <Ruler className="h-3 w-3 text-primary flex-shrink-0" />
-                                        <span className="font-medium text-foreground">{store.width}×{store.length}cm</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 p-1 rounded bg-muted/50 flex-1">
-                                        <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
-                                        <span className="text-muted-foreground">{t("marketplace.available")}:</span>
-                                        <span className="font-medium text-foreground">
-                                          {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  <span>{store.city}, {store.branch}</span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full flex items-center justify-center ring-1 ring-primary/10">
-                                    <span className="text-[10px] font-semibold text-primary">
-                                      {store.ownerName?.slice(0, 2).toUpperCase() || "UN"}
-                                    </span>
-                                  </div>
-                                  <span className="text-[11px] font-medium text-foreground">{store.ownerName || "Unknown"}</span>
+                              {/* Key Information Grid */}
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                {/* Monthly Rent */}
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
+                                  <p className="text-lg font-bold text-primary">
+                                    {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
+                                  </p>
                                 </div>
-                                <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground rtl:rotate-180" />
+                                
+                                {/* Commission */}
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
+                                  <p className="text-lg font-bold">
+                                    {store.discountPercentage || 10}%
+                                  </p>
+                                </div>
+
+                                {/* Shelf Size */}
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.shelf_size")}</p>
+                                  <p className="text-sm font-medium">
+                                    {store.width}×{store.length}×{store.depth} cm
+                                  </p>
+                                </div>
+
+                                {/* Available From */}
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.available_from")}</p>
+                                  <p className="text-sm font-medium">
+                                    {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Product Type Badge */}
+                              {store.productType && (
+                                <div className="mb-auto">
+                                  <Badge variant="outline" className="text-xs">
+                                    <Package className="h-3 w-3 me-1" />
+                                    {store.productType}
+                                  </Badge>
+                                </div>
+                              )}
+
+                              {/* Footer with Store Owner */}
+                              <div className="flex items-center justify-between pt-3 border-t">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-7 w-7">
+                                    <AvatarFallback className="text-xs">
+                                      {store.ownerName?.slice(0, 2).toUpperCase() || "SO"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-xs font-medium">{store.ownerName || "Store Owner"}</p>
+                                    <p className="text-xs text-muted-foreground">{t("marketplace.store_owner")}</p>
+                                  </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-8 px-2">
+                                  {t("marketplace.view_details")}
+                                  <ChevronLeft className="h-3.5 w-3.5 ms-1 rotate-180 rtl:rotate-0" />
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -468,68 +494,68 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
 
           {/* Pagination - Always visible at bottom */}
           <div className="pt-4 mt-4">
-            <div className="flex items-center justify-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1 || totalPages === 0}
-              >
-                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-              
-              {totalPages === 0 ? (
-                // Show single disabled page when no results
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 w-9"
-                  disabled
-                >
-                  1
-                </Button>
-              ) : (
-                Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-                  
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "ghost"}
-                      size="sm"
-                      className={`h-9 w-9 ${currentPage === pageNum ? 'bg-primary text-white hover:bg-primary/90' : ''}`}
-                      onClick={() => handlePageChange(pageNum)}
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 || totalPages === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    aria-disabled={currentPage === 1 || totalPages === 0}
+                  />
+                </PaginationItem>
+                
+                {totalPages === 0 ? (
+                  // Show single disabled page when no results
+                  <PaginationItem>
+                    <PaginationLink 
+                      isActive
+                      className="pointer-events-none"
                     >
-                      {pageNum}
-                    </Button>
-                  )
-                })
-              )}
-
-              {totalPages > 5 && currentPage < totalPages - 2 && (
-                <span className="px-2 text-muted-foreground">...</span>
-              )}
-              
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
-              </Button>
-            </div>
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                ) : (
+                  Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  })
+                )}
+                
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <span className="px-2">...</span>
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages || totalPages === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    aria-disabled={currentPage === totalPages || totalPages === 0}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         </div>
       </div>
