@@ -5,6 +5,7 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -18,12 +19,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Search,
   Eye,
   CreditCard,
   DollarSign,
-  Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -59,20 +67,8 @@ export default function PaymentsPage() {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
 
-  const getTranslatedDate = (date: string, index: number) => {
-    if (language === "ar") {
-      const arabicDates = [
-        "24 يونيو 2023",
-        "23 يونيو 2023",
-        "22 يونيو 2023",
-        "21 يونيو 2023",
-        "20 يونيو 2023",
-        "19 يونيو 2023",
-        "18 يونيو 2023",
-        "17 يونيو 2023",
-      ]
-      return arabicDates[index] || date
-    }
+  const formatDate = (date: string) => {
+    // Use the date as-is from the backend, properly formatted
     return date
   }
 
@@ -90,65 +86,45 @@ export default function PaymentsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("payments.total_received")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.totalReceived || 0)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paymentsResult?.stats?.totalReceivedChange > 0 ? "+" : ""}{paymentsResult?.stats?.totalReceivedChange || 0}% {t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("payments.total_received")}
+              value={formatCurrency(paymentsResult?.stats?.totalReceived || 0)}
+              trend={{
+                value: paymentsResult?.stats?.totalReceivedChange || 0,
+                label: t("dashboard.from_last_month")
+              }}
+              icon={<DollarSign className="h-6 w-6 text-primary" />}
+            />
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("payments.current_month")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.currentMonthPayments || 0)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paymentsResult?.stats?.currentMonthChange > 0 ? "+" : ""}{paymentsResult?.stats?.currentMonthChange || 0}% {t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("payments.current_month")}
+              value={formatCurrency(paymentsResult?.stats?.currentMonthPayments || 0)}
+              trend={{
+                value: paymentsResult?.stats?.currentMonthChange || 0,
+                label: t("dashboard.from_last_month")
+              }}
+              icon={<CreditCard className="h-6 w-6 text-primary" />}
+            />
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("payments.pending_payments")}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(paymentsResult?.stats?.pendingPayments || 0)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paymentsResult?.stats?.pendingChange > 0 ? "+" : ""}{paymentsResult?.stats?.pendingChange || 0}% {t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("payments.pending_payments")}
+              value={formatCurrency(paymentsResult?.stats?.pendingPayments || 0)}
+              trend={{
+                value: paymentsResult?.stats?.pendingChange || 0,
+                label: t("dashboard.from_last_month")
+              }}
+              icon={<CreditCard className="h-6 w-6 text-primary" />}
+            />
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("payments.invoices_issued")}</p>
-                  <p className="text-2xl font-bold">{paymentsResult?.stats?.invoicesIssued || 0}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paymentsResult?.stats?.invoicesChange > 0 ? "+" : ""}{paymentsResult?.stats?.invoicesChange || 0}% {t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("payments.invoices_issued")}
+              value={paymentsResult?.stats?.invoicesIssued || 0}
+              trend={{
+                value: paymentsResult?.stats?.invoicesChange || 0,
+                label: t("dashboard.from_last_month")
+              }}
+              icon={<CreditCard className="h-6 w-6 text-primary" />}
+            />
           </div>
         </CardContent>
       </Card>
@@ -173,50 +149,20 @@ export default function PaymentsPage() {
               </div>
               
               {/* Filter Pills */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setFilterStatus("all")
+              <ToggleGroup 
+                type="single" 
+                value={filterStatus}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFilterStatus(value)
                     setCurrentPage(1)
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                    filterStatus === "all" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {filterStatus === "all" && <Check className="h-3 w-3" />}
-                  {t("payments.filter_all")}
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus("paid")
-                    setCurrentPage(1)
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                    filterStatus === "paid" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {filterStatus === "paid" && <Check className="h-3 w-3" />}
-                  {t("payments.filter_paid")}
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus("unpaid")
-                    setCurrentPage(1)
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                    filterStatus === "unpaid" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {filterStatus === "unpaid" && <Check className="h-3 w-3" />}
-                  {t("payments.filter_unpaid")}
-                </button>
-              </div>
+                  }
+                }}
+              >
+                <ToggleGroupItem value="all">{t("payments.filter_all")}</ToggleGroupItem>
+                <ToggleGroupItem value="paid">{t("payments.filter_paid")}</ToggleGroupItem>
+                <ToggleGroupItem value="unpaid">{t("payments.filter_unpaid")}</ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </CardHeader>
@@ -265,22 +211,11 @@ export default function PaymentsPage() {
                         >
                           <TableCell className="py-3 font-medium">{payment.invoiceNumber}</TableCell>
                           <TableCell className="py-3 text-muted-foreground">
-                            {language === "ar" ? 
-                              (payment.merchant === "Ahmed Mohammed" ? "أحمد محمد" :
-                               payment.merchant === "Fatima Ali" ? "فاطمة علي" :
-                               payment.merchant === "Khalid Saeed" ? "خالد سعيد" :
-                               payment.merchant === "Sara Ahmed" ? "سارة أحمد" :
-                               payment.merchant === "Mohammed Hassan" ? "محمد حسن" :
-                               payment.merchant === "Layla Ibrahim" ? "ليلى إبراهيم" :
-                               payment.merchant === "Omar Abdullah" ? "عمر عبدالله" :
-                               payment.merchant === "Noor Youssef" ? "نور يوسف" :
-                               payment.merchant)
-                              : payment.merchant
-                            }
+                            {payment.merchant}
                           </TableCell>
                           <TableCell className="py-3">{payment.store}</TableCell>
                           <TableCell className="py-3 text-muted-foreground">
-                            {getTranslatedDate(payment.date, paymentsData.indexOf(payment))}
+                            {formatDate(payment.date)}
                           </TableCell>
                           <TableCell className="py-3 font-medium">{formatCurrency(payment.amount)}</TableCell>
                           <TableCell className="py-3 text-muted-foreground">{payment.percentage}%</TableCell>
@@ -298,34 +233,49 @@ export default function PaymentsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t("common.view_details")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                         </TableRow>
                       ))}
                       {/* Fill remaining rows if less than 5 items */}
                       {paginatedPayments.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedPayments.length }).map((_, index) => (
                         <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedPayments.length - 1 ? 'border-b' : ''}`}>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
-                          <TableCell className="py-3">&nbsp;</TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Empty state
+                    // Empty state with skeleton loading
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[72px]">
-                        <TableCell colSpan={9} className="text-center text-muted-foreground">
-                          {index === 2 && t("payments.no_results")}
-                        </TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
                   )}

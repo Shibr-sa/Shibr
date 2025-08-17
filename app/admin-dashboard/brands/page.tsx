@@ -215,7 +215,6 @@ export default function BrandsPage() {
                        t("dashboard.from_last_month")
               }}
               icon={<Package className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
             
             <StatCard
@@ -229,7 +228,6 @@ export default function BrandsPage() {
                        t("dashboard.from_last_month")
               }}
               icon={<ShoppingBag className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
             
             <StatCard
@@ -243,7 +241,6 @@ export default function BrandsPage() {
                        t("dashboard.from_last_month")
               }}
               icon={<DollarSign className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
           </div>
         </CardContent>

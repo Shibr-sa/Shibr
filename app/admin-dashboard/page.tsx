@@ -231,7 +231,6 @@ export default function AdminDashboard() {
                        t("dashboard.from_last_month")
               }}
               icon={<Users className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
 
             <StatCard
@@ -243,7 +242,6 @@ export default function AdminDashboard() {
                   `${adminStats?.shelves?.rented || 0} rented, ${adminStats?.shelves?.available || 0} available`
               }
               icon={<Package className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
 
             <StatCard
@@ -254,7 +252,6 @@ export default function AdminDashboard() {
                 label: t("dashboard.from_rentals")
               }}
               icon={<DollarSign className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
 
             <StatCard
@@ -268,7 +265,6 @@ export default function AdminDashboard() {
                        t("dashboard.from_last_month")
               }}
               icon={<FileText className="h-6 w-6 text-primary" />}
-              className="bg-muted/50 border-0"
             />
           </div>
         </CardContent>
