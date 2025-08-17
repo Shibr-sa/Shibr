@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { StatCard } from "@/components/ui/stat-card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -219,125 +221,50 @@ export default function BrandShelvesPage() {
                 {t("brand.shelves.stats_description")}
               </p>
             </div>
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
-              <Button
-                variant={selectedPeriod === "daily" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setSelectedPeriod("daily")}
-              >
-                {t("time.daily")}
-              </Button>
-              <Button
-                variant={selectedPeriod === "weekly" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setSelectedPeriod("weekly")}
-              >
-                {t("time.weekly")}
-              </Button>
-              <Button
-                variant={selectedPeriod === "monthly" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setSelectedPeriod("monthly")}
-              >
-                {t("time.monthly")}
-              </Button>
-              <Button
-                variant={selectedPeriod === "yearly" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setSelectedPeriod("yearly")}
-              >
-                {t("time.yearly")}
-              </Button>
-            </div>
+            <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as "daily" | "weekly" | "monthly" | "yearly")}>
+              <TabsList>
+                <TabsTrigger value="daily">{t("time.daily")}</TabsTrigger>
+                <TabsTrigger value="weekly">{t("time.weekly")}</TabsTrigger>
+                <TabsTrigger value="monthly">{t("time.monthly")}</TabsTrigger>
+                <TabsTrigger value="yearly">{t("time.yearly")}</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Rented Shelves Count Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.shelves.rented_count")}
-                  </p>
-                  <div className="text-3xl font-bold">
-                    {rentalStats?.active ?? activeRentals}
-                  </div>
-                  <div className="flex items-center gap-1 mt-1">
-                    {rentalStats?.activeChange !== undefined && rentalStats.activeChange !== 0 ? (
-                      <>
-                        {rentalStats.activeChange > 0 ? (
-                          <TrendingUp className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 text-red-600" />
-                        )}
-                        <span className={`text-xs font-medium ${rentalStats.activeChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {rentalStats.activeChange > 0 ? '+' : ''}{rentalStats.activeChange.toFixed(1)}% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Store className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.shelves.rented_count")}
+              value={rentalStats?.active ?? activeRentals}
+              trend={{
+                value: rentalStats?.activeChange || 0,
+                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+              }}
+              icon={<Store className="h-5 w-5 text-primary" />}
+            />
 
             {/* QR Code Scans Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.shelves.qr_scans")}
-                  </p>
-                  <div className="text-3xl font-bold">
-                    0
-                  </div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
-                    </span>
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <QrCode className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.shelves.qr_scans")}
+              value={0}
+              trend={{
+                value: 0,
+                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+              }}
+              icon={<QrCode className="h-5 w-5 text-primary" />}
+            />
 
             {/* Total Sales Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.shelves.total_sales")}
-                  </p>
-                  <div className="text-3xl font-bold text-primary">
-                    {language === "ar" 
-                      ? `0 ${t("common.currency")}`
-                      : `${t("common.currency")} 0`
-                    }
-                  </div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      0.0% {t("time.from")} {t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}
-                    </span>
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Banknote className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.shelves.total_sales")}
+              value={language === "ar" ? `0 ${t("common.currency")}` : `${t("common.currency")} 0`}
+              trend={{
+                value: 0,
+                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+              }}
+              icon={<Banknote className="h-5 w-5 text-primary" />}
+            />
           </div>
         </CardContent>
       </Card>
@@ -431,9 +358,13 @@ export default function BrandShelvesPage() {
                         // Loading state - show 5 skeleton rows
                         Array.from({ length: itemsPerPage }).map((_, index) => (
                           <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                            <TableCell colSpan={7} className="text-center">
-                              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
-                            </TableCell>
+                            <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-[60px] rounded-full" /></TableCell>
+                            <TableCell><Skeleton className="h-8 w-[60px] rounded" /></TableCell>
                           </TableRow>
                         ))
                       ) : paginatedRequests.length > 0 ? (
@@ -473,7 +404,13 @@ export default function BrandShelvesPage() {
                           {/* Fill remaining rows if less than 5 items */}
                           {paginatedRequests.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedRequests.length }).map((_, index) => (
                             <TableRow key={`filler-${index}`} className="h-[72px]">
-                              <TableCell colSpan={7}>&nbsp;</TableCell>
+                              <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-[60px] rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-8 w-[60px] rounded" /></TableCell>
                             </TableRow>
                           ))}
                         </>

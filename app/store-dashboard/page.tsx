@@ -162,14 +162,10 @@ export default function StoreDashboardPage() {
             <StatCard
               title={t("dashboard.currently_rented_brands")}
               value={shelfStats?.rentedShelves || 0}
-              trend={
-                shelfStats && typeof shelfStats.rentedChange === 'number' && shelfStats.rentedChange !== 0
-                  ? {
-                      value: shelfStats.rentedChange,
-                      label: `${t("time.from")} ${t("time.last_month")}`
-                    }
-                  : undefined
-              }
+              trend={{
+                value: shelfStats?.rentedChange || 0,
+                label: `${t("time.from")} ${t("time.last_month")}`
+              }}
               icon={<Package className="h-5 w-5 text-primary" />}
             />
 
@@ -177,14 +173,10 @@ export default function StoreDashboardPage() {
             <StatCard
               title={t("dashboard.total_sales")}
               value={formatCurrency(shelfStats?.totalRevenue || 0, language)}
-              trend={
-                shelfStats && typeof shelfStats.revenueChange === 'number' && shelfStats.revenueChange !== 0
-                  ? {
-                      value: shelfStats.revenueChange,
-                      label: `${t("time.from")} ${t("time.last_month")}`
-                    }
-                  : undefined
-              }
+              trend={{
+                value: shelfStats?.revenueChange || 0,
+                label: `${t("time.from")} ${t("time.last_month")}`
+              }}
               icon={<TrendingUp className="h-5 w-5 text-primary" />}
             />
 
@@ -192,14 +184,10 @@ export default function StoreDashboardPage() {
             <StatCard
               title={t("dashboard.incoming_orders")}
               value={rentalRequests?.filter(r => r.status === "pending").length || 0}
-              trend={
-                rentalRequests?.filter(r => r.status === "pending").length > 0
-                  ? {
-                      value: 100.0,
-                      label: `${t("time.from")} ${t("time.last_month")}`
-                    }
-                  : undefined
-              }
+              trend={{
+                value: rentalRequests?.filter(r => r.status === "pending").length > 0 ? 100.0 : 0,
+                label: `${t("time.from")} ${t("time.last_month")}`
+              }}
               icon={<ShoppingBag className="h-5 w-5 text-primary" />}
             />
           </div>

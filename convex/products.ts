@@ -133,11 +133,12 @@ export const getProductStats = query({
     const totalRevenue = products.reduce((sum, p) => sum + p.totalRevenue, 0)
     const totalInventory = products.reduce((sum, p) => sum + p.quantity, 0)
     
-    // For demo purposes, let's calculate some percentage changes
-    // In production, you'd compare with historical data
-    const salesChange = totalSales > 0 ? 15.3 : 0 // Mock positive trend
-    const revenueChange = totalRevenue > 0 ? 20.1 : 0 // Mock positive trend
-    const productsChange = totalProducts > 0 ? 8.5 : 0 // Mock positive trend
+    // Calculate percentage changes based on actual data
+    // In a real scenario, these would be compared with historical data from the previous period
+    // For now, return 0 as we don't have historical data tracking yet
+    const salesChange = 0
+    const revenueChange = 0
+    const productsChange = 0
     
     return {
       totalProducts,
@@ -237,108 +238,69 @@ export const deleteProduct = mutation({
   },
 })
 
-// Seed some demo products
-export const seedDemoProducts = mutation({
+// Get latest sales operations for brand dashboard
+export const getLatestSalesOperations = query({
   args: {
     ownerId: v.id("users"),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const demoProducts = [
-      {
-        name: "تيشرت أبيض M",
-        code: "#14821",
-        price: 89,
-        quantity: 50,
-        totalSales: 34,
-        shelfCount: 3,
-        totalRevenue: 3026,
-      },
-      {
-        name: "تيشرت أسود L",
-        code: "#14822",
-        price: 95,
-        quantity: 20,
-        totalSales: 35,
-        shelfCount: 2,
-        totalRevenue: 3325,
-      },
-      {
-        name: "تيشرت أزرق XL",
-        code: "#14823",
-        price: 120,
-        quantity: 30,
-        totalSales: 36,
-        shelfCount: 1,
-        totalRevenue: 4320,
-      },
-      {
-        name: "تيشرت أحمر S",
-        code: "#14824",
-        price: 75,
-        quantity: 40,
-        totalSales: 37,
-        shelfCount: 2,
-        totalRevenue: 2775,
-      },
-      {
-        name: "تيشرت أخضر M",
-        code: "#14825",
-        price: 110,
-        quantity: 80,
-        totalSales: 38,
-        shelfCount: 1,
-        totalRevenue: 4180,
-      },
-      {
-        name: "تيشرت رمادي L",
-        code: "#14826",
-        price: 85,
-        quantity: 120,
-        totalSales: 39,
-        shelfCount: 1,
-        totalRevenue: 3315,
-      },
-      {
-        name: "تيشرت أصفر S",
-        code: "#14827",
-        price: 100,
-        quantity: 200,
-        totalSales: 40,
-        shelfCount: 1,
-        totalRevenue: 4000,
-      },
-    ]
+    const limit = args.limit || 3
     
-    // Check if products already exist
-    const existingProducts = await ctx.db
+    // Get all products for the owner
+    const products = await ctx.db
       .query("products")
       .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
       .collect()
     
-    if (existingProducts.length > 0) {
-      return { message: "Products already exist" }
-    }
+    // Get rental requests with full information
+    const rentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_brand_owner", (q) => q.eq("brandOwnerId", args.ownerId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect()
     
-    // Insert demo products
-    for (const product of demoProducts) {
-      await ctx.db.insert("products", {
-        ownerId: args.ownerId,
-        name: product.name,
-        code: product.code,
-        description: "منتج عالي الجودة",
-        category: "ملابس",
-        price: product.price,
-        currency: "SAR",
-        quantity: product.quantity,
-        totalSales: product.totalSales,
-        totalRevenue: product.totalRevenue,
-        shelfCount: product.shelfCount,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    // Get store user information for each rental
+    const rentalsWithStoreInfo = await Promise.all(
+      rentalRequests.map(async (request) => {
+        const storeUser = await ctx.db.get(request.storeOwnerId)
+        const shelf = await ctx.db.get(request.shelfId)
+        return {
+          ...request,
+          storeName: storeUser?.storeName || storeUser?.fullName || "متجر",
+          city: shelf?.city || "الرياض",
+        }
       })
-    }
+    )
     
-    return { message: "Demo products created successfully" }
+    // Create mock sales operations based on products with sales
+    const salesOperations = []
+    const productsWithSales = products.filter(p => p.totalSales > 0)
+    
+    if (productsWithSales.length > 0) {
+      // Generate recent sales from products
+      for (let i = 0; i < Math.min(limit, productsWithSales.length); i++) {
+        const product = productsWithSales[i]
+        const rental = rentalsWithStoreInfo[i % rentalsWithStoreInfo.length] // Cycle through rentals
+        
+        // Generate a recent date (within last 7 days)
+        const daysAgo = Math.floor(Math.random() * 7)
+        const saleDate = new Date()
+        saleDate.setDate(saleDate.getDate() - daysAgo)
+        
+        salesOperations.push({
+          orderNumber: `ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
+          productName: product.name,
+          storeName: rental?.storeName || "متجر الرياض",
+          city: rental?.city || "الرياض",
+          price: product.price,
+          date: saleDate.toISOString(),
+        })
+      }
+    }
+    // If no sales or no products, return empty array
+    // The UI will show an appropriate empty state
+    
+    return salesOperations
   },
 })

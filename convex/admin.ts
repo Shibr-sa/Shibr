@@ -231,8 +231,8 @@ export const getAdminStats = query({
         
         const storeRevenue = storeRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0)
         
-        // Calculate growth (mock calculation for now)
-        const growth = Math.random() * 30 - 10 // Random growth between -10 and 20
+        // Calculate growth (return 0 for now as we don't have historical data tracking)
+        const growth = 0
         
         return {
           id: store._id,
@@ -264,7 +264,7 @@ export const getAdminStats = query({
       
       recentRevenue.push({
         day: dayName,
-        value: dayRevenue || Math.random() * 70000 // Use random if no data
+        value: dayRevenue // Use actual revenue only
       })
     }
 
@@ -742,21 +742,10 @@ export const getStores = query({
       ? Math.round(((storesUntilNow - storesUntilPrevious) / storesUntilPrevious) * 100 * 10) / 10
       : storesUntilNow > 0 ? 100 : 0;
 
-    // For demo purposes, if no real change, use sample percentages based on period
-    const sampleChanges = {
-      daily: { active: 2.1, suspended: -0.8 },
-      weekly: { active: 8.3, suspended: -3.2 },
-      monthly: { active: 15.3, suspended: -5.2 },
-      yearly: { active: 45.7, suspended: -12.4 }
-    };
-
-    // Always use sample changes for demo since we have test data
-    const activeChange = sampleChanges[timePeriod].active;
-    const suspendedChange = sampleChanges[timePeriod].suspended;
-    const finalTotalChange = totalChange !== 0 ? totalChange : 
-      timePeriod === 'daily' ? 3.2 :
-      timePeriod === 'weekly' ? 12.5 :
-      timePeriod === 'monthly' ? 20.1 : 58.3;
+    // Use actual calculated changes, return 0 if no change
+    const activeChange = 0;
+    const suspendedChange = 0;
+    const finalTotalChange = totalChange;
 
     return {
       stores: paginatedStores,
@@ -889,10 +878,10 @@ export const getBrands = query({
     const totalRevenue = brandsWithStats.reduce((sum, b) => sum + b.revenue, 0);
     const periodRevenue = periodBrands.reduce((sum, b) => sum + b.revenue, 0);
     
-    // Calculate percentage changes (simplified - in production, compare with previous period)
-    const brandsChange = periodBrands.length > 0 ? 12.5 : 0; // Mock percentage for now
-    const productsChange = 18.2; // Mock percentage for now
-    const revenueChange = 25.4; // Mock percentage for now
+    // Calculate percentage changes - return 0 as we don't have historical data tracking yet
+    const brandsChange = 0;
+    const productsChange = 0;
+    const revenueChange = 0;
     
     return {
       brands: paginatedBrands,

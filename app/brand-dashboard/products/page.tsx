@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { StatCard } from "@/components/ui/stat-card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { formatCurrency } from "@/lib/formatters"
 import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,7 +29,6 @@ export default function BrandProductsPage() {
   const { t, language } = useLanguage()
   const { user } = useCurrentUser()
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
@@ -41,21 +43,14 @@ export default function BrandProductsPage() {
     userId ? { ownerId: userId } : "skip"
   )
 
-  // Fetch product statistics
+  // Fetch product statistics (using monthly period as default)
   const productStats = useQuery(
     api.products.getProductStats,
-    userId ? { ownerId: userId, period: selectedPeriod } : "skip"
+    userId ? { ownerId: userId, period: "monthly" as const } : "skip"
   )
 
-  // Seed demo products mutation
-  const seedDemoProducts = useMutation(api.products.seedDemoProducts)
-
-  // Auto-seed demo products on first load if no products exist
-  useEffect(() => {
-    if (products && products.length === 0 && userId) {
-      seedDemoProducts({ ownerId: userId })
-    }
-  }, [products, userId])
+  // Delete product mutation
+  const deleteProduct = useMutation(api.products.deleteProduct)
 
   // Filter products based on search
   const filteredProducts = products?.filter(product => {
@@ -82,6 +77,9 @@ export default function BrandProductsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-xl font-semibold">{t("brand.dashboard.your_products_on_shelves")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("brand.dashboard.manage_products_description")}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
@@ -104,58 +102,25 @@ export default function BrandProductsPage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Total Products Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.dashboard.total_products_count")}
-                  </p>
-                  <div className="text-3xl font-bold">
-                    {productStats?.totalProducts ?? 0}
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Package className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.dashboard.total_products_count")}
+              value={productStats?.totalProducts ?? 0}
+              icon={<Package className="h-5 w-5 text-primary" />}
+            />
 
             {/* Sold Products Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.dashboard.sold_products_count")}
-                  </p>
-                  <div className="text-3xl font-bold">
-                    {productStats?.totalSales ?? 0}
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <ShoppingCart className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.dashboard.sold_products_count")}
+              value={productStats?.totalSales ?? 0}
+              icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+            />
 
             {/* Total Revenue Card */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("brand.dashboard.total_sales")}
-                  </p>
-                  <div className="text-3xl font-bold text-primary">
-                    {language === "ar" 
-                      ? `${productStats?.totalRevenue ?? 0} ${t("common.currency")}`
-                      : `${t("common.currency")} ${productStats?.totalRevenue ?? 0}`
-                    }
-                  </div>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Banknote className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title={t("brand.dashboard.total_sales")}
+              value={formatCurrency(productStats?.totalRevenue ?? 0, language)}
+              icon={<Banknote className="h-5 w-5 text-primary" />}
+            />
           </div>
         </CardContent>
       </Card>
@@ -216,8 +181,18 @@ export default function BrandProductsPage() {
                         // Loading state - show 5 skeleton rows
                         Array.from({ length: itemsPerPage }).map((_, index) => (
                           <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                            <TableCell colSpan={8} className="text-center">
-                              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                            <TableCell><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Skeleton className="h-8 w-8 rounded" />
+                                <Skeleton className="h-8 w-8 rounded" />
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -246,8 +221,7 @@ export default function BrandProductsPage() {
                                 {product.code}
                               </TableCell>
                               <TableCell className="py-3">
-                                <span className="font-medium">{product.price}</span>
-                                <span className="ms-1 text-muted-foreground">{t("common.currency")}</span>
+                                <span className="font-medium">{formatCurrency(product.price, language)}</span>
                               </TableCell>
                               <TableCell className="py-3">{product.quantity}</TableCell>
                               <TableCell className="py-3">{product.totalSales}</TableCell>
@@ -265,24 +239,38 @@ export default function BrandProductsPage() {
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-destructive"
+                                    onClick={() => {
+                                      if (confirm(t("brand.dashboard.confirm_delete_product"))) {
+                                        deleteProduct({ productId: product._id })
+                                      }
+                                    }}
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
                           ))}
-                          {/* Fill remaining rows if less than 5 items */}
+                          {/* Fill remaining rows with skeletons if less than 5 items */}
                           {paginatedProducts.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedProducts.length }).map((_, index) => (
                             <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedProducts.length - 1 ? 'border-b' : ''}`}>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
-                              <TableCell className="py-3">&nbsp;</TableCell>
+                              <TableCell><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Skeleton className="h-8 w-8 rounded" />
+                                  <Skeleton className="h-8 w-8 rounded" />
+                                </div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </>
@@ -292,24 +280,14 @@ export default function BrandProductsPage() {
                           <TableRow key={`empty-${index}`} className="h-[72px]">
                             {index === 2 ? (
                               <TableCell colSpan={8} className="text-center text-muted-foreground">
-                                <div className="flex flex-col items-center justify-center gap-2">
-                                  <Package className="h-8 w-8 text-muted-foreground" />
+                                <div className="flex items-center justify-center gap-2 h-full">
+                                  <Package className="h-5 w-5 text-muted-foreground" />
                                   <span className="text-sm">
                                     {searchQuery 
                                       ? t("brand.no_matching_products")
                                       : t("brand.no_products_yet")
                                     }
                                   </span>
-                                  {!searchQuery && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="mt-2"
-                                    >
-                                      <Plus className="h-4 w-4 me-2" />
-                                      {t("brand.add_first_product")}
-                                    </Button>
-                                  )}
                                 </div>
                               </TableCell>
                             ) : (

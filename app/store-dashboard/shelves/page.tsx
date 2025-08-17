@@ -212,18 +212,15 @@ export default function StoreDashboardShelvesPage() {
             <StatCard
               title={t("shelves.total_rented_shelves")}
               value={shelfStats?.rentedShelves || 0}
-              trend={(() => {
-                const change = getPercentageChange("rented")
-                return change !== 0 ? {
-                  value: change,
-                  label: `${t("time.from")} ${
-                    statsPeriod === "daily" ? t("time.yesterday") :
-                    statsPeriod === "weekly" ? t("time.last_week") :
-                    statsPeriod === "monthly" ? t("time.last_month") :
-                    t("time.last_year")
-                  }`
-                } : undefined
-              })()}
+              trend={{
+                value: getPercentageChange("rented"),
+                label: `${t("time.from")} ${
+                  statsPeriod === "daily" ? t("time.yesterday") :
+                  statsPeriod === "weekly" ? t("time.last_week") :
+                  statsPeriod === "monthly" ? t("time.last_month") :
+                  t("time.last_year")
+                }`
+              }}
               icon={<Package className="h-5 w-5 text-primary" />}
             />
 
@@ -231,18 +228,15 @@ export default function StoreDashboardShelvesPage() {
             <StatCard
               title={t("shelves.total_sales")}
               value={formatCurrency(shelfStats?.totalRevenue || 0, language)}
-              trend={(() => {
-                const change = getPercentageChange("revenue")
-                return change !== 0 ? {
-                  value: change,
-                  label: `${t("time.from")} ${
-                    statsPeriod === "daily" ? t("time.yesterday") :
-                    statsPeriod === "weekly" ? t("time.last_week") :
-                    statsPeriod === "monthly" ? t("time.last_month") :
-                    t("time.last_year")
-                  }`
-                } : undefined
-              })()}
+              trend={{
+                value: getPercentageChange("revenue"),
+                label: `${t("time.from")} ${
+                  statsPeriod === "daily" ? t("time.yesterday") :
+                  statsPeriod === "weekly" ? t("time.last_week") :
+                  statsPeriod === "monthly" ? t("time.last_month") :
+                  t("time.last_year")
+                }`
+              }}
               icon={<BarChart3 className="h-5 w-5 text-primary" />}
             />
 
@@ -250,18 +244,15 @@ export default function StoreDashboardShelvesPage() {
             <StatCard
               title={t("shelves.available_shelves")}
               value={shelfStats?.availableShelves || 0}
-              trend={(() => {
-                const change = getPercentageChange("available")
-                return change !== 0 ? {
-                  value: change,
-                  label: `${t("time.from")} ${
-                    statsPeriod === "daily" ? t("time.yesterday") :
-                    statsPeriod === "weekly" ? t("time.last_week") :
-                    statsPeriod === "monthly" ? t("time.last_month") :
-                    t("time.last_year")
-                  }`
-                } : undefined
-              })()}
+              trend={{
+                value: getPercentageChange("available"),
+                label: `${t("time.from")} ${
+                  statsPeriod === "daily" ? t("time.yesterday") :
+                  statsPeriod === "weekly" ? t("time.last_week") :
+                  statsPeriod === "monthly" ? t("time.last_month") :
+                  t("time.last_year")
+                }`
+              }}
               icon={<DollarSign className="h-5 w-5 text-primary" />}
             />
           </div>
