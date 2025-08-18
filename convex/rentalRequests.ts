@@ -15,6 +15,7 @@ export const createRentalRequest = mutation({
     additionalNotes: v.string(),
     conversationId: v.id("conversations"),
     selectedProductIds: v.array(v.id("products")),
+    selectedProductQuantities: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
     // Get the shelf details
@@ -58,6 +59,7 @@ export const createRentalRequest = mutation({
         productCount: args.productCount,
         additionalNotes: args.additionalNotes,
         selectedProductIds: args.selectedProductIds,
+        selectedProductQuantities: args.selectedProductQuantities,
         updatedAt: new Date().toISOString(),
       })
       
@@ -110,6 +112,7 @@ export const createRentalRequest = mutation({
       expiresAt: expiresAt.toISOString(),
       conversationId: args.conversationId,
       selectedProductIds: args.selectedProductIds,
+      selectedProductQuantities: args.selectedProductQuantities,
     })
     
     // Create a notification for the store owner
@@ -353,6 +356,74 @@ export const getRentalRequest = query({
   },
 })
 
+// Get a single rental request by ID with full details
+export const getRentalRequestById = query({
+  args: {
+    requestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.requestId)
+    
+    if (!request) {
+      return null
+    }
+    
+    // Get the brand owner details
+    const brandOwner = await ctx.db.get(request.brandOwnerId)
+    
+    // Get shelf details
+    const shelf = await ctx.db.get(request.shelfId)
+    
+    // Get selected products with their requested quantities
+    let products: any[] = []
+    if (request.selectedProductIds && request.selectedProductIds.length > 0) {
+      products = await Promise.all(
+        request.selectedProductIds.map(async (productId, index) => {
+          const product = await ctx.db.get(productId)
+          if (product) {
+            // Add the requested quantity to the product
+            return {
+              ...product,
+              requestedQuantity: request.selectedProductQuantities?.[index] || 1
+            }
+          }
+          return null
+        })
+      )
+      // Filter out any null products
+      products = products.filter(p => p !== null)
+    }
+    
+    // Return enriched request data
+    return {
+      ...request,
+      otherUserId: brandOwner?._id,
+      otherUserName: brandOwner?.brandName || brandOwner?.fullName || "Unknown",
+      otherUserEmail: brandOwner?.email,
+      city: shelf?.city,
+      shelfCity: shelf?.city,
+      shelfName: shelf?.shelfName,
+      shelfBranch: shelf?.branch,
+      // Brand specific details
+      activityType: brandOwner?.brandType || "Not specified",
+      phoneNumber: brandOwner?.phoneNumber,
+      mobileNumber: brandOwner?.phoneNumber,
+      website: brandOwner?.website,
+      commercialRegisterNumber: brandOwner?.businessRegistration,
+      commercialRegisterFile: brandOwner?.businessRegistrationDocumentUrl,
+      crNumber: brandOwner?.businessRegistration,
+      crFile: brandOwner?.businessRegistrationDocumentUrl,
+      brandLogo: brandOwner?.profileImageUrl || brandOwner?.storeLogo,
+      ownerName: brandOwner?.ownerName || brandOwner?.fullName,
+      // Rating information
+      brandRating: brandOwner?.averageRating || 0,
+      brandTotalRatings: brandOwner?.totalRatings || 0,
+      // Products
+      products: products,
+    }
+  },
+})
+
 // Get all rental requests for a user (as brand owner or store owner)
 export const getUserRentalRequests = query({
   args: {
@@ -384,12 +455,43 @@ export const getUserRentalRequests = query({
         // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
         
+        // For store owners viewing brand requests, include all brand details
+        if (args.userType === "store" && otherUser) {
+          return {
+            ...request,
+            otherUserId: otherUser._id,
+            otherUserName: otherUser.brandName || otherUser.fullName || "Unknown",
+            otherUserEmail: otherUser.email,
+            city: shelf?.city,
+            shelfCity: shelf?.city,
+            shelfName: shelf?.shelfName,
+            shelfBranch: shelf?.branch,
+            // Brand specific details
+            activityType: otherUser.brandType || "Not specified",
+            phoneNumber: otherUser.phoneNumber,
+            mobileNumber: otherUser.phoneNumber,
+            website: otherUser.website,
+            commercialRegisterNumber: otherUser.businessRegistration,
+            commercialRegisterFile: otherUser.businessRegistrationDocumentUrl,
+            crNumber: otherUser.businessRegistration,
+            crFile: otherUser.businessRegistrationDocumentUrl,
+            brandLogo: otherUser.profileImageUrl || otherUser.storeLogo,
+            ownerName: otherUser.ownerName || otherUser.fullName,
+            // Note: Social media and brand description fields don't exist in the schema yet
+            // They would need to be added to the users table if needed
+          }
+        }
+        
+        // For brand owners viewing store requests
         return {
           ...request,
+          otherUserId: otherUser?._id,
           otherUserName: otherUser?.storeName || otherUser?.fullName || "Unknown",
+          otherUserEmail: otherUser?.email,
           city: shelf?.city,
           shelfName: shelf?.shelfName,
           shelfBranch: shelf?.branch,
+          phoneNumber: otherUser?.phoneNumber,
         }
       })
     )

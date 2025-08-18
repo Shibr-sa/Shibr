@@ -39,6 +39,10 @@ const schema = defineSchema({
     isActive: v.boolean(),
     isEmailVerified: v.boolean(),
     
+    // Rating information
+    averageRating: v.optional(v.number()),
+    totalRatings: v.optional(v.number()),
+    
     // Timestamps
     createdAt: v.string(),
     updatedAt: v.string(),
@@ -215,6 +219,7 @@ const schema = defineSchema({
     productCount: v.number(),
     additionalNotes: v.optional(v.string()),
     selectedProductIds: v.optional(v.array(v.id("products"))),
+    selectedProductQuantities: v.optional(v.array(v.number())),
     
     // Pricing
     monthlyPrice: v.number(),
@@ -226,8 +231,9 @@ const schema = defineSchema({
       v.literal("accepted"),          // Request is accepted, awaiting payment
       v.literal("payment_pending"),   // Alias for accepted state
       v.literal("active"),            // Request is active after payment confirmed
+      v.literal("completed"),         // Rental period completed successfully
       v.literal("rejected"),          // Request is rejected
-      v.literal("expired")            // Request expired after 48 hours
+      v.literal("expired")            // Request expired after 48 hours or not accepted
     ),
     
     // Response from store owner
@@ -265,6 +271,7 @@ const schema = defineSchema({
       v.literal("rental_accepted"),
       v.literal("rental_rejected"),
       v.literal("rental_expired"),
+      v.literal("rental_completed"),
       v.literal("rental_activated"),
       v.literal("payment_required"),
       v.literal("payment_confirmation"),

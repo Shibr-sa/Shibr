@@ -206,6 +206,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         additionalNotes: "",
         conversationId: convId,
         selectedProductIds: selectedProducts.map(p => p.id) as Id<"products">[],
+        selectedProductQuantities: selectedProducts.map(p => p.quantity),
       })
       
       // Show success message based on whether it was created or updated

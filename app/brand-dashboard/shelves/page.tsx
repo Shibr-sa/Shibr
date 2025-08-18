@@ -17,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock } from "lucide-react"
+import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock, Star } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -133,10 +133,22 @@ export default function BrandShelvesPage() {
             {t("status.payment_pending")}
           </Badge>
         )
+      case "completed":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            {t("status.completed")}
+          </Badge>
+        )
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 border-red-200">
             {t("status.rejected")}
+          </Badge>
+        )
+      case "expired":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {t("status.expired")}
           </Badge>
         )
       default:
@@ -250,6 +262,63 @@ export default function BrandShelvesPage() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        )
+      
+      case "completed":
+        return (
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0 relative"
+                    onClick={async () => {
+                      router.push(`/brand-dashboard/shelves/${request._id}`)
+                      // Mark notifications as read when viewing details
+                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
+                        await markNotificationsAsRead({
+                          userId: userId,
+                          rentalRequestId: request._id
+                        })
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                    {notificationCounts && notificationCounts[request._id] > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
+                        {notificationCounts[request._id]}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("action.view")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // TODO: Implement rating dialog
+                      console.log("Rate store:", request.otherUserName)
+                    }}
+                  >
+                    <Star className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("orders.rate_store")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )
       
       case "rejected":

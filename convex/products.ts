@@ -41,6 +41,109 @@ export const getUserProducts = query({
   },
 })
 
+// Debug: Get all products in the database
+export const getAllProducts = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect()
+    console.log("Total products in database:", products.length)
+    return products
+  },
+})
+
+// Seed sample products for a user
+export const seedSampleProducts = mutation({
+  args: {
+    ownerId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const sampleProducts = [
+      {
+        name: "قهوة عربية فاخرة",
+        code: "PRD-001",
+        description: "قهوة عربية مميزة بنكهة الهيل",
+        category: "مشروبات",
+        price: 45,
+        cost: 25,
+        currency: "SAR",
+        quantity: 100,
+        minQuantity: 20,
+        sku: "SKU-COFFEE-001",
+        imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200",
+      },
+      {
+        name: "شاي أخضر عضوي",
+        code: "PRD-002",
+        description: "شاي أخضر طبيعي 100%",
+        category: "مشروبات",
+        price: 35,
+        cost: 18,
+        currency: "SAR",
+        quantity: 150,
+        minQuantity: 30,
+        sku: "SKU-TEA-001",
+        imageUrl: "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=200",
+      },
+      {
+        name: "عسل طبيعي",
+        code: "PRD-003",
+        description: "عسل جبلي طبيعي",
+        category: "أغذية",
+        price: 120,
+        cost: 80,
+        currency: "SAR",
+        quantity: 50,
+        minQuantity: 10,
+        sku: "SKU-HONEY-001",
+        imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200",
+      },
+      {
+        name: "تمر سكري",
+        code: "PRD-004",
+        description: "تمر سكري فاخر من القصيم",
+        category: "أغذية",
+        price: 65,
+        cost: 40,
+        currency: "SAR",
+        quantity: 200,
+        minQuantity: 40,
+        sku: "SKU-DATES-001",
+        imageUrl: "https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200",
+      },
+      {
+        name: "زعفران إيراني",
+        code: "PRD-005",
+        description: "زعفران إيراني أصلي",
+        category: "توابل",
+        price: 250,
+        cost: 180,
+        currency: "SAR",
+        quantity: 30,
+        minQuantity: 5,
+        sku: "SKU-SAFFRON-001",
+        imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200",
+      },
+    ]
+    
+    const productIds = []
+    for (const product of sampleProducts) {
+      const productId = await ctx.db.insert("products", {
+        ownerId: args.ownerId,
+        ...product,
+        totalSales: 0,
+        totalRevenue: 0,
+        shelfCount: 0,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      productIds.push(productId)
+    }
+    
+    return { success: true, productIds, count: productIds.length }
+  },
+})
+
 // Get sales chart data for dashboard
 export const getSalesChartData = query({
   args: {

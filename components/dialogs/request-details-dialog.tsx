@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AlertTriangle, MessageSquare, Send, Download, Check, X } from "lucide-react"
+import { AlertTriangle, MessageSquare, Send, Download, Check, X, User, Building2, Globe, Instagram, Twitter } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { formatDate, formatDuration } from "@/lib/formatters"
@@ -50,7 +50,16 @@ export interface RentalRequestDetails {
   createdAt?: string
   _creationTime?: number
   additionalNotes?: string
-  status: "pending" | "active" | "rejected"
+  status: "pending" | "active" | "rejected" | "completed" | "expired"
+  brandLogo?: string
+  brandDescription?: string
+  ownerName?: string
+  socialMedia?: {
+    instagram?: string
+    twitter?: string
+    snapchat?: string
+    tiktok?: string
+  }
 }
 
 interface RequestDetailsDialogProps {
@@ -188,60 +197,90 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
         
         {selectedRequest && (
           <div className="space-y-6 mt-4">
-            {/* Request Info Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Brand Info Header */}
+            <div className="flex items-start gap-4 pb-4">
+              {selectedRequest.brandLogo ? (
+                <img 
+                  src={selectedRequest.brandLogo} 
+                  alt={selectedRequest.otherUserName || "Brand"}
+                  className="h-16 w-16 rounded-lg object-cover border"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center border">
+                  <Building2 className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">{selectedRequest.otherUserName || "-"}</h3>
+                {selectedRequest.activityType && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedRequest.activityType}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Brand Details Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.renter_name")}</p>
-                <p className="font-medium">{selectedRequest.otherUserName || "-"}</p>
+                <p className="text-sm text-muted-foreground">{t("orders.owner_name")}</p>
+                <p className="font-medium">{selectedRequest.ownerName || "-"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t("orders.activity_type")}</p>
                 <p className="font-medium">{selectedRequest.activityType || "-"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.city")}</p>
-                <p className="font-medium">{selectedRequest.city || selectedRequest.shelfCity || "-"}</p>
-              </div>
-              <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t("orders.mobile_number")}</p>
-                <p className="font-medium">{selectedRequest.mobileNumber || selectedRequest.phoneNumber || "-"}</p>
+                <p className="font-medium dir-ltr text-start">{selectedRequest.mobileNumber || selectedRequest.phoneNumber || "-"}</p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t("orders.email")}</p>
-                <p className="font-medium">{selectedRequest.otherUserEmail || selectedRequest.email || "-"}</p>
+                <p className="font-medium break-all">{selectedRequest.otherUserEmail || selectedRequest.email || "-"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t("orders.website")}</p>
-                <p className="font-medium">{selectedRequest.website || "-"}</p>
+                {selectedRequest.website ? (
+                  <a 
+                    href={selectedRequest.website.startsWith('http') ? selectedRequest.website : `https://${selectedRequest.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Globe className="h-3 w-3" />
+                    <span className="text-sm">{t("common.visit")}</span>
+                  </a>
+                ) : (
+                  <p className="font-medium">-</p>
+                )}
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t("orders.commercial_register_number")}</p>
                 <p className="font-medium">{selectedRequest.commercialRegisterNumber || selectedRequest.crNumber || "-"}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.commercial_register")}</p>
-                {selectedRequest.commercialRegisterFile || selectedRequest.crFile ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2"
-                    onClick={() => {
-                      const fileUrl = selectedRequest.commercialRegisterFile || selectedRequest.crFile
-                      if (fileUrl) {
-                        window.open(fileUrl, '_blank')
-                      }
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                    {t("common.download")}
-                  </Button>
-                ) : (
-                  <p className="font-medium">-</p>
-                )}
-              </div>
+            </div>
+
+            {/* Business Registration Document */}
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{t("orders.commercial_register")}</p>
+              {selectedRequest.commercialRegisterFile || selectedRequest.crFile ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={() => {
+                    const fileUrl = selectedRequest.commercialRegisterFile || selectedRequest.crFile
+                    if (fileUrl) {
+                      window.open(fileUrl, '_blank')
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  {t("common.download")}
+                </Button>
+              ) : (
+                <p className="font-medium">-</p>
+              )}
             </div>
 
             <Separator />

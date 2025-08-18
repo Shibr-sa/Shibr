@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
 import {
   Table,
   TableBody,
@@ -44,34 +43,17 @@ import {
 import { useLanguage } from "@/contexts/localization-context"
 import { useStoreData } from "@/contexts/store-data-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useRouter } from "next/navigation"
 import { formatDate, formatDuration } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
-
-// Helper function to get badge variant based on status
-function getOrderStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "active":
-      return "default"
-    case "pending":
-      return "outline"
-    case "rejected":
-      return "destructive"
-    case "accepted":
-    case "payment_pending":
-      return "secondary"
-    default:
-      return "secondary"
-  }
-}
 
 function OrdersContent() {
   const { t, direction, language } = useLanguage()
   const { user } = useCurrentUser()
+  const router = useRouter()
   const [filter, setFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState<RentalRequestDetails | null>(null)
   const itemsPerPage = 5
   const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
@@ -112,7 +94,9 @@ function OrdersContent() {
     { value: "all", label: t("orders.all") },
     { value: "pending", label: t("orders.under_review") },
     { value: "active", label: t("orders.accepted") },
-    { value: "rejected", label: t("orders.rejected") }
+    { value: "completed", label: t("orders.completed") },
+    { value: "rejected", label: t("orders.rejected") },
+    { value: "expired", label: t("orders.expired") }
   ]
   
   // Reverse for RTL to show "All" first from the right
@@ -144,12 +128,51 @@ function OrdersContent() {
   }, [filter, searchQuery])
 
   const getStatusBadge = (status: string) => {
-    const variant = getOrderStatusVariant(status)
-    const label = status === "accepted" || status === "payment_pending"
-      ? t("status.payment_pending")
-      : t(`status.${status}`)
-    
-    return <Badge variant={variant}>{label}</Badge>
+    switch (status) {
+      case "active":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            {t("status.active")}
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            {t("status.pending")}
+          </Badge>
+        )
+      case "accepted":
+      case "payment_pending":
+        return (
+          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+            {t("status.payment_pending")}
+          </Badge>
+        )
+      case "completed":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            {t("status.completed")}
+          </Badge>
+        )
+      case "rejected":
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200">
+            {t("status.rejected")}
+          </Badge>
+        )
+      case "expired":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {t("status.expired")}
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="secondary">
+            {status}
+          </Badge>
+        )
+    }
   }
 
   const calculateDuration = (startDate: string, endDate: string) => {
@@ -234,7 +257,6 @@ function OrdersContent() {
                   <TableHead className="text-start">{t("table.rental_duration")}</TableHead>
                   <TableHead className="text-start">{t("table.status")}</TableHead>
                   <TableHead className="text-start">{t("table.request_date")}</TableHead>
-                  <TableHead className="text-start">{t("table.rating")}</TableHead>
                   <TableHead className="text-start">{t("table.options")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -244,7 +266,7 @@ function OrdersContent() {
                   Array.from({ length: itemsPerPage }).map((_, index) => (
                     <TableRow key={`empty-${index}`} className="h-[72px]">
                       {index === 2 ? (
-                        <TableCell colSpan={7} className="text-center">
+                        <TableCell colSpan={6} className="text-center">
                           <div className="flex items-center justify-center gap-2">
                             {searchQuery || filter !== "all" ? (
                               <FileSearch className="h-5 w-5 text-muted-foreground" />
@@ -260,7 +282,7 @@ function OrdersContent() {
                           </div>
                         </TableCell>
                       ) : (
-                        <TableCell colSpan={7}>&nbsp;</TableCell>
+                        <TableCell colSpan={6}>&nbsp;</TableCell>
                       )}
                     </TableRow>
                   ))
@@ -284,49 +306,54 @@ function OrdersContent() {
                           {formatDate(request.createdAt, language, 'long')}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm">4/5</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4].map((star) => (
-                                <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              ))}
-                              <Star className="h-3 w-3 text-muted" />
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 relative"
+                                    onClick={() => {
+                                      router.push(`/store-dashboard/orders/${request._id}`)
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    {notificationCounts && notificationCounts[request._id] > 0 && (
+                                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
+                                        {notificationCounts[request._id]}
+                                      </span>
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t("orders.view_details")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            {request.status === "completed" && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => {
+                                        // TODO: Implement rating dialog
+                                        console.log("Rate brand:", request.otherUserName)
+                                      }}
+                                    >
+                                      <Star className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{t("orders.rate_brand")}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 relative"
-                                  onClick={async () => {
-                              setSelectedRequest(request)
-                              setShowDetailsDialog(true)
-                              // Mark notifications as read when viewing details
-                              if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                                await markNotificationsAsRead({
-                                  userId: userId,
-                                  rentalRequestId: request._id
-                                })
-                              }
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  {notificationCounts && notificationCounts[request._id] > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                                      {notificationCounts[request._id]}
-                                    </span>
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{t("orders.view_details")}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -340,7 +367,6 @@ function OrdersContent() {
                           <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))
@@ -426,12 +452,6 @@ function OrdersContent() {
       </CardContent>
     </Card>
 
-    {/* Request Details Dialog */}
-    <RequestDetailsDialog 
-      open={showDetailsDialog}
-      onOpenChange={setShowDetailsDialog}
-      request={selectedRequest}
-    />
     </>
   )
 }
