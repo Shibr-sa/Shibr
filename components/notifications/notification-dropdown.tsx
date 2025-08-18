@@ -73,8 +73,6 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
         return <CheckCircle className="h-4 w-4 text-green-600" />
       case "request_rejected":
         return <XCircle className="h-4 w-4 text-red-600" />
-      case "payment_processing":
-        return <Clock className="h-4 w-4 text-blue-600" />
       case "rental_activated":
         return <Package className="h-4 w-4 text-primary" />
       default:

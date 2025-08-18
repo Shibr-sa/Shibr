@@ -391,31 +391,44 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
               
               {/* Message Input */}
               <div className="p-4 border-t bg-background">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }}
-                  className="flex gap-2"
-                >
-                  <Input
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder={t("chat.type_message_placeholder")}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={!messageText.trim()}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-                {!currentConversation && (
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    {t("orders.conversation_will_be_created")}
-                  </p>
+                {selectedRequest.status === "rejected" ? (
+                  <div className="text-center py-2">
+                    <p className="text-sm text-muted-foreground">
+                      {language === "ar" 
+                        ? "هذه المحادثة مغلقة ولا يمكن إرسال رسائل جديدة"
+                        : "This conversation is closed and new messages cannot be sent"}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        handleSendMessage()
+                      }}
+                      className="flex gap-2"
+                    >
+                      <Input
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        placeholder={t("chat.type_message_placeholder")}
+                        className="flex-1"
+                        disabled={selectedRequest.status === "rejected"}
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        disabled={!messageText.trim() || selectedRequest.status === "rejected"}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                    {!currentConversation && (
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        {t("orders.conversation_will_be_created")}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>

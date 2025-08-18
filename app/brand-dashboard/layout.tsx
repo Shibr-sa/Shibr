@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,9 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { BrandDataProvider } from "@/contexts/brand-data-context"
-import { NotificationBell } from "@/components/notifications/notification-bell"
 import { Id } from "@/convex/_generated/dataModel"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -52,6 +53,38 @@ export default function BrandDashboardLayout({
   const router = useRouter()
   const { t, direction } = useLanguage()
   const { user, getInitials } = useCurrentUser()
+  
+  // Get user ID from current user
+  const userId = user?.id ? (user.id as Id<"users">) : null
+  
+  // Fetch rental requests for the brand owner to get notification counts
+  const rentalRequests = useQuery(
+    api.rentalRequests.getUserRentalRequests,
+    userId ? {
+      userId: userId,
+      userType: "brand" as const
+    } : "skip"
+  )
+  
+  // Get all rental request IDs for notification counts
+  const rentalRequestIds = useMemo(() => {
+    return rentalRequests?.map(r => r._id) || []
+  }, [rentalRequests])
+
+  // Fetch notification counts for all rental requests
+  const notificationCounts = useQuery(
+    api.notifications.getUnreadCountByRentalRequests,
+    userId && rentalRequestIds.length > 0 ? {
+      userId: userId,
+      rentalRequestIds: rentalRequestIds
+    } : "skip"
+  )
+
+  // Calculate total unread notifications for shelves
+  const totalShelfNotifications = useMemo(() => {
+    if (!notificationCounts) return 0
+    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
+  }, [notificationCounts])
 
   const handleLogout = () => {
     // Clear session storage
@@ -168,9 +201,14 @@ export default function BrandDashboardLayout({
                           isActive={pathname === item.href}
                           tooltip={t(item.title)}
                         >
-                          <Link href={item.href}>
+                          <Link href={item.href} className="relative">
                             <item.icon className="size-4" />
                             <span>{t(item.title)}</span>
+                            {item.href === "/brand-dashboard/shelves" && totalShelfNotifications > 0 && (
+                              <span className="absolute top-1/2 -translate-y-1/2 end-2 h-5 min-w-[20px] rounded-full bg-destructive px-1.5 text-[11px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
+                                {totalShelfNotifications > 99 ? "99+" : totalShelfNotifications}
+                              </span>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -243,12 +281,6 @@ export default function BrandDashboardLayout({
                   </BreadcrumbList>
                 </Breadcrumb>
                 <div className="flex items-center gap-2">
-                  {user?.id && (
-                    <NotificationBell 
-                      userId={user.id as Id<"users">} 
-                      userType="brand-owner"
-                    />
-                  )}
                   <LanguageSwitcher />
                 </div>
               </div>

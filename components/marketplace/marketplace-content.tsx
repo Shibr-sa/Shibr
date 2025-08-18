@@ -454,18 +454,8 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 </div>
                               </div>
 
-                              {/* Product Type Badge */}
-                              {store.productType && (
-                                <div className="mb-auto">
-                                  <Badge variant="outline" className="text-xs">
-                                    <Package className="h-3 w-3 me-1" />
-                                    {store.productType}
-                                  </Badge>
-                                </div>
-                              )}
-
                               {/* Footer with Store Owner */}
-                              <div className="flex items-center justify-between pt-3 border-t">
+                              <div className="flex items-center pt-3 border-t">
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-7 w-7">
                                     <AvatarFallback className="text-xs">
@@ -477,10 +467,6 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                     <p className="text-xs text-muted-foreground">{t("marketplace.store_owner")}</p>
                                   </div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-8 px-2">
-                                  {t("marketplace.view_details")}
-                                  <ChevronLeft className="h-3.5 w-3.5 ms-1 rotate-180 rtl:rotate-0" />
-                                </Button>
                               </div>
                             </div>
                           </div>

@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 
-// Create or update a rental request
+// Create a new rental request
 export const createRentalRequest = mutation({
   args: {
     shelfId: v.id("shelves"),
@@ -12,361 +12,396 @@ export const createRentalRequest = mutation({
     productType: v.string(),
     productDescription: v.string(),
     productCount: v.number(),
-    additionalNotes: v.optional(v.string()),
+    additionalNotes: v.string(),
     conversationId: v.id("conversations"),
-    selectedProductIds: v.optional(v.array(v.id("products"))),
+    selectedProductIds: v.array(v.id("products")),
   },
   handler: async (ctx, args) => {
-    // Get shelf details
+    // Get the shelf details
     const shelf = await ctx.db.get(args.shelfId)
-    if (!shelf || !shelf.ownerId) {
+    if (!shelf) {
       throw new Error("Shelf not found")
     }
-
-    // Check for existing active rental request for the same shelf from the same brand owner
-    const existingRequests = await ctx.db
+    
+    // Get the brand owner details
+    const brandOwner = await ctx.db.get(args.brandOwnerId)
+    if (!brandOwner) {
+      throw new Error("Brand owner not found")
+    }
+    
+    // Check if there's an existing active request for the same shelf by the same brand
+    const existingRequest = await ctx.db
       .query("rentalRequests")
       .withIndex("by_brand_owner")
       .filter((q) => 
-        q.eq(q.field("brandOwnerId"), args.brandOwnerId)
+        q.and(
+          q.eq(q.field("brandOwnerId"), args.brandOwnerId),
+          q.eq(q.field("shelfId"), args.shelfId)
+        )
       )
-      .collect()
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "accepted"),
+          q.eq(q.field("status"), "payment_pending")
+        )
+      )
+      .first()
     
-    // Filter for pending requests for the same shelf
-    const activeRequest = existingRequests.find(
-      req => req.shelfId === args.shelfId && 
-             req.status === "pending" &&
-             req.storeOwnerId === shelf.ownerId
-    )
-
-    // Calculate total price
+    // If there's an existing request, update it instead of creating a new one
+    if (existingRequest) {
+      await ctx.db.patch(existingRequest._id, {
+        startDate: args.startDate,
+        endDate: args.endDate,
+        productType: args.productType,
+        productDescription: args.productDescription,
+        productCount: args.productCount,
+        additionalNotes: args.additionalNotes,
+        selectedProductIds: args.selectedProductIds,
+        updatedAt: new Date().toISOString(),
+      })
+      
+      // Send a message in the conversation about the update
+      if (args.conversationId) {
+        await ctx.db.insert("messages", {
+          conversationId: args.conversationId,
+          senderId: args.brandOwnerId,
+          text: "تم تحديث تفاصيل طلب الإيجار / Rental request details have been updated",
+          messageType: "system",
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        })
+      }
+      
+      return { 
+        requestId: existingRequest._id,
+        isUpdate: true 
+      }
+    }
+    
+    // Calculate monthly price and total price
     const startDate = new Date(args.startDate)
     const endDate = new Date(args.endDate)
-    const months = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30))
+    const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                      (endDate.getMonth() - startDate.getMonth()) + 
+                      (endDate.getDate() >= startDate.getDate() ? 1 : 0)
+    const months = Math.max(1, monthsDiff)
     const totalPrice = shelf.monthlyPrice * months
-
-    let requestId: Id<"rentalRequests">
-    let isUpdate = false
-
-    if (activeRequest) {
-      // Update existing request
-      await ctx.db.patch(activeRequest._id, {
-        startDate: args.startDate,
-        endDate: args.endDate,
-        productType: args.productType,
-        productDescription: args.productDescription,
-        productCount: args.productCount,
-        additionalNotes: args.additionalNotes,
-        selectedProductIds: args.selectedProductIds,
-        monthlyPrice: shelf.monthlyPrice,
-        totalPrice: totalPrice,
-        updatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // Reset 48 hours
-      })
-      requestId = activeRequest._id
-      isUpdate = true
-    } else {
-      // Create new rental request
-      requestId = await ctx.db.insert("rentalRequests", {
-        conversationId: args.conversationId,
-        shelfId: args.shelfId,
-        brandOwnerId: args.brandOwnerId,
-        storeOwnerId: shelf.ownerId,
-        startDate: args.startDate,
-        endDate: args.endDate,
-        productType: args.productType,
-        productDescription: args.productDescription,
-        productCount: args.productCount,
-        additionalNotes: args.additionalNotes,
-        selectedProductIds: args.selectedProductIds,
-        monthlyPrice: shelf.monthlyPrice,
-        totalPrice: totalPrice,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48 hours
-      })
-    }
-
-    // Update conversation status
-    const conversation = await ctx.db.get(args.conversationId)
-    if (conversation) {
-      await ctx.db.patch(conversation._id, {
-        status: "pending",
-        rentalRequestId: requestId,
-        updatedAt: new Date().toISOString(),
-      })
-    }
-
-    // Format dates nicely (using Gregorian calendar with Western numerals)
-    const formatDate = (dateStr: string) => {
-      const date = new Date(dateStr)
-      // Format in Arabic text but with Western numerals
-      const monthNames = [
-        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-      ]
-      const month = monthNames[date.getMonth()]
-      const day = date.getDate()
-      const year = date.getFullYear()
-      return `${day} ${month} ${year}`
-    }
     
-    // Calculate duration in days
-    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    // Create the rental request with 48 hour expiry
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000) // 48 hours from now
     
-    // Send system message about rental request
-    const messageText = isUpdate 
-      ? `🔄 تحديث طلب الإيجار
-
-📍 الرف: ${shelf.shelfName}
-📅 الفترة: ${formatDate(args.startDate)} - ${formatDate(args.endDate)}
-⏱️ المدة: ${durationDays} يوم
-
-📦 نوع المنتج: ${args.productType}
-📝 الوصف: ${args.productDescription}
-🔢 الكمية: ${args.productCount} قطعة
-
-💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('en-US')} ريال
-💰 الإجمالي: ${totalPrice.toLocaleString('en-US')} ريال
-
-${args.additionalNotes ? `📌 ملاحظات: ${args.additionalNotes}` : ''}`
-      : `✨ طلب إيجار جديد
-
-📍 الرف: ${shelf.shelfName}
-📅 الفترة: ${formatDate(args.startDate)} - ${formatDate(args.endDate)}
-⏱️ المدة: ${durationDays} يوم
-
-📦 نوع المنتج: ${args.productType}
-📝 الوصف: ${args.productDescription}
-🔢 الكمية: ${args.productCount} قطعة
-
-💵 السعر الشهري: ${shelf.monthlyPrice.toLocaleString('en-US')} ريال
-💰 الإجمالي: ${totalPrice.toLocaleString('en-US')} ريال
-
-${args.additionalNotes ? `📌 ملاحظات: ${args.additionalNotes}` : ''}`
-    
-    await ctx.db.insert("messages", {
+    const requestId = await ctx.db.insert("rentalRequests", {
+      shelfId: args.shelfId,
+      brandOwnerId: args.brandOwnerId,
+      storeOwnerId: shelf.ownerId,
+      startDate: args.startDate,
+      endDate: args.endDate,
+      productType: args.productType,
+      productDescription: args.productDescription,
+      productCount: args.productCount,
+      additionalNotes: args.additionalNotes,
+      monthlyPrice: shelf.monthlyPrice,
+      totalPrice: totalPrice,
+      status: "pending",
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
       conversationId: args.conversationId,
-      senderId: args.brandOwnerId,
-      text: messageText,
-      messageType: "rental_request",
-      isRead: false,
-      createdAt: new Date().toISOString(),
+      selectedProductIds: args.selectedProductIds,
     })
-
-    // Create notification for store owner
-    const brandOwner = await ctx.db.get(args.brandOwnerId)
+    
+    // Create a notification for the store owner
     await ctx.db.insert("notifications", {
       userId: shelf.ownerId,
-      title: isUpdate ? "تحديث طلب إيجار" : "طلب إيجار جديد",
-      message: isUpdate 
-        ? `${brandOwner?.fullName || brandOwner?.brandName || "عميل"} قام بتحديث طلب استئجار ${shelf.shelfName}`
-        : `${brandOwner?.fullName || brandOwner?.brandName || "عميل"} يريد استئجار ${shelf.shelfName}`,
+      title: "طلب إيجار جديد / New Rental Request",
+      message: `${brandOwner.storeName || brandOwner.fullName} wants to rent your shelf / يرغب ${brandOwner.storeName || brandOwner.fullName} في استئجار رفك`,
       type: "rental_request",
-      conversationId: args.conversationId,
       rentalRequestId: requestId,
+      actionUrl: `/store-dashboard/orders`,
+      actionLabel: "عرض الطلب / View Request",
       isRead: false,
       createdAt: new Date().toISOString(),
     })
-
-    return { requestId, isUpdate }
+    
+    // Send a system message in the conversation
+    if (args.conversationId) {
+      await ctx.db.insert("messages", {
+        conversationId: args.conversationId,
+        senderId: args.brandOwnerId,
+        text: `تم إرسال طلب إيجار جديد للرف / New rental request sent for the shelf`,
+        messageType: "rental_request",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+    }
+    
+    return { 
+      requestId,
+      isUpdate: false 
+    }
   },
 })
 
-// Accept rental request
+// Accept a rental request
 export const acceptRentalRequest = mutation({
   args: {
     requestId: v.id("rentalRequests"),
-    storeOwnerResponse: v.optional(v.string()),
+    response: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.requestId)
     if (!request) {
       throw new Error("Request not found")
     }
-
-    // Update request status to accepted (requires payment before activation)
-    await ctx.db.patch(request._id, {
+    
+    // Update request status to accepted (payment_pending)
+    await ctx.db.patch(args.requestId, {
       status: "accepted",
-      storeOwnerResponse: args.storeOwnerResponse,
+      storeOwnerResponse: args.response || "Request accepted",
       respondedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-
-    // Don't update shelf as rented yet - wait for payment confirmation
-    // The shelf will be marked as rented only after payment is verified
-
-    // Update conversation status
-    if (request.conversationId) {
-      const conversation = await ctx.db.get(request.conversationId)
-      if (conversation) {
-        await ctx.db.patch(conversation._id, {
-          status: "active",
-          updatedAt: new Date().toISOString(),
+    
+    // Auto-reject all other pending requests for the same shelf
+    const otherPendingRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("shelfId"), request.shelfId),
+          q.eq(q.field("status"), "pending"),
+          q.neq(q.field("_id"), args.requestId)
+        )
+      )
+      .collect()
+    
+    // Reject each other pending request
+    for (const otherRequest of otherPendingRequests) {
+      await ctx.db.patch(otherRequest._id, {
+        status: "rejected",
+        storeOwnerResponse: "Another rental request was accepted for this shelf / تم قبول طلب إيجار آخر لهذا الرف",
+        respondedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      
+      // Create notification for the brand owner
+      await ctx.db.insert("notifications", {
+        userId: otherRequest.brandOwnerId,
+        title: "طلبك تم رفضه تلقائياً / Request Auto-Rejected",
+        message: `تم قبول طلب آخر لنفس الرف / Another request was accepted for the same shelf`,
+        type: "rental_rejected",
+        rentalRequestId: otherRequest._id,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+      
+      // Send system message in conversation if exists
+      if (otherRequest.conversationId) {
+        await ctx.db.insert("messages", {
+          conversationId: otherRequest.conversationId,
+          senderId: request.storeOwnerId,
+          text: "عذراً، تم قبول طلب إيجار آخر لهذا الرف. / Sorry, another rental request has been accepted for this shelf.",
+          messageType: "rental_rejected",
+          isRead: false,
+          createdAt: new Date().toISOString(),
         })
+        
+        // Archive the conversation
+        const conversation = await ctx.db.get(otherRequest.conversationId)
+        if (conversation) {
+          await ctx.db.patch(otherRequest.conversationId, {
+            status: "archived",
+          })
+        }
       }
-
-      // Send system message
+    }
+    
+    // Get brand owner details for notification
+    const brandOwner = await ctx.db.get(request.brandOwnerId)
+    const shelf = await ctx.db.get(request.shelfId)
+    
+    // Create notification for brand owner
+    await ctx.db.insert("notifications", {
+      userId: request.brandOwnerId,
+      title: "طلبك تم قبوله! / Your Request Was Accepted!",
+      message: `تم قبول طلب إيجار الرف. يرجى إتمام الدفع / Your shelf rental request has been accepted. Please complete payment`,
+      type: "rental_accepted",
+      rentalRequestId: request._id,
+      actionUrl: `/brand-dashboard/shelves`,
+      actionLabel: "إتمام الدفع / Complete Payment",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    })
+    
+    // Send system message in conversation if exists
+    if (request.conversationId) {
       await ctx.db.insert("messages", {
         conversationId: request.conversationId,
         senderId: request.storeOwnerId,
-        text: args.storeOwnerResponse || "تم قبول طلب الإيجار! يرجى إتمام عملية الدفع لتفعيل الإيجار ✅ / Rental request accepted! Please complete payment to activate the rental ✅",
+        text: args.response || "تم قبول طلب الإيجار! يرجى إتمام الدفع لتفعيل الإيجار. / Rental request accepted! Please complete payment to activate the rental.",
         messageType: "rental_accepted",
         isRead: false,
         createdAt: new Date().toISOString(),
       })
     }
-
-    // Notify brand owner about payment requirement
-    await ctx.db.insert("notifications", {
-      userId: request.brandOwnerId,
-      title: "تم قبول طلب الإيجار - مطلوب الدفع / Rental Request Accepted - Payment Required",
-      message: "تم قبول طلبك لاستئجار الرف. يرجى إتمام عملية الدفع لتفعيل الإيجار / Your rental request has been accepted. Please complete payment to activate the rental.",
-      type: "payment_required",
-      rentalRequestId: request._id,
-      conversationId: request.conversationId,
-      actionUrl: `/brand-dashboard/shelves`,
-      actionLabel: "ادفع الآن / Pay Now",
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    })
-
-    return request._id
+    
+    return { success: true }
   },
 })
 
-// Reject rental request
+// Reject a rental request
 export const rejectRentalRequest = mutation({
   args: {
     requestId: v.id("rentalRequests"),
-    storeOwnerResponse: v.optional(v.string()),
+    response: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.requestId)
     if (!request) {
       throw new Error("Request not found")
     }
-
-    // Update request status
-    await ctx.db.patch(request._id, {
+    
+    // Update request status to rejected
+    await ctx.db.patch(args.requestId, {
       status: "rejected",
-      storeOwnerResponse: args.storeOwnerResponse,
+      storeOwnerResponse: args.response || "Request rejected",
       respondedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-
-    // Archive conversation when request is rejected
+    
+    // Archive the conversation to prevent further messages
     if (request.conversationId) {
       const conversation = await ctx.db.get(request.conversationId)
       if (conversation) {
-        await ctx.db.patch(conversation._id, {
+        await ctx.db.patch(request.conversationId, {
           status: "archived",
-          updatedAt: new Date().toISOString(),
         })
       }
-
-      // Send system message
+    }
+    
+    // Create notification for brand owner
+    await ctx.db.insert("notifications", {
+      userId: request.brandOwnerId,
+      title: "طلبك تم رفضه / Your Request Was Rejected",
+      message: `تم رفض طلب إيجار الرف / Your shelf rental request has been rejected`,
+      type: "rental_rejected",
+      rentalRequestId: request._id,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    })
+    
+    // Send system message in conversation if exists
+    if (request.conversationId) {
       await ctx.db.insert("messages", {
         conversationId: request.conversationId,
         senderId: request.storeOwnerId,
-        text: args.storeOwnerResponse || "عذراً، تم رفض طلب الإيجار.",
+        text: args.response || "عذراً، تم رفض طلب الإيجار. / Sorry, the rental request has been rejected.",
         messageType: "rental_rejected",
         isRead: false,
         createdAt: new Date().toISOString(),
       })
     }
-
-    // Notify brand owner
-    await ctx.db.insert("notifications", {
-      userId: request.brandOwnerId,
-      title: "تم رفض طلب الإيجار",
-      message: args.storeOwnerResponse || "عذراً، تم رفض طلبك لاستئجار الرف.",
-      type: "rental_rejected",
-      rentalRequestId: request._id,
-      conversationId: request.conversationId,
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    })
-
-    return request._id
+    
+    return { success: true }
   },
 })
 
-// Get rental request details
+// Get a single rental request
 export const getRentalRequest = query({
-  args: {
-    requestId: v.id("rentalRequests"),
-  },
+  args: { requestId: v.id("rentalRequests") },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.requestId)
-    if (!request) return null
-
-    const shelf = await ctx.db.get(request.shelfId)
-    const brandOwner = await ctx.db.get(request.brandOwnerId)
-    const storeOwner = await ctx.db.get(request.storeOwnerId)
-
+    if (!request) {
+      return null
+    }
+    
+    // Get related data
+    const [shelf, brandOwner, storeOwner] = await Promise.all([
+      ctx.db.get(request.shelfId),
+      ctx.db.get(request.brandOwnerId),
+      ctx.db.get(request.storeOwnerId),
+    ])
+    
+    // Get shelf images if they exist
+    let shelfImageUrl = null
+    let exteriorImageUrl = null
+    let interiorImageUrl = null
+    
+    if (shelf?.shelfImage) {
+      shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage as Id<"_storage">)
+    }
+    if (shelf?.exteriorImage) {
+      exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage as Id<"_storage">)
+    }
+    if (shelf?.interiorImage) {
+      interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage as Id<"_storage">)
+    }
+    
     return {
       ...request,
-      shelfName: shelf?.shelfName,
-      shelfDetails: shelf,
-      brandOwnerName: brandOwner?.fullName || brandOwner?.brandName,
-      storeOwnerName: storeOwner?.fullName || storeOwner?.storeName,
+      shelf: shelf ? {
+        ...shelf,
+        shelfImage: shelfImageUrl,
+        exteriorImage: exteriorImageUrl,
+        interiorImage: interiorImageUrl,
+      } : null,
+      brandOwner,
+      storeOwner,
     }
   },
 })
 
-// Get rental requests for a user
+// Get all rental requests for a user (as brand owner or store owner)
 export const getUserRentalRequests = query({
   args: {
     userId: v.id("users"),
     userType: v.union(v.literal("brand"), v.literal("store")),
   },
   handler: async (ctx, args) => {
-    const requests = await ctx.db
-      .query("rentalRequests")
-      .withIndex(args.userType === "brand" ? "by_brand_owner" : "by_store_owner")
-      .filter((q) => 
-        q.eq(
-          q.field(args.userType === "brand" ? "brandOwnerId" : "storeOwnerId"),
-          args.userId
-        )
-      )
-      .collect()
-
-    // Get additional details for each request
-    const requestsWithDetails = await Promise.all(
+    // Query based on user type
+    const requests = args.userType === "brand"
+      ? await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_brand_owner")
+          .filter((q) => q.eq(q.field("brandOwnerId"), args.userId))
+          .collect()
+      : await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_store_owner")
+          .filter((q) => q.eq(q.field("storeOwnerId"), args.userId))
+          .collect()
+    
+    // Get additional data for each request
+    const enrichedRequests = await Promise.all(
       requests.map(async (request) => {
+        // Get the other party's details
+        const otherUser = args.userType === "brand"
+          ? await ctx.db.get(request.storeOwnerId)
+          : await ctx.db.get(request.brandOwnerId)
+        
+        // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
-        const otherUserId = args.userType === "brand" ? request.storeOwnerId : request.brandOwnerId
-        const otherUser = await ctx.db.get(otherUserId)
         
         return {
           ...request,
+          otherUserName: otherUser?.storeName || otherUser?.fullName || "Unknown",
+          city: shelf?.city,
           shelfName: shelf?.shelfName,
           shelfBranch: shelf?.branch,
-          shelfCity: shelf?.city,
-          shelfPrice: shelf?.monthlyPrice,
-          otherUserId: otherUserId,
-          otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName,
-          otherUserEmail: otherUser?.email,
-          phoneNumber: otherUser?.phoneNumber,
-          website: otherUser?.website,
-          activityType: otherUser?.storeType || otherUser?.brandType || "-",
-          city: shelf?.city,
-          commercialRegisterNumber: otherUser?.businessRegistration,
-          commercialRegisterFile: otherUser?.businessRegistrationDocumentUrl,
-          rating: 4, // Default rating for now
-          rentalType: "monthly", // Default rental type
         }
       })
     )
-
-    return requestsWithDetails.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    
+    // Sort by creation date (newest first)
+    return enrichedRequests.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
   },
 })
 
-// Expire rental requests that have passed their expiration time
+// Automatically expire pending requests after 48 hours
 export const expireRentalRequest = mutation({
   args: {
     requestId: v.id("rentalRequests"),
@@ -376,7 +411,6 @@ export const expireRentalRequest = mutation({
     if (!request) {
       throw new Error("Request not found")
     }
-
     // Update request status to rejected (expired)
     await ctx.db.patch(request._id, {
       status: "rejected",
@@ -384,72 +418,94 @@ export const expireRentalRequest = mutation({
       respondedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-
     // Archive conversation when request expires
     if (request.conversationId) {
       const conversation = await ctx.db.get(request.conversationId)
       if (conversation) {
-        await ctx.db.patch(conversation._id, {
+        await ctx.db.patch(request.conversationId, {
           status: "archived",
-          updatedAt: new Date().toISOString(),
         })
       }
-
-      // Send system message
-      await ctx.db.insert("messages", {
-        conversationId: request.conversationId,
-        senderId: request.storeOwnerId,
-        text: "انتهت صلاحية طلب الإيجار / Rental request has expired",
-        messageType: "rental_rejected",
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      })
     }
-
-    // Notify brand owner
+    // Create notification for brand owner
     await ctx.db.insert("notifications", {
       userId: request.brandOwnerId,
-      title: "انتهت صلاحية طلب الإيجار",
-      message: "انتهت صلاحية طلبك لاستئجار الرف",
-      type: "rental_rejected",
+      title: "انتهت صلاحية الطلب / Request Expired",
+      message: `انتهت صلاحية طلب إيجار الرف / Your shelf rental request has expired`,
+      type: "rental_expired",
       rentalRequestId: request._id,
-      conversationId: request.conversationId,
       isRead: false,
       createdAt: new Date().toISOString(),
     })
-
-    return request._id
+    return { success: true }
   },
 })
 
-// Check for active rental request
+// Get active rental request for a shelf
 export const getActiveRentalRequest = query({
   args: {
     shelfId: v.id("shelves"),
     brandOwnerId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get shelf to verify store owner
-    const shelf = await ctx.db.get(args.shelfId)
-    if (!shelf) return null
-
-    // Get all requests for this brand owner
-    const requests = await ctx.db
+    // Look for an active request for this shelf by this brand owner
+    const activeRequest = await ctx.db
       .query("rentalRequests")
       .withIndex("by_brand_owner")
-      .filter((q) => 
-        q.eq(q.field("brandOwnerId"), args.brandOwnerId)
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("brandOwnerId"), args.brandOwnerId),
+          q.eq(q.field("shelfId"), args.shelfId)
+        )
       )
-      .collect()
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "accepted"),
+          q.eq(q.field("status"), "payment_pending")
+        )
+      )
+      .first()
     
-    // Find pending request for this specific shelf
-    const activeRequest = requests.find(
-      req => req.shelfId === args.shelfId && 
-             req.status === "pending" &&
-             req.storeOwnerId === shelf.ownerId
-    )
+    return activeRequest
+  },
+})
 
-    return activeRequest || null
+// Check if shelf is still available (no accepted/active requests from anyone)
+export const isShelfAvailable = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Check if shelf exists and is available
+    const shelf = await ctx.db.get(args.shelfId)
+    if (!shelf || !shelf.isAvailable) {
+      return { available: false, reason: "shelf_not_available" }
+    }
+    
+    // Check for any accepted, payment_pending, or active requests
+    const unavailableRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf")
+      .filter((q) => q.eq(q.field("shelfId"), args.shelfId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "accepted"),
+          q.eq(q.field("status"), "payment_pending"),
+          q.eq(q.field("status"), "active")
+        )
+      )
+      .first()
+    
+    if (unavailableRequests) {
+      return { 
+        available: false, 
+        reason: "already_accepted",
+        acceptedByOther: true 
+      }
+    }
+    
+    return { available: true, reason: null }
   },
 })
 
@@ -461,92 +517,103 @@ export const getRentalStatsWithChanges = query({
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
+    // Query based on user type
+    const requests = args.userType === "brand"
+      ? await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_brand_owner")
+          .filter((q) => q.eq(q.field("brandOwnerId"), args.userId))
+          .collect()
+      : await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_store_owner")
+          .filter((q) => q.eq(q.field("storeOwnerId"), args.userId))
+          .collect()
+    
+    // Calculate date range based on period
     const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth()
-    const currentWeek = Math.floor(now.getDate() / 7)
-
-    // Define period boundaries
-    let currentPeriodStart: Date
-    let previousPeriodStart: Date
-    let previousPeriodEnd: Date
-
+    const currentPeriodStart = new Date()
+    const previousPeriodStart = new Date()
+    const previousPeriodEnd = new Date()
+    
     switch (args.period) {
       case "daily":
-        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+        previousPeriodStart.setDate(now.getDate() - 1)
         previousPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodEnd = currentPeriodStart
+        previousPeriodEnd.setDate(now.getDate() - 1)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
         break
       case "weekly":
-        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
-        previousPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14)
-        previousPeriodEnd = currentPeriodStart
+        currentPeriodStart.setDate(now.getDate() - now.getDay())
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setDate(currentPeriodStart.getDate() - 7)
+        previousPeriodEnd.setDate(currentPeriodStart.getDate() - 1)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
         break
       case "monthly":
-        currentPeriodStart = new Date(currentYear, currentMonth, 1)
-        previousPeriodStart = new Date(currentYear, currentMonth - 1, 1)
-        previousPeriodEnd = currentPeriodStart
+        currentPeriodStart.setDate(1)
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setMonth(now.getMonth() - 1)
+        previousPeriodStart.setDate(1)
+        previousPeriodEnd.setMonth(now.getMonth())
+        previousPeriodEnd.setDate(0)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
         break
       case "yearly":
-        currentPeriodStart = new Date(currentYear, 0, 1)
-        previousPeriodStart = new Date(currentYear - 1, 0, 1)
-        previousPeriodEnd = currentPeriodStart
+        currentPeriodStart.setMonth(0, 1)
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setFullYear(now.getFullYear() - 1)
+        previousPeriodStart.setMonth(0, 1)
+        previousPeriodEnd.setFullYear(now.getFullYear() - 1)
+        previousPeriodEnd.setMonth(11, 31)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
         break
     }
-
-    // Get all requests for the user
-    const allRequests = await ctx.db
-      .query("rentalRequests")
-      .withIndex(args.userType === "brand" ? "by_brand_owner" : "by_store_owner")
-      .filter((q) => 
-        q.eq(
-          q.field(args.userType === "brand" ? "brandOwnerId" : "storeOwnerId"),
-          args.userId
-        )
-      )
-      .collect()
-
+    
     // Filter requests by period
-    const currentRequests = allRequests.filter(r => {
-      const createdAt = new Date(r.createdAt || r._creationTime)
+    const currentPeriodRequests = requests.filter(r => {
+      const createdAt = new Date(r.createdAt)
       return createdAt >= currentPeriodStart && createdAt <= now
     })
-
-    const previousRequests = allRequests.filter(r => {
-      const createdAt = new Date(r.createdAt || r._creationTime)
-      return createdAt >= previousPeriodStart && createdAt < previousPeriodEnd
+    
+    const previousPeriodRequests = requests.filter(r => {
+      const createdAt = new Date(r.createdAt)
+      return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd
     })
-
-    // Calculate current stats
-    const currentActive = currentRequests.filter(r => r.status === "active").length
-    const currentPending = currentRequests.filter(r => r.status === "pending").length
-    const currentTotal = currentRequests.length
-
-    // Calculate previous stats
-    const previousActive = previousRequests.filter(r => r.status === "active").length
-    const previousPending = previousRequests.filter(r => r.status === "pending").length
-    const previousTotal = previousRequests.length
-
+    
+    // Calculate stats for current period
+    const currentActive = currentPeriodRequests.filter(r => r.status === "active").length
+    const currentPending = currentPeriodRequests.filter(r => r.status === "pending").length
+    const currentAccepted = currentPeriodRequests.filter(r => 
+      r.status === "accepted" || r.status === "payment_pending"
+    ).length
+    
+    // Calculate stats for previous period
+    const previousActive = previousPeriodRequests.filter(r => r.status === "active").length
+    const previousPending = previousPeriodRequests.filter(r => r.status === "pending").length
+    const previousAccepted = previousPeriodRequests.filter(r => 
+      r.status === "accepted" || r.status === "payment_pending"
+    ).length
+    
     // Calculate percentage changes
     const calculateChange = (current: number, previous: number) => {
       if (previous === 0) return current > 0 ? 100 : 0
-      return ((current - previous) / previous) * 100
+      return Math.round(((current - previous) / previous) * 100)
     }
-
+    
     return {
       active: currentActive,
-      pending: currentPending,
-      total: currentTotal,
       activeChange: calculateChange(currentActive, previousActive),
+      pending: currentPending,
       pendingChange: calculateChange(currentPending, previousPending),
-      totalChange: calculateChange(currentTotal, previousTotal),
+      accepted: currentAccepted,
+      acceptedChange: calculateChange(currentAccepted, previousAccepted),
     }
   },
 })
 
-// Confirm payment transfer by brand owner
+// Confirm payment from brand owner
 export const confirmPayment = mutation({
   args: {
     requestId: v.id("rentalRequests"),
@@ -564,12 +631,65 @@ export const confirmPayment = mutation({
       throw new Error("Invalid request status for payment confirmation")
     }
     
-    // Update the request status to payment_processing
+    // Update the request status to active (since we'll have automated payment in future)
     await ctx.db.patch(args.requestId, {
-      status: "payment_processing",
+      status: "active",
       paymentConfirmedAt: new Date().toISOString(),
       paymentAmount: args.paymentAmount,
     })
+    
+    // Update shelf availability
+    await ctx.db.patch(request.shelfId, {
+      isAvailable: false,
+    })
+    
+    // Auto-reject any other accepted/pending requests for the same shelf
+    const otherRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("shelfId"), request.shelfId),
+          q.neq(q.field("_id"), args.requestId),
+          q.or(
+            q.eq(q.field("status"), "pending"),
+            q.eq(q.field("status"), "accepted"),
+            q.eq(q.field("status"), "payment_pending")
+          )
+        )
+      )
+      .collect()
+    
+    // Reject each other request
+    for (const otherRequest of otherRequests) {
+      await ctx.db.patch(otherRequest._id, {
+        status: "rejected",
+        storeOwnerResponse: "Shelf has been rented to another brand / تم تأجير الرف لعلامة تجارية أخرى",
+        respondedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      
+      // Create notification
+      await ctx.db.insert("notifications", {
+        userId: otherRequest.brandOwnerId,
+        title: "الرف لم يعد متاحاً / Shelf No Longer Available",
+        message: `تم تأجير الرف لعلامة تجارية أخرى / The shelf has been rented to another brand`,
+        type: "rental_rejected",
+        rentalRequestId: otherRequest._id,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+      
+      // Archive conversation if exists
+      if (otherRequest.conversationId) {
+        const conversation = await ctx.db.get(otherRequest.conversationId)
+        if (conversation) {
+          await ctx.db.patch(otherRequest.conversationId, {
+            status: "archived",
+          })
+        }
+      }
+    }
     
     // Get brand and store owner details
     const brandOwner = await ctx.db.get(request.brandOwnerId)
@@ -592,15 +712,13 @@ export const confirmPayment = mutation({
     
     // Create notification for admin
     // In production, you would have an admin user or admin notification system
-    // For now, we'll just log this
-    console.log("Admin notification: Payment confirmation pending for request", args.requestId)
     
     // Send system message in the conversation
     if (request.conversationId) {
       await ctx.db.insert("messages", {
         conversationId: request.conversationId,
         senderId: request.brandOwnerId,
-        text: `Bank transfer of ${args.paymentAmount} SAR confirmed. Verifying payment... / تم تأكيد التحويل البنكي بمبلغ ${args.paymentAmount} ريال. جاري التحقق من الدفعة...`,
+        text: `تم تأكيد التحويل البنكي بمبلغ ${args.paymentAmount} ريال. يرجى الانتظار حتى يتم التحقق من الدفع. / Bank transfer of ${args.paymentAmount} SAR confirmed. Please wait for payment verification.`,
         messageType: "payment_confirmed",
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -611,11 +729,11 @@ export const confirmPayment = mutation({
   },
 })
 
-// Verify payment and activate rental (called by admin after verifying bank transfer)
+// Verify payment and activate rental (for store owner)
 export const verifyPaymentAndActivate = mutation({
   args: {
     requestId: v.id("rentalRequests"),
-    verifiedBy: v.optional(v.id("users")),
+    verifiedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
     // Get the rental request
@@ -624,8 +742,8 @@ export const verifyPaymentAndActivate = mutation({
       throw new Error("Rental request not found")
     }
     
-    // Verify the request status is payment_processing
-    if (request.status !== "payment_processing") {
+    // Verify the request status is accepted or payment_pending (removing payment_processing)
+    if (request.status !== "accepted" && request.status !== "payment_pending") {
       throw new Error("Invalid request status for payment verification")
     }
     
@@ -654,12 +772,12 @@ export const verifyPaymentAndActivate = mutation({
     // Create notification for brand owner that rental is now active
     await ctx.db.insert("notifications", {
       userId: request.brandOwnerId,
-      title: "تم تفعيل الإيجار / Rental Activated",
-      message: "تم التحقق من الدفعة وتفعيل إيجار الرف بنجاح / Payment verified and shelf rental activated successfully",
+      title: "تم تفعيل الإيجار! / Rental Activated!",
+      message: `تم التحقق من الدفع وتفعيل إيجار الرف / Payment verified and shelf rental is now active`,
       type: "rental_activated",
       rentalRequestId: request._id,
-      actionUrl: `/brand-dashboard/shelves/${request._id}`,
-      actionLabel: "عرض التفاصيل / View Details",
+      actionUrl: `/brand-dashboard/shelves`,
+      actionLabel: "عرض الرف / View Shelf",
       isRead: false,
       createdAt: new Date().toISOString(),
     })
@@ -677,5 +795,71 @@ export const verifyPaymentAndActivate = mutation({
     }
     
     return { success: true }
+  },
+})
+
+// Expire active rentals that have passed their end date
+export const expireActiveRentals = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = new Date().toISOString()
+    
+    // Get all active rental requests
+    const activeRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect()
+    
+    // Filter for expired rentals
+    const expiredRequests = activeRequests.filter(request => 
+      request.endDate && new Date(request.endDate) < new Date(now)
+    )
+    
+    // Update each expired rental
+    for (const request of expiredRequests) {
+      // Update request status to expired
+      await ctx.db.patch(request._id, {
+        status: "expired",
+        updatedAt: now,
+      })
+      
+      // Make the shelf available again
+      await ctx.db.patch(request.shelfId, {
+        isAvailable: true,
+        status: "approved",
+        renterId: undefined,
+        rentalStartDate: undefined,
+        rentalEndDate: undefined,
+        rentalPrice: undefined,
+        updatedAt: now,
+      })
+      
+      // Create notifications for both parties
+      await ctx.db.insert("notifications", {
+        userId: request.brandOwnerId,
+        title: "انتهت مدة الإيجار / Rental Period Ended",
+        message: `Your rental period for the shelf has ended / انتهت مدة إيجار الرف`,
+        type: "rental_expired",
+        rentalRequestId: request._id,
+        isRead: false,
+        createdAt: now,
+      })
+      
+      await ctx.db.insert("notifications", {
+        userId: request.storeOwnerId,
+        title: "الرف متاح مجدداً / Shelf Available Again",
+        message: `The rental period has ended and the shelf is now available / انتهت مدة الإيجار والرف متاح الآن`,
+        type: "rental_expired",
+        rentalRequestId: request._id,
+        isRead: false,
+        createdAt: now,
+      })
+    }
+    
+    return {
+      expiredCount: expiredRequests.length,
+      message: `Expired ${expiredRequests.length} rental(s)`,
+    }
   },
 })

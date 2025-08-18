@@ -58,7 +58,6 @@ function getOrderStatusVariant(status: string): "default" | "secondary" | "destr
       return "destructive"
     case "accepted":
     case "payment_pending":
-    case "payment_processing":
       return "secondary"
     default:
       return "secondary"
@@ -148,8 +147,6 @@ function OrdersContent() {
     const variant = getOrderStatusVariant(status)
     const label = status === "accepted" || status === "payment_pending"
       ? t("status.payment_pending")
-      : status === "payment_processing"
-      ? t("status.payment_processing")
       : t(`status.${status}`)
     
     return <Badge variant={variant}>{label}</Badge>

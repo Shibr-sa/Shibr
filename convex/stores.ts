@@ -24,6 +24,29 @@ export const getMarketplaceStores = query({
     // Get all shelves first
     let shelves = await shelvesQuery.collect()
 
+    // Filter out shelves with active or accepted rental requests
+    const [activeRequests, acceptedRequests, paymentPendingRequests] = await Promise.all([
+      ctx.db
+        .query("rentalRequests")
+        .withIndex("by_status")
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect(),
+      ctx.db
+        .query("rentalRequests")
+        .withIndex("by_status")
+        .filter((q) => q.eq(q.field("status"), "accepted"))
+        .collect(),
+      ctx.db
+        .query("rentalRequests")
+        .withIndex("by_status")
+        .filter((q) => q.eq(q.field("status"), "payment_pending"))
+        .collect(),
+    ])
+    
+    const unavailableRequests = [...activeRequests, ...acceptedRequests, ...paymentPendingRequests]
+    const unavailableShelfIds = new Set(unavailableRequests.map(r => r.shelfId))
+    shelves = shelves.filter(shelf => !unavailableShelfIds.has(shelf._id))
+
     // Apply filters
     if (args.city && args.city !== "all") {
       shelves = shelves.filter(shelf => shelf.city === args.city)

@@ -87,7 +87,7 @@ export function PaymentTransferDialog({
     
     setIsConfirming(true)
     try {
-      // Update the request status to payment_processing
+      // Update the request status to active
       await confirmPayment({
         requestId: request._id,
         paymentAmount: bankDetails.amount,

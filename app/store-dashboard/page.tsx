@@ -31,8 +31,6 @@ function getRequestStatusBadgeVariant(status: string): "default" | "secondary" |
     case "accepted":
     case "payment_pending":
       return "warning"
-    case "payment_processing":
-      return "secondary"
     case "rejected":
       return "destructive"
     case "pending":

@@ -51,9 +51,9 @@ export const sendMessage = mutation({
       throw new Error("Conversation not found")
     }
     
-    // Prevent sending messages to archived conversations
-    if (conversation.status === "archived") {
-      throw new Error("This conversation has been closed")
+    // Prevent sending messages to archived or rejected conversations
+    if (conversation.status === "archived" || conversation.status === "rejected") {
+      throw new Error("This conversation has been closed and new messages cannot be sent")
     }
 
     // Create the message

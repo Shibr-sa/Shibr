@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -101,16 +101,68 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     } : "skip"
   )
   
-  // Set conversation and submission state if there's an existing request
+  // Check if shelf is still available for rental
+  const shelfAvailability = useQuery(api.rentalRequests.isShelfAvailable,
+    storeDetails ? {
+      shelfId: resolvedParams.id as Id<"shelves">
+    } : "skip"
+  )
+  
+  // Check shelf availability periodically and show alert if it becomes unavailable
   useEffect(() => {
-    if (activeRequest?.conversationId) {
+    if (shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther) {
+      // Only show alert once when shelf becomes unavailable
+      const hasAlerted = sessionStorage.getItem(`shelf-unavailable-${resolvedParams.id}`)
+      if (!hasAlerted) {
+        alert(language === "ar" 
+          ? "تنبيه: هذا الرف لم يعد متاحاً. تم قبول طلب إيجار من علامة تجارية أخرى."
+          : "Notice: This shelf is no longer available. A rental request from another brand has been accepted.")
+        sessionStorage.setItem(`shelf-unavailable-${resolvedParams.id}`, "true")
+      }
+    }
+  }, [shelfAvailability, resolvedParams.id, language])
+  
+  // Set conversation and submission state if there's an existing request
+  // Also restore the form data from the existing request
+  useEffect(() => {
+    if (activeRequest) {
       setConversationId(activeRequest.conversationId)
       setHasSubmittedRequest(true)
+      
+      // Restore form data from existing request
+      if (activeRequest.startDate && activeRequest.endDate) {
+        setDateRange({
+          from: new Date(activeRequest.startDate),
+          to: new Date(activeRequest.endDate)
+        })
+      }
+      if (activeRequest.productType) {
+        setProductType(activeRequest.productType)
+      }
+      if (activeRequest.productDescription) {
+        setProductDescription(activeRequest.productDescription)
+      }
+      if (activeRequest.selectedProductIds && activeRequest.selectedProductIds.length > 0) {
+        // Restore selected products with their quantities
+        const restoredProducts = activeRequest.selectedProductIds.map((productId: string) => ({
+          id: productId,
+          quantity: 1 // Default quantity, you may want to store this in the request
+        }))
+        setSelectedProducts(restoredProducts)
+      }
     }
   }, [activeRequest])
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check if shelf is still available
+    if (shelfAvailability && !shelfAvailability.available) {
+      alert(language === "ar" 
+        ? "عذراً، هذا الرف لم يعد متاحاً. تم قبول طلب إيجار آخر."
+        : "Sorry, this shelf is no longer available. Another rental request has been accepted.")
+      return
+    }
     
     if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0 || !productType) {
       alert(t("form.fill_required_fields"))
@@ -159,18 +211,18 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       // Show success message based on whether it was created or updated
       if (result.isUpdate) {
         alert(t("form.request_updated_success"))
+        // Don't reset form fields when updating - preserve user's data
       } else {
         alert(t("form.request_submitted_success"))
+        // Only reset form fields for new requests
+        setDateRange(undefined)
+        setSelectedProducts([])
+        setProductType("")
+        setProductDescription("")
       }
       
       // Mark that request has been submitted
       setHasSubmittedRequest(true)
-      
-      // Reset form fields
-      setDateRange(undefined)
-      setSelectedProducts([])
-      setProductType("")
-      setProductDescription("")
     } catch (error) {
       console.error("Failed to submit rental request:", error)
       alert(t("form.submit_error"))
@@ -301,8 +353,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     </p>
                     <span className="text-sm text-muted-foreground">/ {t("marketplace.month")}</span>
                     {storeDetails.discountPercentage > 0 && (
-                      <Badge variant="default" className="animate-pulse">
-                        {t("marketplace.save")} {storeDetails.discountPercentage}%
+                      <Badge variant="secondary">
+                        {t("marketplace.sales_commission")}: {storeDetails.discountPercentage}%
                       </Badge>
                     )}
                   </div>
@@ -405,6 +457,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                   <Checkbox 
                                     id={product._id}
                                     checked={isSelected}
+                                    disabled={shelfAvailability && !shelfAvailability.available}
                                     onCheckedChange={(checked) => {
                                       if (checked) {
                                         setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
@@ -543,11 +596,18 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      {language === "ar" 
-                        ? "لم يتم اختيار أي منتجات بعد"
-                        : "No products selected yet"}
-                    </p>
+                    <div className="text-center py-4 space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {language === "ar" 
+                          ? "لم يتم اختيار أي منتجات بعد"
+                          : "No products selected yet"}
+                      </p>
+                      <p className="text-xs text-destructive font-medium">
+                        {language === "ar" 
+                          ? "* يجب اختيار منتج واحد على الأقل لإرسال الطلب"
+                          : "* At least one product must be selected to submit request"}
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -565,6 +625,16 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {activeRequest && (
+                    <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+                      <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <AlertDescription className="text-blue-800 dark:text-blue-200">
+                        {language === "ar" 
+                          ? "أنت تقوم بتحديث طلب الإيجار الحالي. التغييرات ستحل محل الطلب السابق."
+                          : "You are updating your existing rental request. Changes will replace the previous request."}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="booking-date">
                       {t("marketplace.details.booking_duration")}*
@@ -578,6 +648,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             "w-full justify-start text-left font-normal ps-10 relative",
                             !dateRange && "text-muted-foreground",
                           )}
+                          disabled={shelfAvailability && !shelfAvailability.available}
                         >
                           <CalendarIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           {dateRange?.from ? (
@@ -627,6 +698,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       value={productType} 
                       onValueChange={setProductType}
                       required
+                      disabled={shelfAvailability && !shelfAvailability.available}
                     >
                       <SelectTrigger id="product-type">
                         <SelectValue placeholder={t("marketplace.details.select_product_type")} />
@@ -657,17 +729,39 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         ? "أضف أي تفاصيل إضافية حول المنتجات المختارة..."
                         : "Add any additional details about the selected products..."}
                       className="min-h-[80px]"
+                      disabled={shelfAvailability && !shelfAvailability.available}
                     />
                   </div>
 
-                  <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
-                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <AlertDescription className={` text-amber-800 dark:text-amber-200 font-medium`}>
-                      {t("marketplace.details.approval_notice")}
-                    </AlertDescription>
-                  </Alert>
-                  <Button type="submit" size="lg" className={`w-full text-base `}>
-                    {t("marketplace.details.submit_request")}
+                  {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
+                    <Alert className="border-destructive bg-destructive/10">
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                      <AlertDescription className="text-destructive font-semibold">
+                        {language === "ar" 
+                          ? "هذا الرف لم يعد متاحاً. تم قبول طلب إيجار من علامة تجارية أخرى."
+                          : "This shelf is no longer available. A rental request from another brand has been accepted."}
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <AlertDescription className={` text-amber-800 dark:text-amber-200 font-medium`}>
+                        {t("marketplace.details.approval_notice")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className={`w-full text-base `}
+                    disabled={selectedProducts.length === 0 || (shelfAvailability && !shelfAvailability.available)}
+                  >
+                    {shelfAvailability && !shelfAvailability.available ? 
+                      (language === "ar" ? "الرف غير متاح" : "Shelf Unavailable") :
+                      activeRequest ? 
+                        (language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request") :
+                        t("marketplace.details.submit_request")
+                    }
                   </Button>
                 </CardContent>
               </form>
@@ -687,7 +781,25 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             </CardHeader>
             <CardContent>
               {/* Chat - Only show after rental request submission */}
-              {hasSubmittedRequest && conversationId && userId ? (
+              {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
+                <div className="h-[400px] flex items-center justify-center border rounded-lg bg-muted/10">
+                  <div className="text-center p-6 space-y-3">
+                    <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">
+                        {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
+                      </p>
+                      <p className="text-muted-foreground text-sm mt-2 max-w-sm mx-auto">
+                        {language === "ar" 
+                          ? "لا يمكن بدء محادثة لأن هذا الرف تم حجزه لعلامة تجارية أخرى"
+                          : "Cannot start a conversation because this shelf has been reserved for another brand"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : hasSubmittedRequest && conversationId && userId ? (
                 <div className="h-[500px]">
                   <ChatInterface
                     conversationId={conversationId}

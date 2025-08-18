@@ -225,8 +225,7 @@ const schema = defineSchema({
       v.literal("pending"),           // Request is pending review
       v.literal("accepted"),          // Request is accepted, awaiting payment
       v.literal("payment_pending"),   // Alias for accepted state
-      v.literal("payment_processing"), // Payment is being verified
-      v.literal("active"),            // Request is active after payment verified
+      v.literal("active"),            // Request is active after payment confirmed
       v.literal("rejected"),          // Request is rejected
       v.literal("expired")            // Request expired after 48 hours
     ),

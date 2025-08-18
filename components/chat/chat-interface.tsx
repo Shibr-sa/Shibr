@@ -45,9 +45,9 @@ export function ChatInterface({
   const sendMessage = useMutation(api.chats.sendMessage)
   const markAsRead = useMutation(api.chats.markMessagesAsRead)
   
-  // Check if conversation is archived
+  // Check if conversation is archived or rejected
   useEffect(() => {
-    if (conversation?.status === "archived") {
+    if (conversation?.status === "archived" || conversation?.status === "rejected") {
       setIsArchived(true)
     }
   }, [conversation])

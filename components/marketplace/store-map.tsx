@@ -197,8 +197,7 @@ function StoreMapContent({
           <div className="w-full h-full min-h-[400px] bg-muted rounded-lg flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-12 w-12 text-primary mx-auto mb-2" />
-              <p className="text-muted-foreground">{t("marketplace.stores_map")}</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground">
                 {storesWithCoordinates.length} {t("marketplace.stores_available")}
               </p>
             </div>
