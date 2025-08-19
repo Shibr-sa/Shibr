@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -8,9 +8,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ChatInterface } from "@/components/chat/chat-interface"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -18,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { 
   AlertTriangle, 
   MessageSquare, 
-  Send, 
   Download, 
   Check, 
   X, 
@@ -43,9 +40,7 @@ export default function RequestDetailsPage() {
   const params = useParams()
   const requestId = params.id as Id<"rentalRequests">
   
-  const [messageText, setMessageText] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Get the userId as a Convex Id
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -56,10 +51,7 @@ export default function RequestDetailsPage() {
     requestId ? { requestId } : "skip"
   )
 
-  // Chat mutations
-  const sendMessage = useMutation(api.chats.sendMessage)
-  const markAsRead = useMutation(api.chats.markMessagesAsRead)
-  const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
+  // Chat mutations are now handled by ChatInterface component
   
   // Debug: Seed products mutation and query
   const seedProducts = useMutation(api.products.seedSampleProducts)
@@ -109,52 +101,7 @@ export default function RequestDetailsPage() {
     )
   )
 
-  // Fetch messages for the current conversation
-  const messages = useQuery(
-    api.chats.getMessages,
-    currentConversation ? { conversationId: currentConversation._id } : "skip"
-  )
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messages && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [messages])
-
-  // Mark messages as read when conversation is opened
-  useEffect(() => {
-    if (currentConversation && userId) {
-      markAsRead({ conversationId: currentConversation._id, userId })
-    }
-  }, [currentConversation, userId, markAsRead])
-
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !userId || !rentalRequest) return
-
-    try {
-      let conversationId = currentConversation?._id
-
-      // If no conversation exists, create one
-      if (!conversationId) {
-        conversationId = await getOrCreateConversation({
-          brandOwnerId: rentalRequest.brandOwnerId || rentalRequest.otherUserId,
-          storeOwnerId: rentalRequest.storeOwnerId || userId,
-          shelfId: rentalRequest.shelfId,
-        })
-      }
-
-      // Send the message
-      await sendMessage({
-        conversationId: conversationId,
-        senderId: userId,
-        text: messageText,
-      })
-      setMessageText("")
-    } catch (error) {
-      console.error("Failed to send message:", error)
-    }
-  }
+  // Messages are now handled by ChatInterface component
 
   const handleAccept = async () => {
     if (!requestId || isProcessing) return
@@ -492,118 +439,26 @@ export default function RequestDetailsPage() {
         {/* Sidebar - Right Side */}
         <div className="flex flex-col gap-6 h-full overflow-hidden">
           {/* Communication Card */}
-          <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">{t("orders.communication")}</CardTitle>
+          {currentConversation ? (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <ChatInterface
+                conversationId={currentConversation._id}
+                currentUserId={userId}
+                currentUserType="store-owner"
+                otherUserName={rentalRequest.otherUserName || rentalRequest.brandName || t("common.brand_owner")}
+                shelfName={rentalRequest.shelfName || ""}
+              />
+            </div>
+          ) : (
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <CardContent className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm text-muted-foreground">{t("orders.conversation_will_be_created")}</p>
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {rentalRequest.otherUserName}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col p-0">
-              {/* Messages Area */}
-              <div className="flex-1 relative">
-                {messages && messages.length > 0 ? (
-                  <ScrollArea className="h-full p-4">
-                    <div className="space-y-3">
-                      {messages.map((msg) => {
-                        const isCurrentUser = msg.senderId === userId
-                        const messageDate = new Date(msg.createdAt)
-                        
-                        return (
-                          <div
-                            key={msg._id}
-                            className={cn(
-                              "flex gap-2",
-                              isCurrentUser ? "justify-end" : "justify-start"
-                            )}
-                          >
-                            {!isCurrentUser && (
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs">
-                                  {msg.senderName?.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                            <div
-                              className={cn(
-                                "max-w-[70%] rounded-lg p-3",
-                                isCurrentUser
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted"
-                              )}
-                            >
-                              {!isCurrentUser && (
-                                <p className="text-xs font-medium mb-1">
-                                  {msg.senderName}
-                                </p>
-                              )}
-                              <p className="text-sm whitespace-pre-wrap break-words">
-                                {msg.text}
-                              </p>
-                              <p className={cn(
-                                "text-xs mt-1",
-                                isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
-                              )}>
-                                {messageDate.toLocaleTimeString(language === "ar" ? "ar-SA" : "en-US", {
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <div className="text-center">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                      <p className="text-sm">{t("orders.conversation_will_be_created")}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Message Input */}
-              <div className="p-4 border-t">
-                {rentalRequest.status === "rejected" || rentalRequest.status === "expired" ? (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {t("orders.conversation_closed")}
-                  </p>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={t("orders.type_message")}
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault()
-                          handleSendMessage()
-                        }
-                      }}
-                      disabled={rentalRequest.status === "rejected"}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={handleSendMessage}
-                      disabled={!messageText.trim() || rentalRequest.status === "rejected"}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           {rentalRequest.status === "pending" && (

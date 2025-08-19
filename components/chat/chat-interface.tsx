@@ -108,12 +108,6 @@ export function ChatInterface({
             <p className={`font-semibold `}>
               {otherUserName}
             </p>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="default" className="h-2 w-2 rounded-full p-0 bg-green-500" />
-              <p className={`text-xs text-muted-foreground `}>
-                {t("marketplace.details.online_status")}
-              </p>
-            </div>
           </div>
         </div>
       </CardHeader>

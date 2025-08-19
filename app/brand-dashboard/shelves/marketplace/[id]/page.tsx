@@ -17,9 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
@@ -79,7 +78,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
   const [productType, setProductType] = useState("")
-  const [productDescription, setProductDescription] = useState("")
   const [productCount, setProductCount] = useState("")
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(false)
@@ -139,14 +137,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       if (activeRequest.productType) {
         setProductType(activeRequest.productType)
       }
-      if (activeRequest.productDescription) {
-        setProductDescription(activeRequest.productDescription)
-      }
       if (activeRequest.selectedProductIds && activeRequest.selectedProductIds.length > 0) {
-        // Restore selected products with their quantities
-        const restoredProducts = activeRequest.selectedProductIds.map((productId: string) => ({
+        // Restore selected products with their actual quantities from the request
+        const restoredProducts = activeRequest.selectedProductIds.map((productId: string, index: number) => ({
           id: productId,
-          quantity: 1 // Default quantity, you may want to store this in the request
+          quantity: activeRequest.selectedProductQuantities?.[index] || 1
         }))
         setSelectedProducts(restoredProducts)
       }
@@ -201,7 +196,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
         productType: productType,
-        productDescription: `${selectedProductDetails}${productDescription ? ` - ${productDescription}` : ""}`,
+        productDescription: selectedProductDetails,
         productCount: totalQuantity,
         additionalNotes: "",
         conversationId: convId,
@@ -219,7 +214,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         setDateRange(undefined)
         setSelectedProducts([])
         setProductType("")
-        setProductDescription("")
       }
       
       // Mark that request has been submitted
@@ -261,8 +255,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="flex flex-col gap-8">
-          {/* Top Section: Store Details */}
+    <div className="h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+        {/* Main Content - Left Side */}
+        <div className="lg:col-span-2 space-y-6 overflow-y-auto">
+          {/* Store Details Card */}
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-6">
@@ -403,21 +400,32 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
 
-          {/* Middle Section: Product Selection and Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column */}
-            <div className="flex flex-col gap-4">
-              {/* Product Selection Card */}
-              <Card className="flex-1">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">
-                    {t("marketplace.details.select_products")}
-                  </CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    {t("marketplace.details.select_products_description")}
-                  </p>
-                </CardHeader>
-                <CardContent className="p-0">
+          {/* Rental Request Form - Merged Section */}
+          <Card>
+            <form onSubmit={handleSubmit}>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">
+                  {t("marketplace.details.send_request_title")}
+                </CardTitle>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {t("marketplace.details.send_request_description")}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Product Selection Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      {t("marketplace.details.select_products")}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    {userProducts && userProducts.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {userProducts.length} {language === "ar" ? "منتج متاح" : "available"}
+                      </span>
+                    )}
+                  </div>
                   {!userProducts || userProducts.length === 0 ? (
                     <div className="min-h-[320px] flex items-center justify-center px-6">
                       <div className="text-center">
@@ -438,68 +446,56 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                     </div>
                   ) : (
-                    <div className="px-4 pt-0 pb-4 overflow-y-auto max-h-[400px]">
-                      <div className="grid gap-2">
+                    <div className="border rounded-lg bg-background">
+                      <div className={`p-2 space-y-1.5 ${userProducts.length > 3 ? 'max-h-[200px] overflow-y-auto scrollbar-thin' : ''}`}>
                         {userProducts.map((product) => {
                           const selectedProduct = selectedProducts.find(p => p.id === product._id)
                           const isSelected = !!selectedProduct
                           
                           return (
                             <div 
-                              key={product._id} 
-                              className={`relative border rounded-lg transition-all ${
+                              key={product._id}
+                              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                                 isSelected 
-                                  ? 'border-primary bg-primary/5 shadow-sm' 
-                                  : 'border-border hover:border-primary/50 hover:shadow-sm'
+                                  ? 'bg-primary/5 border-primary/20' 
+                                  : 'border-transparent hover:bg-muted/30'
                               }`}
                             >
-                              <div className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <Checkbox 
-                                    id={product._id}
-                                    checked={isSelected}
-                                    disabled={shelfAvailability && !shelfAvailability.available}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
-                                      } else {
-                                        setSelectedProducts(selectedProducts.filter(p => p.id !== product._id))
-                                      }
-                                    }}
-                                  />
-                                  <div className="flex-1">
-                                    <label 
-                                      htmlFor={product._id} 
-                                      className="cursor-pointer flex-1"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-sm">{product.name}</span>
-                                          <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
-                                            <Layers className="h-3 w-3" />
-                                            {t("products.stock")}: {product.quantity}
-                                          </span>
-                                        </div>
-                                        <span className="text-sm font-medium ml-auto">
-                                          {t("common.currency_symbol")} {product.price}
-                                        </span>
-                                      </div>
-                                    </label>
+                              <Checkbox 
+                                id={product._id}
+                                checked={isSelected}
+                                disabled={shelfAvailability && !shelfAvailability.available}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
+                                  } else {
+                                    setSelectedProducts(selectedProducts.filter(p => p.id !== product._id))
+                                  }
+                                }}
+                                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                              />
+                              <label 
+                                htmlFor={product._id}
+                                className="flex-1 cursor-pointer flex items-center justify-between gap-3"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">{product.name}</div>
+                                  <div className="text-xs text-muted-foreground mt-0.5">
+                                    {t("common.currency_symbol")} {product.price.toLocaleString()} • {product.quantity} {language === "ar" ? "متاح" : "available"}
                                   </div>
                                 </div>
-                                
-                                {isSelected && (
-                                  <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                                    <span className="text-sm text-muted-foreground">
-                                      {t("marketplace.details.quantity")}
-                                    </span>
-                                    <div className="flex items-center gap-2">
+                                {isSelected ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center border rounded-md">
                                       <Button
                                         type="button"
-                                        variant="outline"
+                                        variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() => {
+                                        className="h-7 w-7 hover:bg-muted"
+                                        disabled={selectedProduct?.quantity === 1}
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
                                           if (currentQty > 1) {
                                             setSelectedProducts(selectedProducts.map(p => 
@@ -510,29 +506,20 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                           }
                                         }}
                                       >
-                                        <span className="text-lg">−</span>
+                                        <span className="text-sm">−</span>
                                       </Button>
-                                      <Input
-                                        type="number"
-                                        min="1"
-                                        max={product.quantity}
-                                        value={selectedProduct?.quantity || 1}
-                                        onChange={(e) => {
-                                          const newQuantity = parseInt(e.target.value) || 1
-                                          setSelectedProducts(selectedProducts.map(p => 
-                                            p.id === product._id 
-                                              ? {...p, quantity: Math.min(newQuantity, product.quantity)}
-                                              : p
-                                          ))
-                                        }}
-                                        className="w-16 h-7 text-center"
-                                      />
+                                      <span className="px-3 text-sm font-medium border-x">
+                                        {selectedProduct?.quantity || 1}
+                                      </span>
                                       <Button
                                         type="button"
-                                        variant="outline"
+                                        variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() => {
+                                        className="h-7 w-7 hover:bg-muted"
+                                        disabled={selectedProduct?.quantity === product.quantity}
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
                                           if (currentQty < product.quantity) {
                                             setSelectedProducts(selectedProducts.map(p => 
@@ -543,265 +530,208 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                           }
                                         }}
                                       >
-                                        <span className="text-lg">+</span>
+                                        <span className="text-sm">+</span>
                                       </Button>
-                                      <span className="text-xs text-muted-foreground ml-1">
-                                        {language === "ar" ? "من" : "of"} {product.quantity}
-                                      </span>
+                                    </div>
+                                    <div className="text-right min-w-fit">
+                                      <div className="text-sm font-semibold">
+                                        {t("common.currency_symbol")} {((selectedProduct?.quantity || 1) * product.price).toLocaleString()}
+                                      </div>
                                     </div>
                                   </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {language === "ar" ? "اختر" : "Select"}
+                                  </span>
                                 )}
-                              </div>
+                              </label>
                             </div>
                           )
                         })}
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Selected Products Summary - Separate Card at Bottom */}
-              <Card className="bg-primary/5">
-                <CardContent className="p-4">
-                  <h4 className="font-medium text-sm flex items-center gap-2 mb-3">
-                    <Package className="h-4 w-4" />
-                    {t("marketplace.details.selected_products_summary")}
-                  </h4>
-                  {selectedProducts.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-primary">{selectedProducts.length}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("marketplace.details.products_selected")}
-                        </p>
+                {/* Selected Products Summary - Enhanced */}
+                {selectedProducts.length > 0 && (
+                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Package className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {selectedProducts.length} {t("marketplace.details.products_selected")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {selectedProducts.reduce((total, p) => total + p.quantity, 0)} {language === "ar" ? "إجمالي القطع" : "total items"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-center border-x">
-                        <p className="text-2xl font-bold">
-                          {selectedProducts.reduce((total, p) => total + p.quantity, 0)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("marketplace.details.total_items")}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-primary">
-                          {selectedProducts.reduce((total, selectedProduct) => {
-                            const product = userProducts.find(p => p._id === selectedProduct.id)
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">{t("marketplace.details.total_value")}</p>
+                        <p className="text-lg font-bold text-primary">
+                          {t("common.currency_symbol")} {selectedProducts.reduce((total, selectedProduct) => {
+                            const product = userProducts?.find(p => p._id === selectedProduct.id)
                             return total + ((product?.price || 0) * selectedProduct.quantity)
                           }, 0).toLocaleString()}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("marketplace.details.total_value")} {t("common.currency_symbol")}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                  {/* Booking Details */}
+                  <Separator />
+                  
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="booking-date" className="text-sm">
+                        {t("marketplace.details.booking_duration")}*
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="booking-date"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !dateRange && "text-muted-foreground"
+                            )}
+                            disabled={shelfAvailability && !shelfAvailability.available}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} - 
+                                  {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
+                                </>
+                              ) : (
+                                format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
+                              )
+                            ) : (
+                              <span>{t("marketplace.details.pick_dates")}</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            defaultMonth={dateRange?.from || new Date()}
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={1}
+                            disabled={(date) => {
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0)
+                              return date < today
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="product-type" className="text-sm">
+                        {t("marketplace.details.product_type")}*
+                      </Label>
+                      <Select 
+                        value={productType} 
+                        onValueChange={setProductType}
+                        required
+                        disabled={shelfAvailability && !shelfAvailability.available}
+                      >
+                        <SelectTrigger id="product-type">
+                          <SelectValue placeholder={t("marketplace.details.select_product_type")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="beauty">{t("marketplace.category_beauty")}</SelectItem>
+                          <SelectItem value="fashion">{t("marketplace.category_fashion")}</SelectItem>
+                          <SelectItem value="electronics">{t("marketplace.category_electronics")}</SelectItem>
+                          <SelectItem value="grocery">{t("marketplace.category_grocery")}</SelectItem>
+                          <SelectItem value="sports">{t("marketplace.category_sports")}</SelectItem>
+                          <SelectItem value="home">{t("marketplace.category_home")}</SelectItem>
+                          <SelectItem value="toys">{t("marketplace.category_toys")}</SelectItem>
+                          <SelectItem value="books">{t("marketplace.category_books")}</SelectItem>
+                          <SelectItem value="general">{t("marketplace.category_general")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Note about approval */}
+                  {(!shelfAvailability || shelfAvailability.available) && (
+                    <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+                      <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                        {t("marketplace.details.approval_notice")}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <Button 
+                      type="submit" 
+                      size="lg" 
+                      className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                      disabled={selectedProducts.length === 0 || !dateRange || !productType || (shelfAvailability && !shelfAvailability.available)}
+                    >
+                      {shelfAvailability && !shelfAvailability.available ? (
+                        <span className="flex items-center gap-2">
+                          <X className="h-5 w-5" />
+                          {language === "ar" ? "الرف غير متاح" : "Shelf Unavailable"}
+                        </span>
+                      ) : activeRequest ? (
+                        <span className="flex items-center gap-2">
+                          <RefreshCw className="h-5 w-5" />
+                          {language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request"}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Send className="h-5 w-5" />
+                          {t("marketplace.details.submit_request")}
+                        </span>
+                      )}
+                    </Button>
+                    {selectedProducts.length === 0 && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        {language === "ar" ? "يرجى اختيار منتج واحد على الأقل للمتابعة" : "Please select at least one product to continue"}
+                      </p>
+                    )}
+                  </div>
+              </CardContent>
+            </form>
+          </Card>
+        </div>
+
+        {/* Sidebar - Right Side */}
+        <div className="flex flex-col gap-6 h-full overflow-hidden">
+          {/* Communication Card */}
+          <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <CardContent className="flex-1 flex flex-col p-0">
+              {/* Messages Area */}
+              <div className="flex-1 relative">
+                {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center p-6 space-y-3">
+                      <div className="h-12 w-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-destructive" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">
+                          {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
+                        </p>
+                        <p className="text-sm mt-2 max-w-sm mx-auto">
+                          {language === "ar" 
+                            ? "لا يمكن بدء محادثة لأن هذا الرف تم حجزه لعلامة تجارية أخرى"
+                            : "Cannot start a conversation because this shelf has been reserved for another brand"}
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-4 space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        {language === "ar" 
-                          ? "لم يتم اختيار أي منتجات بعد"
-                          : "No products selected yet"}
-                      </p>
-                      <p className="text-xs text-destructive font-medium">
-                        {language === "ar" 
-                          ? "* يجب اختيار منتج واحد على الأقل لإرسال الطلب"
-                          : "* At least one product must be selected to submit request"}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right: Rental Form */}
-            <Card>
-              <form onSubmit={handleSubmit}>
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">
-                    {t("marketplace.details.send_request_title")}
-                  </CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    {t("marketplace.details.send_request_description")}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {activeRequest && (
-                    <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-                      <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <AlertDescription className="text-blue-800 dark:text-blue-200">
-                        {language === "ar" 
-                          ? "أنت تقوم بتحديث طلب الإيجار الحالي. التغييرات ستحل محل الطلب السابق."
-                          : "You are updating your existing rental request. Changes will replace the previous request."}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="booking-date">
-                      {t("marketplace.details.booking_duration")}*
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          id="booking-date"
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal ps-10 relative",
-                            !dateRange && "text-muted-foreground",
-                          )}
-                          disabled={shelfAvailability && !shelfAvailability.available}
-                        >
-                          <CalendarIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          {dateRange?.from ? (
-                            dateRange.to ? (
-                              <>
-                                {format(dateRange.from, "PPP", { 
-                                  locale: language === "ar" ? ar : enUS 
-                                })} - {format(dateRange.to, "PPP", { 
-                                  locale: language === "ar" ? ar : enUS 
-                                })}
-                              </>
-                            ) : (
-                              format(dateRange.from, "PPP", { 
-                                locale: language === "ar" ? ar : enUS 
-                              })
-                            )
-                          ) : (
-                            <span>{t("marketplace.details.pick_dates")}</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="range"
-                          defaultMonth={dateRange?.from || new Date()}
-                          selected={dateRange}
-                          onSelect={setDateRange}
-                          numberOfMonths={1}
-                          disabled={(date) => {
-                            const today = new Date()
-                            today.setHours(0, 0, 0, 0)
-                            return date < today
-                          }}
-                          classNames={{
-                            today: "bg-transparent text-foreground font-normal"
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="product-type">
-                      {t("marketplace.details.product_type")}*
-                    </Label>
-                    <Select 
-                      value={productType} 
-                      onValueChange={setProductType}
-                      required
-                      disabled={shelfAvailability && !shelfAvailability.available}
-                    >
-                      <SelectTrigger id="product-type">
-                        <SelectValue placeholder={t("marketplace.details.select_product_type")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="beauty">{t("marketplace.category_beauty")}</SelectItem>
-                        <SelectItem value="fashion">{t("marketplace.category_fashion")}</SelectItem>
-                        <SelectItem value="electronics">{t("marketplace.category_electronics")}</SelectItem>
-                        <SelectItem value="grocery">{t("marketplace.category_grocery")}</SelectItem>
-                        <SelectItem value="sports">{t("marketplace.category_sports")}</SelectItem>
-                        <SelectItem value="home">{t("marketplace.category_home")}</SelectItem>
-                        <SelectItem value="toys">{t("marketplace.category_toys")}</SelectItem>
-                        <SelectItem value="books">{t("marketplace.category_books")}</SelectItem>
-                        <SelectItem value="general">{t("marketplace.category_general")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="additional-details">
-                      {t("marketplace.details.additional_product_details")}
-                    </Label>
-                    <Textarea 
-                      id="additional-details" 
-                      value={productDescription}
-                      onChange={(e) => setProductDescription(e.target.value)}
-                      placeholder={language === "ar" 
-                        ? "أضف أي تفاصيل إضافية حول المنتجات المختارة..."
-                        : "Add any additional details about the selected products..."}
-                      className="min-h-[80px]"
-                      disabled={shelfAvailability && !shelfAvailability.available}
-                    />
-                  </div>
-
-                  {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
-                    <Alert className="border-destructive bg-destructive/10">
-                      <AlertCircle className="h-4 w-4 text-destructive" />
-                      <AlertDescription className="text-destructive font-semibold">
-                        {language === "ar" 
-                          ? "هذا الرف لم يعد متاحاً. تم قبول طلب إيجار من علامة تجارية أخرى."
-                          : "This shelf is no longer available. A rental request from another brand has been accepted."}
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
-                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      <AlertDescription className={` text-amber-800 dark:text-amber-200 font-medium`}>
-                        {t("marketplace.details.approval_notice")}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className={`w-full text-base `}
-                    disabled={selectedProducts.length === 0 || (shelfAvailability && !shelfAvailability.available)}
-                  >
-                    {shelfAvailability && !shelfAvailability.available ? 
-                      (language === "ar" ? "الرف غير متاح" : "Shelf Unavailable") :
-                      activeRequest ? 
-                        (language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request") :
-                        t("marketplace.details.submit_request")
-                    }
-                  </Button>
-                </CardContent>
-              </form>
-            </Card>
-          </div>
-
-          {/* Bottom Section: Communication */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                {t("marketplace.details.communication_title")}
-              </CardTitle>
-              <p className="text-muted-foreground text-sm">
-                {t("marketplace.details.communication_description")}
-              </p>
-            </CardHeader>
-            <CardContent>
-              {/* Chat - Only show after rental request submission */}
-              {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
-                <div className="h-[400px] flex items-center justify-center border rounded-lg bg-muted/10">
-                  <div className="text-center p-6 space-y-3">
-                    <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-                      <AlertCircle className="h-8 w-8 text-destructive" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-lg">
-                        {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
-                      </p>
-                      <p className="text-muted-foreground text-sm mt-2 max-w-sm mx-auto">
-                        {language === "ar" 
-                          ? "لا يمكن بدء محادثة لأن هذا الرف تم حجزه لعلامة تجارية أخرى"
-                          : "Cannot start a conversation because this shelf has been reserved for another brand"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : hasSubmittedRequest && conversationId && userId ? (
-                <div className="h-[500px]">
+                ) : hasSubmittedRequest && conversationId && userId ? (
                   <ChatInterface
                     conversationId={conversationId}
                     currentUserId={userId}
@@ -809,18 +739,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     otherUserName={storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
                     shelfName={storeDetails.shelfName}
                   />
-                </div>
-              ) : (
-                <div className="h-[400px] flex items-center justify-center border rounded-lg bg-muted/10">
-                  <div className="text-center p-6 space-y-3">
-                    <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center">
-                      <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-lg">
-                        {t("form.chat_unavailable")}
-                      </p>
-                      <p className="text-muted-foreground text-sm mt-2 max-w-sm mx-auto">
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">
                         {!userId 
                           ? t("form.login_first")
                           : (language === "ar" 
@@ -830,10 +753,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
     </div>
   )
 }
