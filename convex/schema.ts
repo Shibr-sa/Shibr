@@ -347,6 +347,19 @@ const schema = defineSchema({
     .index("by_code", ["code"])
     .index("by_active", ["isActive"])
     .index("by_created", ["createdAt"]),
+  
+  // Rental reviews
+  rentalReviews: defineTable({
+    rentalRequestId: v.id("rentalRequests"),
+    reviewerId: v.id("users"), // Person writing the review
+    revieweeId: v.id("users"), // Person being reviewed
+    rating: v.number(), // 1-5 stars
+    createdAt: v.string(),
+  })
+    .index("by_rental", ["rentalRequestId"])
+    .index("by_reviewer", ["reviewerId"])
+    .index("by_reviewee", ["revieweeId"])
+    .index("by_created", ["createdAt"]),
 })
 
 export default schema
