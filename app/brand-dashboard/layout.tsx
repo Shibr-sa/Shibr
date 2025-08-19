@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { BrandDataProvider } from "@/contexts/brand-data-context"
@@ -281,6 +282,7 @@ export default function BrandDashboardLayout({
                   </BreadcrumbList>
                 </Breadcrumb>
                 <div className="flex items-center gap-2">
+                  <ThemeToggle />
                   <LanguageSwitcher />
                 </div>
               </div>

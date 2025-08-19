@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
@@ -275,6 +276,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <LanguageSwitcher />
             </div>
           </div>

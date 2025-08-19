@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Home, FileText, Store, CreditCard, Settings, ChevronUp, LogOut, Users, Package, TrendingUp } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import {
@@ -241,6 +242,7 @@ export default function AdminDashboardLayout({
               </div>
               
               <div className="flex items-center gap-2">
+                <ThemeToggle />
                 <LanguageSwitcher />
               </div>
             </div>

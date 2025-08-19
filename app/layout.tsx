@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import "./globals.css"
 import { LanguageProvider } from "@/contexts/localization-context"
 import { ConvexClientProvider } from "@/components/convex-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
 const cairo = Cairo({
@@ -72,14 +73,21 @@ export default async function RootLayout({
   const direction = language === 'ar' ? 'rtl' : 'ltr'
   
   return (
-    <html lang={language} dir={direction}>
+    <html lang={language} dir={direction} suppressHydrationWarning>
       <body className={`${cairo.variable} ${inter.variable} ${language === 'ar' ? 'font-cairo' : 'font-inter'} antialiased`}>
-        <ConvexClientProvider>
-          <LanguageProvider initialLanguage={language as 'ar' | 'en'}>
-            {children}
-            <Toaster />
-          </LanguageProvider>
-        </ConvexClientProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ConvexClientProvider>
+            <LanguageProvider initialLanguage={language as 'ar' | 'en'}>
+              {children}
+              <Toaster />
+            </LanguageProvider>
+          </ConvexClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

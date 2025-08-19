@@ -8,6 +8,7 @@ import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Buildi
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState } from "react"
 
@@ -63,7 +64,8 @@ export default function ShibrLandingPage() {
             </a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <LanguageSwitcher />
             <Link href="/signin">
               <Button size="sm">{t("nav.signin")}</Button>
