@@ -57,7 +57,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
     if (open && unreadCount > 0) {
       // Mark all as read after a short delay
       const timer = setTimeout(() => {
-        markAllAsRead({ userId })
+        markAllAsRead({})
       }, 2000)
       return () => clearTimeout(timer)
     }
@@ -126,7 +126,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
               className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.preventDefault()
-                markAllAsRead({ userId })
+                markAllAsRead({})
               }}
             >
               {t("notifications.mark_all_read")}

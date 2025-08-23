@@ -25,97 +25,137 @@ function getDateRange(endDate: Date, period: string): { startDate: Date; endDate
   return { startDate, endDate: new Date(endDate) };
 }
 
-// Create an admin user
-export const createAdminUser = mutation({
+// Promote an existing user to admin
+// This is safer as it works with existing authenticated users
+export const promoteToAdmin = mutation({
   args: {
     email: v.string(),
-    password: v.string(),
-    fullName: v.string(),
-    phoneNumber: v.string(),
+    adminRole: v.optional(v.union(
+      v.literal("super_admin"),
+      v.literal("support"),
+      v.literal("finance"),
+      v.literal("operations")
+    )),
   },
   handler: async (ctx, args) => {
-    // Check if admin already exists with this email
-    const existingUser = await ctx.db
-      .query("users")
+    // Find the user profile by email
+    const userProfile = await ctx.db
+      .query("userProfiles")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first()
 
-    if (existingUser) {
-      throw new Error("User with this email already exists")
+    if (!userProfile) {
+      throw new Error("User profile not found. User must sign up first.")
     }
 
-    // Check if any admin user exists (optional: limit to one admin)
-    const existingAdmin = await ctx.db
-      .query("users")
-      .withIndex("by_account_type", (q) => q.eq("accountType", "admin"))
+    if (userProfile.accountType === "admin") {
+      throw new Error("User is already an admin")
+    }
+
+    // Update the user profile to admin
+    await ctx.db.patch(userProfile._id, {
+      accountType: "admin",
+      adminRole: args.adminRole || "super_admin",
+      permissions: ["all"],
+      isVerified: true,
+      updatedAt: new Date().toISOString(),
+    })
+
+    return {
+      success: true,
+      message: `User ${args.email} has been promoted to admin with role: ${args.adminRole || "super_admin"}`,
+      email: args.email,
+      adminRole: args.adminRole || "super_admin",
+    }
+  },
+})
+
+// Generate admin account - creates profile immediately
+// For password setup, use one of these approaches:
+// 1. Sign up normally at /signup then use promoteToAdmin
+// 2. Use the test credentials approach below
+export const generateAdminAccount = mutation({
+  args: {
+    email: v.string(),
+    fullName: v.string(),
+    phoneNumber: v.string(),
+    adminRole: v.optional(v.union(
+      v.literal("super_admin"),
+      v.literal("support"),
+      v.literal("finance"),
+      v.literal("operations")
+    )),
+  },
+  handler: async (ctx, args) => {
+    // Check if email already exists in userProfiles
+    const existingProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .first()
 
-    if (existingAdmin) {
-      console.warn("An admin user already exists. Creating additional admin.")
+    if (existingProfile) {
+      throw new Error("A user with this email already exists")
     }
 
-    // Create the admin user
-    const adminId = await ctx.db.insert("users", {
-      email: args.email,
-      password: args.password, // Note: In production, hash the password!
+    // Check if user exists in auth
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), args.email))
+      .first()
+
+    let userId = existingUser?._id
+
+    if (!userId) {
+      // Create the auth user
+      userId = await ctx.db.insert("users", {
+        email: args.email,
+        name: args.fullName,
+        phone: args.phoneNumber,
+        isAnonymous: false,
+        emailVerificationTime: Date.now(),
+      })
+    }
+
+    // Create the admin profile
+    const profileId = await ctx.db.insert("userProfiles", {
+      userId,
+      accountType: "admin",
       fullName: args.fullName,
       phoneNumber: args.phoneNumber,
-      accountType: "admin",
+      email: args.email,
+      isVerified: true,
       isActive: true,
-      isEmailVerified: true, // Admin accounts are pre-verified
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      preferredLanguage: "ar", // Default to Arabic for Saudi market
+      adminRole: args.adminRole || "super_admin",
+      permissions: ["all"],
     })
 
+    // Instructions based on whether password needs to be set
+    const instructions = existingUser ? [
+      `Admin profile created for existing user ${args.email}`,
+      `Sign in with your existing password at /signin`
+    ] : [
+      `Admin profile created for ${args.email}`,
+      `To set password: Go to /signup and use the same email`,
+      `Your admin role will be activated after signup`
+    ]
+
     return {
-      id: adminId,
+      success: true,
+      userId,
+      profileId,
       email: args.email,
       fullName: args.fullName,
-      accountType: "admin",
-      message: "Admin user created successfully"
+      adminRole: args.adminRole || "super_admin",
+      message: existingUser 
+        ? `Admin profile created for existing user ${args.email}`
+        : `Admin profile created. Complete signup at /signup to set password.`,
+      instructions
     }
   },
 })
 
-// Seed default admin user (for development)
-export const seedDefaultAdmin = mutation({
-  handler: async (ctx) => {
-    // Check if admin already exists
-    const existingAdmin = await ctx.db
-      .query("users")
-      .withIndex("by_account_type", (q) => q.eq("accountType", "admin"))
-      .first()
-
-    if (existingAdmin) {
-      return {
-        message: "Admin user already exists",
-        email: existingAdmin.email
-      }
-    }
-
-    // Create default admin
-    const adminId = await ctx.db.insert("users", {
-      email: "admin@shibr.sa",
-      password: "Admin@123", // CHANGE THIS IN PRODUCTION!
-      fullName: "مدير النظام",
-      phoneNumber: "0500000000",
-      accountType: "admin",
-      isActive: true,
-      isEmailVerified: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      preferredLanguage: "ar",
-    })
-
-    return {
-      id: adminId,
-      message: "Default admin user created successfully",
-      email: "admin@shibr.sa",
-      warning: "IMPORTANT: Change the default password immediately!"
-    }
-  },
-})
 
 // Get admin statistics (for admin dashboard)
 export const getAdminStats = query({
@@ -126,20 +166,20 @@ export const getAdminStats = query({
     const timePeriod = args.timePeriod || "monthly"
     // Get counts for different user types
     const storeOwners = await ctx.db
-      .query("users")
-      .withIndex("by_account_type", (q) => q.eq("accountType", "store-owner"))
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("accountType"), "store_owner"))
       .collect()
 
     const brandOwners = await ctx.db
-      .query("users")
-      .withIndex("by_account_type", (q) => q.eq("accountType", "brand-owner"))
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("accountType"), "brand_owner"))
       .collect()
 
     // Get shelf statistics
     const allShelves = await ctx.db.query("shelves").collect()
     const availableShelves = allShelves.filter(s => s.isAvailable && s.status === "approved")
-    const rentedShelves = allShelves.filter(s => s.status === "rented")
-    const pendingShelves = allShelves.filter(s => s.status === "pending")
+    const approvedShelves = allShelves.filter(s => s.status === "approved")
+    const pendingShelves = allShelves.filter(s => s.status === "pending_approval")
 
     // Get rental request statistics
     const rentalRequests = await ctx.db.query("rentalRequests").collect()
@@ -168,13 +208,13 @@ export const getAdminStats = query({
     }
     
     // Filter users by time period
-    const filteredStoreOwners = storeOwners.filter(u => new Date(u.createdAt) >= startDate)
-    const filteredBrandOwners = brandOwners.filter(u => new Date(u.createdAt) >= startDate)
+    const filteredStoreOwners = storeOwners.filter(u => u.createdAt && new Date(u.createdAt) >= startDate)
+    const filteredBrandOwners = brandOwners.filter(u => u.createdAt && new Date(u.createdAt) >= startDate)
     
     // Filter shelves by time period
     const filteredShelves = allShelves.filter(s => new Date(s.createdAt) >= startDate)
     const filteredAvailableShelves = availableShelves.filter(s => new Date(s.createdAt) >= startDate)
-    const filteredRentedShelves = rentedShelves.filter(s => new Date(s.createdAt) >= startDate)
+    const filteredApprovedShelves = approvedShelves.filter(s => new Date(s.createdAt) >= startDate)
     const filteredPendingShelves = pendingShelves.filter(s => new Date(s.createdAt) >= startDate)
     
     // Filter rental requests by time period
@@ -183,11 +223,11 @@ export const getAdminStats = query({
     const filteredPendingRequests = pendingRequests.filter(r => new Date(r.createdAt) >= startDate)
     
     // Calculate revenue for the selected period
-    const periodRevenue = filteredActiveRentals.reduce((sum, rental) => sum + (rental.totalPrice || 0), 0)
+    const periodRevenue = filteredActiveRentals.reduce((sum, rental) => sum + (rental.totalAmount || 0), 0)
     const periodPlatformFee = periodRevenue * 0.08 // 8% platform fee
     
     // Calculate total revenue (all time) for comparison
-    const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.totalPrice || 0), 0)
+    const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.totalAmount || 0), 0)
     const platformFee = totalRevenue * 0.08 // 8% platform fee
 
     // Calculate monthly revenue data for chart (last 6 months)
@@ -203,11 +243,12 @@ export const getAdminStats = query({
                rentalDate.getFullYear() === monthDate.getFullYear()
       })
       
-      const monthRevenue = monthRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0)
+      const monthRevenue = monthRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
       const monthOrders = monthRentals.length
       
       // Count new users for this month
       const monthUsers = [...storeOwners, ...brandOwners].filter(user => {
+        if (!user.createdAt) return false
         const userDate = new Date(user.createdAt)
         return userDate.getMonth() === monthDate.getMonth() && 
                userDate.getFullYear() === monthDate.getFullYear()
@@ -226,10 +267,10 @@ export const getAdminStats = query({
       storeOwners.slice(0, 5).map(async (store) => {
         // Get rentals for this store
         const storeRentals = rentalRequests.filter(r => 
-          r.storeOwnerId === store._id && r.status === "active"
+          r.ownerId === store.userId && r.status === "active"
         )
         
-        const storeRevenue = storeRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0)
+        const storeRevenue = storeRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
         
         // Calculate growth (return 0 for now as we don't have historical data tracking)
         const growth = 0
@@ -239,7 +280,7 @@ export const getAdminStats = query({
           name: store.storeName || store.fullName,
           revenue: storeRevenue,
           growth: parseFloat(growth.toFixed(1)),
-          avatar: store.profileImageUrl || "/api/placeholder/32/32"
+          avatar: "/api/placeholder/32/32" // Placeholder for now
         }
       })
     )
@@ -260,7 +301,7 @@ export const getAdminStats = query({
         return rentalDate.toDateString() === date.toDateString()
       })
       
-      const dayRevenue = dayRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0)
+      const dayRevenue = dayRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
       
       recentRevenue.push({
         day: dayName,
@@ -282,10 +323,12 @@ export const getAdminStats = query({
     
     // Add recent user registrations
     const recentUsers = [...storeOwners, ...brandOwners]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter(u => u.createdAt)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
       .slice(0, 2)
     
     recentUsers.forEach(user => {
+      if (!user.createdAt) return
       const timeDiff = Date.now() - new Date(user.createdAt).getTime()
       const minutesAgo = Math.floor(timeDiff / (1000 * 60))
       const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60))
@@ -298,8 +341,8 @@ export const getAdminStats = query({
       
       recentActivities.push({
         id: user._id,
-        type: user.accountType === "store-owner" ? "new_store" : "new_user",
-        title: user.accountType === "store-owner" ? "New store registered" : "New brand registered",
+        type: user.accountType === "store_owner" ? "new_store" : "new_user",
+        title: user.accountType === "store_owner" ? "New store registered" : "New brand registered",
         description: `${user.storeName || user.brandName || user.fullName} joined the platform`,
         time: timeString,
         icon: "Store",
@@ -369,10 +412,10 @@ export const getAdminStats = query({
     
     // Get totals up to the end of previous period
     const prevPeriodStoreOwners = storeOwners.filter(u => 
-      new Date(u.createdAt) <= previousPeriodEnd
+      u.createdAt && new Date(u.createdAt) <= previousPeriodEnd
     ).length
     const prevPeriodBrandOwners = brandOwners.filter(u => 
-      new Date(u.createdAt) <= previousPeriodEnd
+      u.createdAt && new Date(u.createdAt) <= previousPeriodEnd
     ).length
     const prevPeriodTotalUsers = prevPeriodStoreOwners + prevPeriodBrandOwners
     
@@ -408,7 +451,7 @@ export const getAdminStats = query({
         const date = new Date(r.createdAt)
         return date > prevPeriodStart && date <= previousPeriodEnd
       })
-      .reduce((sum, r) => sum + (r.totalPrice || 0), 0)
+      .reduce((sum, r) => sum + (r.totalAmount || 0), 0)
     
     // Current totals (cumulative up to now)
     const currentTotalUsers = storeOwners.length + brandOwners.length
@@ -440,14 +483,14 @@ export const getAdminStats = query({
         storeOwners: storeOwners.length,
         brandOwners: brandOwners.length,
         activeUsers: [...storeOwners, ...brandOwners].filter(u => u.isActive).length,
-        verifiedUsers: [...storeOwners, ...brandOwners].filter(u => u.isEmailVerified).length,
+        verifiedUsers: [...storeOwners, ...brandOwners].filter(u => u.isVerified).length,
         change: parseFloat(usersChange.toFixed(1)),
         newInPeriod: filteredStoreOwners.length + filteredBrandOwners.length, // New users in selected period
       },
       shelves: {
         total: currentTotalShelves, // Show total cumulative shelves
         available: availableShelves.length, // Current available (not filtered by period)
-        rented: rentedShelves.length, // Current rented (not filtered by period)
+        approved: approvedShelves.length, // Current approved (not filtered by period)
         pending: pendingShelves.length,
         change: parseFloat(shelvesChange.toFixed(1)),
         newInPeriod: filteredShelves.length, // New shelves in selected period
@@ -489,11 +532,21 @@ export const verifyAdminAccess = query({
       return { isAdmin: false, error: "User not found" }
     }
     
-    if (user.accountType !== "admin") {
+    // Get the user profile to check account type
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first()
+    
+    if (!userProfile) {
+      return { isAdmin: false, error: "User profile not found" }
+    }
+    
+    if (userProfile.accountType !== "admin") {
       return { isAdmin: false, error: "Access denied: Admin privileges required" }
     }
     
-    if (!user.isActive) {
+    if (!userProfile.isActive) {
       return { isAdmin: false, error: "Account is not active" }
     }
     
@@ -501,8 +554,8 @@ export const verifyAdminAccess = query({
       isAdmin: true, 
       user: {
         id: user._id,
-        email: user.email,
-        fullName: user.fullName,
+        email: userProfile.email,
+        fullName: userProfile.fullName,
       }
     }
   },
@@ -519,27 +572,63 @@ export const updatePlatformSettings = mutation({
   handler: async (ctx, args) => {
     // Verify admin access
     const user = await ctx.db.get(args.adminUserId)
-    if (!user || user.accountType !== "admin") {
+    if (!user) {
+      throw new Error("User not found")
+    }
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
     const { adminUserId, ...settings } = args
 
-    // Get existing settings or create new
-    const existingSettings = await ctx.db.query("platformSettings").first()
+    // Update or create platform fee setting
+    if (settings.platformFeePercentage !== undefined) {
+      const feeKey = "platformFeePercentage"
+      const existingFee = await ctx.db.query("platformSettings").filter(q => q.eq(q.field("key"), feeKey)).first()
+      
+      if (existingFee) {
+        await ctx.db.patch(existingFee._id, {
+          value: settings.platformFeePercentage,
+          updatedBy: args.adminUserId,
+          updatedAt: new Date().toISOString(),
+        })
+      } else {
+        await ctx.db.insert("platformSettings", {
+          key: feeKey,
+          value: settings.platformFeePercentage,
+          description: "Platform fee percentage",
+          updatedBy: args.adminUserId,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+    }
     
-    if (existingSettings) {
-      await ctx.db.patch(existingSettings._id, {
-        ...settings,
-        updatedAt: new Date().toISOString(),
-      })
-    } else {
-      await ctx.db.insert("platformSettings", {
-        platformFeePercentage: settings.platformFeePercentage || 8,
-        minimumShelfPrice: settings.minimumShelfPrice || 500,
-        maximumDiscountPercentage: settings.maximumDiscountPercentage || 50,
-        updatedAt: new Date().toISOString(),
-      })
+    // Update or create minimum shelf price setting
+    if (settings.minimumShelfPrice !== undefined) {
+      const priceKey = "minimumShelfPrice"
+      const existingPrice = await ctx.db.query("platformSettings").filter(q => q.eq(q.field("key"), priceKey)).first()
+      
+      if (existingPrice) {
+        await ctx.db.patch(existingPrice._id, {
+          value: settings.minimumShelfPrice,
+          updatedBy: args.adminUserId,
+          updatedAt: new Date().toISOString(),
+        })
+      } else {
+        await ctx.db.insert("platformSettings", {
+          key: priceKey,
+          value: settings.minimumShelfPrice,
+          description: "Minimum shelf price",
+          updatedBy: args.adminUserId,
+          updatedAt: new Date().toISOString(),
+        })
+      }
     }
 
     return { success: true, message: "Platform settings updated" }
@@ -556,8 +645,17 @@ export const reviewShelfListing = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const user = await ctx.db.get(args.adminUserId)
-    if (!user || user.accountType !== "admin") {
+    const adminUser = await ctx.db.get(args.adminUserId)
+    if (!adminUser) {
+      throw new Error("Admin user not found")
+    }
+    
+    const adminProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .first()
+    
+    if (!adminProfile || adminProfile.accountType !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -580,9 +678,15 @@ export const reviewShelfListing = mutation({
 
     await ctx.db.patch(args.shelfId, updateData)
 
+    // Get the owner's userId from profile
+    const ownerProfile = await ctx.db.get(shelf.profileId)
+    if (!ownerProfile) {
+      throw new Error("Owner profile not found")
+    }
+    
     // Create notification for the shelf owner
     await ctx.db.insert("notifications", {
-      userId: shelf.ownerId,
+      userId: ownerProfile.userId,
       title: args.action === "approve" ? "تم قبول رفك" : "تم رفض رفك",
       message: args.action === "approve" 
         ? `تم قبول رفك "${shelf.shelfName}" وهو الآن متاح للإيجار`
@@ -608,7 +712,16 @@ export const toggleUserStatus = mutation({
   handler: async (ctx, args) => {
     // Verify admin access
     const admin = await ctx.db.get(args.adminUserId)
-    if (!admin || admin.accountType !== "admin") {
+    if (!admin) {
+      throw new Error("Admin user not found")
+    }
+    
+    const adminProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .first()
+    
+    if (!adminProfile || adminProfile.accountType !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -621,10 +734,19 @@ export const toggleUserStatus = mutation({
     if (!targetUser) {
       throw new Error("User not found")
     }
+    
+    const targetProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.targetUserId))
+      .first()
+    
+    if (!targetProfile) {
+      throw new Error("User profile not found")
+    }
 
     // Toggle active status
-    const newStatus = !targetUser.isActive
-    await ctx.db.patch(args.targetUserId, {
+    const newStatus = !targetProfile.isActive
+    await ctx.db.patch(targetProfile._id, {
       isActive: newStatus,
       updatedAt: new Date().toISOString(),
     })
@@ -650,9 +772,8 @@ export const getStores = query({
 
     // Get all store owners
     let storeOwnersQuery = ctx.db
-      .query("users")
-      .withIndex("by_account_type")
-      .filter(q => q.eq(q.field("accountType"), "store-owner"));
+      .query("userProfiles")
+      .filter(q => q.eq(q.field("accountType"), "store_owner"));
 
     const allStoreOwners = await storeOwnersQuery.collect();
 
@@ -661,33 +782,39 @@ export const getStores = query({
       ? allStoreOwners.filter(store =>
           store.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           store.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          store.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+          store.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : allStoreOwners;
 
     // Get shelves for each store owner
     const storesWithStats = await Promise.all(
       filteredStoreOwners.map(async (store) => {
-        const shelves = await ctx.db
+        // Get user profile first
+        const storeProfile = await ctx.db
+          .query("userProfiles")
+          .withIndex("by_user", q => q.eq("userId", store.userId))
+          .first();
+        
+        const shelves = storeProfile ? await ctx.db
           .query("shelves")
-          .withIndex("by_owner")
-          .filter(q => q.eq(q.field("ownerId"), store._id))
-          .collect();
+          .withIndex("by_profile")
+          .filter(q => q.eq(q.field("profileId"), storeProfile._id))
+          .collect() : [];
 
-        const rentedShelves = shelves.filter(s => s.status === "rented").length;
+        const approvedShelves = shelves.filter(s => s.status === "approved").length;
         const totalShelves = shelves.length;
 
         // Get rental requests for this store
         const rentals = await ctx.db
           .query("rentalRequests")
-          .withIndex("by_store_owner")
-          .filter(q => q.eq(q.field("storeOwnerId"), store._id))
+          .withIndex("by_owner")
+          .filter(q => q.eq(q.field("ownerId"), store.userId))
           .collect();
 
         const activeRentals = rentals.filter(r => r.status === "active").length;
         const totalRevenue = rentals
           .filter(r => r.status === "active")
-          .reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+          .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
 
         return {
           id: store._id,
@@ -695,13 +822,13 @@ export const getStores = query({
           email: store.email,
           phoneNumber: store.phoneNumber,
           shelves: totalShelves,
-          rentedShelves,
+          approvedShelves,
           rentals: activeRentals,
           revenue: totalRevenue,
           status: store.isActive ? "active" : "suspended",
           joinDate: store.createdAt,
-          businessRegistration: store.businessRegistration,
-          businessRegistrationUrl: store.businessRegistrationDocumentUrl,
+          businessRegistration: store.commercialRegisterNumber,
+          businessRegistrationUrl: store.commercialRegisterDocument,
         };
       })
     );
@@ -777,9 +904,8 @@ export const getBrands = query({
 
     // Get all brand owners
     let brandOwnersQuery = ctx.db
-      .query("users")
-      .withIndex("by_account_type")
-      .filter(q => q.eq(q.field("accountType"), "brand-owner"));
+      .query("userProfiles")
+      .filter(q => q.eq(q.field("accountType"), "brand_owner"));
 
     const allBrandOwners = await brandOwnersQuery.collect();
 
@@ -788,7 +914,7 @@ export const getBrands = query({
       ? allBrandOwners.filter(brand =>
           brand.brandName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           brand.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          brand.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+          brand.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : allBrandOwners;
 
@@ -799,26 +925,26 @@ export const getBrands = query({
         const products = await ctx.db
           .query("products")
           .withIndex("by_owner")
-          .filter(q => q.eq(q.field("ownerId"), brand._id))
+          .filter(q => q.eq(q.field("ownerId"), brand.userId))
           .collect();
 
         const totalProducts = products.length;
-        const totalProductRevenue = products.reduce((sum, p) => sum + p.totalRevenue, 0);
+        const totalProductRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0);
 
         // Get rental requests for this brand
         const rentals = await ctx.db
           .query("rentalRequests")
-          .withIndex("by_brand_owner")
-          .filter(q => q.eq(q.field("brandOwnerId"), brand._id))
+          .withIndex("by_requester")
+          .filter(q => q.eq(q.field("requesterId"), brand.userId))
           .collect();
 
         const activeRentals = rentals.filter(r => r.status === "active").length;
         const totalRentalRevenue = rentals
           .filter(r => r.status === "active")
-          .reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+          .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
 
         // Get unique stores this brand is working with
-        const uniqueStoreIds = new Set(rentals.map(r => r.storeOwnerId));
+        const uniqueStoreIds = new Set(rentals.map(r => r.ownerId));
         const storesCount = uniqueStoreIds.size;
 
         return {
@@ -831,18 +957,19 @@ export const getBrands = query({
           rentals: activeRentals,
           revenue: totalProductRevenue + totalRentalRevenue,
           status: brand.isActive ? "active" : "suspended",
-          category: brand.brandType || "general",
+          category: brand.businessType || "general",
           joinDate: brand.createdAt,
-          businessRegistration: brand.businessRegistration,
-          businessRegistrationUrl: brand.businessRegistrationDocumentUrl,
+          businessRegistration: brand.brandCommercialRegisterNumber || brand.freelanceLicenseNumber,
+          businessRegistrationUrl: brand.brandCommercialRegisterDocument || brand.freelanceLicenseDocument,
         };
       })
     );
 
     // Sort by creation date (newest first)
-    brandsWithStats.sort((a, b) => 
-      new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime()
-    );
+    brandsWithStats.sort((a, b) => {
+      if (!a.joinDate || !b.joinDate) return 0;
+      return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime();
+    });
 
     // Paginate
     const startIndex = (page - 1) * limit;
@@ -921,33 +1048,36 @@ export const getPosts = query({
     const filteredByStatus = status === "all" 
       ? allShelves
       : allShelves.filter(shelf => {
-          if (status === "published") return shelf.status === "approved" || shelf.status === "pending";
-          if (status === "rented") return shelf.status === "rented";
+          if (status === "published") return shelf.status === "approved" || shelf.status === "pending_approval";
+          if (status === "approved") return shelf.status === "approved";
           return false;
         });
 
     // Get owner details for each shelf
     const shelvesWithOwners = await Promise.all(
       filteredByStatus.map(async (shelf) => {
-        const owner = await ctx.db.get(shelf.ownerId);
+        const ownerProfile = await ctx.db.get(shelf.profileId);
+        if (!ownerProfile) return null;
+        
+        const owner = await ctx.db.get(ownerProfile.userId);
         if (!owner) return null;
 
         return {
           id: shelf._id,
-          storeName: owner.storeName || owner.fullName,
-          storeOwnerName: owner.fullName,
-          storeOwnerEmail: owner.email,
-          storeOwnerPhone: owner.phoneNumber,
-          businessRegistration: owner.businessRegistration,
+          storeName: ownerProfile.storeName || ownerProfile.fullName,
+          storeOwnerName: ownerProfile.fullName,
+          storeOwnerEmail: ownerProfile.email,
+          storeOwnerPhone: ownerProfile.phoneNumber,
+          businessRegistration: ownerProfile.commercialRegisterNumber,
           branch: shelf.branch || shelf.city,
           shelfName: shelf.shelfName,
-          percentage: shelf.discountPercentage,
+          percentage: 0, // Not defined in schema
           price: shelf.monthlyPrice,
           addedDate: shelf.createdAt,
-          status: shelf.status === "rented" ? "rented" : "published",
+          status: shelf.status === "approved" ? "published" : shelf.status,
           city: shelf.city,
           address: shelf.address,
-          dimensions: `${shelf.length} × ${shelf.width} × ${shelf.depth}`,
+          dimensions: `${shelf.shelfSize.width} × ${shelf.shelfSize.height} × ${shelf.shelfSize.depth} ${shelf.shelfSize.unit}`,
           productType: shelf.productType,
           description: shelf.description,
           availableFrom: shelf.availableFrom,
@@ -961,9 +1091,9 @@ export const getPosts = query({
     
     const filteredShelves = searchQuery
       ? validShelves.filter(post =>
-          post.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.shelfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.branch.toLowerCase().includes(searchQuery.toLowerCase())
+          post.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.shelfName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.branch?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : validShelves;
 
@@ -1006,36 +1136,42 @@ export const getPayments = query({
     const filteredByStatus = status === "all" 
       ? rentalRequests
       : status === "paid"
-      ? rentalRequests.filter(r => r.status === "active" || r.paymentConfirmedAt)
+      ? rentalRequests.filter(r => r.status === "active")
       : rentalRequests.filter(r => r.status === "payment_pending" || r.status === "accepted");
 
     // Get payment details with user information
     const paymentsWithDetails = await Promise.all(
       filteredByStatus.map(async (rental, index) => {
-        const brandOwner = await ctx.db.get(rental.brandOwnerId);
-        const storeOwner = await ctx.db.get(rental.storeOwnerId);
+        if (!rental.requesterId || !rental.ownerId) return null;
+        
+        const brandOwner = await ctx.db.get(rental.requesterId);
+        const storeOwner = await ctx.db.get(rental.ownerId);
         const shelf = await ctx.db.get(rental.shelfId);
 
         if (!brandOwner || !storeOwner || !shelf) return null;
+        
+        // Get user profiles for names
+        const brandProfile = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", rental.requesterId!)).first();
+        const storeProfile = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", rental.ownerId!)).first();
 
         // Calculate platform fee (8%)
         const platformFeePercentage = 8;
-        const platformFeeAmount = (rental.totalPrice * platformFeePercentage) / 100;
+        const platformFeeAmount = ((rental.totalAmount || 0) * platformFeePercentage) / 100;
 
         return {
           id: rental._id,
           invoiceNumber: `INV-2024-${String(index + 1).padStart(3, '0')}`,
-          merchant: brandOwner.fullName,
-          merchantEmail: brandOwner.email,
-          store: storeOwner.storeName || storeOwner.fullName,
-          storeEmail: storeOwner.email,
+          merchant: brandProfile?.fullName || brandProfile?.brandName || "Unknown",
+          merchantEmail: brandProfile?.email || "",
+          store: storeProfile?.storeName || storeProfile?.fullName || "Unknown",
+          storeEmail: storeProfile?.email || "",
           shelfName: shelf.shelfName,
           date: rental.createdAt,
-          amount: rental.totalPrice,
+          amount: rental.totalAmount || 0,
           percentage: platformFeePercentage,
           platformFee: platformFeeAmount,
           method: "bank_transfer", // Default for now
-          status: rental.status === "active" || rental.paymentConfirmedAt ? "paid" : "unpaid",
+          status: rental.status === "active" ? "paid" : "unpaid",
           startDate: rental.startDate,
           endDate: rental.endDate,
         };
@@ -1048,9 +1184,9 @@ export const getPayments = query({
     // Apply search filter
     const filteredPayments = searchQuery
       ? validPayments.filter(payment =>
-          payment.merchant.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          payment.store.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          payment.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
+          payment.merchant?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.store?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : validPayments;
 

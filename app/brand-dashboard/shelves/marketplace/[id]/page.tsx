@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -33,8 +33,9 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { ChatInterface } from "@/components/chat/chat-interface"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useBrandData } from "@/contexts/brand-data-context"
 
-interface StoreDetails {
+interface ShelfDetails {
   _id: string
   shelfName: string
   city: string
@@ -43,7 +44,7 @@ interface StoreDetails {
   latitude?: number
   longitude?: number
   monthlyPrice: number
-  discountPercentage: number
+  storeCommission: number
   availableFrom: string
   productType?: string
   width: string
@@ -53,56 +54,75 @@ interface StoreDetails {
   shelfImage?: string | null
   exteriorImage?: string | null
   interiorImage?: string | null
-  ownerId?: string
+  profileId?: string
+  ownerProfileId?: string
 }
 
 export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t, language, direction } = useLanguage()
   const { user } = useCurrentUser()
+  const { userData } = useBrandData()
   
   // Unwrap params Promise
   const resolvedParams = use(params)
   
-  // Get user ID from current user
+  // Get conversation ID from URL if present
+  const urlConversationId = searchParams.get('conversation') as Id<"conversations"> | null
+  
+  // Get user ID and profile ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
+  const userProfileId = userData?.profile?._id as Id<"userProfiles"> | undefined
   
   // State for selected image
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   
-  // Fetch store details from backend
-  const storeDetails = useQuery(api.stores.getStoreById, { 
-    storeId: resolvedParams.id as Id<"stores"> 
-  }) as StoreDetails | undefined
+  // Fetch shelf details from backend
+  const shelfDetails = useQuery(api.shelves.getShelfById, { 
+    shelfId: resolvedParams.id as Id<"shelves"> 
+  }) as ShelfDetails | undefined
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
   const [productType, setProductType] = useState("")
   const [productCount, setProductCount] = useState("")
-  const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null)
-  const [hasSubmittedRequest, setHasSubmittedRequest] = useState(false)
+  const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
+  const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
+  
+  // Check if user has an existing rental request for this shelf
+  const existingRequest = useQuery(api.rentalRequests.getUserRequestForShelf,
+    userId && shelfDetails ? {
+      userId: userId,
+      shelfId: resolvedParams.id as Id<"shelves">
+    } : "skip"
+  )
+  
+  // Set conversation ID from existing request if available
+  useEffect(() => {
+    if (existingRequest?.conversationId && !conversationId) {
+      setConversationId(existingRequest.conversationId)
+      setHasSubmittedRequest(true)
+    }
+  }, [existingRequest, conversationId])
   
   // Fetch user's products
   const userProducts = useQuery(api.products.getUserProducts, 
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   )
   
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
   const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
   
-  // Check for existing active rental request
-  const activeRequest = useQuery(api.rentalRequests.getActiveRentalRequest, 
-    userId && storeDetails ? {
-      shelfId: resolvedParams.id as Id<"shelves">,
-      brandOwnerId: userId
-    } : "skip"
-  )
+  // Check for existing rental request (any status)
+  const activeRequest = existingRequest
   
   // Check if shelf is still available for rental
   const shelfAvailability = useQuery(api.rentalRequests.isShelfAvailable,
-    storeDetails ? {
-      shelfId: resolvedParams.id as Id<"shelves">
+    shelfDetails && userId ? {
+      shelfId: resolvedParams.id as Id<"shelves">,
+      currentUserId: userId
     } : "skip"
   )
   
@@ -164,7 +184,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       return
     }
     
-    if (!userId || !storeDetails?.ownerId) {
+    if (!userId || !userProfileId || !shelfDetails?.profileId) {
       alert(t("form.login_first"))
       return
     }
@@ -174,8 +194,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       let convId = conversationId
       if (!convId) {
         convId = await getOrCreateConversation({
-          brandOwnerId: userId,
-          storeOwnerId: storeDetails.ownerId as Id<"users">,
+          brandProfileId: userProfileId,
+          storeProfileId: shelfDetails.profileId as Id<"userProfiles">,
           shelfId: resolvedParams.id as Id<"shelves">,
         })
         setConversationId(convId)
@@ -192,7 +212,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       // Create or update rental request
       const result = await createRentalRequest({
         shelfId: resolvedParams.id as Id<"shelves">,
-        brandOwnerId: userId,
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
         productType: productType,
@@ -225,7 +244,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   }
   
   // Loading state
-  if (!storeDetails) {
+  if (!shelfDetails) {
     return (
       <div className="flex flex-col gap-8">
         <Card>
@@ -265,67 +284,67 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Image Gallery */}
                 <div className="w-full md:w-1/3">
-                  {(storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage) ? (
+                  {(shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage) ? (
                     <div className="space-y-2">
                       {/* Main Image */}
                       <div className="relative">
                         <img
-                          src={selectedImage || storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage || ""}
-                          alt={storeDetails.shelfName}
+                          src={selectedImage || shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage || ""}
+                          alt={shelfDetails.shelfName}
                           className="w-full h-64 object-cover rounded-lg store-main-image"
                         />
                         <Badge className="absolute top-2 start-2 bg-background/90 backdrop-blur-sm">
-                          {selectedImage === storeDetails.shelfImage || (!selectedImage && storeDetails.shelfImage === (storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage)) ? t("marketplace.shelf_image") :
-                           selectedImage === storeDetails.exteriorImage || (!selectedImage && !storeDetails.shelfImage && storeDetails.exteriorImage) ? t("marketplace.exterior_image") :
+                          {selectedImage === shelfDetails.shelfImage || (!selectedImage && shelfDetails.shelfImage === (shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage)) ? t("marketplace.shelf_image") :
+                           selectedImage === shelfDetails.exteriorImage || (!selectedImage && !shelfDetails.shelfImage && shelfDetails.exteriorImage) ? t("marketplace.exterior_image") :
                            t("marketplace.interior_image")}
                         </Badge>
                       </div>
                       
                       {/* Thumbnail Images - Only show if multiple images exist */}
-                      {[storeDetails.shelfImage, storeDetails.exteriorImage, storeDetails.interiorImage].filter(Boolean).length > 1 && (
+                      {[shelfDetails.shelfImage, shelfDetails.exteriorImage, shelfDetails.interiorImage].filter(Boolean).length > 1 && (
                         <div className="grid grid-cols-3 gap-2">
-                          {storeDetails.shelfImage && (
+                          {shelfDetails.shelfImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(storeDetails.shelfImage)}
+                              onClick={() => setSelectedImage(shelfDetails.shelfImage)}
                             >
                               <img
-                                src={storeDetails.shelfImage}
-                                alt={`${storeDetails.shelfName} - Shelf`}
+                                src={shelfDetails.shelfImage}
+                                alt={`${shelfDetails.shelfName} - Shelf`}
                                 className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
-                                  (selectedImage === storeDetails.shelfImage || (!selectedImage && storeDetails.shelfImage === (storeDetails.shelfImage || storeDetails.exteriorImage || storeDetails.interiorImage)))
+                                  (selectedImage === shelfDetails.shelfImage || (!selectedImage && shelfDetails.shelfImage === (shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage)))
                                     ? 'border-primary' : 'border-transparent hover:border-primary/50'
                                 }`}
                               />
                               <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                           )}
-                          {storeDetails.exteriorImage && (
+                          {shelfDetails.exteriorImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(storeDetails.exteriorImage)}
+                              onClick={() => setSelectedImage(shelfDetails.exteriorImage)}
                             >
                               <img
-                                src={storeDetails.exteriorImage}
-                                alt={`${storeDetails.shelfName} - Exterior`}
+                                src={shelfDetails.exteriorImage}
+                                alt={`${shelfDetails.shelfName} - Exterior`}
                                 className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
-                                  selectedImage === storeDetails.exteriorImage 
+                                  selectedImage === shelfDetails.exteriorImage 
                                     ? 'border-primary' : 'border-transparent hover:border-primary/50'
                                 }`}
                               />
                               <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                           )}
-                          {storeDetails.interiorImage && (
+                          {shelfDetails.interiorImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(storeDetails.interiorImage)}
+                              onClick={() => setSelectedImage(shelfDetails.interiorImage)}
                             >
                               <img
-                                src={storeDetails.interiorImage}
-                                alt={`${storeDetails.shelfName} - Interior`}
+                                src={shelfDetails.interiorImage}
+                                alt={`${shelfDetails.shelfName} - Interior`}
                                 className={`w-full h-20 object-cover rounded-md border-2 transition-colors ${
-                                  selectedImage === storeDetails.interiorImage 
+                                  selectedImage === shelfDetails.interiorImage 
                                     ? 'border-primary' : 'border-transparent hover:border-primary/50'
                                 }`}
                               />
@@ -343,23 +362,23 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-bold mb-2">
-                    {storeDetails.shelfName}
+                    {shelfDetails.shelfName}
                   </h1>
                   <div className="flex items-baseline gap-2 mb-4">
                     <p className="text-primary text-xl font-semibold">
-                      {t("common.currency_symbol")} {storeDetails.monthlyPrice.toLocaleString()}
+                      {t("common.currency_symbol")} {shelfDetails.monthlyPrice.toLocaleString()}
                     </p>
                     <span className="text-sm text-muted-foreground">/ {t("marketplace.month")}</span>
-                    {storeDetails.discountPercentage > 0 && (
+                    {shelfDetails.storeCommission > 0 && (
                       <Badge variant="secondary">
-                        {t("marketplace.sales_commission")}: {storeDetails.discountPercentage}%
+                        {t("marketplace.sales_commission")}: {shelfDetails.storeCommission}%
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-start gap-2 text-muted-foreground mb-6">
                     <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
                     <span>
-                      {storeDetails.address || `${storeDetails.city}, ${storeDetails.branch}`}
+                      {shelfDetails.address || `${shelfDetails.city}, ${shelfDetails.branch}`}
                     </span>
                   </div>
                   <Separator />
@@ -370,7 +389,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         {t("marketplace.available_from")}
                       </p>
                       <p className="text-sm font-semibold">
-                        {new Date(storeDetails.availableFrom).toLocaleDateString(
+                        {new Date(shelfDetails.availableFrom).toLocaleDateString(
                           language === "ar" ? "ar-SA" : "en-US",
                           { month: 'long', day: 'numeric' }
                         )}
@@ -382,7 +401,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         {t("marketplace.dimensions")}
                       </p>
                       <p className="text-sm font-semibold">
-                        {storeDetails.width}×{storeDetails.length}×{storeDetails.depth}cm
+                        {shelfDetails.width}×{shelfDetails.length}×{shelfDetails.depth}cm
                       </p>
                     </div>
                     <div className="text-center">
@@ -391,7 +410,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         {t("marketplace.shelf_type")}
                       </p>
                       <p className="text-sm font-semibold">
-                        {storeDetails.productType || t("marketplace.general")}
+                        {shelfDetails.productType || t("marketplace.general")}
                       </p>
                     </div>
                   </div>
@@ -679,8 +698,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       disabled={selectedProducts.length === 0 || !dateRange || !productType || (shelfAvailability && !shelfAvailability.available)}
                     >
                       {shelfAvailability && !shelfAvailability.available ? (
-                        <span className="flex items-center gap-2">
-                          <X className="h-5 w-5" />
+                        <span>
                           {language === "ar" ? "الرف غير متاح" : "Shelf Unavailable"}
                         </span>
                       ) : activeRequest ? (
@@ -736,8 +754,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     conversationId={conversationId}
                     currentUserId={userId}
                     currentUserType="brand-owner"
-                    otherUserName={storeDetails.ownerName || `${t("marketplace.owner")} ${storeDetails.shelfName}`}
-                    shelfName={storeDetails.shelfName}
+                    otherUserName={shelfDetails.ownerName || `${t("marketplace.owner")} ${shelfDetails.shelfName}`}
+                    shelfName={shelfDetails.shelfName}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">

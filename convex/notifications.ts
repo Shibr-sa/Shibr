@@ -1,20 +1,25 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
 
 // Get user notifications
 export const getUserNotifications = query({
   args: {
-    userId: v.id("users"),
     limit: v.optional(v.number()),
     excludeMessageNotifications: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+    
     const limit = args.limit || 50
     
     let notifications = await ctx.db
       .query("notifications")
       .withIndex("by_user")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .take(limit)
 
@@ -30,16 +35,20 @@ export const getUserNotifications = query({
 // Get unread notification count
 export const getUnreadCount = query({
   args: {
-    userId: v.id("users"),
     excludeMessageNotifications: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return 0;
+    }
+    
     let unreadNotifications = await ctx.db
       .query("notifications")
       .withIndex("by_user")
       .filter((q) => 
         q.and(
-          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("userId"), userId),
           q.eq(q.field("isRead"), false)
         )
       )
@@ -69,16 +78,19 @@ export const markAsRead = mutation({
 
 // Mark all notifications as read
 export const markAllAsRead = mutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
     const unreadNotifications = await ctx.db
       .query("notifications")
       .withIndex("by_user")
       .filter((q) => 
         q.and(
-          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("userId"), userId),
           q.eq(q.field("isRead"), false)
         )
       )
@@ -112,10 +124,14 @@ export const deleteNotification = mutation({
 // Get unread count for specific rental requests (including all notification types)
 export const getUnreadCountByRentalRequests = query({
   args: {
-    userId: v.id("users"),
     rentalRequestIds: v.array(v.id("rentalRequests")),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return {};
+    }
+    
     const unreadCounts: Record<string, number> = {}
     
     for (const rentalRequestId of args.rentalRequestIds) {
@@ -125,7 +141,7 @@ export const getUnreadCountByRentalRequests = query({
         .withIndex("by_user")
         .filter((q) => 
           q.and(
-            q.eq(q.field("userId"), args.userId),
+            q.eq(q.field("userId"), userId),
             q.eq(q.field("rentalRequestId"), rentalRequestId),
             q.eq(q.field("isRead"), false)
           )
@@ -141,17 +157,20 @@ export const getUnreadCountByRentalRequests = query({
 
 // Get total unread count for orders page (all notification types for store owner)
 export const getTotalOrderNotifications = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return 0;
+    }
+    
     // Get all unread notifications for the user that are related to rental requests
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_user")
       .filter((q) => 
         q.and(
-          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("userId"), userId),
           q.eq(q.field("isRead"), false)
         )
       )
@@ -167,17 +186,21 @@ export const getTotalOrderNotifications = query({
 // Mark all notifications for a rental request as read (including messages)
 export const markRentalRequestNotificationsAsRead = mutation({
   args: {
-    userId: v.id("users"),
     rentalRequestId: v.id("rentalRequests"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
     // Get ALL unread notifications for this rental request (including new_message type)
     const unreadNotifications = await ctx.db
       .query("notifications")
       .withIndex("by_user")
       .filter((q) => 
         q.and(
-          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("userId"), userId),
           q.eq(q.field("rentalRequestId"), args.rentalRequestId),
           q.eq(q.field("isRead"), false)
         )
@@ -202,10 +225,13 @@ export const markRentalRequestNotificationsAsRead = mutation({
 
 // Clear old notifications (older than 30 days)
 export const clearOldNotifications = mutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     
     const oldNotifications = await ctx.db
@@ -213,7 +239,7 @@ export const clearOldNotifications = mutation({
       .withIndex("by_user")
       .filter((q) => 
         q.and(
-          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("userId"), userId),
           q.lt(q.field("createdAt"), thirtyDaysAgo)
         )
       )

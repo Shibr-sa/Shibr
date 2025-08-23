@@ -39,14 +39,14 @@ export default function BrandProductsPage() {
 
   // Fetch products for the brand owner
   const products = useQuery(
-    api.products.getOwnerProducts,
-    userId ? { ownerId: userId } : "skip"
+    api.products.getUserProducts,
+    userId ? {} : "skip"
   )
 
   // Fetch product statistics (using monthly period as default)
   const productStats = useQuery(
-    api.products.getProductStats,
-    userId ? { ownerId: userId, period: "monthly" as const } : "skip"
+    api.products.getUserProductStats,
+    userId ? { period: "monthly" as const } : "skip"
   )
 
   // Delete product mutation

@@ -198,7 +198,6 @@ export default function AddShelfPage() {
       
       // Create shelf in database
       await addShelf({
-        userId: user.id as Id<"users">,
         shelfName,
         city,
         branch,

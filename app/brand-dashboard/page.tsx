@@ -45,7 +45,6 @@ export default function BrandDashboardPage() {
   const rentalRequests = useQuery(
     api.rentalRequests.getUserRentalRequests,
     user?.id ? {
-      userId: user.id as Id<"users">,
       userType: "brand" as const
     } : "skip"
   )
@@ -54,7 +53,6 @@ export default function BrandDashboardPage() {
   const rentalStats = useQuery(
     api.rentalRequests.getRentalStatsWithChanges,
     user?.id ? {
-      userId: user.id as Id<"users">,
       userType: "brand" as const,
       period: "monthly" as const
     } : "skip"

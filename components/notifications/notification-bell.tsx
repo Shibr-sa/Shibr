@@ -37,13 +37,11 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
   const excludeMessages = userType === "brand-owner"
   
   const notifications = useQuery(api.notifications.getUserNotifications, { 
-    userId,
     limit: 20,
     excludeMessageNotifications: excludeMessages
   })
   
-  const unreadCount = useQuery(api.notifications.getUnreadCount, { 
-    userId,
+  const unreadCount = useQuery(api.notifications.getUnreadCount, {
     excludeMessageNotifications: excludeMessages
   })
   const markAsRead = useMutation(api.notifications.markAsRead)
@@ -83,7 +81,7 @@ export function NotificationBell({ userId, userType }: NotificationBellProps) {
   }
   
   const handleMarkAllAsRead = async () => {
-    await markAllAsRead({ userId })
+    await markAllAsRead({})
   }
   
   const getNotificationIcon = (type: string) => {

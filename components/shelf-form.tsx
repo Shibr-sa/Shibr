@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Upload, MapPin, Info, CalendarIcon, Loader2 } from "lucide-react"
 import { MapPicker } from "@/components/ui/map-picker"
 import { Calendar } from "@/components/ui/calendar"
@@ -50,26 +50,38 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const getFileUrl = useMutation(api.files.getFileUrl)
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
   
+  // Debug: Log initial data
+  console.log("ShelfForm mode:", mode)
+  console.log("ShelfForm initialData:", initialData)
+  if (initialData) {
+    console.log("storeCommission:", initialData.storeCommission)
+    console.log("discountPercentage:", initialData.discountPercentage)
+  }
+  
   // Form states - Initialize with data if in edit mode
-  const [shelfName, setShelfName] = useState(mode === "edit" && initialData?.shelfName || "")
-  const [city, setCity] = useState(mode === "edit" && initialData?.city || "")
-  const [branch, setBranch] = useState(mode === "edit" && initialData?.branch || "")
-  const [discountPercentage, setDiscountPercentage] = useState(mode === "edit" && initialData?.discountPercentage?.toString() || "")
-  const [monthlyPrice, setMonthlyPrice] = useState(mode === "edit" && initialData?.monthlyPrice?.toString() || "")
+  const [shelfName, setShelfName] = useState(mode === "edit" ? (initialData?.shelfName || "") : "")
+  const [city, setCity] = useState(mode === "edit" ? (initialData?.city || "") : "")
+  const [branch, setBranch] = useState(mode === "edit" ? (initialData?.branch || "") : "")
+  const [storeCommission, setStoreCommission] = useState(
+    mode === "edit" ? 
+    (initialData?.storeCommission?.toString() || initialData?.discountPercentage?.toString() || "") : 
+    ""
+  )
+  const [monthlyPrice, setMonthlyPrice] = useState(mode === "edit" ? (initialData?.monthlyPrice?.toString() || "") : "")
   const [availableFrom, setAvailableFrom] = useState<Date | undefined>(
     mode === "edit" && initialData?.availableFrom ? new Date(initialData.availableFrom) : undefined
   )
-  const [length, setLength] = useState(mode === "edit" && initialData?.length || "")
-  const [width, setWidth] = useState(mode === "edit" && initialData?.width || "")
-  const [depth, setDepth] = useState(mode === "edit" && initialData?.depth || "")
-  const [productType, setProductType] = useState(mode === "edit" && initialData?.productType || "")
-  const [description, setDescription] = useState(mode === "edit" && initialData?.description || "")
+  const [length, setLength] = useState(mode === "edit" ? (initialData?.shelfSize?.height?.toString() || "") : "")
+  const [width, setWidth] = useState(mode === "edit" ? (initialData?.shelfSize?.width?.toString() || "") : "")
+  const [depth, setDepth] = useState(mode === "edit" ? (initialData?.shelfSize?.depth?.toString() || "") : "")
+  const [productType, setProductType] = useState(mode === "edit" ? (initialData?.productType || "") : "")
+  const [description, setDescription] = useState(mode === "edit" ? (initialData?.description || "") : "")
   
   // Location states - initialize with data if in edit mode
   const [selectedLocation, setSelectedLocation] = useState({
     address: mode === "edit" && initialData?.address || "",
-    latitude: mode === "edit" && initialData?.latitude || 24.7136,
-    longitude: mode === "edit" && initialData?.longitude || 46.6753
+    latitude: mode === "edit" && (initialData?.coordinates?.lat || initialData?.latitude) || 24.7136,
+    longitude: mode === "edit" && (initialData?.coordinates?.lng || initialData?.longitude) || 46.6753
   })
   
   // City coordinates in Saudi Arabia
@@ -179,7 +191,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
     
     // Validate required fields
-    if (!shelfName || !city || !branch || !monthlyPrice || !discountPercentage || !availableFrom || !length || !width || !depth) {
+    if (!shelfName || !city || !branch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
       toast({
         title: t("common.error"),
         description: t("add_shelf.required_fields_error"),
@@ -189,7 +201,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
     
     // Validate discount percentage
-    const discount = parseFloat(discountPercentage)
+    const discount = parseFloat(storeCommission)
     const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
     if (isNaN(discount) || discount > maxDiscount) {
       toast({
@@ -225,7 +237,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
         city,
         branch,
         monthlyPrice: parseFloat(monthlyPrice),
-        discountPercentage: parseFloat(discountPercentage),
+        storeCommission: parseFloat(storeCommission),
         availableFrom: format(availableFrom, "yyyy-MM-dd"),
         length,
         width,
@@ -242,7 +254,6 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       
       if (mode === "create") {
         await addShelf({
-          userId: user.id as Id<"users">,
           ...shelfData
         })
         
@@ -430,31 +441,31 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="discountPercentage" className="text-start block">
+              <Label htmlFor="storeCommission" className="text-start block">
                 {t("add_shelf.discount_percentage")} *
               </Label>
               <div className="relative">
                 <Input
-                  id="discountPercentage"
+                  id="storeCommission"
                   type="number"
-                  value={discountPercentage}
+                  value={storeCommission}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value)
                     const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
                     
                     // Allow empty value for user to clear and re-type
                     if (e.target.value === '') {
-                      setDiscountPercentage('')
+                      setStoreCommission('')
                       return
                     }
                     
                     // Enforce min and max limits
                     if (value < 0) {
-                      setDiscountPercentage('0')
+                      setStoreCommission('0')
                     } else if (value > maxDiscount) {
-                      setDiscountPercentage(maxDiscount.toString())
+                      setStoreCommission(maxDiscount.toString())
                     } else {
-                      setDiscountPercentage(e.target.value)
+                      setStoreCommission(e.target.value)
                     }
                   }}
                   onBlur={(e) => {
@@ -463,9 +474,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                     const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
                     
                     if (isNaN(value) || value < 0) {
-                      setDiscountPercentage('0')
+                      setStoreCommission('0')
                     } else if (value > maxDiscount) {
-                      setDiscountPercentage(maxDiscount.toString())
+                      setStoreCommission(maxDiscount.toString())
                     }
                   }}
                   placeholder={t("add_shelf.discount_percentage_placeholder")}
@@ -516,9 +527,12 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           </div>
 
           {/* Price Notice */}
-          <Alert className="border-yellow-500 bg-yellow-50">
-            <Info className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-900">
+          <Alert className="border-amber-500/50 bg-amber-50/10 dark:border-amber-500/30 dark:bg-amber-950/10">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            <AlertTitle className="text-amber-900 dark:text-amber-200">
+              {t("add_shelf.shibr_percentage")}
+            </AlertTitle>
+            <AlertDescription className="text-amber-900 dark:text-amber-200">
               {t("add_shelf.price_fee_notice")} {platformSettings?.platformFeePercentage || 8}%
             </AlertDescription>
           </Alert>

@@ -1,365 +1,410 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import { authTables } from "@convex-dev/auth/server"
 
 const schema = defineSchema({
-  users: defineTable({
-    // Basic user information
-    email: v.string(),
-    password: v.string(), // In production, this should be hashed
+  ...authTables,
+  
+  // User profiles for different account types
+  userProfiles: defineTable({
+    userId: v.id("users"), // Reference to auth user
+    accountType: v.union(
+      v.literal("store_owner"),
+      v.literal("brand_owner"),
+      v.literal("admin")
+    ),
+    
+    // Common fields
     fullName: v.string(),
     phoneNumber: v.string(),
-    
-    // Account type and role
-    accountType: v.union(v.literal("store-owner"), v.literal("brand-owner"), v.literal("admin")),
-    
-    // Profile information
-    storeName: v.optional(v.string()), // For store owners
-    brandName: v.optional(v.string()), // For brand owners
-    businessRegistration: v.optional(v.string()), // Commercial registration or freelance document number
-    businessRegistrationDocumentId: v.optional(v.string()), // File ID for the document
-    businessRegistrationDocumentUrl: v.optional(v.string()), // URL for the document
-    
-    // Store-specific data
-    storeType: v.optional(v.string()),
-    brandType: v.optional(v.string()), // For brand owners
-    isFreelance: v.optional(v.boolean()),
-    website: v.optional(v.string()),
-    ownerName: v.optional(v.string()),
-    storeLogo: v.optional(v.string()),
-    
-    // Profile image
-    profileImageId: v.optional(v.string()),
-    profileImageUrl: v.optional(v.string()),
-    
-    // Store data completion status
-    storeDataComplete: v.optional(v.boolean()),
-    brandDataComplete: v.optional(v.boolean()),
-    
-    // Account status
+    email: v.string(),
+    isVerified: v.boolean(),
     isActive: v.boolean(),
-    isEmailVerified: v.boolean(),
-    
-    // Rating information
-    averageRating: v.optional(v.number()),
-    totalRatings: v.optional(v.number()),
-    
-    // Timestamps
     createdAt: v.string(),
     updatedAt: v.string(),
-    lastLoginAt: v.optional(v.string()),
     
-    // Preferences
-    preferredLanguage: v.union(v.literal("ar"), v.literal("en")),
+    // Store owner specific fields
+    storeName: v.optional(v.string()),
+    storeType: v.optional(v.string()), // grocery, pharmacy, etc.
+    commercialRegisterNumber: v.optional(v.string()),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
+    storeLocation: v.optional(v.object({
+      city: v.string(),
+      area: v.string(),
+      address: v.string(),
+      coordinates: v.optional(v.object({
+        lat: v.number(),
+        lng: v.number(),
+      })),
+    })),
+    
+    // Brand owner specific fields
+    brandName: v.optional(v.string()),
+    brandType: v.optional(v.string()), // Type of products/business (e.g., "Electronics", "Fashion")
+    businessType: v.optional(v.union(
+      v.literal("registered_company"),
+      v.literal("freelancer")
+    )),
+    brandCommercialRegisterNumber: v.optional(v.string()),
+    freelanceLicenseNumber: v.optional(v.string()),
+    brandCommercialRegisterDocument: v.optional(v.id("_storage")),
+    freelanceLicenseDocument: v.optional(v.id("_storage")),
+    
+    // Business verification documents
+    vatNumber: v.optional(v.string()),
+    vatCertificate: v.optional(v.id("_storage")),
+    bankAccountInfo: v.optional(v.object({
+      bankName: v.string(),
+      accountNumber: v.string(),
+      iban: v.string(),
+    })),
+    
+    // Admin specific fields
+    adminRole: v.optional(v.union(
+      v.literal("super_admin"),
+      v.literal("support"),
+      v.literal("finance"),
+      v.literal("operations")
+    )),
+    permissions: v.optional(v.array(v.string())),
   })
-    .index("by_email", ["email"])
+    .index("by_user", ["userId"])
     .index("by_account_type", ["accountType"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_email", ["email"])
+    .index("by_phone", ["phoneNumber"]),
   
-  paymentMethods: defineTable({
-    userId: v.id("users"),
-    bankName: v.string(),
-    accountName: v.string(),
-    accountNumber: v.string(),
-    iban: v.string(),
-    isVirtual: v.boolean(),
-    isActive: v.boolean(),
-    createdAt: v.string(),
-    updatedAt: v.string(),
-  })
-    .index("by_user", ["userId"]),
-  
+  // Shelves/Stores for marketplace
   shelves: defineTable({
-    // Owner information
-    ownerId: v.id("users"),
+    profileId: v.id("userProfiles"),
     
-    // Basic shelf information
+    // Basic info
     shelfName: v.string(),
-    city: v.string(),
-    branch: v.string(),
-    
-    // Pricing
-    monthlyPrice: v.number(),
-    discountPercentage: v.number(),
-    finalPrice: v.optional(v.number()), // Price after platform fee
-    
-    // Availability
-    availableFrom: v.string(),
-    isAvailable: v.boolean(),
-    
-    // Dimensions
-    length: v.string(),
-    width: v.string(),
-    depth: v.string(),
-    
-    // Optional details
-    productType: v.optional(v.string()),
     description: v.optional(v.string()),
     
     // Location
+    city: v.string(),
+    area: v.string(),
+    branch: v.string(),
     address: v.optional(v.string()),
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
+    coordinates: v.optional(v.object({
+      lat: v.number(),
+      lng: v.number(),
+    })),
     
-    // Images (will store file IDs from storage)
-    exteriorImage: v.optional(v.string()),
-    interiorImage: v.optional(v.string()),
-    shelfImage: v.optional(v.string()),
+    // Shelf details
+    shelfSize: v.object({
+      width: v.number(),
+      height: v.number(),
+      depth: v.number(),
+      unit: v.string(), // cm, m, etc.
+    }),
+    productType: v.optional(v.string()),
+    targetAudience: v.optional(v.string()),
+    footTraffic: v.optional(v.string()), // high, medium, low
+    
+    // Pricing
+    monthlyPrice: v.number(),
+    currency: v.string(),
+    minimumRentalPeriod: v.number(), // in months
+    storeCommission: v.optional(v.number()), // Store commission percentage on sales
+    
+    // Availability
+    isAvailable: v.boolean(),
+    availableFrom: v.string(),
+    availableUntil: v.optional(v.string()),
+    
+    // Images
+    shelfImage: v.optional(v.id("_storage")),
+    exteriorImage: v.optional(v.id("_storage")),
+    interiorImage: v.optional(v.id("_storage")),
+    additionalImages: v.optional(v.array(v.id("_storage"))),
     
     // Status
     status: v.union(
-      v.literal("pending"),    // Waiting for admin review
-      v.literal("approved"),   // Approved and visible
-      v.literal("rejected"),   // Rejected by admin
-      v.literal("rented"),     // Currently rented
-      v.literal("archived")    // Archived by owner
+      v.literal("draft"),
+      v.literal("pending_approval"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("suspended")
     ),
-    
-    // Rental information (when rented)
-    renterId: v.optional(v.id("users")),
-    rentalStartDate: v.optional(v.string()),
-    rentalEndDate: v.optional(v.string()),
-    rentalPrice: v.optional(v.number()),
-    
-    // Admin review
-    reviewedBy: v.optional(v.id("users")),
-    reviewedAt: v.optional(v.string()),
     rejectionReason: v.optional(v.string()),
     
-    // Timestamps
+    // Metadata
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    views: v.number(),
+    rating: v.optional(v.number()),
+    totalRentals: v.number(),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_status", ["status"])
+    .index("by_city", ["city"])
+    .index("by_availability", ["isAvailable"])
+    .index("by_price", ["monthlyPrice"]),
+  
+  // Rental requests
+  rentalRequests: defineTable({
+    shelfId: v.id("shelves"),
+    requesterId: v.id("users"), // The brand owner requesting
+    requesterProfileId: v.optional(v.id("userProfiles")),
+    ownerId: v.id("users"), // The store owner
+    ownerProfileId: v.optional(v.id("userProfiles")),
+    
+    // Request details
+    startDate: v.string(),
+    endDate: v.string(),
+    rentalPeriod: v.optional(v.number()), // in months
+    monthlyPrice: v.number(),
+    totalAmount: v.optional(v.number()),
+    
+    // Product details
+    productType: v.string(),
+    productDescription: v.string(),
+    productCount: v.optional(v.number()),
+    brandName: v.optional(v.string()),
+    selectedProductIds: v.optional(v.array(v.id("products"))),
+    selectedProductQuantities: v.optional(v.array(v.number())),
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("payment_pending"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("expired")
+    ),
+    
+    // Payment info
+    paymentStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded")
+    )),
+    paymentMethod: v.optional(v.string()),
+    paymentReference: v.optional(v.string()),
+    
+    // Communication
+    message: v.optional(v.string()),
+    additionalNotes: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+    storeOwnerResponse: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
+    
+    // Metadata
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    acceptedAt: v.optional(v.string()),
+    completedAt: v.optional(v.string()),
+    expiresAt: v.optional(v.string()),
+    respondedAt: v.optional(v.string()),
+  })
+    .index("by_shelf", ["shelfId"])
+    .index("by_requester", ["requesterId"])
+    .index("by_owner", ["ownerId"])
+    .index("by_status", ["status"])
+    .index("by_payment_status", ["paymentStatus"]),
+  
+  // Products managed by brand owners
+  products: defineTable({
+    ownerId: v.id("users"),
+    profileId: v.optional(v.id("userProfiles")),
+    
+    name: v.string(),
+    code: v.optional(v.string()),
+    description: v.string(),
+    category: v.string(),
+    price: v.number(),
+    cost: v.optional(v.number()),
+    currency: v.string(),
+    
+    // Images
+    mainImage: v.optional(v.id("_storage")),
+    images: v.optional(v.array(v.id("_storage"))),
+    imageUrl: v.optional(v.string()), // URL for external images
+    
+    // Stock info
+    sku: v.optional(v.string()),
+    barcode: v.optional(v.string()),
+    quantity: v.optional(v.number()), // Available quantity
+    stockQuantity: v.optional(v.number()),
+    minQuantity: v.optional(v.number()),
+    
+    // Sales tracking
+    totalSales: v.optional(v.number()),
+    totalRevenue: v.optional(v.number()),
+    shelfCount: v.optional(v.number()),
+    
+    // Status
+    isActive: v.boolean(),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
     .index("by_owner", ["ownerId"])
-    .index("by_status", ["status"])
-    .index("by_city", ["city"])
-    .index("by_available", ["isAvailable"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_profile", ["profileId"])
+    .index("by_category", ["category"])
+    .index("by_active", ["isActive"]),
   
-  // Chat conversations between brand and store owners
+  // Conversations (chat system)
   conversations: defineTable({
-    // Participants
-    brandOwnerId: v.id("users"),
-    storeOwnerId: v.id("users"),
+    brandProfileId: v.id("userProfiles"),
+    storeProfileId: v.id("userProfiles"),
     shelfId: v.id("shelves"),
+    rentalRequestId: v.optional(v.id("rentalRequests")),
     
-    // Status
     status: v.union(
-      v.literal("active"),      // Active conversation/rental
-      v.literal("pending"),     // Rental request pending
-      v.literal("rejected"),    // Rental request rejected
-      v.literal("archived")     // Archived conversation
+      v.literal("active"),
+      v.literal("archived"),
+      v.literal("rejected")
     ),
     
-    // Last message info for quick preview
+    brandUnreadCount: v.number(),
+    storeUnreadCount: v.number(),
+    
     lastMessageText: v.optional(v.string()),
     lastMessageTime: v.optional(v.string()),
     lastMessageSenderId: v.optional(v.id("users")),
     
-    // Unread counts
-    brandOwnerUnreadCount: v.number(),
-    storeOwnerUnreadCount: v.number(),
-    
-    // Rental request details (if discussion)
-    rentalRequestId: v.optional(v.id("rentalRequests")),
-    
-    // Timestamps
     createdAt: v.string(),
     updatedAt: v.string(),
   })
-    .index("by_brand_owner", ["brandOwnerId"])
-    .index("by_store_owner", ["storeOwnerId"])
+    .index("by_brand_profile", ["brandProfileId"])
+    .index("by_store_profile", ["storeProfileId"])
     .index("by_shelf", ["shelfId"])
-    .index("by_status", ["status"])
-    .index("by_updated", ["updatedAt"]),
+    .index("by_rental_request", ["rentalRequestId"]),
   
-  // Individual chat messages
   messages: defineTable({
     conversationId: v.id("conversations"),
     senderId: v.id("users"),
     
-    // Message content
     text: v.string(),
-    imageUrl: v.optional(v.string()),
-    
-    // Read status
-    isRead: v.boolean(),
-    readAt: v.optional(v.string()),
-    
-    // Message type
-    messageType: v.union(
+    messageType: v.optional(v.union(
       v.literal("text"),
       v.literal("image"),
       v.literal("rental_request"),
       v.literal("rental_accepted"),
       v.literal("rental_rejected"),
-      v.literal("rental_activated"),
-      v.literal("payment_confirmed"),
       v.literal("system")
-    ),
+    )),
+    attachment: v.optional(v.id("_storage")),
     
-    // Timestamps
+    isRead: v.boolean(),
+    readAt: v.optional(v.string()),
+    
     createdAt: v.string(),
   })
-    .index("by_conversation", ["conversationId", "createdAt"])
-    .index("by_sender", ["senderId"])
-    .index("by_unread", ["conversationId", "isRead"]),
-  
-  // Rental requests
-  rentalRequests: defineTable({
-    conversationId: v.id("conversations"),
-    shelfId: v.id("shelves"),
-    brandOwnerId: v.id("users"),
-    storeOwnerId: v.id("users"),
-    
-    // Request details
-    startDate: v.string(),
-    endDate: v.string(),
-    productType: v.string(),
-    productDescription: v.string(),
-    productCount: v.number(),
-    additionalNotes: v.optional(v.string()),
-    selectedProductIds: v.optional(v.array(v.id("products"))),
-    selectedProductQuantities: v.optional(v.array(v.number())),
-    
-    // Pricing
-    monthlyPrice: v.number(),
-    totalPrice: v.number(),
-    
-    // Status
-    status: v.union(
-      v.literal("pending"),           // Request is pending review
-      v.literal("accepted"),          // Request is accepted, awaiting payment
-      v.literal("payment_pending"),   // Alias for accepted state
-      v.literal("active"),            // Request is active after payment confirmed
-      v.literal("completed"),         // Rental period completed successfully
-      v.literal("rejected"),          // Request is rejected
-      v.literal("expired")            // Request expired after 48 hours or not accepted
-    ),
-    
-    // Response from store owner
-    storeOwnerResponse: v.optional(v.string()),
-    respondedAt: v.optional(v.string()),
-    
-    // Payment tracking
-    paymentAmount: v.optional(v.number()),
-    paymentConfirmedAt: v.optional(v.string()),
-    paymentVerifiedAt: v.optional(v.string()),
-    paymentVerifiedBy: v.optional(v.id("users")),
-    activatedAt: v.optional(v.string()),
-    
-    // Timestamps
-    createdAt: v.string(),
-    updatedAt: v.string(),
-    expiresAt: v.string(), // 48 hours from creation
-  })
-    .index("by_brand_owner", ["brandOwnerId"])
-    .index("by_store_owner", ["storeOwnerId"])
-    .index("by_shelf", ["shelfId"])
-    .index("by_status", ["status"])
-    .index("by_conversation", ["conversationId"]),
+    .index("by_conversation", ["conversationId"])
+    .index("by_sender", ["senderId"]),
   
   // Notifications
   notifications: defineTable({
     userId: v.id("users"),
     
-    // Notification details
     title: v.string(),
     message: v.string(),
     type: v.union(
-      v.literal("new_message"),
       v.literal("rental_request"),
       v.literal("rental_accepted"),
       v.literal("rental_rejected"),
-      v.literal("rental_expired"),
       v.literal("rental_completed"),
-      v.literal("rental_activated"),
-      v.literal("payment_required"),
-      v.literal("payment_confirmation"),
+      v.literal("rental_expired"),
       v.literal("payment_received"),
+      v.literal("payment_confirmation"),
+      v.literal("message"),
+      v.literal("new_message"),
       v.literal("system")
     ),
     
-    // Related entities
     conversationId: v.optional(v.id("conversations")),
     rentalRequestId: v.optional(v.id("rentalRequests")),
+    relatedId: v.optional(v.string()), // ID of related entity
+    relatedType: v.optional(v.string()), // Type of related entity
+    actionUrl: v.optional(v.string()), // URL to navigate to
+    actionLabel: v.optional(v.string()), // Label for action button
     
-    // Action button
-    actionUrl: v.optional(v.string()),
-    actionLabel: v.optional(v.string()),
-    
-    // Status
     isRead: v.boolean(),
     readAt: v.optional(v.string()),
     
-    // Timestamps
     createdAt: v.string(),
   })
-    .index("by_user", ["userId", "isRead"])
-    .index("by_created", ["createdAt"])
+    .index("by_user", ["userId"])
+    .index("by_read", ["isRead"])
     .index("by_type", ["type"]),
   
-  // Platform settings (admin configurable)
-  platformSettings: defineTable({
-    platformFeePercentage: v.number(), // Platform fee percentage (e.g., 8%)
-    minimumShelfPrice: v.number(), // Minimum allowed shelf price
-    maximumDiscountPercentage: v.number(), // Maximum discount percentage allowed
-    updatedAt: v.string(),
-  }),
-  
-  // Products
-  products: defineTable({
-    // Owner information
-    ownerId: v.id("users"),
+  // Payment methods
+  paymentMethods: defineTable({
+    userId: v.id("users"),
     
-    // Product information
-    name: v.string(),
-    code: v.string(),
-    description: v.optional(v.string()),
-    category: v.optional(v.string()),
+    type: v.union(
+      v.literal("credit_card"),
+      v.literal("debit_card"),
+      v.literal("bank_transfer"),
+      v.literal("apple_pay"),
+      v.literal("stc_pay")
+    ),
     
-    // Pricing
-    price: v.number(),
-    cost: v.optional(v.number()),
-    currency: v.string(),
+    // Card details (encrypted)
+    last4Digits: v.optional(v.string()),
+    cardBrand: v.optional(v.string()),
+    expiryMonth: v.optional(v.number()),
+    expiryYear: v.optional(v.number()),
     
-    // Inventory
-    quantity: v.number(),
-    minQuantity: v.optional(v.number()),
-    sku: v.optional(v.string()),
+    // Bank details
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    iban: v.optional(v.string()),
     
-    // Images
-    imageId: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    
-    // Tracking
-    totalSales: v.number(),
-    totalRevenue: v.number(),
-    shelfCount: v.number(), // Number of shelves this product is on
-    
-    // Status
+    isDefault: v.boolean(),
     isActive: v.boolean(),
     
-    // Timestamps
     createdAt: v.string(),
     updatedAt: v.string(),
   })
-    .index("by_owner", ["ownerId"])
-    .index("by_code", ["code"])
-    .index("by_active", ["isActive"])
-    .index("by_created", ["createdAt"]),
+    .index("by_user", ["userId"])
+    .index("by_default", ["isDefault"]),
   
-  // Rental reviews
-  rentalReviews: defineTable({
-    rentalRequestId: v.id("rentalRequests"),
-    reviewerId: v.id("users"), // Person writing the review
-    revieweeId: v.id("users"), // Person being reviewed
-    rating: v.number(), // 1-5 stars
-    createdAt: v.string(),
+  // Platform settings (for admins)
+  platformSettings: defineTable({
+    key: v.string(),
+    value: v.any(),
+    description: v.optional(v.string()),
+    updatedBy: v.optional(v.id("users")),
+    updatedAt: v.string(),
   })
-    .index("by_rental", ["rentalRequestId"])
-    .index("by_reviewer", ["reviewerId"])
-    .index("by_reviewee", ["revieweeId"])
-    .index("by_created", ["createdAt"]),
+    .index("by_key", ["key"]),
+  
+  // Files/Documents storage reference
+  files: defineTable({
+    storageId: v.id("_storage"),
+    userId: v.id("users"),
+    
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+    mimeType: v.string(),
+    
+    purpose: v.union(
+      v.literal("commercial_register"),
+      v.literal("freelance_license"),
+      v.literal("vat_certificate"),
+      v.literal("shelf_image"),
+      v.literal("product_image"),
+      v.literal("chat_attachment"),
+      v.literal("other")
+    ),
+    
+    relatedId: v.optional(v.string()),
+    relatedType: v.optional(v.string()),
+    
+    uploadedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_purpose", ["purpose"])
+    .index("by_storage", ["storageId"]),
 })
 
 export default schema

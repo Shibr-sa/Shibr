@@ -7,16 +7,19 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Eye, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
-import { useMutation } from "convex/react"
+import { useAuthActions } from "@convex-dev/auth/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
+import { signUpSchema, formatSaudiPhoneNumber } from "@/lib/validations/auth"
+import { z } from "zod"
 
 export default function SignUpPage() {
   const [accountType, setAccountType] = useState<"store-owner" | "brand-owner">("store-owner")
@@ -29,60 +32,118 @@ export default function SignUpPage() {
     password: "",
     storeName: "",
     brandName: "",
-    businessRegistration: "",
     agreeToTerms: false,
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
   
   const router = useRouter()
   const { t, direction, language } = useLanguage()
   const { toast } = useToast()
-  const createUser = useMutation(api.users.createUser)
+  const { signIn } = useAuthActions()
+  const currentUser = useQuery(api.users.getCurrentUser)
+  const createUserProfile = useMutation(api.users.createOrUpdateUserProfile)
+
+  const validateField = (fieldName: string, value: any) => {
+    try {
+      const fieldData = { ...formData, [fieldName]: value, accountType }
+      signUpSchema.partial().parse({ [fieldName]: value })
+      setErrors(prev => ({ ...prev, [fieldName]: "" }))
+      return true
+    } catch (error) {
+      if (error instanceof z.ZodError && error.errors) {
+        const fieldError = error.errors.find(err => err.path && err.path[0] === fieldName)
+        if (fieldError) {
+          setErrors(prev => ({ ...prev, [fieldName]: fieldError.message }))
+        }
+      }
+      return false
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.agreeToTerms) {
-      toast({
-        title: t("auth.error"),
-        description: t("auth.must_agree_terms"),
-        variant: "destructive",
-      })
+    // Validate all fields
+    try {
+      const validationData = {
+        ...formData,
+        accountType,
+        phoneNumber: formData.phoneNumber ? formatSaudiPhoneNumber(formData.phoneNumber) : '',
+      }
+      
+      signUpSchema.parse(validationData)
+      // If validation passes, clear any existing errors
+      setErrors({})
+    } catch (error: any) {
+      // Check if it's a Zod error by checking for the issues property
+      if (error && error.issues && Array.isArray(error.issues)) {
+        const newErrors: Record<string, string> = {}
+        
+        // Take only the first error for each field
+        error.issues.forEach((err: any) => {
+          if (err.path && err.path[0]) {
+            const fieldName = err.path[0] as string
+            // Only set error if we haven't already set one for this field
+            if (!newErrors[fieldName]) {
+              newErrors[fieldName] = err.message
+            }
+          }
+        })
+        
+        setErrors(newErrors)
+      }
+      // Always return on validation error
       return
     }
 
     setIsLoading(true)
-    
+
     try {
-      const newUser = await createUser({
-        email: formData.email,
-        password: formData.password,
-        fullName: formData.fullName,
-        phoneNumber: formData.phoneNumber,
-        accountType: accountType,
-        storeName: accountType === "store-owner" ? formData.storeName : undefined,
-        brandName: accountType === "brand-owner" ? formData.brandName : undefined,
-        businessRegistration: formData.businessRegistration || undefined,
-        preferredLanguage: language,
-      })
-
-      // Store user data in sessionStorage to maintain consistency with sign-in flow
-      sessionStorage.setItem("currentUser", JSON.stringify(newUser))
-
+      // Create FormData for Convex Auth signup
+      const authFormData = new FormData()
+      authFormData.append("email", formData.email.toLowerCase().trim())
+      authFormData.append("password", formData.password)
+      authFormData.append("flow", "signUp")
+      authFormData.append("name", formData.fullName.trim())
+      
+      // Sign up the user first
+      await signIn("password", authFormData)
+      
+      // Prepare profile data
+      const profileData = {
+        accountType: accountType === "store-owner" ? "store_owner" as const : "brand_owner" as const,
+        fullName: formData.fullName.trim(),
+        phoneNumber: formatSaudiPhoneNumber(formData.phoneNumber),
+        email: formData.email.toLowerCase().trim(),
+        ...(accountType === "store-owner" ? {
+          storeName: formData.storeName.trim(),
+        } : {
+          brandName: formData.brandName.trim(),
+        })
+      }
+      
+      // Wait a bit for auth to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Create the user profile
+      await createUserProfile(profileData)
+      
       toast({
         title: t("auth.success"),
-        description: t("auth.account_created_successfully"),
+        description: t("auth.account_created"),
       })
-
-      // Redirect based on account type after signup
-      if (accountType === "brand-owner") {
-        router.push("/brand-dashboard")
-      } else {
+      
+      // Now redirect to the appropriate dashboard
+      if (accountType === "store-owner") {
         router.push("/store-dashboard")
+      } else {
+        router.push("/brand-dashboard")
       }
     } catch (error) {
+      // Authentication errors are expected - just show user-friendly message
       toast({
         title: t("auth.error"),
-        description: error instanceof Error ? error.message : t("auth.signup_failed"),
+        description: t("auth.signup_failed"),
         variant: "destructive",
       })
     } finally {
@@ -91,18 +152,25 @@ export default function SignUpPage() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
+    const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: value
     }))
+    
+    // Validate field on change (with debounce for email)
+    if (name !== "email" || value.includes("@")) {
+      validateField(name, value)
+    }
+  }
+  
+  const handleEmailBlur = () => {
+    validateField("email", formData.email)
   }
 
   return (
-    <div
-      className="min-h-screen bg-muted/30 flex items-center justify-center p-6"
-         >
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-2">
@@ -118,118 +186,164 @@ export default function SignUpPage() {
         </div>
 
         {/* Sign Up Form */}
-        <Card className="shadow-lg border-0">
+        <Card>
           <CardHeader className="text-center pb-6">
-            <h1 className="text-2xl font-bold text-foreground mb-3">{t("auth.create_account")}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">{t("auth.signup_description")}</p>
+            <h1 className="text-2xl font-bold mb-3">{t("auth.create_account")}</h1>
+            <p className="text-muted-foreground text-sm">{t("auth.signup_description")}</p>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Account Type Selection */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">{t("auth.account_type")}</Label>
-                <RadioGroup
-                  defaultValue="store-owner"
+                <Label>{t("auth.account_type")}</Label>
+                <ToggleGroup
+                  type="single"
                   value={accountType}
-                  onValueChange={(value) => setAccountType(value as "store-owner" | "brand-owner")}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  onValueChange={(value: "store-owner" | "brand-owner") => {
+                    if (value) setAccountType(value)
+                  }}
+                  className="grid grid-cols-2 gap-2"
+                  variant="outline"
                 >
-                  <Label
-                    htmlFor="store-owner"
-                    className={`flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all ${direction === 'rtl' ? 'md:order-2' : 'md:order-1'}`}
-                  >
-                    <span className="font-medium">{t("auth.store_owner")}</span>
-                    <RadioGroupItem value="store-owner" id="store-owner" />
-                  </Label>
-                  <Label
-                    htmlFor="brand-owner"
-                    className={`flex items-center justify-between rounded-md border-2 border-muted bg-background p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer transition-all ${direction === 'rtl' ? 'md:order-1' : 'md:order-2'}`}
-                  >
-                    <span className="font-medium">{t("auth.brand_owner")}</span>
-                    <RadioGroupItem value="brand-owner" id="brand-owner" />
-                  </Label>
-                </RadioGroup>
+                  <ToggleGroupItem value="store-owner" variant="outline">
+                    {t("auth.im_store_owner")}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="brand-owner" variant="outline">
+                    {t("auth.im_brand_owner")}
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
 
-              {/* Name Field */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
-                  {t("auth.name")}
-                </Label>
-                <Input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  placeholder={t("auth.name_placeholder")}
-                  className="h-12"
-                                   value={formData.fullName}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Email and Mobile Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name Fields - Side by Side */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Full Name Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                    {t("auth.email")}
+                  <Label htmlFor="fullName">
+                    {t("auth.full_name")} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    placeholder={t("auth.full_name_placeholder")}
+                    className={errors.fullName ? "border-destructive" : ""}
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                    aria-invalid={!!errors.fullName}
+                    aria-describedby={errors.fullName ? "fullName-error" : undefined}
+                  />
+                  {errors.fullName && (
+                    <p id="fullName-error" className="text-xs text-destructive">{errors.fullName}</p>
+                  )}
+                </div>
+
+                {/* Store/Brand Name Field */}
+                {accountType === "store-owner" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="storeName">
+                      {t("auth.store_name")} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="storeName"
+                      name="storeName"
+                      type="text"
+                      placeholder={t("auth.store_name_placeholder")}
+                      className={errors.storeName ? "border-destructive" : ""}
+                      value={formData.storeName}
+                      onChange={handleInputChange}
+                      disabled={isLoading}
+                      aria-invalid={!!errors.storeName}
+                      aria-describedby={errors.storeName ? "storeName-error" : undefined}
+                    />
+                    {errors.storeName && (
+                      <p id="storeName-error" className="text-xs text-destructive">{errors.storeName}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="brandName">
+                      {t("auth.brand_name")} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="brandName"
+                      name="brandName"
+                      type="text"
+                      placeholder={t("auth.brand_name_placeholder")}
+                      className={errors.brandName ? "border-destructive" : ""}
+                      value={formData.brandName}
+                      onChange={handleInputChange}
+                      disabled={isLoading}
+                      aria-invalid={!!errors.brandName}
+                      aria-describedby={errors.brandName ? "brandName-error" : undefined}
+                    />
+                    {errors.brandName && (
+                      <p id="brandName-error" className="text-xs text-destructive">{errors.brandName}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Contact Fields - Side by Side */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Phone Number Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">
+                    {t("auth.phone_number")} <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center px-3 bg-muted rounded-md">
+                      <span className="text-sm">+966</span>
+                    </div>
+                    <Input
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      type="tel"
+                      placeholder="5XXXXXXXX"
+                      className={`flex-1 ${errors.phoneNumber ? "border-destructive" : ""}`}
+                      value={formData.phoneNumber}
+                      onChange={handleInputChange}
+                      disabled={isLoading}
+                      maxLength={9}
+                      pattern="[5][0-9]{8}"
+                      aria-invalid={!!errors.phoneNumber}
+                      aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                    />
+                  </div>
+                  {errors.phoneNumber && (
+                    <p id="phoneNumber-error" className="text-xs text-destructive">{errors.phoneNumber}</p>
+                  )}
+                </div>
+
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    {t("auth.email")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="email"
                     name="email"
                     type="email"
                     placeholder={t("auth.email_placeholder")}
-                    className="h-12"
-                                       value={formData.email}
+                    className={errors.email ? "border-destructive" : ""}
+                    value={formData.email}
                     onChange={handleInputChange}
-                    required
+                    onBlur={handleEmailBlur}
                     disabled={isLoading}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                   />
+                  {errors.email && (
+                    <p id="email-error" className="text-xs text-destructive">{errors.email}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mobile" className="text-sm font-medium text-foreground">
-                    {t("auth.mobile")}
-                  </Label>
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    placeholder={t("auth.mobile")}
-                    className="h-12"
-                                       value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              {/* Store/Brand Name Field */}
-              <div className="space-y-2">
-                <Label htmlFor="business-name" className="text-sm font-medium text-foreground">
-                  {accountType === "store-owner" ? t("auth.store_name") : t("auth.brand_name")}
-                </Label>
-                <Input
-                  id="business-name"
-                  name={accountType === "store-owner" ? "storeName" : "brandName"}
-                  type="text"
-                  placeholder={
-                    accountType === "store-owner" ? t("auth.store_name_placeholder") : t("auth.brand_name_placeholder")
-                  }
-                  className="h-12"
-                                   value={accountType === "store-owner" ? formData.storeName : formData.brandName}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading}
-                />
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                  {t("auth.password")}
+                <Label htmlFor="password">
+                  {t("auth.password")} <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
                   <Input
@@ -237,46 +351,58 @@ export default function SignUpPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder={t("auth.password_placeholder")}
-                    className="ps-10 h-12"
-                                       value={formData.password}
+                    className={`ps-10 ${errors.password ? "border-destructive" : ""}`}
+                    value={formData.password}
                     onChange={handleInputChange}
-                    required
                     disabled={isLoading}
+                    aria-invalid={!!errors.password}
+                    aria-describedby="password-requirements"
                   />
-                  <Eye 
-                    className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" 
+                  <button
+                    type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                  />
+                    className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {errors.password && (
+                  <p className="text-xs text-destructive">{errors.password}</p>
+                )}
+                
+                <div id="password-requirements" className="text-xs text-muted-foreground space-y-1">
+                  <p>{t("auth.password_requirements")}</p>
+                  <ul className="ms-4 space-y-0.5">
+                    <li className={formData.password.length >= 8 ? "text-primary" : ""}>• {t("auth.password_min_length")}</li>
+                    <li className={/[A-Z]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_uppercase")}</li>
+                    <li className={/[a-z]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_lowercase")}</li>
+                    <li className={/[0-9]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_number")}</li>
+                  </ul>
                 </div>
               </div>
 
               {/* Terms and Conditions */}
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
                 <Checkbox 
                   id="terms" 
-                  className="mt-1" 
                   checked={formData.agreeToTerms}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agreeToTerms: !!checked }))}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agreeToTerms: checked as boolean }))}
                   disabled={isLoading}
                 />
-                <Label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                  {t("auth.terms_agreement")}{" "}
+                <Label htmlFor="terms" className="text-sm">
+                  {t("auth.agree_to")}{" "}
                   <Link href="/terms" className="text-primary hover:underline">
-                    {t("auth.terms")}
-                  </Link>{" "}
-                  {t("auth.and")}{" "}
-                  <Link href="/privacy" className="text-primary hover:underline">
-                    {t("auth.privacy")}
-                  </Link>{" "}
-                  {t("auth.platform_terms")}
+                    {t("auth.terms_and_conditions")}
+                  </Link>
                 </Label>
               </div>
 
               {/* Sign Up Button */}
               <Button 
                 type="submit" 
-                className="w-full h-12 text-base font-medium" 
-                disabled={isLoading}
+                className="w-full"
+                disabled={isLoading || !formData.agreeToTerms}
               >
                 {isLoading ? (
                   <>
@@ -284,7 +410,7 @@ export default function SignUpPage() {
                     {t("common.loading")}
                   </>
                 ) : (
-                  t("auth.signup")
+                  t("auth.create_account")
                 )}
               </Button>
             </form>

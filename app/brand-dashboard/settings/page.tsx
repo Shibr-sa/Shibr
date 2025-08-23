@@ -52,6 +52,8 @@ export default function BrandDashboardSettingsPage() {
   const [website, setWebsite] = useState("")
   const [businessReg, setBusinessReg] = useState("")
   const [isFreelance, setIsFreelance] = useState(false)
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
@@ -65,32 +67,36 @@ export default function BrandDashboardSettingsPage() {
   const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
   const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
+  const getFileUrl = useMutation(api.files.getFileUrl)
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
+  const updateFreelanceDocument = useMutation(api.users.updateFreelanceDocument)
   
   // Convex queries - only payment methods since userData comes from context
-  const userId = user ? (user.id as Id<"users">) : null
-  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, userId ? { userId } : "skip")
+  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
   
   // Load user data when available from context
   useEffect(() => {
     if (brandUserData) {
-      setOwnerName(brandUserData.ownerName || brandUserData.fullName || "")
-      setPhoneNumber(brandUserData.phoneNumber || "")
-      setEmail(brandUserData.email || "")
-      setBrandName(brandUserData.brandName || "")
-      setBrandType(brandUserData.brandType || "")
-      setWebsite(brandUserData.website || "")
-      setBusinessReg(brandUserData.businessRegistration || "")
-      setIsFreelance(brandUserData.isFreelance || false)
-      setProfileImageUrl(brandUserData.profileImageUrl || null)
+      // Profile data is nested under the profile property
+      const profile = brandUserData.profile
+      setOwnerName(profile?.fullName || brandUserData.name || "")
+      setPhoneNumber(profile?.phoneNumber || brandUserData.phone || "")
+      setEmail(profile?.email || brandUserData.email || "")
+      setBrandName(profile?.brandName || "")
+      setBrandType(profile?.brandType || "") // Load brandType, not businessType
+      setWebsite(profile?.website || "")
+      setBusinessReg(profile?.brandCommercialRegisterNumber || profile?.freelanceLicenseNumber || "")
+      setIsFreelance(profile?.businessType === "freelancer" || false)
+      setProfileImageUrl(brandUserData.image || null)
+      setDocumentUrl(profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null)
     }
   }, [brandUserData])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file || !userId) return
+    if (!file || !user?.id) return
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -118,7 +124,7 @@ export default function BrandDashboardSettingsPage() {
 
   // Handle cropped image upload
   const handleCroppedImage = async (croppedBlob: Blob) => {
-    if (!userId) return
+    if (!user?.id) return
 
     setIsLoading(true)
     try {
@@ -136,7 +142,6 @@ export default function BrandDashboardSettingsPage() {
       
       // Get the URL for the uploaded file
       const imageUrl = await updateProfileImage({
-        userId,
         profileImageId: storageId,
       })
       
@@ -164,7 +169,7 @@ export default function BrandDashboardSettingsPage() {
 
   // Handle document upload (PDF or image)
   const handleDocumentUpload = async (file: File | Blob) => {
-    if (!userId) return
+    if (!user?.id) return
 
     setIsLoading(true)
     try {
@@ -182,7 +187,6 @@ export default function BrandDashboardSettingsPage() {
       
       // Update the document URL in the user record
       await updateBusinessRegistrationDocument({
-        userId,
         documentId: storageId,
       })
       
@@ -320,9 +324,9 @@ export default function BrandDashboardSettingsPage() {
               <div className="flex justify-end">
                 <Button 
                   className="gap-2"
-                  disabled={isLoading || !userId}
+                  disabled={isLoading || !user?.id}
                   onClick={async () => {
-                    if (!userId) return
+                    if (!user?.id) return
                     
                     setIsLoading(true)
                     try {
@@ -333,7 +337,6 @@ export default function BrandDashboardSettingsPage() {
                       if (password) updateData.password = password
                       
                       await updateGeneralSettings({
-                        userId,
                         ...updateData
                       })
                       
@@ -443,77 +446,129 @@ export default function BrandDashboardSettingsPage() {
                 </div>
 
                 {/* Business Registration Document Upload Section */}
-                <div className="border-2 border-dashed border-muted rounded-lg p-8">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <input
-                      ref={logoInputRef}
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          // Allow images and PDFs
-                          if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-                            toast({
-                              title: t("settings.general.error"),
-                              description: t("settings.brand_data.invalid_document_type"),
-                              variant: "destructive",
-                            })
-                            return
-                          }
-                          if (file.size > 10 * 1024 * 1024) { // 10MB limit for documents
-                            toast({
-                              title: t("settings.general.error"),
-                              description: t("settings.brand_data.document_too_large"),
-                              variant: "destructive",
-                            })
-                            return
-                          }
-                          setSelectedLogoFile(file)
-                          // For PDFs, don't show cropper, just upload directly
-                          if (file.type === 'application/pdf') {
-                            handleDocumentUpload(file)
-                          } else {
-                            setShowLogoCropper(true)
-                          }
-                        }
-                      }}
-                    />
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        strokeWidth={1.5} 
-                        stroke="currentColor" 
-                        className="w-6 h-6 text-muted-foreground"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" 
+                <div className="space-y-2">
+                  <Label className="text-start block">
+                    {isFreelance ? t("settings.brand_data.freelance_document") : t("settings.brand_data.commercial_register_document")} *
+                  </Label>
+                  <div className="border-2 border-dashed border-muted rounded-lg p-6">
+                    {documentUrl ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-primary">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                          </div>
+                          <div className="text-start">
+                            <p className="text-sm font-medium">{t("settings.brand_data.document_uploaded")}</p>
+                            <p className="text-xs text-muted-foreground">{t("settings.brand_data.document_ready")}</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDocumentUrl(null)
+                            if (documentInputRef.current) {
+                              documentInputRef.current.value = ''
+                            }
+                          }}
+                        >
+                          {t("settings.brand_data.remove_document")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <input
+                          ref={documentInputRef}
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast({
+                                title: t("settings.general.error"),
+                                description: t("settings.brand_data.file_too_large"),
+                                variant: "destructive",
+                              })
+                              return
+                            }
+                            
+                            setIsLoading(true)
+                            try {
+                              // Get upload URL from Convex
+                              const uploadUrl = await generateUploadUrl()
+                              
+                              // Upload file to Convex storage
+                              const result = await fetch(uploadUrl, {
+                                method: "POST",
+                                headers: { "Content-Type": file.type },
+                                body: file,
+                              })
+                              
+                              const { storageId } = await result.json()
+                              
+                              // Update brand with the document storage ID
+                              if (isFreelance) {
+                                await updateFreelanceDocument({
+                                  documentId: storageId,
+                                })
+                              } else {
+                                await updateBusinessRegistrationDocument({
+                                  documentId: storageId,
+                                })
+                              }
+                              
+                              // Get the actual URL for the uploaded file
+                              const fileUrl = await getFileUrl({ storageId })
+                              setDocumentUrl(fileUrl)
+                              
+                              toast({
+                                title: t("settings.general.success"),
+                                description: t("settings.brand_data.document_uploaded_success"),
+                              })
+                            } catch (error) {
+                              console.error("Error uploading document:", error)
+                              toast({
+                                title: t("settings.general.error"),
+                                description: t("settings.brand_data.document_upload_error"),
+                                variant: "destructive",
+                              })
+                            } finally {
+                              setIsLoading(false)
+                            }
+                          }}
                         />
-                      </svg>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium">
-                        {isFreelance 
-                          ? t("settings.brand_data.upload_freelance_document")
-                          : t("settings.brand_data.upload_commercial_registration")}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {t("settings.brand_data.document_upload_hint")}
-                      </p>
-                    </div>
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => logoInputRef.current?.click()}
-                    >
-                      {t("settings.brand_data.choose_document")}
-                    </Button>
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-muted-foreground">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium">
+                            {isFreelance 
+                              ? t("settings.brand_data.upload_freelance_document")
+                              : t("settings.brand_data.upload_commercial_registration")}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("settings.brand_data.accepted_formats")}
+                          </p>
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => documentInputRef.current?.click()}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? t("settings.general.uploading") : t("settings.brand_data.choose_file")}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -522,9 +577,9 @@ export default function BrandDashboardSettingsPage() {
               <div className="flex justify-end">
                 <Button 
                   className="gap-2"
-                  disabled={isLoading || !userId}
+                  disabled={isLoading || !user?.id}
                   onClick={async () => {
-                    if (!userId) return
+                    if (!user?.id) return
                     
                     // Validate required fields
                     if (!brandName || !brandType || !businessReg || !phoneNumber) {
@@ -536,16 +591,25 @@ export default function BrandDashboardSettingsPage() {
                       return
                     }
                     
+                    // Validate document upload
+                    if (!documentUrl) {
+                      toast({
+                        title: t("settings.brand_data.validation_error"),
+                        description: t("settings.brand_data.document_required"),
+                        variant: "destructive",
+                      })
+                      return
+                    }
+                    
                     setIsLoading(true)
                     try {
                       await updateBrandData({
-                        userId,
                         brandName,
                         brandType,
-                        businessRegistration: businessReg || undefined,
                         isFreelance,
+                        businessRegistration: businessReg,
                         website: website || undefined,
-                        phoneNumber,
+                        phoneNumber: phoneNumber || undefined,
                       })
                       
                       toast({
@@ -817,9 +881,9 @@ export default function BrandDashboardSettingsPage() {
               {t("settings.payment.dialog.cancel")}
             </Button>
             <Button 
-              disabled={isLoading || !userId}
+              disabled={isLoading || !user?.id}
               onClick={async () => {
-                if (!userId) return
+                if (!user?.id) return
                 
                 // Validate required fields
                 if (!bankName || !accountName || !accountNumber || !iban) {
@@ -834,7 +898,6 @@ export default function BrandDashboardSettingsPage() {
                 setIsLoading(true)
                 try {
                   await addPaymentMethod({
-                    userId,
                     bankName,
                     accountName,
                     accountNumber,

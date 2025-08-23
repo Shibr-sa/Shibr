@@ -191,7 +191,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header and Stats in Single Card */}
-      <Card className="border-0 shadow-sm">
+      <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
@@ -273,7 +273,7 @@ export default function AdminDashboard() {
       {/* Charts Section */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
         {/* Revenue Chart - Takes more space */}
-        <Card className="col-span-1 lg:col-span-4 border-0 shadow-sm">
+        <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -354,7 +354,7 @@ export default function AdminDashboard() {
         {/* Right Side - Top Stores */}
         <div className="col-span-1 lg:col-span-3">
           {/* Top Performing Stores */}
-          <Card className="border-0 shadow-sm">
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">Top Performing Stores</CardTitle>
               <CardDescription>Based on monthly revenue</CardDescription>

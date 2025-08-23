@@ -64,12 +64,14 @@ export default function ShelfDetailsPage() {
     )
   }
   
+  // Shelf data loaded
+  
   // Format the data for display
   const formattedData = {
     id: shelfData._id,
     name: shelfData.shelfName,
     price: shelfData.monthlyPrice,
-    discount: shelfData.discountPercentage,
+    storeCommission: shelfData.storeCommission || shelfData.discountPercentage || 10,
     status: shelfData.status || "available",
     city: shelfData.city,
     branch: shelfData.branch,
@@ -85,11 +87,17 @@ export default function ShelfDetailsPage() {
     renterEmail: shelfData.renterEmail,
     renterDate: shelfData.rentalStartDate || "—",
     renterRating: shelfData.renterRating,
-    images: shelfData.images?.length > 0 ? shelfData.images : [
-      "/placeholder.svg?height=400&width=600",
-      "/placeholder.svg?height=400&width=600",
-      "/placeholder.svg?height=400&width=600"
-    ]
+    images: [
+      shelfData.shelfImage,
+      shelfData.exteriorImage,
+      shelfData.interiorImage
+    ].filter(Boolean).length > 0 
+      ? [shelfData.shelfImage, shelfData.exteriorImage, shelfData.interiorImage].filter(Boolean)
+      : [
+        "/placeholder.svg?height=400&width=600",
+        "/placeholder.svg?height=400&width=600",
+        "/placeholder.svg?height=400&width=600"
+      ]
   }
 
   // Products sold data - TODO: Replace with actual data from Convex when available
@@ -220,14 +228,14 @@ export default function ShelfDetailsPage() {
                     </div>
                   </div>
                   
-                  {/* Discount */}
+                  {/* Store Commission */}
                   <div className="flex items-start gap-3">
                     <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                       <Percent className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">{t("shelf_details.discount_percentage")}</p>
-                      <p className="text-sm font-medium text-green-600">{formattedData.discount}%</p>
+                      <p className="text-xs text-muted-foreground">{t("shelf_details.store_commission")}</p>
+                      <p className="text-sm font-medium text-green-600">{formattedData.storeCommission}%</p>
                     </div>
                   </div>
                   

@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 
 // Get products for a brand owner
@@ -19,13 +20,16 @@ export const getOwnerProducts = query({
 
 // Get products for the current user
 export const getUserProducts = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+    
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .collect()
     
     return products.map(p => ({
@@ -46,7 +50,6 @@ export const getAllProducts = query({
   args: {},
   handler: async (ctx) => {
     const products = await ctx.db.query("products").collect()
-    console.log("Total products in database:", products.length)
     return products
   },
 })
@@ -158,8 +161,8 @@ export const getSalesChartData = query({
     
     // Sort by revenue and take top products
     const topProducts = products
-      .filter(p => p.totalRevenue > 0)
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .filter(p => (p.totalRevenue || 0) > 0)
+      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
     
     // Create array for 6 items
     const chartData = []
@@ -170,9 +173,9 @@ export const getSalesChartData = query({
         if (i < topProducts.length) {
           chartData.push({
             name: topProducts[i].name,
-            revenue: topProducts[i].totalRevenue,
-            sales: topProducts[i].totalSales,
-            percentage: Math.round((topProducts[i].totalRevenue / topProducts[0].totalRevenue) * 100),
+            revenue: topProducts[i].totalRevenue || 0,
+            sales: topProducts[i].totalSales || 0,
+            percentage: Math.round(((topProducts[i].totalRevenue || 0) / (topProducts[0].totalRevenue || 1)) * 100),
           })
         } else {
           // Add empty bar placeholder
@@ -191,7 +194,7 @@ export const getSalesChartData = query({
     const estimatedProducts = products
       .map(product => ({
         name: product.name,
-        revenue: product.price * Math.min(product.quantity, 10), // Estimate based on price
+        revenue: product.price * Math.min(product.quantity || 0, 10), // Estimate based on price
         sales: 0,
         percentage: 0,
       }))
@@ -256,9 +259,81 @@ export const getProductStats = query({
     // Calculate current stats
     const totalProducts = products.length
     const activeProducts = products.filter(p => p.isActive).length
-    const totalSales = products.reduce((sum, p) => sum + p.totalSales, 0)
-    const totalRevenue = products.reduce((sum, p) => sum + p.totalRevenue, 0)
-    const totalInventory = products.reduce((sum, p) => sum + p.quantity, 0)
+    const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
+    const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
+    
+    // Calculate percentage changes based on actual data
+    // In a real scenario, these would be compared with historical data from the previous period
+    // For now, return 0 as we don't have historical data tracking yet
+    const salesChange = 0
+    const revenueChange = 0
+    const productsChange = 0
+    
+    return {
+      totalProducts,
+      activeProducts,
+      totalSales,
+      totalRevenue,
+      totalInventory,
+      salesChange,
+      revenueChange,
+      productsChange,
+    }
+  },
+})
+
+// Get product statistics for current user's dashboard
+export const getUserProductStats = query({
+  args: {
+    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return {
+        totalProducts: 0,
+        activeProducts: 0,
+        totalSales: 0,
+        totalRevenue: 0,
+        totalInventory: 0,
+        salesChange: 0,
+        revenueChange: 0,
+        productsChange: 0,
+      };
+    }
+    
+    const now = new Date()
+    let compareDate = new Date()
+    
+    // Calculate comparison date based on period
+    switch (args.period) {
+      case "daily":
+        compareDate.setDate(compareDate.getDate() - 1)
+        break
+      case "weekly":
+        compareDate.setDate(compareDate.getDate() - 7)
+        break
+      case "monthly":
+        compareDate.setMonth(compareDate.getMonth() - 1)
+        break
+      case "yearly":
+        compareDate.setFullYear(compareDate.getFullYear() - 1)
+        break
+    }
+    
+    // Get all products for the owner
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect()
+    
+    // Calculate current stats
+    const totalProducts = products.length
+    const activeProducts = products.filter(p => p.isActive).length
+    const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
+    const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
     
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
@@ -301,8 +376,8 @@ export const createProduct = mutation({
       ownerId: args.ownerId,
       name: args.name,
       code: args.code,
-      description: args.description,
-      category: args.category,
+      description: args.description || "",
+      category: args.category || "",
       price: args.price,
       cost: args.cost,
       currency: args.currency || "SAR",
@@ -383,18 +458,28 @@ export const getLatestSalesOperations = query({
     // Get rental requests with full information
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_brand_owner", (q) => q.eq("brandOwnerId", args.ownerId))
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_requester")
+      .filter((q) => q.and(
+        q.eq(q.field("requesterId"), args.ownerId),
+        q.eq(q.field("status"), "active")
+      ))
       .collect()
     
     // Get store user information for each rental
     const rentalsWithStoreInfo = await Promise.all(
       rentalRequests.map(async (request) => {
-        const storeUser = await ctx.db.get(request.storeOwnerId)
+        if (!request.ownerId) return { ...request, storeName: "متجر", city: "الرياض" }
+        
+        const storeUser = await ctx.db.get(request.ownerId)
+        const storeProfile = storeUser ? await ctx.db
+          .query("userProfiles")
+          .withIndex("by_user", (q) => q.eq("userId", request.ownerId!))
+          .first() : null
         const shelf = await ctx.db.get(request.shelfId)
+        
         return {
           ...request,
-          storeName: storeUser?.storeName || storeUser?.fullName || "متجر",
+          storeName: storeProfile?.storeName || storeProfile?.fullName || "متجر",
           city: shelf?.city || "الرياض",
         }
       })
@@ -402,7 +487,7 @@ export const getLatestSalesOperations = query({
     
     // Create mock sales operations based on products with sales
     const salesOperations = []
-    const productsWithSales = products.filter(p => p.totalSales > 0)
+    const productsWithSales = products.filter(p => (p.totalSales || 0) > 0)
     
     if (productsWithSales.length > 0) {
       // Generate recent sales from products

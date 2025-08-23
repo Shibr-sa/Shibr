@@ -1,10 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Add payment method
 export const addPaymentMethod = mutation({
   args: {
-    userId: v.id("users"),
     bankName: v.string(),
     accountName: v.string(),
     accountNumber: v.string(),
@@ -12,12 +12,19 @@ export const addPaymentMethod = mutation({
     isVirtual: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const { userId, ...paymentData } = args;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
     
     // Create new payment method
     const paymentMethodId = await ctx.db.insert("paymentMethods", {
       userId,
-      ...paymentData,
+      type: "bank_transfer",
+      bankName: args.bankName,
+      accountNumber: args.accountNumber,
+      iban: args.iban,
+      isDefault: true,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -29,11 +36,16 @@ export const addPaymentMethod = mutation({
 
 // Get payment methods for user
 export const getPaymentMethods = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+    
     const paymentMethods = await ctx.db
       .query("paymentMethods")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     
     return paymentMethods;

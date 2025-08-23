@@ -8,11 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
+import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
-import { BrandDataProvider } from "@/contexts/brand-data-context"
+import { BrandDataProvider, useBrandData } from "@/contexts/brand-data-context"
 import { Id } from "@/convex/_generated/dataModel"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -53,16 +54,32 @@ export default function BrandDashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { t, direction } = useLanguage()
-  const { user, getInitials } = useCurrentUser()
+  const { user, getInitials: getSessionInitials } = useCurrentUser()
+  const { userData } = useBrandData()
+  
+  // Use userData from context if available, fallback to user from session
+  const displayUser = userData || user
   
   // Get user ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
+  
+  const getInitials = () => {
+    if (userData) {
+      const profile = userData.profile
+      const name = profile?.fullName || userData.name || profile?.brandName || "Brand"
+      const parts = name.split(" ")
+      if (parts.length > 1) {
+        return parts[0][0] + parts[1][0]
+      }
+      return name.substring(0, 2).toUpperCase()
+    }
+    return getSessionInitials()
+  }
   
   // Fetch rental requests for the brand owner to get notification counts
   const rentalRequests = useQuery(
     api.rentalRequests.getUserRentalRequests,
     userId ? {
-      userId: userId,
       userType: "brand" as const
     } : "skip"
   )
@@ -76,7 +93,6 @@ export default function BrandDashboardLayout({
   const notificationCounts = useQuery(
     api.notifications.getUnreadCountByRentalRequests,
     userId && rentalRequestIds.length > 0 ? {
-      userId: userId,
       rentalRequestIds: rentalRequestIds
     } : "skip"
   )
@@ -87,14 +103,7 @@ export default function BrandDashboardLayout({
     return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
   }, [notificationCounts])
 
-  const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem("currentUser")
-    // Clear any remembered email
-    localStorage.removeItem("userEmail")
-    // Redirect to sign in page
-    router.push("/signin")
-  }
+  const handleLogout = useSignOut()
 
   // Get current page title based on pathname
   const getCurrentPageTitle = () => {
@@ -225,17 +234,17 @@ export default function BrandDashboardLayout({
                     <DropdownMenuTrigger asChild>
                       <SidebarMenuButton size="lg" className="w-full">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={user?.avatar} alt={user?.fullName} />
+                          <AvatarImage src={displayUser?.image || displayUser?.profileImageUrl || displayUser?.avatar} alt={displayUser?.fullName} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {user ? getInitials() : "BR"}
+                            {displayUser ? getInitials() : "BR"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col gap-0.5 text-start leading-none">
                           <span className="text-sm font-medium">
-                            {user?.fullName || t("dashboard.user.name")}
+                            {displayUser?.profile?.fullName || displayUser?.name || displayUser?.profile?.brandName || t("dashboard.user.name")}
                           </span>
                           <span className="text-xs">
-                            {user?.email || "brand@example.com"}
+                            {displayUser?.email || "brand@example.com"}
                           </span>
                         </div>
                         <ChevronUp className="ms-auto size-4" />

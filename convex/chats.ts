@@ -1,13 +1,15 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 
 // Create a new conversation for each rental request
 export const getOrCreateConversation = mutation({
   args: {
-    brandOwnerId: v.id("users"),
-    storeOwnerId: v.id("users"),
+    brandProfileId: v.id("userProfiles"),
+    storeProfileId: v.id("userProfiles"),
     shelfId: v.id("shelves"),
+    rentalRequestId: v.optional(v.id("rentalRequests")), // Add optional rental request ID
   },
   handler: async (ctx, args) => {
     // Always create a new conversation for each rental request
@@ -15,12 +17,13 @@ export const getOrCreateConversation = mutation({
     // Old conversations are archived when requests are rejected/expired
     
     const conversationId = await ctx.db.insert("conversations", {
-      brandOwnerId: args.brandOwnerId,
-      storeOwnerId: args.storeOwnerId,
+      brandProfileId: args.brandProfileId,
+      storeProfileId: args.storeProfileId,
       shelfId: args.shelfId,
+      rentalRequestId: args.rentalRequestId, // Store the rental request ID
       status: "active",
-      brandOwnerUnreadCount: 0,
-      storeOwnerUnreadCount: 0,
+      brandUnreadCount: 0,
+      storeUnreadCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -29,6 +32,21 @@ export const getOrCreateConversation = mutation({
   },
 })
 
+
+// Update conversation with rental request ID
+export const updateConversationRentalRequest = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    rentalRequestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, {
+      rentalRequestId: args.rentalRequestId,
+      updatedAt: new Date().toISOString(),
+    })
+    return { success: true }
+  },
+})
 
 // Send a message in a conversation
 export const sendMessage = mutation({
@@ -67,7 +85,12 @@ export const sendMessage = mutation({
     })
 
     // Update conversation with last message info
-    const isBrandOwner = args.senderId === conversation.brandOwnerId
+    // Get sender's profile to determine if they're brand or store
+    const senderProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.senderId))
+      .first()
+    const isBrandOwner = senderProfile?._id === conversation.brandProfileId
     
     await ctx.db.patch(conversation._id, {
       lastMessageText: args.text,
@@ -75,26 +98,30 @@ export const sendMessage = mutation({
       lastMessageSenderId: args.senderId,
       // Increment unread count for the recipient
       ...(isBrandOwner 
-        ? { storeOwnerUnreadCount: conversation.storeOwnerUnreadCount + 1 }
-        : { brandOwnerUnreadCount: conversation.brandOwnerUnreadCount + 1 }
+        ? { storeUnreadCount: (conversation.storeUnreadCount || 0) + 1 }
+        : { brandUnreadCount: (conversation.brandUnreadCount || 0) + 1 }
       ),
       updatedAt: new Date().toISOString(),
     })
 
     // Create notification for recipient
-    const recipientId = isBrandOwner ? conversation.storeOwnerId : conversation.brandOwnerId
-    const sender = await ctx.db.get(args.senderId)
+    // Get the recipient user ID from profile
+    const recipientProfileId = isBrandOwner ? conversation.storeProfileId : conversation.brandProfileId
+    const recipientProfile = recipientProfileId ? await ctx.db.get(recipientProfileId) : null
+    const recipientId = recipientProfile?.userId
     
-    await ctx.db.insert("notifications", {
-      userId: recipientId,
-      title: sender?.fullName || "New Message",
+    if (recipientId) {
+      await ctx.db.insert("notifications", {
+        userId: recipientId,
+      title: senderProfile?.fullName || "New Message",
       message: args.text.substring(0, 100) + (args.text.length > 100 ? "..." : ""),
       type: "new_message",
-      conversationId: args.conversationId,
-      rentalRequestId: conversation.rentalRequestId, // Add the rental request ID if exists
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    })
+        conversationId: args.conversationId,
+        rentalRequestId: conversation.rentalRequestId, // Add the rental request ID if exists
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })
+    }
 
     return messageId
   },
@@ -116,10 +143,14 @@ export const getMessages = query({
     const messagesWithSenders = await Promise.all(
       messages.map(async (message) => {
         const sender = await ctx.db.get(message.senderId)
+        const senderProfile = sender ? await ctx.db
+          .query("userProfiles")
+          .withIndex("by_user", (q) => q.eq("userId", message.senderId))
+          .first() : null
         return {
           ...message,
-          senderName: sender?.fullName || sender?.storeName || sender?.brandName || "Unknown",
-          senderType: sender?.accountType,
+          senderName: senderProfile?.fullName || senderProfile?.storeName || senderProfile?.brandName || "Unknown",
+          senderType: senderProfile?.accountType,
         }
       })
     )
@@ -132,9 +163,13 @@ export const getMessages = query({
 export const markMessagesAsRead = mutation({
   args: {
     conversationId: v.id("conversations"),
-    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) return
 
@@ -146,7 +181,7 @@ export const markMessagesAsRead = mutation({
         q.and(
           q.eq(q.field("conversationId"), args.conversationId),
           q.eq(q.field("isRead"), false),
-          q.neq(q.field("senderId"), args.userId)
+          q.neq(q.field("senderId"), userId)
         )
       )
       .collect()
@@ -163,11 +198,15 @@ export const markMessagesAsRead = mutation({
     )
 
     // Reset unread count for this user
-    const isBrandOwner = args.userId === conversation.brandOwnerId
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    const isBrandOwner = userProfile?._id === conversation.brandProfileId
     await ctx.db.patch(conversation._id, {
       ...(isBrandOwner 
-        ? { brandOwnerUnreadCount: 0 }
-        : { storeOwnerUnreadCount: 0 }
+        ? { brandUnreadCount: 0 }
+        : { storeUnreadCount: 0 }
       ),
     })
   },
@@ -179,30 +218,38 @@ export const getUserConversations = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get user to check their account type
+    // Get user profile to check their account type
     const user = await ctx.db.get(args.userId)
     if (!user) return []
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first()
+    if (!userProfile) return []
 
-    // Query based on account type
+    // Query based on account type using profile IDs
     const conversations = await ctx.db
       .query("conversations")
-      .withIndex(user.accountType === "brand-owner" ? "by_brand_owner" : "by_store_owner")
-      .filter((q) => q.eq(q.field(user.accountType === "brand-owner" ? "brandOwnerId" : "storeOwnerId"), args.userId))
+      .withIndex(userProfile.accountType === "brand_owner" ? "by_brand_profile" : "by_store_profile")
+      .filter((q) => q.eq(q.field(userProfile.accountType === "brand_owner" ? "brandProfileId" : "storeProfileId"), userProfile._id))
       .collect()
 
     // Get additional info for each conversation
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (conv) => {
-        const otherUserId = user.accountType === "brand-owner" ? conv.storeOwnerId : conv.brandOwnerId
-        const otherUser = await ctx.db.get(otherUserId)
+        const otherProfileId = userProfile.accountType === "brand_owner" ? conv.storeProfileId : conv.brandProfileId
+        const otherUserProfile = otherProfileId ? await ctx.db.get(otherProfileId) : null
+        const otherUser = otherUserProfile ? await ctx.db.get(otherUserProfile.userId) : null
+        const otherUserId = otherUser?._id
         const shelf = await ctx.db.get(conv.shelfId)
 
         return {
           ...conv,
           otherUserId: otherUserId,
-          otherUserName: otherUser?.fullName || otherUser?.storeName || otherUser?.brandName || "Unknown",
+          otherUserName: otherUserProfile?.fullName || otherUserProfile?.storeName || otherUserProfile?.brandName || "Unknown",
           shelfName: shelf?.shelfName || "Unknown Shelf",
-          unreadCount: user.accountType === "brand-owner" ? conv.brandOwnerUnreadCount : conv.storeOwnerUnreadCount,
+          unreadCount: userProfile.accountType === "brand_owner" ? (conv.brandUnreadCount || 0) : (conv.storeUnreadCount || 0),
         }
       })
     )
@@ -220,39 +267,55 @@ export const getAdminConversations = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get user to check their account type
+    // Get user profile to check their account type
     const user = await ctx.db.get(args.userId)
-    if (!user || user.accountType !== "store-owner") return []
+    if (!user) return []
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first()
+    if (!userProfile || userProfile.accountType !== "store_owner") return []
 
-    // Get all users to find admin users
-    const allUsers = await ctx.db.query("users").collect()
-    const adminUsers = allUsers.filter(u => u.accountType === "admin")
-    const adminUserIds = adminUsers.map(u => u._id)
+    // Get all user profiles to find admin users
+    const adminProfiles = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_account_type", (q) => q.eq("accountType", "admin"))
+      .collect()
+    const adminUserIds = adminProfiles.map(p => p.userId)
 
     // Get conversations where the other party is an admin
     const conversations = await ctx.db
       .query("conversations")
-      .withIndex("by_store_owner")
-      .filter((q) => q.eq(q.field("storeOwnerId"), args.userId))
+      .withIndex("by_store_profile")
+      .filter((q) => q.eq(q.field("storeProfileId"), userProfile._id))
       .collect()
 
     // Filter for admin conversations only
-    const adminConversations = conversations.filter(conv => 
-      adminUserIds.includes(conv.brandOwnerId)
+    const adminConversations = await Promise.all(
+      conversations.map(async (conv) => {
+        const brandProfile = conv.brandProfileId ? await ctx.db.get(conv.brandProfileId) : null
+        if (brandProfile && adminUserIds.includes(brandProfile.userId)) {
+          return conv
+        }
+        return null
+      })
     )
+    const filteredAdminConversations = adminConversations.filter(Boolean) as typeof conversations
 
     // Get additional info for each conversation
     const conversationsWithDetails = await Promise.all(
-      adminConversations.map(async (conv) => {
-        const adminUser = await ctx.db.get(conv.brandOwnerId)
+      filteredAdminConversations.map(async (conv) => {
+        const adminProfile = conv.brandProfileId ? await ctx.db.get(conv.brandProfileId) : null
+        const adminUser = adminProfile ? await ctx.db.get(adminProfile.userId) : null
         const shelf = await ctx.db.get(conv.shelfId)
 
         return {
           ...conv,
-          otherUserId: conv.brandOwnerId,
-          otherUserName: adminUser?.fullName || "Admin Support",
+          otherUserId: adminUser?._id,
+          otherUserName: adminProfile?.fullName || "Admin Support",
           shelfName: shelf?.shelfName || "Support",
-          unreadCount: conv.storeOwnerUnreadCount,
+          unreadCount: conv.storeUnreadCount || 0,
         }
       })
     )
@@ -273,14 +336,16 @@ export const getConversation = query({
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) return null
 
-    const brandOwner = await ctx.db.get(conversation.brandOwnerId)
-    const storeOwner = await ctx.db.get(conversation.storeOwnerId)
+    const brandOwnerProfile = conversation.brandProfileId ? await ctx.db.get(conversation.brandProfileId) : null
+    const brandOwner = brandOwnerProfile ? await ctx.db.get(brandOwnerProfile.userId) : null
+    const storeOwnerProfile = conversation.storeProfileId ? await ctx.db.get(conversation.storeProfileId) : null
+    const storeOwner = storeOwnerProfile ? await ctx.db.get(storeOwnerProfile.userId) : null
     const shelf = await ctx.db.get(conversation.shelfId)
 
     return {
       ...conversation,
-      brandOwnerName: brandOwner?.fullName || brandOwner?.brandName || "Brand Owner",
-      storeOwnerName: storeOwner?.fullName || storeOwner?.storeName || "Store Owner",
+      brandOwnerName: brandOwnerProfile?.fullName || brandOwnerProfile?.brandName || "Brand Owner",
+      storeOwnerName: storeOwnerProfile?.fullName || storeOwnerProfile?.storeName || "Store Owner",
       shelfDetails: shelf,
     }
   },

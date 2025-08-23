@@ -5,40 +5,48 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
-import { useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
-import { validateData, signinSchema } from "@/lib/validations"
+import { useAuthActions } from "@convex-dev/auth/react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 export default function SignInPage() {
   const router = useRouter()
   const { t } = useLanguage()
   const { toast } = useToast()
-  const verifyUser = useMutation(api.users.verifyUser)
+  const { signIn } = useAuthActions()
+  const currentUserWithProfile = useQuery(api.users.getCurrentUserWithProfile)
   
-  const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [justSignedIn, setJustSignedIn] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
-
-  // Check for remembered email on component mount
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // Handle redirect after successful signin
   useEffect(() => {
-    const rememberedEmail = localStorage.getItem("userEmail")
-    if (rememberedEmail) {
-      setFormData(prev => ({ ...prev, email: rememberedEmail }))
-      setRememberMe(true)
+    if (justSignedIn && currentUserWithProfile?.profile) {
+      const accountType = currentUserWithProfile.profile.accountType
+      if (accountType === "store_owner") {
+        router.push("/store-dashboard")
+      } else if (accountType === "brand_owner") {
+        router.push("/brand-dashboard")
+      } else if (accountType === "admin") {
+        router.push("/admin-dashboard")
+      }
+      setJustSignedIn(false)
     }
-  }, [])
+  }, [justSignedIn, currentUserWithProfile, router])
+  
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -46,59 +54,52 @@ export default function SignInPage() {
       ...prev,
       [name]: value
     }))
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate form data
-    const validation = validateData(signinSchema, formData)
-    if (!validation.success) {
-      const firstError = Object.values(validation.errors)[0]
-      toast({
-        title: t("auth.error"),
-        description: firstError,
-        variant: "destructive",
-      })
+    // Validate required fields
+    const newErrors: Record<string, string> = {}
+    if (!formData.email.trim()) {
+      newErrors.email = t("auth.email_required")
+    }
+    if (!formData.password) {
+      newErrors.password = t("auth.password_required")
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
     
     setIsLoading(true)
 
     try {
-      const user = await verifyUser(validation.data)
-
-      // Store user info in localStorage (in production, use proper session management)
-      if (rememberMe) {
-        localStorage.setItem("userEmail", user.email)
-      }
+      // Create FormData for Convex Auth
+      const authFormData = new FormData()
+      authFormData.append("email", formData.email)
+      authFormData.append("password", formData.password)
+      authFormData.append("flow", "signIn")
       
-      // Store current user session
-      sessionStorage.setItem("currentUser", JSON.stringify(user))
+      await signIn("password", authFormData)
 
       toast({
         title: t("auth.success"),
         description: t("auth.signin_success"),
       })
-
-      // Redirect based on user role
-      switch (user.accountType) {
-        case "admin":
-          router.push("/admin-dashboard")
-          break
-        case "brand-owner":
-          router.push("/brand-dashboard")
-          break
-        case "store-owner":
-          router.push("/store-dashboard")
-          break
-        default:
-          router.push("/")
-      }
+      
+      // Set flag to trigger redirect in useEffect once profile loads
+      setJustSignedIn(true)
     } catch (error) {
+      // Authentication errors are expected - just show user-friendly message
       toast({
         title: t("auth.error"),
-        description: error instanceof Error ? error.message : t("auth.invalid_credentials"),
+        description: t("auth.invalid_credentials"),
         variant: "destructive",
       })
     } finally {
@@ -121,22 +122,22 @@ export default function SignInPage() {
               height={48}
               className="h-12 w-12"
             />
-            <span className="text-3xl font-bold text-foreground">{t("common.shibr")}</span>
+            <span className="text-3xl font-bold">{t("common.shibr")}</span>
           </div>
         </div>
 
         {/* Sign In Form */}
-        <Card className="shadow-lg border-0">
+        <Card>
           <CardHeader className="text-center pb-6">
-            <h1 className="text-2xl font-bold text-foreground mb-3">{t("auth.welcome_back")}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">{t("auth.signin_description")}</p>
+            <h1 className="text-2xl font-bold mb-3">{t("auth.welcome_back")}</h1>
+            <p className="text-muted-foreground text-sm">{t("auth.signin_description")}</p>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                <Label htmlFor="email">
                   {t("auth.email")}
                 </Label>
                 <Input
@@ -144,23 +145,29 @@ export default function SignInPage() {
                   name="email"
                   type="email"
                   placeholder={t("auth.email_placeholder")}
-                  className="h-12"
                   value={formData.email}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  required
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                 />
+                {errors.email && (
+                  <p id="email-error" className="text-xs text-destructive mt-1">{errors.email}</p>
+                )}
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <Label htmlFor="password">
                     {t("auth.password")}
                   </Label>
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    {t("auth.forgot_password")}
-                  </Link>
+                  <div className="text-sm text-muted-foreground">
+                    {t("auth.forgot_password")}{" "}
+                    <Link href="/forgot-password" className="text-primary hover:underline">
+                      {t("auth.recover_here")}
+                    </Link>
+                  </div>
                 </div>
                 <div className="relative">
                   <Input
@@ -168,11 +175,12 @@ export default function SignInPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder={t("auth.password_placeholder")}
-                    className="ps-10 h-12"
+                    className="ps-10"
                     value={formData.password}
                     onChange={handleInputChange}
                     disabled={isLoading}
-                    required
+                    aria-invalid={!!errors.password}
+                    aria-describedby={errors.password ? "password-error" : undefined}
                   />
                   <button
                     type="button"
@@ -186,25 +194,15 @@ export default function SignInPage() {
                     )}
                   </button>
                 </div>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="remember" 
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  disabled={isLoading}
-                />
-                <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                  {t("auth.remember_me")}
-                </Label>
+                {errors.password && (
+                  <p id="password-error" className="text-xs text-destructive mt-1">{errors.password}</p>
+                )}
               </div>
 
               {/* Sign In Button */}
               <Button 
                 type="submit" 
-                className="w-full h-12 text-base font-medium"
+                className="w-full"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -222,7 +220,7 @@ export default function SignInPage() {
             <div className="text-center pt-4">
               <p className="text-sm text-muted-foreground">
                 {t("auth.dont_have_account")}{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
+                <Link href="/signup" className="text-primary hover:underline">
                   {t("auth.signup")}
                 </Link>
               </p>
@@ -234,7 +232,7 @@ export default function SignInPage() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
             {t("auth.back_to_home")}

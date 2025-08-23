@@ -54,37 +54,24 @@ export default function RequestDetailsPage() {
   // Chat mutations are now handled by ChatInterface component
   
   // Debug: Seed products mutation and query
-  const seedProducts = useMutation(api.products.seedSampleProducts)
   const allProducts = useQuery(api.products.getAllProducts)
 
   // Request mutations
   const acceptRequest = useMutation(api.rentalRequests.acceptRentalRequest)
   const rejectRequest = useMutation(api.rentalRequests.rejectRentalRequest)
+  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
-  // Debug: Log the rental request data
+  // Mark notifications as read when viewing the rental request
   useEffect(() => {
-    if (rentalRequest) {
-      console.log("Rental request data:", rentalRequest)
-      console.log("Products in request:", rentalRequest.products)
-      console.log("Selected product IDs:", rentalRequest.selectedProductIds)
+    if (requestId && rentalRequest) {
+      markNotificationsAsRead({ rentalRequestId: requestId })
+        .catch(() => {
+          // Silently handle error - notification marking is not critical
+        })
     }
-    if (allProducts) {
-      console.log("All products in database:", allProducts)
-    }
-  }, [rentalRequest, allProducts])
-  
-  // Debug: Seed products for testing
-  const handleSeedProducts = async () => {
-    if (rentalRequest?.brandOwnerId) {
-      try {
-        const result = await seedProducts({ ownerId: rentalRequest.brandOwnerId })
-        console.log("Seeded products:", result)
-        alert(`Created ${result.count} sample products`)
-      } catch (error) {
-        console.error("Failed to seed products:", error)
-      }
-    }
-  }
+  }, [requestId, rentalRequest])
+
+  // Data is ready for rendering
 
   // Fetch conversations for the selected request
   const conversations = useQuery(
@@ -97,7 +84,7 @@ export default function RequestDetailsPage() {
     c => rentalRequest && (
       c.shelfId === rentalRequest.shelfId &&
       (c.otherUserId === rentalRequest.otherUserId || 
-       c.otherUserId === rentalRequest.brandOwnerId)
+       c.otherUserId === rentalRequest.requesterId)
     )
   )
 
@@ -110,7 +97,7 @@ export default function RequestDetailsPage() {
       await acceptRequest({ requestId })
       router.push("/store-dashboard/orders")
     } catch (error) {
-      console.error("Failed to accept request:", error)
+      // Error accepting request
     } finally {
       setIsProcessing(false)
     }
@@ -123,7 +110,7 @@ export default function RequestDetailsPage() {
       await rejectRequest({ requestId })
       router.push("/store-dashboard/orders")
     } catch (error) {
-      console.error("Failed to reject request:", error)
+      // Error rejecting request
     } finally {
       setIsProcessing(false)
     }
@@ -250,26 +237,8 @@ export default function RequestDetailsPage() {
               {/* Brand Info Grid - Second Row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register")}</p>
-                  {rentalRequest.commercialRegisterFile ? (
-                    <button
-                      className="font-medium text-sm text-primary hover:underline flex items-center gap-1"
-                      onClick={() => {
-                        if (rentalRequest.commercialRegisterFile) {
-                          window.open(rentalRequest.commercialRegisterFile, '_blank')
-                        }
-                      }}
-                    >
-                      <Download className="h-3 w-3" />
-                      {t("common.download")}
-                    </button>
-                  ) : (
-                    <p className="font-medium text-sm">-</p>
-                  )}
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register_number")}</p>
-                  <p className="font-medium text-sm">{rentalRequest.commercialRegisterNumber || "-"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("orders.email")}</p>
+                  <p className="font-medium text-sm break-all">{rentalRequest.otherUserEmail || "-"}</p>
                 </div>
                 <div className="border rounded-lg p-4 bg-background">
                   <p className="text-xs text-muted-foreground mb-1">{t("orders.website")}</p>
@@ -287,8 +256,26 @@ export default function RequestDetailsPage() {
                   )}
                 </div>
                 <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.email")}</p>
-                  <p className="font-medium text-sm break-all">{rentalRequest.otherUserEmail || "-"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register_number")}</p>
+                  <p className="font-medium text-sm">{rentalRequest.commercialRegisterNumber || "-"}</p>
+                </div>
+                <div className="border rounded-lg p-4 bg-background">
+                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register")}</p>
+                  {rentalRequest.commercialRegisterFile ? (
+                    <button
+                      className="font-medium text-sm text-primary hover:underline flex items-center gap-1"
+                      onClick={() => {
+                        if (rentalRequest.commercialRegisterFile) {
+                          window.open(rentalRequest.commercialRegisterFile, '_blank')
+                        }
+                      }}
+                    >
+                      <Download className="h-3 w-3" />
+                      {t("common.download")}
+                    </button>
+                  ) : (
+                    <p className="font-medium text-sm">-</p>
+                  )}
                 </div>
               </div>
 
@@ -406,16 +393,6 @@ export default function RequestDetailsPage() {
                 <div className="pt-6 border-t">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
-                    {/* Temporary debug button */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={handleSeedProducts}
-                      >
-                        Create Sample Products (Debug)
-                      </Button>
-                    )}
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm">

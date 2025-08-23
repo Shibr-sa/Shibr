@@ -9,12 +9,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from "@/components/ui/badge"
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
+import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
-import { ChatFabWidget } from "@/components/chat/chat-fab-widget"
 import { Id } from "@/convex/_generated/dataModel"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -61,7 +61,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Get total order-related notifications (including messages)
   const totalOrderNotifications = useQuery(
     api.notifications.getTotalOrderNotifications,
-    userId ? { userId: userId } : "skip"
+    userId ? {} : "skip"
   ) || 0
 
   // Use userData from context if available, fallback to user from session
@@ -69,7 +69,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const getInitials = () => {
     if (userData) {
-      const name = userData.ownerName || userData.fullName || userData.storeName || "Store"
+      const profile = userData.profile
+      const name = profile?.fullName || userData.name || profile?.storeName || "Store"
       const parts = name.split(" ")
       if (parts.length > 1) {
         return parts[0][0] + parts[1][0]
@@ -79,14 +80,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return getSessionInitials()
   }
 
-  const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem("currentUser")
-    // Clear any remembered email
-    localStorage.removeItem("userEmail")
-    // Redirect to sign in page
-    router.push("/signin")
-  }
+  const handleLogout = useSignOut()
 
   // Get current page title based on pathname
   const getCurrentPageTitle = () => {
@@ -219,14 +213,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton size="lg" className="w-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={displayUser?.profileImageUrl || displayUser?.avatar} alt={displayUser?.fullName} />
+                      <AvatarImage src={displayUser?.image || displayUser?.profileImageUrl || displayUser?.avatar} alt={displayUser?.fullName} />
                       <AvatarFallback className="bg-primary text-primary-foreground">
                         {displayUser ? getInitials() : "ST"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col gap-0.5 text-start leading-none">
                       <span className="text-sm font-medium">
-                        {displayUser?.ownerName || displayUser?.fullName || t("dashboard.user.name")}
+                        {displayUser?.profile?.fullName || displayUser?.name || displayUser?.profile?.storeName || t("dashboard.user.name")}
                       </span>
                       <span className="text-xs">
                         {displayUser?.email || "store@example.com"}
@@ -285,9 +279,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <main className="flex-1 p-6 bg-background">{children}</main>
       </div>
-      
-      {/* Chat FAB Widget */}
-      <ChatFabWidget />
     </div>
     </SidebarProvider>
   )

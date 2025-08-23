@@ -22,16 +22,13 @@ const BrandDataContext = createContext<BrandDataContextType>({
 export function BrandDataProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser()
   
-  // Get user ID for queries
-  const userId = user ? (user.id as Id<"users">) : null
-  
-  // Fetch user data from backend
-  const userData = useQuery(api.users.getUserById, userId ? { userId } : "skip")
+  // Fetch current user data from backend
+  const userData = useQuery(api.users.getCurrentUserWithProfile)
   
   // Check if brand data is complete
   const brandDataCompleteQuery = useQuery(
     api.users.checkBrandDataComplete, 
-    userId ? { userId } : "skip"
+    user ? { userId: user.id as Id<"users"> } : "skip"
   )
   
   // Determine loading state - both queries should be loaded

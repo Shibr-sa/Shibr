@@ -22,16 +22,13 @@ const StoreDataContext = createContext<StoreDataContextType>({
 export function StoreDataProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser()
   
-  // Get user ID for queries
-  const userId = user ? (user.id as Id<"users">) : null
-  
-  // Fetch user data from backend
-  const userData = useQuery(api.users.getUserById, userId ? { userId } : "skip")
+  // Fetch current user data from backend
+  const userData = useQuery(api.users.getCurrentUserWithProfile)
   
   // Check if store data is complete
   const storeDataCompleteQuery = useQuery(
     api.users.checkStoreDataComplete, 
-    userId ? { userId } : "skip"
+    user ? { userId: user.id as Id<"users"> } : "skip"
   )
   
   // Determine loading state - both queries should be loaded

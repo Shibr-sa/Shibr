@@ -10,6 +10,17 @@ export const generateUploadUrl = mutation(async (ctx) => {
 export const getFileUrl = mutation({
   args: { storageId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId)
+    // Check if it's already a URL (legacy data)
+    if (args.storageId.startsWith('http://') || args.storageId.startsWith('https://')) {
+      return args.storageId
+    }
+    
+    // Otherwise, get URL from storage
+    try {
+      return await ctx.storage.getUrl(args.storageId as any)
+    } catch (error) {
+      console.error('Failed to get storage URL:', error)
+      return null
+    }
   },
 })

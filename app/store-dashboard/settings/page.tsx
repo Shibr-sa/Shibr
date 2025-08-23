@@ -36,9 +36,9 @@ export default function StoreDashboardSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [showCropper, setShowCropper] = useState(false)
-  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
-  const [showLogoCropper, setShowLogoCropper] = useState(false)
-  const logoInputRef = useRef<HTMLInputElement>(null)
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null)
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for General tab
   const [ownerName, setOwnerName] = useState("")
@@ -51,7 +51,9 @@ export default function StoreDashboardSettingsPage() {
   const [storeType, setStoreType] = useState("")
   const [website, setWebsite] = useState("")
   const [businessReg, setBusinessReg] = useState("")
-  const [isFreelance, setIsFreelance] = useState(false)
+  const [city, setCity] = useState("")
+  const [area, setArea] = useState("")
+  const [address, setAddress] = useState("")
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
@@ -66,30 +68,39 @@ export default function StoreDashboardSettingsPage() {
   const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
   const updateProfileImage = useMutation(api.users.updateProfileImage)
+  const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
   
   // Convex queries - only payment methods since userData comes from context
-  const userId = user ? (user.id as Id<"users">) : null
-  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, userId ? { userId } : "skip")
+  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
   
   // Load user data when available from context
   useEffect(() => {
     if (storeUserData) {
-      setOwnerName(storeUserData.ownerName || storeUserData.fullName || "")
-      setPhoneNumber(storeUserData.phoneNumber || "")
-      setEmail(storeUserData.email || "")
-      setStoreName(storeUserData.storeName || "")
-      setStoreType(storeUserData.storeType || "")
-      setWebsite(storeUserData.website || "")
-      setBusinessReg(storeUserData.businessRegistration || "")
-      setIsFreelance(storeUserData.isFreelance || false)
-      setProfileImageUrl(storeUserData.profileImageUrl || null)
+      // Profile data is nested under the profile property
+      const profile = storeUserData.profile
+      setOwnerName(profile?.fullName || storeUserData.name || "")
+      setPhoneNumber(profile?.phoneNumber || storeUserData.phone || "")
+      setEmail(profile?.email || storeUserData.email || "")
+      setStoreName(profile?.storeName || "")
+      setStoreType(profile?.storeType || "")
+      setWebsite(profile?.website || "")
+      setBusinessReg(profile?.commercialRegisterNumber || "")
+      setCity(profile?.storeLocation?.city || "")
+      setArea(profile?.storeLocation?.area || "")
+      setAddress(profile?.storeLocation?.address || "")
+      setProfileImageUrl(storeUserData.image || null)
+      // Check if there's a commercial register document
+      if (profile?.commercialRegisterDocument) {
+        // You might want to fetch the document URL here
+        setDocumentUrl(profile.commercialRegisterDocument)
+      }
     }
   }, [storeUserData])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file || !userId) return
+    if (!file || !user?.id) return
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -117,7 +128,7 @@ export default function StoreDashboardSettingsPage() {
 
   // Handle cropped image upload
   const handleCroppedImage = async (croppedBlob: Blob) => {
-    if (!userId) return
+    if (!user?.id) return
 
     setIsLoading(true)
     try {
@@ -135,7 +146,6 @@ export default function StoreDashboardSettingsPage() {
       
       // Get the URL for the uploaded file
       const imageUrl = await updateProfileImage({
-        userId,
         profileImageId: storageId,
       })
       
@@ -273,9 +283,9 @@ export default function StoreDashboardSettingsPage() {
               <div className="flex justify-end">
                 <Button 
                   className="gap-2"
-                  disabled={isLoading || !userId}
+                  disabled={isLoading || !user?.id}
                   onClick={async () => {
-                    if (!userId) return
+                    if (!user?.id) return
                     
                     setIsLoading(true)
                     try {
@@ -285,10 +295,7 @@ export default function StoreDashboardSettingsPage() {
                       if (email) updateData.email = email
                       if (password) updateData.password = password
                       
-                      await updateGeneralSettings({
-                        userId,
-                        ...updateData
-                      })
+                      await updateGeneralSettings(updateData)
                       
                       toast({
                         title: t("settings.general.success"),
@@ -374,91 +381,122 @@ export default function StoreDashboardSettingsPage() {
                     onChange={(e) => setBusinessReg(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     className="text-start" 
-                                       required={!isFreelance}
-                    disabled={isFreelance}
+                    required
                   />
                 </div>
 
-                {/* No Commercial Registration Checkbox */}
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="noCommercialReg" 
-                    checked={isFreelance}
-                    onCheckedChange={(checked) => {
-                      setIsFreelance(checked as boolean)
-                      if (checked) setBusinessReg("")
-                    }}
-                  />
-                  <Label 
-                    htmlFor="noCommercialReg" 
-                    className="text-sm font-normal cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    {t("settings.store_data.no_commercial_reg")}
+                {/* Commercial Register Document Upload Section */}
+                <div className="space-y-2">
+                  <Label className="text-start block">
+                    {t("settings.store_data.commercial_register_document")} *
                   </Label>
-                </div>
-
-                {/* Logo Upload Section */}
-                <div className="border-2 border-dashed border-muted rounded-lg p-8">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <input
-                      ref={logoInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          if (!file.type.startsWith('image/')) {
-                            toast({
-                              title: t("settings.general.error"),
-                              description: t("settings.general.invalid_image_type"),
-                              variant: "destructive",
-                            })
-                            return
-                          }
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast({
-                              title: t("settings.general.error"),
-                              description: t("settings.general.image_too_large"),
-                              variant: "destructive",
-                            })
-                            return
-                          }
-                          setSelectedLogoFile(file)
-                          setShowLogoCropper(true)
-                        }
-                      }}
-                    />
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        strokeWidth={1.5} 
-                        stroke="currentColor" 
-                        className="w-6 h-6 text-muted-foreground"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" 
+                  <div className="border-2 border-dashed border-muted rounded-lg p-6">
+                    {documentUrl ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-primary">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                          </div>
+                          <div className="text-start">
+                            <p className="text-sm font-medium">{t("settings.store_data.document_uploaded")}</p>
+                            <p className="text-xs text-muted-foreground">{t("settings.store_data.document_ready")}</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDocumentUrl(null)
+                            if (documentInputRef.current) {
+                              documentInputRef.current.value = ''
+                            }
+                          }}
+                        >
+                          {t("settings.store_data.remove_document")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <input
+                          ref={documentInputRef}
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast({
+                                title: t("settings.general.error"),
+                                description: t("settings.store_data.file_too_large"),
+                                variant: "destructive",
+                              })
+                              return
+                            }
+                            
+                            setIsLoading(true)
+                            try {
+                              // Get upload URL from Convex
+                              const uploadUrl = await generateUploadUrl()
+                              
+                              // Upload file to Convex storage
+                              const result = await fetch(uploadUrl, {
+                                method: "POST",
+                                headers: { "Content-Type": file.type },
+                                body: file,
+                              })
+                              
+                              const { storageId } = await result.json()
+                              
+                              // Update the document in the database
+                              await updateBusinessRegistrationDocument({
+                                documentId: storageId,
+                              })
+                              
+                              setDocumentUrl(storageId)
+                              
+                              toast({
+                                title: t("settings.general.success"),
+                                description: t("settings.store_data.document_uploaded_success"),
+                              })
+                            } catch (error) {
+                              console.error("Error uploading document:", error)
+                              toast({
+                                title: t("settings.general.error"),
+                                description: t("settings.store_data.document_upload_error"),
+                                variant: "destructive",
+                              })
+                            } finally {
+                              setIsLoading(false)
+                            }
+                          }}
                         />
-                      </svg>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium">{t("settings.store_data.upload_logo")}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {t("settings.store_data.upload_hint")}
-                      </p>
-                    </div>
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => logoInputRef.current?.click()}
-                    >
-                      {t("settings.store_data.choose_file")}
-                    </Button>
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-muted-foreground">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium">{t("settings.store_data.upload_commercial_register")}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("settings.store_data.accepted_formats")}
+                          </p>
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => documentInputRef.current?.click()}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? t("settings.general.uploading") : t("settings.store_data.choose_file")}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -467,12 +505,21 @@ export default function StoreDashboardSettingsPage() {
               <div className="flex justify-end">
                 <Button 
                   className="gap-2"
-                  disabled={isLoading || !userId}
+                  disabled={isLoading || !user?.id}
                   onClick={async () => {
-                    if (!userId) return
+                    if (!user?.id) return
                     
                     // Validate required fields
-                    if (!storeName || !storeType || (!businessReg && !isFreelance) || !phoneNumber) {
+                    if (!ownerName || !email || !phoneNumber) {
+                      toast({
+                        title: t("settings.store_data.validation_error"),
+                        description: t("settings.store_data.basic_info_required"),
+                        variant: "destructive",
+                      })
+                      return
+                    }
+                    
+                    if (!storeName || !storeType || !businessReg) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -481,14 +528,31 @@ export default function StoreDashboardSettingsPage() {
                       return
                     }
                     
+                    // Validate document upload
+                    if (!documentUrl) {
+                      toast({
+                        title: t("settings.store_data.validation_error"),
+                        description: t("settings.store_data.document_required"),
+                        variant: "destructive",
+                      })
+                      return
+                    }
+                    
                     setIsLoading(true)
                     try {
+                      // First update general settings with basic info
+                      await updateGeneralSettings({
+                        ownerName,
+                        email,
+                        phoneNumber,
+                      })
+                      
+                      // Then update store-specific data
                       await updateStoreData({
-                        userId,
                         storeName,
                         storeType,
-                        businessRegistration: businessReg || undefined,
-                        isFreelance,
+                        businessRegistration: businessReg,
+                        isFreelance: false,
                         website: website || undefined,
                         phoneNumber,
                       })
@@ -504,8 +568,7 @@ export default function StoreDashboardSettingsPage() {
                         ...currentUser,
                         storeName,
                         storeType,
-                        businessReg: businessReg || (isFreelance ? 'freelance' : ''),
-                        isFreelance,
+                        businessReg: businessReg,
                         phoneNumber,
                       }))
                     } catch (error) {
@@ -762,9 +825,9 @@ export default function StoreDashboardSettingsPage() {
               {t("settings.payment.dialog.cancel")}
             </Button>
             <Button 
-              disabled={isLoading || !userId}
+              disabled={isLoading || !user?.id}
               onClick={async () => {
-                if (!userId) return
+                if (!user?.id) return
                 
                 // Validate required fields
                 if (!bankName || !accountName || !accountNumber || !iban) {
@@ -779,7 +842,6 @@ export default function StoreDashboardSettingsPage() {
                 setIsLoading(true)
                 try {
                   await addPaymentMethod({
-                    userId,
                     bankName,
                     accountName,
                     accountNumber,
@@ -832,33 +894,6 @@ export default function StoreDashboardSettingsPage() {
         cropShape="round"
       />
 
-      {/* Store Logo Cropper Dialog */}
-      <ImageCropper
-        open={showLogoCropper}
-        onClose={() => {
-          setShowLogoCropper(false)
-          setSelectedLogoFile(null)
-          if (logoInputRef.current) {
-            logoInputRef.current.value = ''
-          }
-        }}
-        imageFile={selectedLogoFile}
-        onCropComplete={async (croppedBlob) => {
-          // For now, just close the cropper
-          // In production, you would upload this logo separately
-          setShowLogoCropper(false)
-          setSelectedLogoFile(null)
-          if (logoInputRef.current) {
-            logoInputRef.current.value = ''
-          }
-          toast({
-            title: t("settings.general.success"),
-            description: t("settings.store_data.logo_uploaded"),
-          })
-        }}
-        aspectRatio={1}
-        cropShape="rect"
-      />
     </div>
   )
 }

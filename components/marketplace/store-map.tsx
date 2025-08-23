@@ -16,7 +16,7 @@ interface Store {
   latitude?: number
   longitude?: number
   monthlyPrice: number
-  discountPercentage: number
+  storeCommission: number
   ownerName?: string
 }
 
@@ -266,9 +266,9 @@ function StoreMapContent({
                   <span className="text-sm font-medium">
                     {selectedMarker.monthlyPrice} {t("common.currency_symbol")}
                   </span>
-                  {selectedMarker.discountPercentage > 0 && (
+                  {selectedMarker.storeCommission > 0 && (
                     <Badge variant="secondary" className="text-xs">
-                      -{selectedMarker.discountPercentage}%
+                      -{selectedMarker.storeCommission}%
                     </Badge>
                   )}
                 </div>

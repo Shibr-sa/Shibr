@@ -111,7 +111,8 @@ export const getMarketplaceStores = query({
     // Get owner information and image URLs for each shelf
     const shelvesWithOwners = await Promise.all(
       shelves.map(async (shelf) => {
-        const owner = await ctx.db.get(shelf.ownerId)
+        const ownerProfile = await ctx.db.get(shelf.profileId)
+        const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
         
         // Convert storage IDs to URLs
         let shelfImageUrl = null
@@ -133,9 +134,13 @@ export const getMarketplaceStores = query({
           shelfImage: shelfImageUrl,
           exteriorImage: exteriorImageUrl,
           interiorImage: interiorImageUrl,
-          ownerName: owner?.storeName || owner?.fullName || "Unknown",
-          ownerEmail: owner?.email,
-          storeType: owner?.storeType,
+          ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
+          ownerEmail: ownerProfile?.email || owner?.email,
+          ownerImage: owner?.image || null, // Add owner's profile image
+          storeType: ownerProfile?.storeType,
+          // Add latitude and longitude from coordinates for map compatibility
+          latitude: shelf.coordinates?.lat,
+          longitude: shelf.coordinates?.lng,
         }
       })
     )
@@ -157,14 +162,15 @@ export const getStoreDetails = query({
       return null
     }
 
-    const owner = await ctx.db.get(shelf.ownerId)
+    const ownerProfile = await ctx.db.get(shelf.profileId)
+    const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
     
     return {
       ...shelf,
-      ownerName: owner?.storeName || owner?.fullName || "Unknown",
-      ownerEmail: owner?.email,
-      storeType: owner?.storeType,
-      ownerPhone: owner?.phoneNumber,
+      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
+      ownerEmail: ownerProfile?.email || owner?.email,
+      storeType: ownerProfile?.storeType,
+      ownerPhone: ownerProfile?.phoneNumber,
     }
   },
 })
@@ -181,10 +187,11 @@ export const getStoreById = query({
       return null
     }
     
-    // Get owner information
-    const owner = shelf.ownerId 
-      ? await ctx.db.get(shelf.ownerId as Id<"users">)
+    // Get owner information from profile
+    const ownerProfile = shelf.profileId 
+      ? await ctx.db.get(shelf.profileId as Id<"userProfiles">)
       : null
+    const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
     
     // Convert storage IDs to URLs
     let shelfImageUrl = null
@@ -207,10 +214,14 @@ export const getStoreById = query({
       shelfImage: shelfImageUrl,
       exteriorImage: exteriorImageUrl,
       interiorImage: interiorImageUrl,
-      ownerName: owner?.storeName || owner?.fullName || "Store Owner",
-      ownerEmail: owner?.email,
-      storeType: owner?.storeType,
-      ownerPhone: owner?.phoneNumber,
+      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Store Owner",
+      ownerEmail: ownerProfile?.email || owner?.email,
+      ownerImage: owner?.image || null, // Add owner's profile image
+      storeType: ownerProfile?.storeType,
+      ownerPhone: ownerProfile?.phoneNumber,
+      // Add latitude and longitude from coordinates for map compatibility
+      latitude: shelf.coordinates?.lat,
+      longitude: shelf.coordinates?.lng,
     }
   },
 })

@@ -3,10 +3,10 @@ import { internal } from "./_generated/api"
 
 const crons = cronJobs()
 
-// Run every hour to check rental statuses
-crons.hourly(
+// Run daily to check rental statuses (changed from hourly to avoid configuration issues)
+crons.daily(
   "check rental statuses",
-  { hourOfDay: 0, minuteOfHour: 0 }, // Run at midnight every day
+  { hourUTC: 0, minuteUTC: 0 }, // Run at midnight UTC
   internal.rentalManagement.checkRentalStatuses
 )
 

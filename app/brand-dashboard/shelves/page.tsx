@@ -53,7 +53,6 @@ export default function BrandShelvesPage() {
   const rentalRequests = useQuery(
     api.rentalRequests.getUserRentalRequests,
     userId ? {
-      userId: userId,
       userType: "brand" as const
     } : "skip"
   )
@@ -67,7 +66,6 @@ export default function BrandShelvesPage() {
   const notificationCounts = useQuery(
     api.notifications.getUnreadCountByRentalRequests,
     userId && rentalRequestIds.length > 0 ? {
-      userId: userId,
       rentalRequestIds: rentalRequestIds
     } : "skip"
   )
@@ -82,7 +80,6 @@ export default function BrandShelvesPage() {
   const rentalStats = useQuery(
     api.rentalRequests.getRentalStatsWithChanges,
     userId ? {
-      userId: userId,
       userType: "brand" as const,
       period: selectedPeriod as "daily" | "weekly" | "monthly" | "yearly"
     } : "skip"
@@ -170,23 +167,58 @@ export default function BrandShelvesPage() {
       case "accepted":
       case "payment_pending":
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  size="sm"
-                  variant="default"
-                  className="h-8 w-8 p-0"
-                  onClick={() => handlePaymentClick(request)}
-                >
-                  <CreditCard className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t("action.pay_now")}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0 relative"
+                    onClick={async () => {
+                      // Navigate to the shelf details page with conversation
+                      if (request.conversationId && request.shelfId) {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                      }
+                      // Mark notifications as read when viewing details
+                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
+                        await markNotificationsAsRead({
+                          rentalRequestId: request._id
+                        })
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                    {notificationCounts && notificationCounts[request._id] > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
+                        {notificationCounts[request._id]}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("action.view_details")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm"
+                    variant="default"
+                    className="h-8 px-3"
+                    onClick={() => handlePaymentClick(request)}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("action.pay_now")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )
       
       case "active":
@@ -199,11 +231,15 @@ export default function BrandShelvesPage() {
                   variant="ghost"
                   className="h-8 w-8 p-0 relative"
                   onClick={async () => {
-                    router.push(`/brand-dashboard/shelves/${request._id}`)
+                    // Navigate to the shelf details page with conversation
+                    if (request.conversationId) {
+                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                    } else {
+                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
+                    }
                     // Mark notifications as read when viewing details
                     if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
                       await markNotificationsAsRead({
-                        userId: userId,
                         rentalRequestId: request._id
                       })
                     }
@@ -243,7 +279,6 @@ export default function BrandShelvesPage() {
                     // Mark notifications as read when viewing details
                     if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
                       await markNotificationsAsRead({
-                        userId: userId,
                         rentalRequestId: request._id
                       })
                     }
@@ -279,7 +314,6 @@ export default function BrandShelvesPage() {
                       // Mark notifications as read when viewing details
                       if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
                         await markNotificationsAsRead({
-                          userId: userId,
                           rentalRequestId: request._id
                         })
                       }

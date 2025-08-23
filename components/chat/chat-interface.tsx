@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Paperclip, Send } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
@@ -55,7 +54,7 @@ export function ChatInterface({
   // Mark messages as read when viewing
   useEffect(() => {
     if (conversationId && currentUserId) {
-      markAsRead({ conversationId, userId: currentUserId })
+      markAsRead({ conversationId })
     }
   }, [conversationId, currentUserId, markAsRead])
   
@@ -146,15 +145,6 @@ export function ChatInterface({
                           : "bg-background shadow-sm"
                       )}
                     >
-                      {isSystem && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            {msg.messageType === "rental_request" && t("chat.status.new")}
-                            {msg.messageType === "rental_accepted" && t("status.active")}
-                            {msg.messageType === "rental_rejected" && t("status.rejected")}
-                          </Badge>
-                        </div>
-                      )}
                       <p className={`text-sm  whitespace-pre-wrap`}>
                         {msg.text}
                       </p>

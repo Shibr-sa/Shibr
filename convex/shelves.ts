@@ -1,16 +1,16 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 
 // Add a new shelf
 export const addShelf = mutation({
   args: {
-    userId: v.id("users"),
     shelfName: v.string(),
     city: v.string(),
     branch: v.string(),
     monthlyPrice: v.number(),
-    discountPercentage: v.number(),
+    storeCommission: v.number(),
     availableFrom: v.string(),
     length: v.string(),
     width: v.string(),
@@ -25,41 +25,69 @@ export const addShelf = mutation({
     shelfImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Get platform settings for dynamic fee percentage
-    const settings = await ctx.db
-      .query("platformSettings")
-      .order("desc")
-      .first()
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
     
-    // Use platform fee from settings or default to 8%
-    const platformFeePercentage = settings?.platformFeePercentage || 8
+    // Get user's profile
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (!userProfile) {
+      throw new Error("User profile not found");
+    }
+    
+    // Get platform settings for dynamic fee percentage
+    const allSettings = await ctx.db
+      .query("platformSettings")
+      .collect()
+    
+    // Find platform fee setting or default to 8%
+    let platformFeePercentage = 8
+    const feeSettings = allSettings.find(s => s.key === "platformFeePercentage")
+    if (feeSettings) {
+      platformFeePercentage = feeSettings.value
+    }
     const finalPrice = args.monthlyPrice * (1 + platformFeePercentage / 100)
     
     // Create the shelf with approved status (active listing)
     const shelfId = await ctx.db.insert("shelves", {
-      ownerId: args.userId,
+      profileId: userProfile._id,
       shelfName: args.shelfName,
       city: args.city,
+      area: args.city, // Use city as area if area not provided separately
       branch: args.branch,
-      monthlyPrice: args.monthlyPrice,
-      discountPercentage: args.discountPercentage,
-      finalPrice: finalPrice,
-      availableFrom: args.availableFrom,
-      isAvailable: true,
-      length: args.length,
-      width: args.width,
-      depth: args.depth,
+      address: args.address,
+      coordinates: args.latitude && args.longitude ? {
+        lat: args.latitude,
+        lng: args.longitude
+      } : undefined,
+      shelfSize: {
+        width: parseFloat(args.width),
+        height: parseFloat(args.length), // Using length as height
+        depth: parseFloat(args.depth),
+        unit: "cm"
+      },
       productType: args.productType,
       description: args.description,
-      address: args.address,
-      latitude: args.latitude,
-      longitude: args.longitude,
-      exteriorImage: args.exteriorImage,
-      interiorImage: args.interiorImage,
-      shelfImage: args.shelfImage,
+      monthlyPrice: args.monthlyPrice,
+      storeCommission: args.storeCommission,
+      currency: "SAR",
+      minimumRentalPeriod: 1,
+      isAvailable: true,
+      availableFrom: args.availableFrom,
+      // Image handling - store the storage IDs if provided
+      exteriorImage: args.exteriorImage ? args.exteriorImage as Id<"_storage"> : undefined,
+      interiorImage: args.interiorImage ? args.interiorImage as Id<"_storage"> : undefined,
+      shelfImage: args.shelfImage ? args.shelfImage as Id<"_storage"> : undefined,
       status: "approved", // Directly approved and active
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      views: 0,
+      totalRentals: 0,
     })
     
     return shelfId
@@ -70,11 +98,37 @@ export const addShelf = mutation({
 export const getOwnerShelves = query({
   args: { ownerId: v.id("users") },
   handler: async (ctx, args) => {
+    // Get the user's profile first
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.ownerId))
+      .first()
+    
+    if (!userProfile) {
+      return []
+    }
+    
     const shelves = await ctx.db
       .query("shelves")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_profile", (q) => q.eq("profileId", userProfile._id))
       .order("desc")
       .collect()
+    
+    // Helper function to get URL from storage ID or return existing URL
+    const getImageUrl = async (imageId: any) => {
+      if (!imageId) return null
+      // Check if it's already a URL (legacy data)
+      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
+        return imageId
+      }
+      // Otherwise, get URL from storage
+      try {
+        return await ctx.storage.getUrl(imageId)
+      } catch (error) {
+        console.error('Failed to get storage URL:', error)
+        return null
+      }
+    }
     
     // Fetch renter names and calculate next collection dates for rented shelves
     const shelvesWithDetails = await Promise.all(
@@ -82,19 +136,39 @@ export const getOwnerShelves = query({
         let renterName = null
         let nextCollectionDate = null
         
-        if (shelf.renterId) {
-          const renter = await ctx.db.get(shelf.renterId)
-          renterName = renter?.fullName || renter?.brandName || renter?.storeName || null
+        // Check if there's an active rental for this shelf
+        const activeRental = await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_shelf", (q) => q.eq("shelfId", shelf._id))
+          .filter((q) => q.eq(q.field("status"), "active"))
+          .first()
+        
+        if (activeRental) {
+          const renter = await ctx.db.get(activeRental.requesterId)
+          const renterProfile = renter ? await ctx.db
+            .query("userProfiles")
+            .withIndex("by_user", (q) => q.eq("userId", activeRental.requesterId))
+            .first() : null
+          renterName = renterProfile?.brandName || renterProfile?.fullName || null
         }
         
         // Calculate next collection date for rented shelves
-        if (shelf.status === "rented" && shelf.rentalEndDate) {
+        // Note: "rented" is not a valid status in the schema, so we check for active rentals
+        if (activeRental && activeRental.endDate) {
           // Collection happens at the end of the rental period
-          nextCollectionDate = shelf.rentalEndDate
+          nextCollectionDate = activeRental.endDate
         }
+        
+        // Convert image storage IDs to URLs
+        const exteriorImage = await getImageUrl(shelf.exteriorImage)
+        const interiorImage = await getImageUrl(shelf.interiorImage)
+        const shelfImage = await getImageUrl(shelf.shelfImage)
         
         return {
           ...shelf,
+          exteriorImage,
+          interiorImage,
+          shelfImage,
           renterName,
           nextCollectionDate
         }
@@ -119,14 +193,46 @@ export const getAvailableShelves = query({
     
     const shelves = await query.collect()
     
-    // Filter by additional criteria
-    return shelves.filter((shelf) => {
+    // Helper function to get URL from storage ID or return existing URL
+    const getImageUrl = async (imageId: any) => {
+      if (!imageId) return null
+      // Check if it's already a URL (legacy data)
+      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
+        return imageId
+      }
+      // Otherwise, get URL from storage
+      try {
+        return await ctx.storage.getUrl(imageId)
+      } catch (error) {
+        console.error('Failed to get storage URL:', error)
+        return null
+      }
+    }
+    
+    // Filter by additional criteria and convert images
+    const filteredShelves = shelves.filter((shelf) => {
       if (!shelf.isAvailable) return false
       if (args.city && shelf.city !== args.city) return false
-      if (args.maxPrice && shelf.finalPrice && shelf.finalPrice > args.maxPrice) return false
-      if (args.minPrice && shelf.finalPrice && shelf.finalPrice < args.minPrice) return false
+      if (args.maxPrice && shelf.monthlyPrice && shelf.monthlyPrice > args.maxPrice) return false
+      if (args.minPrice && shelf.monthlyPrice && shelf.monthlyPrice < args.minPrice) return false
       return true
     })
+    
+    // Convert image storage IDs to URLs for filtered shelves
+    return Promise.all(
+      filteredShelves.map(async (shelf) => {
+        const exteriorImage = await getImageUrl(shelf.exteriorImage)
+        const interiorImage = await getImageUrl(shelf.interiorImage)
+        const shelfImage = await getImageUrl(shelf.shelfImage)
+        
+        return {
+          ...shelf,
+          exteriorImage,
+          interiorImage,
+          shelfImage,
+        }
+      })
+    )
   },
 })
 
@@ -138,7 +244,7 @@ export const updateShelf = mutation({
     city: v.optional(v.string()),
     branch: v.optional(v.string()),
     monthlyPrice: v.optional(v.number()),
-    discountPercentage: v.optional(v.number()),
+    storeCommission: v.optional(v.number()),
     availableFrom: v.optional(v.string()),
     isAvailable: v.optional(v.boolean()),
     length: v.optional(v.string()),
@@ -154,28 +260,58 @@ export const updateShelf = mutation({
     shelfImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { shelfId, ...updateData } = args
+    const { shelfId, length, width, depth, latitude, longitude, ...otherData } = args
     
     // Create a properly typed update object
     const patchData: any = {
-      ...updateData,
       updatedAt: new Date().toISOString(),
     }
     
-    // If price or discount is updated, recalculate final price
-    if (updateData.monthlyPrice !== undefined || updateData.discountPercentage !== undefined) {
+    // Add other fields that are in the schema
+    if (otherData.shelfName !== undefined) patchData.shelfName = otherData.shelfName
+    if (otherData.city !== undefined) {
+      patchData.city = otherData.city
+      patchData.area = otherData.city // Update area when city changes
+    }
+    if (otherData.branch !== undefined) patchData.branch = otherData.branch
+    if (otherData.monthlyPrice !== undefined) patchData.monthlyPrice = otherData.monthlyPrice
+    if (otherData.storeCommission !== undefined) patchData.storeCommission = otherData.storeCommission
+    if (otherData.availableFrom !== undefined) patchData.availableFrom = otherData.availableFrom
+    if (otherData.isAvailable !== undefined) patchData.isAvailable = otherData.isAvailable
+    if (otherData.productType !== undefined) patchData.productType = otherData.productType
+    if (otherData.description !== undefined) patchData.description = otherData.description
+    if (otherData.address !== undefined) patchData.address = otherData.address
+    
+    // Handle shelf size (convert string dimensions to shelfSize object)
+    if (length !== undefined || width !== undefined || depth !== undefined) {
       const shelf = await ctx.db.get(shelfId)
       if (shelf) {
-        // Get platform settings for dynamic fee percentage
-        const settings = await ctx.db
-          .query("platformSettings")
-          .order("desc")
-          .first()
-        
-        const monthlyPrice = updateData.monthlyPrice ?? shelf.monthlyPrice
-        const platformFeePercentage = settings?.platformFeePercentage || 8
-        patchData.finalPrice = monthlyPrice * (1 + platformFeePercentage / 100)
+        patchData.shelfSize = {
+          width: width ? parseFloat(width) : shelf.shelfSize.width,
+          height: length ? parseFloat(length) : shelf.shelfSize.height,
+          depth: depth ? parseFloat(depth) : shelf.shelfSize.depth,
+          unit: shelf.shelfSize.unit || "cm",
+        }
       }
+    }
+    
+    // Handle coordinates
+    if (latitude !== undefined && longitude !== undefined) {
+      patchData.coordinates = {
+        lat: latitude,
+        lng: longitude,
+      }
+    }
+    
+    // Handle image IDs (they should be storage IDs, not strings)
+    if (otherData.exteriorImage !== undefined) {
+      patchData.exteriorImage = otherData.exteriorImage as any
+    }
+    if (otherData.interiorImage !== undefined) {
+      patchData.interiorImage = otherData.interiorImage as any
+    }
+    if (otherData.shelfImage !== undefined) {
+      patchData.shelfImage = otherData.shelfImage as any
     }
     
     await ctx.db.patch(shelfId, patchData)
@@ -191,7 +327,7 @@ export const archiveShelf = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.shelfId, {
-      status: "archived",
+      status: "suspended", // Use suspended status as closest to archived
       isAvailable: false,
       updatedAt: new Date().toISOString(),
     })
@@ -212,13 +348,27 @@ export const getShelfById = query({
       return null
     }
     
-    // Get owner details
-    const owner = await ctx.db.get(shelf.ownerId)
+    // Get owner details from profile
+    const ownerProfile = await ctx.db.get(shelf.profileId)
+    const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
     
     // Get renter details if shelf is rented
     let renter = null
-    if (shelf.renterId) {
-      renter = await ctx.db.get(shelf.renterId)
+    let renterProfile = null
+    
+    // Check if there's an active rental for this shelf
+    const activeRental = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", shelf._id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first()
+    
+    if (activeRental) {
+      renter = await ctx.db.get(activeRental.requesterId)
+      renterProfile = renter ? await ctx.db
+        .query("userProfiles")
+        .withIndex("by_user", (q) => q.eq("userId", activeRental.requesterId))
+        .first() : null
     }
     
     // Get shelf images URLs from storage
@@ -226,15 +376,25 @@ export const getShelfById = query({
     let interiorImageUrl = null
     let shelfImageUrl = null
     
-    if (shelf.exteriorImage) {
-      exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage)
+    // Helper function to get URL from storage ID or return existing URL
+    const getImageUrl = async (imageId: any) => {
+      if (!imageId) return null
+      // Check if it's already a URL (legacy data)
+      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
+        return imageId
+      }
+      // Otherwise, get URL from storage
+      try {
+        return await ctx.storage.getUrl(imageId)
+      } catch (error) {
+        console.error('Failed to get storage URL:', error)
+        return null
+      }
     }
-    if (shelf.interiorImage) {
-      interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage)
-    }
-    if (shelf.shelfImage) {
-      shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage)
-    }
+    
+    exteriorImageUrl = await getImageUrl(shelf.exteriorImage)
+    interiorImageUrl = await getImageUrl(shelf.interiorImage)
+    shelfImageUrl = await getImageUrl(shelf.shelfImage)
     
     // Format product types - if it's a string, convert to array
     const productTypes = shelf.productType 
@@ -243,14 +403,18 @@ export const getShelfById = query({
     
     return {
       ...shelf,
-      ownerName: owner?.ownerName || owner?.fullName || "Unknown",
-      ownerEmail: owner?.email,
-      renterName: renter?.ownerName || renter?.fullName || null,
-      renterEmail: renter?.email || null,
+      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
+      ownerEmail: ownerProfile?.email || owner?.email,
+      renterName: renterProfile?.brandName || renterProfile?.fullName || null,
+      renterEmail: renterProfile?.email || renter?.email || null,
       renterRating: null, // Rating field not yet implemented in users table
+      // Return both the URL fields and the expected field names for compatibility
       exteriorImageUrl,
       interiorImageUrl,
       shelfImageUrl,
+      exteriorImage: exteriorImageUrl,
+      interiorImage: interiorImageUrl,
+      shelfImage: shelfImageUrl,
       productTypes,
       images: [
         exteriorImageUrl,
@@ -265,20 +429,41 @@ export const getShelfById = query({
 export const getShelfStats = query({
   args: { ownerId: v.id("users") },
   handler: async (ctx, args) => {
+    // Get the user's profile first
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.ownerId))
+      .first()
+    
+    if (!userProfile) {
+      return {
+        totalShelves: 0,
+        rentedShelves: 0,
+        availableShelves: 0,
+        pendingShelves: 0,
+        totalRevenue: 0,
+      }
+    }
+    
     const shelves = await ctx.db
       .query("shelves")
+      .withIndex("by_profile", (q) => q.eq("profileId", userProfile._id))
+      .collect()
+    
+    // Get active rentals to count rented shelves properly
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
       .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     
     const totalShelves = shelves.length
-    const rentedShelves = shelves.filter(s => s.status === "rented").length
+    const rentedShelves = activeRentals.length // Count by active rentals, not shelf status
     const availableShelves = shelves.filter(s => s.status === "approved" && s.isAvailable).length
-    const pendingShelves = shelves.filter(s => s.status === "pending").length
+    const pendingShelves = shelves.filter(s => s.status === "pending_approval").length
     
-    // Calculate total revenue from rented shelves
-    const totalRevenue = shelves
-      .filter(s => s.status === "rented" && s.rentalPrice)
-      .reduce((sum, shelf) => sum + (shelf.rentalPrice || 0), 0)
+    // Calculate total revenue from active rentals
+    const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
     
     return {
       totalShelves,
@@ -316,23 +501,43 @@ export const getShelfStatsWithChanges = query({
         break
     }
     
+    // Get the user's profile first
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.ownerId))
+      .first()
+    
+    if (!userProfile) {
+      return {
+        rentedChange: 0,
+        availableChange: 0,
+        revenueChange: 0,
+        shelfViewsChange: 0,
+      }
+    }
+    
     // Get current shelves
     const allShelves = await ctx.db
       .query("shelves")
+      .withIndex("by_profile", (q) => q.eq("profileId", userProfile._id))
+      .collect()
+    
+    // Get active rentals for current stats
+    const currentActiveRentals = await ctx.db
+      .query("rentalRequests")
       .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     
     // Current stats
-    const currentRented = allShelves.filter(s => s.status === "rented").length
+    const currentRented = currentActiveRentals.length
     const currentAvailable = allShelves.filter(s => s.status === "approved" && s.isAvailable).length
-    const currentRevenue = allShelves
-      .filter(s => s.status === "rented")
-      .reduce((sum, s) => sum + (s.rentalPrice || s.monthlyPrice || 0), 0)
+    const currentRevenue = currentActiveRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
     
     // Get rental requests to analyze trends
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_store_owner", (q) => q.eq("storeOwnerId", args.ownerId))
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
       .collect()
     
     // Filter requests within comparison period
@@ -358,14 +563,12 @@ export const getShelfStatsWithChanges = query({
     const newRequests = acceptedRecent
     
     // For rented shelves change
-    // Track shelves that were rented in the previous period
-    const shelvesRentedRecently = allShelves.filter(s => 
-      s.status === "rented" && 
-      s.rentalStartDate && 
-      new Date(s.rentalStartDate) > compareDate
+    // Track rentals that started recently
+    const recentRentals = currentActiveRentals.filter(rental => 
+      new Date(rental.startDate) > compareDate
     ).length
     
-    const previousRented = Math.max(0, currentRented - shelvesRentedRecently)
+    const previousRented = Math.max(0, currentRented - recentRentals)
     
     if (previousRented > 0) {
       rentedChange = ((currentRented - previousRented) / previousRented) * 100
@@ -395,15 +598,13 @@ export const getShelfStatsWithChanges = query({
     }
     
     // For revenue change
-    // Calculate revenue from shelves that started renting in the previous period
-    const shelvesWithRecentRevenue = allShelves.filter(s => 
-      s.status === "rented" && 
-      s.rentalStartDate && 
-      new Date(s.rentalStartDate) > compareDate
+    // Calculate revenue from rentals that started recently
+    const recentRevenueRentals = currentActiveRentals.filter(rental => 
+      new Date(rental.startDate) > compareDate
     )
     
-    const recentRevenue = shelvesWithRecentRevenue.reduce((sum, s) => 
-      sum + (s.rentalPrice || s.monthlyPrice || 0), 0
+    const recentRevenue = recentRevenueRentals.reduce((sum, rental) => 
+      sum + (rental.monthlyPrice || 0), 0
     )
     
     const previousRevenue = Math.max(0, currentRevenue - recentRevenue)
@@ -425,7 +626,7 @@ export const getShelfStatsWithChanges = query({
       totalShelves: allShelves.length,
       rentedShelves: currentRented,
       availableShelves: currentAvailable,
-      pendingShelves: allShelves.filter(s => s.status === "pending").length,
+      pendingShelves: allShelves.filter(s => s.status === "pending_approval").length,
       totalRevenue: currentRevenue,
       // Percentage changes
       rentedChange,

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Home, FileText, Store, CreditCard, Settings, ChevronUp, LogOut, Users, Package, TrendingUp } from "lucide-react"
 import Image from "next/image"
+import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
@@ -53,14 +54,7 @@ export default function AdminDashboardLayout({
   const { t, direction } = useLanguage()
   const { user, getInitials } = useCurrentUser()
 
-  const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem("currentUser")
-    // Clear any remembered email
-    localStorage.removeItem("userEmail")
-    // Redirect to sign in page
-    router.push("/signin")
-  }
+  const handleLogout = useSignOut()
 
   // Get current page title based on pathname
   const getCurrentPageTitle = () => {
@@ -249,7 +243,7 @@ export default function AdminDashboardLayout({
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-muted/40">{children}</main>
+          <main className="flex-1 p-6 bg-background">{children}</main>
         </div>
       </div>
     </SidebarProvider>

@@ -74,7 +74,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
   // Mark messages as read when conversation is opened
   useEffect(() => {
     if (selectedConversation && userId) {
-      markAsRead({ conversationId: selectedConversation, userId })
+      markAsRead({ conversationId: selectedConversation })
     }
   }, [selectedConversation, userId, markAsRead])
 

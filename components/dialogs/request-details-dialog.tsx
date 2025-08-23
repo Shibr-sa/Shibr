@@ -118,7 +118,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
   // Mark messages as read when conversation is opened
   useEffect(() => {
     if (currentConversation && userId && open) {
-      markAsRead({ conversationId: currentConversation._id, userId })
+      markAsRead({ conversationId: currentConversation._id })
     }
   }, [currentConversation, userId, open, markAsRead])
 

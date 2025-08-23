@@ -79,7 +79,6 @@ export default function StoreDashboardPage() {
   const rentalRequests = useQuery(
     api.rentalRequests.getUserRentalRequests,
     user?.id ? {
-      userId: user.id as Id<"users">,
       userType: "store" as const
     } : "skip"
   )

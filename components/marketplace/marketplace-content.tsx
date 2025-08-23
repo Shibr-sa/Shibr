@@ -48,13 +48,14 @@ interface Store {
   latitude?: number
   longitude?: number
   monthlyPrice: number
-  discountPercentage: number
+  storeCommission: number
   availableFrom: string
   productType?: string
   width: string
   length: string
   depth: string
   ownerName?: string
+  ownerImage?: string
   shelfImage?: string
   exteriorImage?: string
   interiorImage?: string
@@ -433,7 +434,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
                                   <p className="text-lg font-bold">
-                                    {store.discountPercentage || 10}%
+                                    {store.storeCommission || 10}%
                                   </p>
                                 </div>
 
@@ -458,6 +459,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                               <div className="flex items-center pt-3 border-t">
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-7 w-7">
+                                    <AvatarImage src={store.ownerImage} alt={store.ownerName} />
                                     <AvatarFallback className="text-xs">
                                       {store.ownerName?.slice(0, 2).toUpperCase() || "SO"}
                                     </AvatarFallback>
