@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -18,7 +17,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Search, Eye } from "lucide-react"
+import { Search, Eye, Package } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { PostDetailsDialog } from "@/components/dialogs/post-details-dialog"
@@ -135,18 +134,20 @@ export default function PostsPage() {
   const paginatedPosts = postsData
 
   return (
-    <>
-      <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">{t("posts.title")}</CardTitle>
-        <p className="text-muted-foreground">{t("posts.description")}</p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Search Bar and Filter Pills */}
-        <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">{t("posts.title")}</h2>
+        <p className="text-muted-foreground">
+          {t("posts.description")}
+        </p>
+      </div>
+
+      {/* Toolbar: Search Bar and Filter Pills */}
+      <div className="flex items-center gap-4">
           {/* Search Bar */}
           <div className="relative w-80">
-            <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input 
               placeholder={t("posts.search_placeholder")} 
               className="pe-10"
@@ -182,11 +183,9 @@ export default function PostsPage() {
           </ToggleGroup>
         </div>
 
-        {/* Posts Table */}
-        <div className="space-y-4">
-          <div className="rounded-md border">
-            <div className="min-h-[420px]"> {/* Fixed height for 5 rows */}
-              <Table>
+      {/* Posts Table */}
+      <div className="rounded-md border">
+        <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="h-12 text-start font-medium">
@@ -287,34 +286,46 @@ export default function PostsPage() {
                       ))}
                     </>
                   ) : (
-                    // Empty state - show message with skeleton rows
-                    Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
-                        {index === 2 ? (
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
-                            {t("posts.no_results")}
-                          </TableCell>
-                        ) : (
-                          <>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    ))
+                    // Empty state - proper shadcn/ui pattern
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-[400px]">
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <div className="rounded-full bg-muted p-4 mb-4">
+                            <Package className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-lg font-medium mb-1">
+                            {searchQuery || filterStatus !== "all" 
+                              ? t("posts.no_results")
+                              : t("posts.no_posts")}
+                          </h3>
+                          <p className="text-sm text-muted-foreground text-center max-w-sm">
+                            {searchQuery || filterStatus !== "all"
+                              ? t("posts.try_different_filter")
+                              : t("posts.posts_will_appear_here")}
+                          </p>
+                          {(searchQuery || filterStatus !== "all") && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="mt-4"
+                              onClick={() => {
+                                setSearchQuery("")
+                                setFilterStatus("all")
+                              }}
+                            >
+                              {t("posts.clear_filters")}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </div>
+      </div>
 
-          {/* Pagination Controls - Always visible */}
-          <Pagination>
+      {/* Pagination Controls - Always visible */}
+      <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
@@ -375,18 +386,15 @@ export default function PostsPage() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
-      </CardContent>
-    </Card>
 
-    {/* Post Details Dialog */}
-    {selectedPost && (
-      <PostDetailsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        post={selectedPost}
-      />
-    )}
-    </>
+      {/* Post Details Dialog */}
+      {selectedPost && (
+        <PostDetailsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          post={selectedPost}
+        />
+      )}
+    </div>
   )
 }
