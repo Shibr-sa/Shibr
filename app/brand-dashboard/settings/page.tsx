@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -53,6 +53,8 @@ export default function BrandDashboardSettingsPage() {
   const [businessReg, setBusinessReg] = useState("")
   const [isFreelance, setIsFreelance] = useState(false)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for Payment dialog
@@ -75,9 +77,9 @@ export default function BrandDashboardSettingsPage() {
   // Convex queries - only payment methods since userData comes from context
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
   
-  // Load user data when available from context
+  // Load user data when available from context - only initialize form fields once
   useEffect(() => {
-    if (brandUserData) {
+    if (brandUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = brandUserData.profile
       setOwnerName(profile?.fullName || brandUserData.name || "")
@@ -89,9 +91,36 @@ export default function BrandDashboardSettingsPage() {
       setBusinessReg(profile?.brandCommercialRegisterNumber || profile?.freelanceLicenseNumber || "")
       setIsFreelance(profile?.businessType === "freelancer" || false)
       setProfileImageUrl(brandUserData.image || null)
-      setDocumentUrl(profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null)
+      
+      // Handle initial document URL loading
+      const backendDocumentUrl = profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      if (backendDocumentUrl) {
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_document_url')
+      } else {
+        const tempUrl = sessionStorage.getItem('temp_document_url')
+        if (tempUrl) {
+          setDocumentUrl(tempUrl)
+        }
+      }
+      
+      setHasInitialized(true)
     }
-  }, [brandUserData])
+  }, [brandUserData, hasInitialized])
+  
+  // Separate effect for handling document URL updates after initialization
+  useEffect(() => {
+    if (brandUserData && hasInitialized) {
+      const profile = brandUserData.profile
+      const backendDocumentUrl = profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      
+      if (backendDocumentUrl && !pendingDocumentFile) {
+        // Update document URL if backend has a new one and we're not in the middle of selecting a new file
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_document_url')
+      }
+    }
+  }, [brandUserData, hasInitialized, pendingDocumentFile])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -464,19 +493,36 @@ export default function BrandDashboardSettingsPage() {
                             <p className="text-xs text-muted-foreground">{t("settings.brand_data.document_ready")}</p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDocumentUrl(null)
-                            if (documentInputRef.current) {
-                              documentInputRef.current.value = ''
-                            }
-                          }}
-                        >
-                          {t("settings.brand_data.remove_document")}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (documentUrl) {
+                                window.open(documentUrl, '_blank')
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {t("settings.brand_data.preview_document")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDocumentUrl(null)
+                              setPendingDocumentFile(null)
+                              if (documentInputRef.current) {
+                                documentInputRef.current.value = ''
+                              }
+                            }}
+                          >
+                            {t("settings.brand_data.remove_document")}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center space-y-3">
@@ -485,7 +531,7 @@ export default function BrandDashboardSettingsPage() {
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
                             
@@ -498,49 +544,16 @@ export default function BrandDashboardSettingsPage() {
                               return
                             }
                             
-                            setIsLoading(true)
-                            try {
-                              // Get upload URL from Convex
-                              const uploadUrl = await generateUploadUrl()
-                              
-                              // Upload file to Convex storage
-                              const result = await fetch(uploadUrl, {
-                                method: "POST",
-                                headers: { "Content-Type": file.type },
-                                body: file,
-                              })
-                              
-                              const { storageId } = await result.json()
-                              
-                              // Update brand with the document storage ID
-                              if (isFreelance) {
-                                await updateFreelanceDocument({
-                                  documentId: storageId,
-                                })
-                              } else {
-                                await updateBusinessRegistrationDocument({
-                                  documentId: storageId,
-                                })
-                              }
-                              
-                              // Get the actual URL for the uploaded file
-                              const fileUrl = await getFileUrl({ storageId })
-                              setDocumentUrl(fileUrl)
-                              
-                              toast({
-                                title: t("settings.general.success"),
-                                description: t("settings.brand_data.document_uploaded_success"),
-                              })
-                            } catch (error) {
-                              console.error("Error uploading document:", error)
-                              toast({
-                                title: t("settings.general.error"),
-                                description: t("settings.brand_data.document_upload_error"),
-                                variant: "destructive",
-                              })
-                            } finally {
-                              setIsLoading(false)
-                            }
+                            // Just store the file locally, don't upload yet
+                            setPendingDocumentFile(file)
+                            // Create a local URL for preview
+                            const localUrl = URL.createObjectURL(file)
+                            setDocumentUrl(localUrl)
+                            
+                            toast({
+                              title: t("settings.general.info"),
+                              description: t("settings.brand_data.document_ready_to_save"),
+                            })
                           }}
                         />
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -603,6 +616,43 @@ export default function BrandDashboardSettingsPage() {
                     
                     setIsLoading(true)
                     try {
+                      // First, upload the document if there's a pending one
+                      let documentStorageId = null
+                      if (pendingDocumentFile) {
+                        // Get upload URL from Convex
+                        const uploadUrl = await generateUploadUrl()
+                        
+                        // Upload file to Convex storage
+                        const result = await fetch(uploadUrl, {
+                          method: "POST",
+                          headers: { "Content-Type": pendingDocumentFile.type },
+                          body: pendingDocumentFile,
+                        })
+                        
+                        const { storageId } = await result.json()
+                        documentStorageId = storageId
+                        
+                        // Update brand with the document storage ID
+                        if (isFreelance) {
+                          await updateFreelanceDocument({
+                            documentId: storageId,
+                          })
+                        } else {
+                          await updateBusinessRegistrationDocument({
+                            documentId: storageId,
+                          })
+                        }
+                        
+                        // Get the actual URL for the uploaded file
+                        const fileUrl = await getFileUrl({ storageId })
+                        setDocumentUrl(fileUrl)
+                        setPendingDocumentFile(null) // Clear pending file after successful upload
+                        
+                        // Store the URL to prevent it from being cleared
+                        sessionStorage.setItem('temp_document_url', fileUrl || '')
+                      }
+                      
+                      // Then update the brand data
                       await updateBrandData({
                         brandName,
                         brandType,

@@ -242,7 +242,7 @@ export const checkStoreDataComplete = query({
       profile.storeType
     );
     
-    // 3. Business Registration & Document
+    // 3. Business Registration & Document (both required for store)
     const hasBusinessRegistration = !!(
       profile.commercialRegisterNumber && 
       profile.commercialRegisterDocument
@@ -281,7 +281,7 @@ export const checkBrandDataComplete = query({
       profile.businessType
     );
     
-    // 3. Business Registration & Document
+    // 3. Business Registration & Document (required based on business type)
     let hasBusinessRegistration = false;
     if (profile.businessType === "registered_company") {
       hasBusinessRegistration = !!(

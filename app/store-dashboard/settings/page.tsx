@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -38,6 +38,8 @@ export default function StoreDashboardSettingsPage() {
   const [showCropper, setShowCropper] = useState(false)
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for General tab
@@ -67,15 +69,16 @@ export default function StoreDashboardSettingsPage() {
   const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
   const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
+  const getFileUrl = useMutation(api.files.getFileUrl)
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
   
   // Convex queries - only payment methods since userData comes from context
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
   
-  // Load user data when available from context
+  // Load user data when available from context - only initialize once
   useEffect(() => {
-    if (storeUserData) {
+    if (storeUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = storeUserData.profile
       setOwnerName(profile?.fullName || storeUserData.name || "")
@@ -89,13 +92,36 @@ export default function StoreDashboardSettingsPage() {
       setArea(profile?.storeLocation?.area || "")
       setAddress(profile?.storeLocation?.address || "")
       setProfileImageUrl(storeUserData.image || null)
-      // Check if there's a commercial register document
-      if (profile?.commercialRegisterDocument) {
-        // You might want to fetch the document URL here
-        setDocumentUrl(profile.commercialRegisterDocument)
+      
+      // Handle initial document URL loading
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
+      if (backendDocumentUrl) {
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_store_document_url')
+      } else {
+        const tempUrl = sessionStorage.getItem('temp_store_document_url')
+        if (tempUrl) {
+          setDocumentUrl(tempUrl)
+        }
+      }
+      
+      setHasInitialized(true)
+    }
+  }, [storeUserData, hasInitialized])
+  
+  // Separate effect for handling document URL updates after initialization
+  useEffect(() => {
+    if (storeUserData && hasInitialized) {
+      const profile = storeUserData.profile
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
+      
+      if (backendDocumentUrl && !pendingDocumentFile) {
+        // Update document URL if backend has a new one and we're not in the middle of selecting a new file
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_store_document_url')
       }
     }
-  }, [storeUserData])
+  }, [storeUserData, hasInitialized, pendingDocumentFile])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,19 +430,36 @@ export default function StoreDashboardSettingsPage() {
                             <p className="text-xs text-muted-foreground">{t("settings.store_data.document_ready")}</p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDocumentUrl(null)
-                            if (documentInputRef.current) {
-                              documentInputRef.current.value = ''
-                            }
-                          }}
-                        >
-                          {t("settings.store_data.remove_document")}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (documentUrl) {
+                                window.open(documentUrl, '_blank')
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {t("settings.store_data.preview_document")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDocumentUrl(null)
+                              setPendingDocumentFile(null)
+                              if (documentInputRef.current) {
+                                documentInputRef.current.value = ''
+                              }
+                            }}
+                          >
+                            {t("settings.store_data.remove_document")}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center space-y-3">
@@ -425,7 +468,7 @@ export default function StoreDashboardSettingsPage() {
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
                             
@@ -438,41 +481,16 @@ export default function StoreDashboardSettingsPage() {
                               return
                             }
                             
-                            setIsLoading(true)
-                            try {
-                              // Get upload URL from Convex
-                              const uploadUrl = await generateUploadUrl()
-                              
-                              // Upload file to Convex storage
-                              const result = await fetch(uploadUrl, {
-                                method: "POST",
-                                headers: { "Content-Type": file.type },
-                                body: file,
-                              })
-                              
-                              const { storageId } = await result.json()
-                              
-                              // Update the document in the database
-                              await updateBusinessRegistrationDocument({
-                                documentId: storageId,
-                              })
-                              
-                              setDocumentUrl(storageId)
-                              
-                              toast({
-                                title: t("settings.general.success"),
-                                description: t("settings.store_data.document_uploaded_success"),
-                              })
-                            } catch (error) {
-                              console.error("Error uploading document:", error)
-                              toast({
-                                title: t("settings.general.error"),
-                                description: t("settings.store_data.document_upload_error"),
-                                variant: "destructive",
-                              })
-                            } finally {
-                              setIsLoading(false)
-                            }
+                            // Just store the file locally, don't upload yet
+                            setPendingDocumentFile(file)
+                            // Create a local URL for preview
+                            const localUrl = URL.createObjectURL(file)
+                            setDocumentUrl(localUrl)
+                            
+                            toast({
+                              title: t("settings.general.info"),
+                              description: t("settings.store_data.document_ready_to_save"),
+                            })
                           }}
                         />
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -540,6 +558,36 @@ export default function StoreDashboardSettingsPage() {
                     
                     setIsLoading(true)
                     try {
+                      // First, upload the document if there's a pending one
+                      let documentStorageId = null
+                      if (pendingDocumentFile) {
+                        // Get upload URL from Convex
+                        const uploadUrl = await generateUploadUrl()
+                        
+                        // Upload file to Convex storage
+                        const result = await fetch(uploadUrl, {
+                          method: "POST",
+                          headers: { "Content-Type": pendingDocumentFile.type },
+                          body: pendingDocumentFile,
+                        })
+                        
+                        const { storageId } = await result.json()
+                        documentStorageId = storageId
+                        
+                        // Update the document in the database
+                        await updateBusinessRegistrationDocument({
+                          documentId: storageId,
+                        })
+                        
+                        // Get the actual URL for the uploaded file
+                        const fileUrl = await getFileUrl({ storageId })
+                        setDocumentUrl(fileUrl)
+                        setPendingDocumentFile(null) // Clear pending file after successful upload
+                        
+                        // Store the URL temporarily to prevent it from being cleared
+                        sessionStorage.setItem('temp_store_document_url', fileUrl || '')
+                      }
+                      
                       // First update general settings with basic info
                       await updateGeneralSettings({
                         ownerName,
