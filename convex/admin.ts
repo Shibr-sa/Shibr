@@ -70,15 +70,12 @@ export const promoteToAdmin = mutation({
   },
 })
 
-// Generate admin account - creates profile immediately
-// For password setup, use one of these approaches:
-// 1. Sign up normally at /signup then use promoteToAdmin
-// 2. Use the test credentials approach below
-export const generateAdminAccount = mutation({
+// Create admin account - SIMPLIFIED APPROACH
+// Step 1: Sign up normally at /signup (as store or brand owner)
+// Step 2: Use promoteToAdmin mutation with the email
+export const createAdminAccount = mutation({
   args: {
     email: v.string(),
-    fullName: v.string(),
-    phoneNumber: v.string(),
     adminRole: v.optional(v.union(
       v.literal("super_admin"),
       v.literal("support"),
@@ -87,71 +84,56 @@ export const generateAdminAccount = mutation({
     )),
   },
   handler: async (ctx, args) => {
-    // Check if email already exists in userProfiles
-    const existingProfile = await ctx.db
+    // This is just an alias for promoteToAdmin with clearer instructions
+    // Find the user profile by email
+    const userProfile = await ctx.db
       .query("userProfiles")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first()
 
-    if (existingProfile) {
-      throw new Error("A user with this email already exists")
+    if (!userProfile) {
+      return {
+        success: false,
+        error: "User not found",
+        instructions: [
+          `No user found with email: ${args.email}`,
+          `Please follow these steps:`,
+          `1. Go to /signup and create an account with email: ${args.email}`,
+          `2. Choose any account type (it will be converted to admin)`,
+          `3. After signup, run this mutation again to promote to admin`,
+        ]
+      }
     }
 
-    // Check if user exists in auth
-    const existingUser = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), args.email))
-      .first()
-
-    let userId = existingUser?._id
-
-    if (!userId) {
-      // Create the auth user
-      userId = await ctx.db.insert("users", {
+    if (userProfile.accountType === "admin") {
+      return {
+        success: true,
+        message: "User is already an admin",
         email: args.email,
-        name: args.fullName,
-        phone: args.phoneNumber,
-        isAnonymous: false,
-        emailVerificationTime: Date.now(),
-      })
+        adminRole: userProfile.adminRole,
+      }
     }
 
-    // Create the admin profile
-    const profileId = await ctx.db.insert("userProfiles", {
-      userId,
+    // Update the user profile to admin
+    await ctx.db.patch(userProfile._id, {
       accountType: "admin",
-      fullName: args.fullName,
-      phoneNumber: args.phoneNumber,
-      email: args.email,
-      isVerified: true,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       adminRole: args.adminRole || "super_admin",
       permissions: ["all"],
+      isVerified: true,
+      updatedAt: new Date().toISOString(),
     })
-
-    // Instructions based on whether password needs to be set
-    const instructions = existingUser ? [
-      `Admin profile created for existing user ${args.email}`,
-      `Sign in with your existing password at /signin`
-    ] : [
-      `Admin profile created for ${args.email}`,
-      `To set password: Go to /signup and use the same email`,
-      `Your admin role will be activated after signup`
-    ]
 
     return {
       success: true,
-      userId,
-      profileId,
+      message: `User ${args.email} has been promoted to admin`,
       email: args.email,
-      fullName: args.fullName,
       adminRole: args.adminRole || "super_admin",
-      message: existingUser 
-        ? `Admin profile created for existing user ${args.email}`
-        : `Admin profile created. Complete signup at /signup to set password.`,
-      instructions
+      instructions: [
+        `Admin account successfully created!`,
+        `Email: ${args.email}`,
+        `Role: ${args.adminRole || "super_admin"}`,
+        `The user can now sign in at /signin and will be redirected to /admin-dashboard`,
+      ]
     }
   },
 })

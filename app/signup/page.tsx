@@ -125,19 +125,31 @@ export default function SignUpPage() {
       // Wait a bit for auth to propagate
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Create the user profile
-      await createUserProfile(profileData)
+      // Create the user profile and get the actual account type
+      const profileResult = await createUserProfile(profileData)
       
       toast({
         title: t("auth.success"),
         description: t("auth.account_created"),
       })
       
-      // Now redirect to the appropriate dashboard
-      if (accountType === "store-owner") {
+      // Wait a bit for everything to settle
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Redirect based on the ACTUAL account type returned from the database
+      if (profileResult.accountType === "admin") {
+        router.push("/admin-dashboard")
+      } else if (profileResult.accountType === "store_owner") {
         router.push("/store-dashboard")
-      } else {
+      } else if (profileResult.accountType === "brand_owner") {
         router.push("/brand-dashboard")
+      } else {
+        // Fallback based on UI selection
+        if (accountType === "store-owner") {
+          router.push("/store-dashboard")
+        } else {
+          router.push("/brand-dashboard")
+        }
       }
     } catch (error) {
       // Authentication errors are expected - just show user-friendly message

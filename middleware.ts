@@ -1,55 +1,23 @@
-import { 
-  convexAuthNextjsMiddleware,
-  createRouteMatcher,
-  nextjsMiddlewareRedirect
-} from "@convex-dev/auth/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/signin",
-  "/signup",
-  "/",
-  "/marketplace",
-  "/api/convex/(.*)"
-]);
-
-const isAuthRoute = createRouteMatcher([
-  "/signin",
-  "/signup"
-]);
-
-const isAdminRoute = createRouteMatcher([
-  "/admin-dashboard/(.*)"
-]);
-
-const isBrandRoute = createRouteMatcher([
-  "/brand-dashboard/(.*)"
-]);
-
-const isStoreRoute = createRouteMatcher([
-  "/store-dashboard/(.*)"
-]);
-
-export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  const isAuthenticated = await convexAuth.isAuthenticated();
-  
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute(request) && isAuthenticated) {
-    return nextjsMiddlewareRedirect(request, "/");
-  }
-  
-  // Allow public routes
-  if (isPublicRoute(request)) {
-    return;
-  }
-  
-  // Protect all dashboard routes
-  if (!isAuthenticated) {
-    if (isAdminRoute(request) || isBrandRoute(request) || isStoreRoute(request)) {
-      return nextjsMiddlewareRedirect(request, "/signin");
-    }
-  }
-});
+// Simply pass through all requests - authentication is handled at the component level
+export function middleware(_request: NextRequest) {
+  // For now, just pass through all requests
+  // Auth is handled by Convex Auth at the component level
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|_next).*)",
+  ],
 };

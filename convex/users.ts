@@ -129,8 +129,21 @@ export const createOrUpdateUserProfile = mutation({
       if (existingProfile.accountType === "admin") {
         // Preserve admin account type and related fields
         updateData.accountType = "admin";
+        // Preserve admin-specific fields
+        if (existingProfile.adminRole) {
+          (updateData as any).adminRole = existingProfile.adminRole;
+        }
+        if (existingProfile.permissions) {
+          (updateData as any).permissions = existingProfile.permissions;
+        }
         delete updateData.storeName;
         delete updateData.brandName;
+        delete updateData.storeType;
+        delete updateData.storeLocation;
+        delete updateData.commercialRegisterNumber;
+        delete updateData.brandCommercialRegisterNumber;
+        delete updateData.businessType;
+        delete updateData.freelanceLicenseNumber;
       }
       
       // Update existing profile
@@ -138,7 +151,12 @@ export const createOrUpdateUserProfile = mutation({
         ...updateData,
         updatedAt: now,
       });
-      return existingProfile._id;
+      
+      // Return the profile ID and actual account type
+      return {
+        profileId: existingProfile._id,
+        accountType: updateData.accountType
+      };
     } else {
       // Create new profile
       const profileId = await ctx.db.insert("userProfiles", {
@@ -149,7 +167,12 @@ export const createOrUpdateUserProfile = mutation({
         createdAt: now,
         updatedAt: now,
       });
-      return profileId;
+      
+      // Return the profile ID and account type
+      return {
+        profileId,
+        accountType: args.accountType
+      };
     }
   },
 })
