@@ -79,9 +79,9 @@ const translations = {
 
     // Navigation
     "nav.home": "الرئيسية",
-    "nav.products": "منتجاتنا",
-    "nav.about": "من نحن",
-    "nav.services": "الخدمات",
+    "nav.renter_store": "المستأجر والمتجر",
+    "nav.stores": "المحلات",
+    "nav.why_us_nav": "لماذا نحن",
     "nav.contact": "تواصل معنا",
     "nav.blog": "المدونة",
     "nav.signin": "تسجيل الدخول",
@@ -984,7 +984,7 @@ const translations = {
     "hero.title": "منصة ذكية تربط بين المتاجر",
     "hero.highlight": "الواقعية والإلكترونية",
     "hero.description":
-      "نتطلع إلى مساعدة التجار الراغبين في المتاجر الإلكترونية والمتاجر التجارية الموجودة من خلال نظام واحد وتوفير خدمات وحلول متكاملة لإدارة المخزون وتحديد تحويل المبيعات عبر منصات إلكترونية متعددة",
+      "شيلفي هي منصة تقنية تربط بين المتاجر الإلكترونية والمحلات التجارية الواقعية من خلال عرض وتأجير مساحات رفوف مخصصة داخل المحلات، بهدف تحويل المساحات غير المستغلة إلى نقاط بيع فورية.",
     "hero.start_now": "ابدأ الآن",
     "hero.learn_more": "تعلم المزيد",
     
@@ -1001,7 +1001,7 @@ const translations = {
     "features.flexible_rental.description": "اختر طريقة الدفع المناسبة لك: مبلغ شهري، نسبة من المبيعات، أو مزيج بينهم.. وأنت المتحكم في الشروط.",
     
     // FAQ
-    "faq.title": "الأسئلة الشائعة",
+    "faq.title": "أسئلتك المهمة…",
     "faq.subtitle": "إجابات على أكثر الأسئلة شيوعاً حول منصة Shibr",
     "faq.q1": "هل Shelfy تأخذ عمولة على كل عملية؟",
     "faq.a1": "نعم ، Shelfy مجرد منصة وسيطة. الاتفاق المالي بالكامل بين صاحب المحل وصاحب المتجر، والمنصة تاخذ نسبة بسيطه.",
@@ -1026,35 +1026,36 @@ const translations = {
     "shelfy.highlight": "Shelfy",
     "shelfy.subtitle": "يربطكم",
     "shelfy.description": "ويفتح لك باب دخل واشتراك في نفس الوقت",
-    "shelfy.service_stores": "متاجر الخدمات",
-    "shelfy.commercial_centers": "مراكز الخدمة التجارية",
-    "shelfy.smart_service": "الخدمة الذكية",
-    "shelfy.smart_service_desc": "استقبال طلبات وبيع المنتج",
-    "shelfy.fast_service": "الخدمة السريعة",
-    "shelfy.fast_service_desc": "خدمة طلبية الأوردر بتحكم كامل - بضع دقائق أو ساعات أو أيام",
-    "shelfy.integrated_service": "الخدمة المتكاملة",
-    "shelfy.integrated_service_desc": "أنشئ حسابك واشترك وقدم أو اطلب الخدمة المناسبة",
+    "shelfy.service_stores": "صاحب المحل التجاري",
+    "shelfy.commercial_centers": "صاحب العلامة التجارية",
+    "shelfy.smart_service": "الخطوة الأولى",
+    "shelfy.smart_service_desc": "أنشئ حسابك وأضف رفوفك أو الزوايا المتاحة",
+    "shelfy.fast_service": "الخطوة الثانية",
+    "shelfy.fast_service_desc": "حدّد طريقة الإيجار: شهري ثابت، نسبة من المبيعات، أو مزيج",
+    "shelfy.integrated_service": "الخطوة الثالثة",
+    "shelfy.integrated_service_desc": "استقبل الطلبات وابدأ الكسب",
     
     // Commercial Centers
-    "shelfy.centers.premium_locations": "مواقع مميزة",
-    "shelfy.centers.premium_locations_desc": "أرفف في أفضل المراكز التجارية والمولات الرائدة في المملكة",
-    "shelfy.centers.high_traffic": "حركة عالية",
-    "shelfy.centers.high_traffic_desc": "معدل زيارات يومي يتجاوز 10,000 زائر في المراكز المختارة",
-    "shelfy.centers.targeted_audience": "جمهور مستهدف",
-    "shelfy.centers.targeted_audience_desc": "وصول مباشر لشرائح العملاء المناسبة لمنتجاتك",
+    "shelfy.centers.premium_locations": "الخطوة الأولى",
+    "shelfy.centers.premium_locations_desc": "تصفح المحلات والأرفف، حسب المدينة والموقع",
+    "shelfy.centers.high_traffic": "الخطوة الثانية",
+    "shelfy.centers.high_traffic_desc": "احجز المساحة المناسبة لك",
+    "shelfy.centers.targeted_audience": "الخطوة الثالثة",
+    "shelfy.centers.targeted_audience_desc": "اربط منتجاتك بواسطة رمز QR وتابع طلباتك",
 
     // Video Section
-    "video.title": "استعرض الحلول المتاحة...",
-    "video.highlight": "واختر موقعك القادم",
+    "video.title": "استعرض المحلات المتاحة…",
+    "video.highlight": "واختر موقع رفك القادم",
     "video.description":
-      "تطبيق الخدمات المتكاملة في منصة Shelfy يساعد على تحسين الأعمال والتجارة وتوفير الحلول المتكاملة في مكان واحد. يوفر التطبيق التحكم في جميع الأعمال والمبيعات الخدمية المقدمة من خلال منصة واحدة يمكن من خلالها إدارة الأعمال بطريقة احترافية.",
-    "video.start_journey": "ابدأ رحلتك الآن",
+      "تصفّح قائمة المحلات المشاركة في منصة Shelfy بمختلف المدن والأحياء، واعرف تفاصيل كل مساحة معروضة: نوع الرف، موقعه داخل المحل، عدد الزوار، والسعر أو العمولة المقترحة. كل اللي تحتاجه علشان تحجز مكانك في السوق الحقيقي صار قدامك.",
+    "video.start_journey": "تصفح المتاجر المتاحة",
     "video.jeddah_stores": "جدة - مواقع المتاجر المتاحة",
     "video.riyadh_stores": "الرياض - مواقع المتاجر المتاحة",
     
     // Why Choose Section
-    "why_choose.title": "ليش تختار شبر؟ المنصة اللي تجمع بين التجارة الواقعية والرقمية في مكان واحد",
-    "why_choose.description": "سواء كنت صاحب محل، تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، Shelfy مصممة تقدم لك تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى آخر بيع.",
+    "why_choose.title": "ليش تختار شبر؟",
+    "why_choose.subtitle": "المنصة اللي تجمع بين التجارة الواقعية والرقمية في مكان واحد",
+    "why_choose.description": "سواء كنت صاحب محل تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، Shelfy مصممة لتقدم لك تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى أول بيع.",
 
     // Statistics
     "stats.why_choose": "ليش تختار",
@@ -1067,21 +1068,19 @@ const translations = {
     "stats.completed_orders": "طلب مكتمل",
 
     // FAQ
-    "faq.highlight": "وحاجاتنا عليها",
-    "faq.description": "هنا تجد إجابات على الأسئلة الأكثر شيوعاً حول خدماتنا ومنتجاتنا الإلكترونية",
+    "faq.highlight": "وجاوبنا عليها",
+    "faq.description": "هنا تلقى إجابات لأكثر الأسئلة اللي توصلنا من أصحاب المحلات والمتاجر الإلكترونية.",
 
     // Footer
-    "footer.company": "الشركة",
-    "footer.about_us": "من نحن",
-    "footer.team": "فريق العمل",
-    "footer.jobs": "الوظائف",
-    "footer.customer_service": "خدمة العملاء",
-    "footer.help_center": "مركز المساعدة",
-    "footer.privacy_policy": "سياسة الخصوصية",
-    "footer.terms": "شروط الاستخدام",
+    "footer.company": "روابط هامة",
+    "footer.dashboard": "لوحة التحكم",
+    "footer.available_stores": "المحلات المتاحة",
+    "footer.customer_service": "اكتشف",
+    "footer.home": "الرئيسية",
     "footer.contact_us": "تواصل معنا",
+    "footer.why_us": "لماذا نحن",
     "footer.description":
-      "منصة Shibr الرائدة في ربط المتاجر الواقعية والإلكترونية، نوفر حلول متكاملة لإدارة الأعمال التجارية بطريقة احترافية.",
+      "شبر هي منصة تقنية تربط بين المتاجر الإلكترونية والمحلات التجارية الواقعية من خلال عرض وتأجير مساحات رفوف مخصصة داخل المحلات، بهدف تحويل المساحات غير المستغلة إلى نقاط بيع فورية.",
     "footer.social.twitter": "تويتر",
     "footer.social.linkedin": "لينكد إن",
 
@@ -1757,9 +1756,9 @@ const translations = {
 
     // Navigation
     "nav.home": "Home",
-    "nav.products": "Products",
-    "nav.about": "About Us",
-    "nav.services": "Services",
+    "nav.renter_store": "Renter & Store",
+    "nav.stores": "Stores",
+    "nav.why_us_nav": "Why Us",
     "nav.contact": "Contact Us",
     "nav.blog": "Blog",
     "nav.signin": "Sign In",
@@ -2663,7 +2662,7 @@ const translations = {
     "hero.title": "Smart platform connecting",
     "hero.highlight": "physical and online stores",
     "hero.description":
-      "We aim to help merchants interested in e-commerce and existing commercial stores through a unified system and provide integrated services and solutions for inventory management and determining sales conversion across multiple electronic platforms",
+      "Shelfy is a technology platform that connects online stores with physical retail shops through displaying and renting dedicated shelf spaces inside stores, aiming to transform unused spaces into instant points of sale.",
     "hero.start_now": "Start Now",
     "hero.learn_more": "Learn More",
     
@@ -2680,7 +2679,7 @@ const translations = {
     "features.flexible_rental.description": "Choose the payment method that suits you: monthly amount, percentage of sales, or a mix of both. You're in control of the terms.",
     
     // FAQ
-    "faq.title": "Frequently Asked Questions",
+    "faq.title": "Your Important Questions",
     "faq.subtitle": "Answers to the most common questions about Shibr platform",
     "faq.q1": "Does Shelfy take a commission on every transaction?",
     "faq.a1": "Yes, Shelfy is just an intermediary platform. The financial agreement is entirely between the store owner and the merchant, and the platform takes a small percentage.",
@@ -2705,35 +2704,36 @@ const translations = {
     "shelfy.highlight": "Shelfy",
     "shelfy.subtitle": "connects you",
     "shelfy.description": "and opens the door to income and participation at the same time",
-    "shelfy.service_stores": "Service Stores",
-    "shelfy.commercial_centers": "Commercial Service Centers",
-    "shelfy.smart_service": "Smart Service",
-    "shelfy.smart_service_desc": "Receive orders and sell products",
-    "shelfy.fast_service": "Fast Service",
-    "shelfy.fast_service_desc": "Order service with full control - minutes, hours or days",
-    "shelfy.integrated_service": "Integrated Service",
-    "shelfy.integrated_service_desc": "Create your account, subscribe and provide or request the appropriate service",
+    "shelfy.service_stores": "Store Owner",
+    "shelfy.commercial_centers": "Brand Owner",
+    "shelfy.smart_service": "Step One",
+    "shelfy.smart_service_desc": "Create your account and add your available shelves or corners",
+    "shelfy.fast_service": "Step Two",
+    "shelfy.fast_service_desc": "Set rental method: fixed monthly, percentage of sales, or mixed",
+    "shelfy.integrated_service": "Step Three",
+    "shelfy.integrated_service_desc": "Receive orders and start earning",
     
     // Commercial Centers
-    "shelfy.centers.premium_locations": "Premium Locations",
-    "shelfy.centers.premium_locations_desc": "Shelves in the best commercial centers and leading malls in the Kingdom",
-    "shelfy.centers.high_traffic": "High Traffic",
-    "shelfy.centers.high_traffic_desc": "Daily visitor rate exceeding 10,000 visitors in selected centers",
-    "shelfy.centers.targeted_audience": "Targeted Audience",
-    "shelfy.centers.targeted_audience_desc": "Direct access to customer segments suitable for your products",
+    "shelfy.centers.premium_locations": "Step One",
+    "shelfy.centers.premium_locations_desc": "Browse stores and shelves by city and location",
+    "shelfy.centers.high_traffic": "Step Two",
+    "shelfy.centers.high_traffic_desc": "Book the space that suits you",
+    "shelfy.centers.targeted_audience": "Step Three",
+    "shelfy.centers.targeted_audience_desc": "Link your products with QR code and track your orders",
 
     // Video Section
-    "video.title": "Explore available solutions...",
-    "video.highlight": "and choose your next location",
+    "video.title": "Browse available stores…",
+    "video.highlight": "and choose your next shelf location",
     "video.description":
-      "The integrated services application on the Shelfy platform helps improve business and commerce and provide integrated solutions in one place. The application provides control over all business and service sales provided through one platform through which business can be managed professionally.",
-    "video.start_journey": "Start Your Journey Now",
+      "Browse the list of stores participating in the Shelfy platform across different cities and neighborhoods, and learn the details of each available space: shelf type, location inside the store, visitor count, and proposed price or commission. Everything you need to book your place in the real market is now in front of you.",
+    "video.start_journey": "Browse Available Stores",
     "video.jeddah_stores": "Jeddah - Available store locations",
     "video.riyadh_stores": "Riyadh - Available store locations",
     
     // Why Choose Section
-    "why_choose.title": "Why choose Shibr? The platform that brings together physical and digital commerce in one place",
-    "why_choose.description": "Whether you're a store owner looking to increase your income, or an online store wanting to reach customers in reality, Shelfy is designed to provide you with a smooth, flexible experience that preserves your rights from the first shelf to the last sale.",
+    "why_choose.title": "Why choose Shibr?",
+    "why_choose.subtitle": "The platform that brings together physical and digital commerce in one place",
+    "why_choose.description": "Whether you're a store owner looking to increase your income, or an online store wanting to reach customers in reality, Shelfy is designed to provide you with a smooth, flexible experience that preserves your rights from the first shelf to the first sale.",
 
     // Statistics
     "stats.why_choose": "Why choose",
@@ -2748,19 +2748,18 @@ const translations = {
     // FAQ
     "faq.highlight": "and our answers to them",
     "faq.description":
-      "Here you will find answers to the most frequently asked questions about our services and electronic products",
+      "Here you'll find answers to the most common questions we receive from store owners and online merchants",
 
     // Footer
-    "footer.company": "Company",
-    "footer.about_us": "About Us",
-    "footer.team": "Team",
-    "footer.jobs": "Jobs",
-    "footer.customer_service": "Customer Service",
-    "footer.help_center": "Help Center",
-    "footer.privacy_policy": "Privacy Policy",
-    "footer.terms": "Terms of Use",
+    "footer.company": "Important Links",
+    "footer.dashboard": "Dashboard",
+    "footer.available_stores": "Available Stores",
+    "footer.customer_service": "Discover",
+    "footer.home": "Home",
+    "footer.contact_us": "Contact Us",
+    "footer.why_us": "Why Us",
     "footer.description":
-      "Shibr platform is a leader in connecting physical and online stores, providing integrated solutions for managing commercial business professionally.",
+      "Shibr is a technology platform that connects online stores and physical retail shops through displaying and renting dedicated shelf spaces inside stores, aiming to transform unused spaces into instant sales points.",
     "footer.social.twitter": "Twitter",
     "footer.social.linkedin": "LinkedIn",
 

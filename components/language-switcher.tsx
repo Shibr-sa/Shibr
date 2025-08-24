@@ -11,7 +11,7 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1 h-8 bg-transparent">
+        <Button variant="outline" size="sm">
           <Globe className="h-4 w-4" />
           <span>{t(language === "ar" ? "common.language.arabic" : "common.language.english")}</span>
           <ChevronDown className="h-4 w-4" />
