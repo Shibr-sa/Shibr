@@ -145,7 +145,7 @@ export default function BrandDashboardSettingsPage() {
         profileImageId: storageId,
       })
       
-      setProfileImageUrl(imageUrl)
+      setProfileImageUrl(typeof imageUrl === 'string' ? imageUrl : null)
       
       toast({
         title: t("settings.general.success"),
@@ -674,14 +674,14 @@ export default function BrandDashboardSettingsPage() {
                       <TableRow key={method._id}>
                         <TableCell className="font-medium">{method.bankName}</TableCell>
                         <TableCell>
-                          {method.accountName} - {method.accountNumber.slice(-4).padStart(method.accountNumber.length, '*')}
+                          {method.accountNumber || 'N/A'} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || 'N/A'}
                         </TableCell>
                         <TableCell>
                           <Badge variant={method.isActive ? "default" : "secondary"}>
                             {method.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
                           </Badge>
                         </TableCell>
-                        <TableCell>{method.isVirtual ? t("settings.payment.virtual") : t("settings.payment.physical")}</TableCell>
+                        <TableCell>{t("settings.payment.physical")}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8">

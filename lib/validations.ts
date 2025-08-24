@@ -219,7 +219,7 @@ export function validateData<T>(
   }
   
   const errors: Record<string, string> = {}
-  result.error.errors.forEach(err => {
+  result.error.issues.forEach((err: any) => {
     const path = err.path.join('.')
     errors[path] = err.message
   })
@@ -237,10 +237,11 @@ export function createUpdateSchema<T extends z.ZodRawShape>(
   const partialShape: any = {}
   
   for (const key in shape) {
-    partialShape[key] = shape[key].optional()
+    const field = shape[key] as any
+    partialShape[key] = field.optional()
   }
   
-  return z.object(partialShape)
+  return z.object(partialShape) as any
 }
 
 /**

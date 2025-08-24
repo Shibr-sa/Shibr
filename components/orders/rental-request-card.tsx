@@ -54,12 +54,12 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
       if (isAccepting) {
         await acceptRequest({
           requestId: request._id,
-          storeOwnerResponse: responseText,
+          response: responseText,
         })
       } else {
         await rejectRequest({
           requestId: request._id,
-          storeOwnerResponse: responseText,
+          response: responseText,
         })
       }
       

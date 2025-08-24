@@ -251,17 +251,7 @@ export default function PostsPage() {
                             <span className="font-medium">{post.percentage}%</span>
                           </TableCell>
                           <TableCell className="py-3 text-muted-foreground">
-                            {language === "ar" ? 
-                              (post.id === 1 ? "24 يونيو 2023" :
-                               post.id === 2 ? "23 يونيو 2023" :
-                               post.id === 3 ? "22 يونيو 2023" :
-                               post.id === 4 ? "21 يونيو 2023" :
-                               post.id === 5 ? "20 يونيو 2023" :
-                               post.id === 6 ? "19 يونيو 2023" :
-                               post.id === 7 ? "18 يونيو 2023" :
-                               "17 يونيو 2023")
-                              : post.addedDate
-                            }
+                            {post.addedDate}
                           </TableCell>
                           <TableCell className="py-3">
                             <Badge variant={getStatusVariant(post.status)} className="font-normal">

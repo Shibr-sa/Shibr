@@ -56,7 +56,7 @@ export default function BrandProductsPage() {
   const filteredProducts = products?.filter(product => {
     const matchesSearch = !searchQuery || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchQuery.toLowerCase())
+      product.code?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSearch
   }) || []
 
@@ -224,8 +224,8 @@ export default function BrandProductsPage() {
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>
                               </TableCell>
                               <TableCell className="py-3">{product.quantity}</TableCell>
-                              <TableCell className="py-3">{product.totalSales}</TableCell>
-                              <TableCell className="py-3">{product.shelfCount}</TableCell>
+                              <TableCell className="py-3">{(product as any).totalSales || 0}</TableCell>
+                              <TableCell className="py-3">{(product as any).shelfCount || 0}</TableCell>
                               <TableCell className="py-3">
                                 <div className="flex gap-1">
                                   <Button 

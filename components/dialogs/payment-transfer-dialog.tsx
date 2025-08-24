@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 
 interface PaymentTransferDialogProps {
   request: {
-    _id: Id<"rental_requests">
+    _id: Id<"rentalRequests">
     monthlyPrice?: number
     otherUserName?: string
     shelfName?: string
@@ -89,7 +89,7 @@ export function PaymentTransferDialog({
     try {
       // Update the request status to active
       await confirmPayment({
-        requestId: request._id,
+        requestId: request._id as Id<"rentalRequests">,
         paymentAmount: bankDetails.amount,
       })
       

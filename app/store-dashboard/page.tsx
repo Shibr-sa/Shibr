@@ -24,13 +24,13 @@ import { ar, enUS } from "date-fns/locale"
 import { formatDate, formatDuration, formatCurrency } from "@/lib/formatters"
 
 // Helper function to get badge variant based on request status
-function getRequestStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" | "warning" {
+function getRequestStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case "active":
       return "default"
     case "accepted":
     case "payment_pending":
-      return "warning"
+      return "default" // Changed from "warning" to "default"
     case "rejected":
       return "destructive"
     case "pending":
@@ -182,7 +182,7 @@ export default function StoreDashboardPage() {
               title={t("dashboard.incoming_orders")}
               value={rentalRequests?.filter(r => r.status === "pending").length || 0}
               trend={{
-                value: rentalRequests?.filter(r => r.status === "pending").length > 0 ? 100.0 : 0,
+                value: (rentalRequests?.filter(r => r.status === "pending").length || 0) > 0 ? 100.0 : 0,
                 label: `${t("time.from")} ${t("time.last_month")}`
               }}
               icon={<ShoppingBag className="h-5 w-5 text-primary" />}

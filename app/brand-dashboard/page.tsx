@@ -318,16 +318,16 @@ export default function BrandDashboardPage() {
                       {activeRentals.map((rental, index) => (
                         <TableRow key={rental._id} className="h-[52px]">
                           <TableCell className="font-medium">
-                            {rental.otherUserName || rental.storeName || "-"}
+                            {rental.otherUserName || "-"}
                           </TableCell>
                           <TableCell>
-                            {rental.shelfCity || rental.city || t("common.riyadh")}
+                            {(rental as any).shelfCity || rental.city || t("common.riyadh")}
                           </TableCell>
                           <TableCell>
                             {formatNumber(rental.productCount || 0)}
                           </TableCell>
                           <TableCell>
-                            {formatNumber(rental.salesCount || 0)}
+                            {formatNumber(0)}
                           </TableCell>
                           <TableCell>
                             <Badge variant={rental.status === "active" ? "default" : "secondary"}>

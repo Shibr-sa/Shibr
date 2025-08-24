@@ -35,7 +35,8 @@ import { ar, enUS } from "date-fns/locale"
 
 // Helper function to get badge variant based on shelf status
 function getShelfBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  if (shelf.status === "rented") {
+  // Check if shelf has active rental (instead of checking status === "rented")
+  if (shelf.isAvailable === false) {
     return "default"
   } else if (shelf.status === "approved" && shelf.isAvailable) {
     return "secondary"
@@ -85,7 +86,8 @@ export default function StoreDashboardShelvesPage() {
     
     // Apply status filter
     if (filter === "rented") {
-      filtered = filtered.filter(shelf => shelf.status === "rented")
+      // Check for shelves that are not available (meaning they're rented)
+      filtered = filtered.filter(shelf => shelf.isAvailable === false)
     } else if (filter === "available") {
       filtered = filtered.filter(shelf => shelf.status === "approved" && shelf.isAvailable)
     }
@@ -374,7 +376,7 @@ export default function StoreDashboardShelvesPage() {
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                           <TableCell>{shelf.branch}</TableCell>
                           <TableCell>
-                            {shelf.status === "rented" && shelf.renterName ? 
+                            {!shelf.isAvailable && shelf.renterName ? 
                               shelf.renterName : 
                               "-"
                             }
@@ -384,11 +386,11 @@ export default function StoreDashboardShelvesPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={getShelfBadgeVariant(shelf)}>
-                              {shelf.status === "rented" 
+                              {!shelf.isAvailable 
                                 ? t("shelves.status.rented")
                                 : shelf.status === "approved" && shelf.isAvailable
                                 ? t("shelves.status.available")
-                                : shelf.status === "pending"
+                                : shelf.status === "pending_approval"
                                 ? t("shelves.status.pending")
                                 : t("shelves.status.unavailable")
                               }

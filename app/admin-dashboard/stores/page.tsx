@@ -85,7 +85,7 @@ const storesData = [
 
 export default function StoresPage() {
   const { t, language } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState("monthly")
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStore, setSelectedStore] = useState<any>(null)
@@ -130,7 +130,7 @@ export default function StoresPage() {
               <CardTitle className="text-2xl font-bold">{t("stores.title")}</CardTitle>
               <p className="text-muted-foreground mt-1">{t("stores.description")}</p>
             </div>
-            <Tabs value={timePeriod} onValueChange={setTimePeriod} className="w-auto">
+            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
               <TabsList className="grid grid-cols-4 w-auto bg-muted">
                 <TabsTrigger value="daily" className="px-4">
                   {t("dashboard.daily")}

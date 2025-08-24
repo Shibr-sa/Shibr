@@ -44,7 +44,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
 
   // Fetch conversations - use admin-only for store owners
   const conversations = useQuery(
-    user?.accountType === "store-owner" ? api.chats.getAdminConversations : api.chats.getUserConversations,
+    user?.accountType === "store_owner" ? api.chats.getAdminConversations : api.chats.getUserConversations,
     userId ? { userId } : "skip"
   )
 
@@ -135,7 +135,7 @@ export function ChatFabWidget({ className }: ChatFabWidgetProps) {
   if (!userId) return null
 
   // For store owners, only show FAB if there are admin conversations with unread messages
-  if (user?.accountType === "store-owner" && (!conversations || conversations.length === 0)) {
+  if (user?.accountType === "store_owner" && (!conversations || conversations.length === 0)) {
     return null
   }
 

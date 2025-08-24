@@ -144,7 +144,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Also restore the form data from the existing request
   useEffect(() => {
     if (activeRequest) {
-      setConversationId(activeRequest.conversationId)
+      setConversationId(activeRequest.conversationId || null)
       setHasSubmittedRequest(true)
       
       // Restore form data from existing request
@@ -306,7 +306,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {shelfDetails.shelfImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(shelfDetails.shelfImage)}
+                              onClick={() => setSelectedImage(shelfDetails.shelfImage || null)}
                             >
                               <img
                                 src={shelfDetails.shelfImage}
@@ -322,7 +322,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {shelfDetails.exteriorImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(shelfDetails.exteriorImage)}
+                              onClick={() => setSelectedImage(shelfDetails.exteriorImage || null)}
                             >
                               <img
                                 src={shelfDetails.exteriorImage}
@@ -338,7 +338,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {shelfDetails.interiorImage && (
                             <div 
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(shelfDetails.interiorImage)}
+                              onClick={() => setSelectedImage(shelfDetails.interiorImage || null)}
                             >
                               <img
                                 src={shelfDetails.interiorImage}
@@ -535,12 +535,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 hover:bg-muted"
-                                        disabled={selectedProduct?.quantity === product.quantity}
+                                        disabled={selectedProduct?.quantity === (product.quantity || 0)}
                                         onClick={(e) => {
                                           e.preventDefault()
                                           e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
-                                          if (currentQty < product.quantity) {
+                                          if (currentQty < (product.quantity || 0)) {
                                             setSelectedProducts(selectedProducts.map(p => 
                                               p.id === product._id 
                                                 ? {...p, quantity: currentQty + 1}

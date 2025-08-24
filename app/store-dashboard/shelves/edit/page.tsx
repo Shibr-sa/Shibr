@@ -202,7 +202,7 @@ export default function AddShelfPage() {
         city,
         branch,
         monthlyPrice: parseFloat(monthlyPrice),
-        discountPercentage: discount,
+        storeCommission: discount,
         availableFrom: availableFrom ? formatDate(availableFrom, 'en', 'short').split('/').reverse().join('-') : new Date().toISOString().split('T')[0],
         length,
         width,

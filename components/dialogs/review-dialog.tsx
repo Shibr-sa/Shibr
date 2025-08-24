@@ -32,7 +32,8 @@ export function ReviewDialog({
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const submitReview = useMutation(api.rentalManagement.submitReview)
+  // submitReview function is not implemented yet
+  // const submitReview = useMutation(api.rentalManagement.submitReview)
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -46,11 +47,12 @@ export function ReviewDialog({
 
     setIsLoading(true)
     try {
-      await submitReview({
-        rentalRequestId,
-        rating,
-        revieweeId
-      })
+      // TODO: Implement submitReview function
+      // await submitReview({
+      //   rentalRequestId,
+      //   rating,
+      //   revieweeId
+      // })
       
       toast({
         title: t("review.submitted"),

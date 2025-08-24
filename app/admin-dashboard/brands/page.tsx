@@ -119,7 +119,7 @@ const brandsData = [
 
 export default function BrandsPage() {
   const { t, language } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState("monthly")
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedBrand, setSelectedBrand] = useState<any>(null)
@@ -184,7 +184,7 @@ export default function BrandsPage() {
               <CardTitle className="text-2xl font-bold">{t("brands.title")}</CardTitle>
               <CardDescription className="mt-1">{t("brands.description")}</CardDescription>
             </div>
-            <Tabs value={timePeriod} onValueChange={setTimePeriod} className="w-auto">
+            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
               <TabsList className="grid grid-cols-4 w-auto bg-muted">
                 <TabsTrigger value="daily" className="px-4">
                   {t("dashboard.daily")}
@@ -307,9 +307,9 @@ export default function BrandsPage() {
                             <TableCell className="py-3">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
-                                  <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${brand.logo}`} />
+                                  <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${brand.name?.charAt(0)}`} />
                                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                    {brand.logo}
+                                    {brand.name?.charAt(0)?.toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>

@@ -407,12 +407,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                   <h3 className="text-base font-semibold text-foreground">
                                     {store.shelfName}
                                   </h3>
-                                  {store.isVerified && (
-                                    <Badge variant="secondary" className="shrink-0">
-                                      <Check className="h-3 w-3 me-1" />
-                                      {t("marketplace.verified")}
-                                    </Badge>
-                                  )}
+                                  {/* Verification badge - isVerified field not in schema yet */}
                                 </div>
                                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                   <MapPin className="h-3.5 w-3.5" />

@@ -511,10 +511,6 @@ const translations = {
     "posts.small": "صغير",
     "posts.large": "كبير",
     "posts.per_month": "شهرياً",
-    "posts.status.published": "منشور",
-    "posts.status.under_review": "قيد المراجعة",
-    "posts.status.rented": "مؤجر",
-    "posts.status.rejected": "مرفوض",
 
     // Payments page
     "payments.title": "إدارة المدفوعات والتحصيلات – متابعة الدخل والمستحقات",
@@ -1484,7 +1480,6 @@ const translations = {
     
     // Brand Shelves Page
     "brand.shelves.page_description": "تابع جميع المساحات التي حجزتها داخل المحلات الواقعية",
-    "brand.shelves.total_sales": "إجمالي المبيعات",
     "brand.shelves.total_qr_scans": "عدد مسحات QR الإجمالية",
     "brand.shelves.current_shelves_count": "عدد الرفوف المؤجرة حالياً",
     "brand.shelves.from_last_month": "من الشهر الماضي",
@@ -1536,8 +1531,7 @@ const translations = {
     "notifications.notifications": "الإشعارات",
     "notifications.no_new": "لا جديد",
 
-    // Status/State Values
-    "status.active": "نشط",
+    // Status/State Values - Additional
     "status.pending": "قيد المراجعة",
     "status.payment_pending": "بانتظار الدفع",
     "status.payment_processing": "جاري التحقق من الدفع",
@@ -1617,8 +1611,7 @@ const translations = {
     "brand.rent_first_shelf": "استأجر رفك الأول",
     "brand.current_shelves_description": "تابع جميع المساحات اللي حجزتها داخل المحلات الواقعية، أضف منتجاتك، حمّل أكواد QR، وتأكد إن عرضك على الأرض شغال بكفاءة.",
 
-    // Table Headers
-    "table.store": "المتجر",
+    // Additional Table Headers
     "table.store_name": "اسم المحل",
     "table.city": "المدينة",
     "table.sales_count": "عدد المبيعات",
@@ -1631,21 +1624,15 @@ const translations = {
     "table.rental_date": "تاريخ الإيجار",
     "table.end_date": "تاريخ الانتهاء",
     "table.shelf_size": "حجم الرفوف",
-    "table.location": "الموقع",
     "table.count": "العدد",
     "table.start": "البداية",
     "table.end": "النهاية",
-    "table.status": "الحالة",
     "table.action": "الإجراء",
     "table.actions": "إجراءات",
-    "table.branch": "الفرع",
-    "table.rental_duration": "مدة الإيجار",
     "table.request_date": "تاريخ الطلب",
     "table.rating": "التقييم",
-    "table.options": "خيارات",
     "table.operations_count": "عدد العمليات",
     "table.rental_price": "سعر الإيجار",
-    "table.city": "المدينة",
 
     // Store Dashboard
     "store.your_statistics": "إحصائياتك",
@@ -2189,10 +2176,6 @@ const translations = {
     "posts.small": "Small",
     "posts.large": "Large",
     "posts.per_month": "per month",
-    "posts.status.published": "Published",
-    "posts.status.under_review": "Under Review",
-    "posts.status.rented": "Rented",
-    "posts.status.rejected": "Rejected",
 
     // Payments page  
     "payments.title": "Payments & Collections Management - Income & Receivables Tracking",
@@ -3166,7 +3149,6 @@ const translations = {
     
     // Brand Shelves Page
     "brand.shelves.page_description": "Track all the spaces you have reserved inside physical stores",
-    "brand.shelves.total_sales": "Total Sales",
     "brand.shelves.total_qr_scans": "Total QR Scans",
     "brand.shelves.current_shelves_count": "Currently Rented Shelves",
     "brand.shelves.from_last_month": "from last month",
@@ -3218,8 +3200,7 @@ const translations = {
     "notifications.notifications": "Notifications",
     "notifications.no_new": "No new",
 
-    // Status/State Values
-    "status.active": "Active",
+    // Status/State Values - Additional
     "status.pending": "Pending",
     "status.payment_pending": "Payment Required",
     "status.payment_processing": "Verifying Payment",
@@ -3299,10 +3280,8 @@ const translations = {
     "brand.rent_first_shelf": "Rent your first shelf",
     "brand.current_shelves_description": "Track all your booked spaces in physical stores, add your products, download QR codes, and ensure your on-ground display is running efficiently.",
 
-    // Table Headers
-    "table.store": "Store",
+    // Additional Table Headers
     "table.store_name": "Store Name",
-    "table.city": "City",
     "table.sales_count": "Sales Count",
     "table.order_number": "Order Number",
     "table.product_name": "Product Name",
@@ -3313,18 +3292,13 @@ const translations = {
     "table.rental_date": "Rental Date",
     "table.end_date": "End Date",
     "table.shelf_size": "Shelf Size",
-    "table.location": "Location",
     "table.count": "Count",
     "table.start": "Start",
     "table.end": "End",
-    "table.status": "Status",
     "table.action": "Action",
     "table.actions": "Actions",
-    "table.branch": "Branch",
-    "table.rental_duration": "Rental Duration",
     "table.request_date": "Request Date",
     "table.rating": "Rating",
-    "table.options": "Actions",
 
     // Store Dashboard
     "store.your_statistics": "Your Statistics",

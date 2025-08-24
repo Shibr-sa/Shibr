@@ -71,21 +71,21 @@ export default function ShelfDetailsPage() {
     id: shelfData._id,
     name: shelfData.shelfName,
     price: shelfData.monthlyPrice,
-    storeCommission: shelfData.storeCommission || shelfData.discountPercentage || 10,
+    storeCommission: shelfData.storeCommission || 10,
     status: shelfData.status || "available",
     city: shelfData.city,
     branch: shelfData.branch,
     address: shelfData.address || shelfData.branch,
     addedDate: shelfData.availableFrom || new Date(shelfData._creationTime).toLocaleDateString(),
     dimensions: {
-      length: parseFloat(shelfData.length) || 1.20,
-      width: parseFloat(shelfData.width) || 1.20,
-      depth: parseFloat(shelfData.depth) || 3
+      length: shelfData.shelfSize?.width || 1.20,
+      width: shelfData.shelfSize?.height || 1.20,
+      depth: shelfData.shelfSize?.depth || 3
     },
     productTypes: shelfData.productTypes || [],
     renterName: shelfData.renterName,
     renterEmail: shelfData.renterEmail,
-    renterDate: shelfData.rentalStartDate || "—",
+    renterDate: "—", // rentalStartDate not in shelf schema
     renterRating: shelfData.renterRating,
     images: [
       shelfData.shelfImage,
@@ -144,9 +144,9 @@ export default function ShelfDetailsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge 
-                  variant={formattedData.status === "rented" ? "secondary" : "default"}
+                  variant={shelfData.isAvailable === false ? "secondary" : "default"}
                 >
-                  {formattedData.status === "rented" 
+                  {shelfData.isAvailable === false 
                     ? t("shelf_details.rented")
                     : t("shelf_details.available")
                   }
@@ -155,8 +155,8 @@ export default function ShelfDetailsPage() {
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8"
-                  disabled={formattedData.status === "rented"}
-                  title={formattedData.status === "rented" ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
+                  disabled={shelfData.isAvailable === false}
+                  title={shelfData.isAvailable === false ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
                   onClick={() => router.push(`/store-dashboard/shelves/${shelfIdParam}/edit`)}
                 >
                   <Edit2 className="h-3.5 w-3.5" />

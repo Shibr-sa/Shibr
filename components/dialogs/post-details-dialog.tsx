@@ -92,7 +92,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
       case "under_review":
         return "secondary"
       case "rented":
-        return "success"
+        return "default"
       case "rejected":
         return "destructive"
       default:
@@ -121,7 +121,7 @@ export function PostDetailsDialog({ open, onOpenChange, post }: PostDetailsDialo
         <div className="space-y-6 mt-6">
           {/* Shelf Images - moved to top */}
           <div className="grid grid-cols-3 gap-4">
-            {postDetails.images.map((image, index) => (
+            {postDetails.images.map((image: any, index: number) => (
               <div key={index} className="aspect-square bg-muted rounded-lg border border-border/50 flex items-center justify-center">
                 <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
               </div>

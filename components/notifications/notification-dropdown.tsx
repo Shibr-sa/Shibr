@@ -42,7 +42,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
   // Fetch notifications
   const notifications = useQuery(
     api.notifications.getUserNotifications,
-    { userId }
+    {}
   )
   
   // Mark as read mutation
@@ -50,7 +50,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
   const markAllAsRead = useMutation(api.notifications.markAllAsRead)
   
   // Calculate unread count
-  const unreadCount = notifications?.filter(n => !n.read).length || 0
+  const unreadCount = notifications?.filter(n => !n.isRead).length || 0
   
   // Auto-mark as read when dropdown opens
   useEffect(() => {
@@ -82,7 +82,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
   
   const handleNotificationClick = async (notification: any) => {
     // Mark as read if not already
-    if (!notification.read) {
+    if (!notification.isRead) {
       await markAsRead({ notificationId: notification._id })
     }
     
@@ -142,7 +142,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
                 key={notification._id}
                 className={cn(
                   "flex flex-col items-start gap-2 p-3 cursor-pointer",
-                  !notification.read && "bg-muted/50"
+                  !notification.isRead && "bg-muted/50"
                 )}
                 onClick={() => handleNotificationClick(notification)}
               >
@@ -165,7 +165,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
                       )}
                     </p>
                   </div>
-                  {!notification.read && (
+                  {!notification.isRead && (
                     <div className="flex-shrink-0">
                       <div className="h-2 w-2 bg-primary rounded-full" />
                     </div>

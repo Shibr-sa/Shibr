@@ -344,7 +344,9 @@ export default function RequestDetailsPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={handleSeedProducts}
+                        onClick={() => {
+                          console.log('Debug: Sample products needed')
+                        }}
                       >
                         Create Sample Products (Debug)
                       </Button>
@@ -420,7 +422,7 @@ export default function RequestDetailsPage() {
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <ChatInterface
                 conversationId={currentConversation._id}
-                currentUserId={userId}
+                currentUserId={userId!}
                 currentUserType="store-owner"
                 otherUserName={rentalRequest.otherUserName || rentalRequest.brandName || t("common.brand_owner")}
                 shelfName={rentalRequest.shelfName || ""}

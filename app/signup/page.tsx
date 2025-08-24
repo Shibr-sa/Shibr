@@ -50,8 +50,8 @@ export default function SignUpPage() {
       setErrors(prev => ({ ...prev, [fieldName]: "" }))
       return true
     } catch (error) {
-      if (error instanceof z.ZodError && error.errors) {
-        const fieldError = error.errors.find(err => err.path && err.path[0] === fieldName)
+      if (error instanceof z.ZodError && error.issues) {
+        const fieldError = error.issues.find((err: any) => err.path && err.path[0] === fieldName)
         if (fieldError) {
           setErrors(prev => ({ ...prev, [fieldName]: fieldError.message }))
         }

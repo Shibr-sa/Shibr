@@ -538,7 +538,7 @@ export default function BrandShelvesPage() {
                           {request.city || "-"}
                         </TableCell>
                         <TableCell>
-                          {request.salesCount !== undefined ? request.salesCount : "-"}
+                          {(request as any).salesCount !== undefined ? (request as any).salesCount : "-"}
                         </TableCell>
                         <TableCell>
                           {request.startDate 

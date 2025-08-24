@@ -175,7 +175,7 @@ const storesData = [
 
 export default function AdminDashboard() {
   const { language, t, direction } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState("monthly")
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   
   // Fetch real stats from Convex
   const adminStats = useQuery(api.admin.getAdminStats, { timePeriod })
@@ -200,7 +200,7 @@ export default function AdminDashboard() {
                 {t("dashboard.platform_overview")}
               </p>
             </div>
-            <Tabs value={timePeriod} onValueChange={setTimePeriod} className="w-auto">
+            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
               <TabsList className="grid grid-cols-4 w-auto bg-muted">
                 <TabsTrigger value="daily" className="px-4">
                   {t("dashboard.daily")}
@@ -238,8 +238,8 @@ export default function AdminDashboard() {
               value={formatNumber(adminStats?.shelves?.total || 0)}
               description={
                 language === "ar" ? 
-                  `${adminStats?.shelves?.rented || 0} مؤجر، ${adminStats?.shelves?.available || 0} متاح` : 
-                  `${adminStats?.shelves?.rented || 0} rented, ${adminStats?.shelves?.available || 0} available`
+                  `${(adminStats?.shelves?.total || 0) - (adminStats?.shelves?.available || 0)} مؤجر، ${adminStats?.shelves?.available || 0} متاح` : 
+                  `${(adminStats?.shelves?.total || 0) - (adminStats?.shelves?.available || 0)} rented, ${adminStats?.shelves?.available || 0} available`
               }
               icon={<Package className="h-6 w-6 text-primary" />}
             />
