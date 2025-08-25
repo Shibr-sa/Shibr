@@ -71,7 +71,9 @@ const schema = defineSchema({
     .index("by_user", ["userId"])
     .index("by_account_type", ["accountType"])
     .index("by_email", ["email"])
-    .index("by_phone", ["phoneNumber"]),
+    .index("by_phone", ["phoneNumber"])
+    .index("by_account_type_active", ["accountType", "isActive"])
+    .index("by_created", ["createdAt"]),
   
   // Shelves/Stores for marketplace
   shelves: defineTable({
@@ -140,7 +142,9 @@ const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_city", ["city"])
     .index("by_availability", ["isAvailable"])
-    .index("by_price", ["monthlyPrice"]),
+    .index("by_price", ["monthlyPrice"])
+    .index("by_status_available", ["status", "isAvailable"])
+    .index("by_created", ["createdAt"]),
   
   // Rental requests
   rentalRequests: defineTable({
@@ -207,7 +211,9 @@ const schema = defineSchema({
     .index("by_requester", ["requesterId"])
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
-    .index("by_payment_status", ["paymentStatus"]),
+    .index("by_payment_status", ["paymentStatus"])
+    .index("by_created", ["createdAt"])
+    .index("by_owner_status", ["ownerId", "status"]),
   
   // Products managed by brand owners
   products: defineTable({

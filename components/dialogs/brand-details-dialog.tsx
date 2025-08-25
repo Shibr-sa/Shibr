@@ -225,8 +225,9 @@ export function BrandDetailsDialog({ open, onOpenChange, brand }: BrandDetailsDi
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={`/placeholder.svg?height=48&width=48&text=${brand.name.charAt(0)}`} />
-                <AvatarFallback>{brand.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {brand.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <div>
                 <DialogTitle className="text-xl font-semibold">{brand.name}</DialogTitle>

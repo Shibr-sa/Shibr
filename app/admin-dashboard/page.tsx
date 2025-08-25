@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Progress } from "@/components/ui/progress"
@@ -63,7 +64,23 @@ const emptyChartData = [
 
 export default function AdminDashboard() {
   const { language, t, direction } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  // Initialize state from URL params for persistence
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">(
+    (searchParams.get("period") as "daily" | "weekly" | "monthly" | "yearly") || "monthly"
+  )
+  
+  // Update URL when period changes
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (timePeriod !== "monthly") params.set("period", timePeriod)
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [timePeriod, pathname, router])
   
   // Fetch real stats from Convex
   const adminStats = useQuery(api.admin.getAdminStats, { timePeriod })
@@ -80,43 +97,42 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header and Stats in Single Card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{t("dashboard.control_panel")}</h1>
-              <p className="text-muted-foreground mt-1">
-                {t("dashboard.platform_overview")}
-              </p>
-            </div>
-            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
-              <TabsList className="grid grid-cols-4 w-auto bg-muted">
-                <TabsTrigger value="daily" className="px-4">
-                  {t("dashboard.daily")}
-                </TabsTrigger>
-                <TabsTrigger value="weekly" className="px-4">
-                  {t("dashboard.weekly")}
-                </TabsTrigger>
-                <TabsTrigger value="monthly" className="px-4">
-                  {t("dashboard.monthly")}
-                </TabsTrigger>
-                <TabsTrigger value="yearly" className="px-4">
-                  {t("dashboard.yearly")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t("dashboard.control_panel")}</h1>
+          <p className="text-muted-foreground mt-1">
+            {t("dashboard.platform_overview")}
+          </p>
+        </div>
+        <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
+          <TabsList className="grid grid-cols-4 w-auto bg-muted">
+            <TabsTrigger value="daily" className="px-4">
+              {t("dashboard.daily")}
+            </TabsTrigger>
+            <TabsTrigger value="weekly" className="px-4">
+              {t("dashboard.weekly")}
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="px-4">
+              {t("dashboard.monthly")}
+            </TabsTrigger>
+            <TabsTrigger value="yearly" className="px-4">
+              {t("dashboard.yearly")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {isLoading ? (
               <Card className="bg-muted/50 border-0 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-8 w-28" />
-                      <Skeleton className="h-3 w-24" />
+                    <div className="flex-1">
+                      <Skeleton className="h-[14px] w-20" />
+                      <Skeleton className="h-[30px] w-28 mt-1" />
+                      <Skeleton className="h-[16px] w-24 mt-1" />
                     </div>
                     <Skeleton className="h-12 w-12 rounded-lg" />
                   </div>
@@ -141,10 +157,10 @@ export default function AdminDashboard() {
               <Card className="bg-muted/50 border-0 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-8 w-28" />
-                      <Skeleton className="h-3 w-24" />
+                    <div className="flex-1">
+                      <Skeleton className="h-[14px] w-20" />
+                      <Skeleton className="h-[30px] w-28 mt-1" />
+                      <Skeleton className="h-[16px] w-24 mt-1" />
                     </div>
                     <Skeleton className="h-12 w-12 rounded-lg" />
                   </div>
@@ -167,10 +183,10 @@ export default function AdminDashboard() {
               <Card className="bg-muted/50 border-0 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-8 w-28" />
-                      <Skeleton className="h-3 w-24" />
+                    <div className="flex-1">
+                      <Skeleton className="h-[14px] w-20" />
+                      <Skeleton className="h-[30px] w-28 mt-1" />
+                      <Skeleton className="h-[16px] w-24 mt-1" />
                     </div>
                     <Skeleton className="h-12 w-12 rounded-lg" />
                   </div>
@@ -192,10 +208,10 @@ export default function AdminDashboard() {
               <Card className="bg-muted/50 border-0 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-8 w-28" />
-                      <Skeleton className="h-3 w-24" />
+                    <div className="flex-1">
+                      <Skeleton className="h-[14px] w-20" />
+                      <Skeleton className="h-[30px] w-28 mt-1" />
+                      <Skeleton className="h-[16px] w-24 mt-1" />
                     </div>
                     <Skeleton className="h-12 w-12 rounded-lg" />
                   </div>
@@ -215,9 +231,7 @@ export default function AdminDashboard() {
                 icon={<FileText className="h-6 w-6 text-primary" />}
               />
             )}
-          </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Charts Section */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
@@ -308,8 +322,8 @@ export default function AdminDashboard() {
               <CardTitle className="text-lg font-semibold">Top Performing Stores</CardTitle>
               <CardDescription>Based on monthly revenue</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              <div className="space-y-4 h-[350px] overflow-y-auto pr-2">
+            <CardContent className="flex-1">
+              <div className="space-y-4">
                 {isLoading ? (
                   // Loading skeletons for top stores
                   Array.from({ length: 5 }).map((_, index) => (
@@ -339,13 +353,18 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className={`flex items-center gap-1 ${(store.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="flex items-center gap-1">
                       {(store.growth || 0) >= 0 ? (
-                        <TrendingUp className="h-3 w-3" />
+                        <>
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs font-medium text-green-600">+{store.growth || 0}%</span>
+                        </>
                       ) : (
-                        <TrendingDown className="h-3 w-3" />
+                        <>
+                          <TrendingDown className="h-3 w-3 text-destructive" />
+                          <span className="text-xs font-medium text-destructive">{store.growth || 0}%</span>
+                        </>
                       )}
-                      <span className="text-xs font-medium">{Math.abs(store.growth || 0)}%</span>
                     </div>
                   </div>
                   ))

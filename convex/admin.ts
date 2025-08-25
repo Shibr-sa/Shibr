@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
 
 // Helper function to get date ranges based on time period
 function getDateRange(endDate: Date, period: string): { startDate: Date; endDate: Date } {
@@ -145,6 +146,21 @@ export const getAdminStats = query({
     timePeriod: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly"))),
   },
   handler: async (ctx, args) => {
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
     const timePeriod = args.timePeriod || "monthly"
     // Get counts for different user types
     const storeOwners = await ctx.db
@@ -504,12 +520,15 @@ export const getAdminStats = query({
 
 // Verify admin access (middleware-like function)
 export const verifyAdminAccess = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId)
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
     
+    if (!userId) {
+      return { isAdmin: false, error: "Not authenticated" }
+    }
+    
+    const user = await ctx.db.get(userId)
     if (!user) {
       return { isAdmin: false, error: "User not found" }
     }
@@ -517,7 +536,7 @@ export const verifyAdminAccess = query({
     // Get the user profile to check account type
     const userProfile = await ctx.db
       .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first()
     
     if (!userProfile) {
@@ -546,38 +565,37 @@ export const verifyAdminAccess = query({
 // Update platform settings (admin only)
 export const updatePlatformSettings = mutation({
   args: {
-    adminUserId: v.id("users"),
     platformFeePercentage: v.optional(v.number()),
     minimumShelfPrice: v.optional(v.number()),
     maximumDiscountPercentage: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const user = await ctx.db.get(args.adminUserId)
-    if (!user) {
-      throw new Error("User not found")
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
     }
     
     const userProfile = await ctx.db
       .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first()
     
     if (!userProfile || userProfile.accountType !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
-    const { adminUserId, ...settings } = args
+    const settings = args
 
     // Update or create platform fee setting
     if (settings.platformFeePercentage !== undefined) {
       const feeKey = "platformFeePercentage"
-      const existingFee = await ctx.db.query("platformSettings").filter(q => q.eq(q.field("key"), feeKey)).first()
+      const existingFee = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", feeKey)).first()
       
       if (existingFee) {
         await ctx.db.patch(existingFee._id, {
           value: settings.platformFeePercentage,
-          updatedBy: args.adminUserId,
+          updatedBy: userId,
           updatedAt: new Date().toISOString(),
         })
       } else {
@@ -585,7 +603,7 @@ export const updatePlatformSettings = mutation({
           key: feeKey,
           value: settings.platformFeePercentage,
           description: "Platform fee percentage",
-          updatedBy: args.adminUserId,
+          updatedBy: userId,
           updatedAt: new Date().toISOString(),
         })
       }
@@ -594,12 +612,12 @@ export const updatePlatformSettings = mutation({
     // Update or create minimum shelf price setting
     if (settings.minimumShelfPrice !== undefined) {
       const priceKey = "minimumShelfPrice"
-      const existingPrice = await ctx.db.query("platformSettings").filter(q => q.eq(q.field("key"), priceKey)).first()
+      const existingPrice = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", priceKey)).first()
       
       if (existingPrice) {
         await ctx.db.patch(existingPrice._id, {
           value: settings.minimumShelfPrice,
-          updatedBy: args.adminUserId,
+          updatedBy: userId,
           updatedAt: new Date().toISOString(),
         })
       } else {
@@ -607,7 +625,7 @@ export const updatePlatformSettings = mutation({
           key: priceKey,
           value: settings.minimumShelfPrice,
           description: "Minimum shelf price",
-          updatedBy: args.adminUserId,
+          updatedBy: userId,
           updatedAt: new Date().toISOString(),
         })
       }
@@ -620,21 +638,20 @@ export const updatePlatformSettings = mutation({
 // Approve or reject shelf listing (admin only)
 export const reviewShelfListing = mutation({
   args: {
-    adminUserId: v.id("users"),
     shelfId: v.id("shelves"),
     action: v.union(v.literal("approve"), v.literal("reject")),
     rejectionReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const adminUser = await ctx.db.get(args.adminUserId)
-    if (!adminUser) {
-      throw new Error("Admin user not found")
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
     }
     
     const adminProfile = await ctx.db
       .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first()
     
     if (!adminProfile || adminProfile.accountType !== "admin") {
@@ -649,7 +666,7 @@ export const reviewShelfListing = mutation({
     // Update shelf status
     const updateData: any = {
       status: args.action === "approve" ? "approved" : "rejected",
-      reviewedBy: args.adminUserId,
+      reviewedBy: userId,
       reviewedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -688,19 +705,18 @@ export const reviewShelfListing = mutation({
 // Toggle user active status (admin only)
 export const toggleUserStatus = mutation({
   args: {
-    adminUserId: v.id("users"),
     targetUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const admin = await ctx.db.get(args.adminUserId)
-    if (!admin) {
-      throw new Error("Admin user not found")
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
     }
     
     const adminProfile = await ctx.db
       .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.adminUserId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first()
     
     if (!adminProfile || adminProfile.accountType !== "admin") {
@@ -708,7 +724,7 @@ export const toggleUserStatus = mutation({
     }
 
     // Prevent admin from deactivating themselves
-    if (args.adminUserId === args.targetUserId) {
+    if (userId === args.targetUserId) {
       throw new Error("Cannot deactivate your own admin account")
     }
 
@@ -745,19 +761,33 @@ export const toggleUserStatus = mutation({
 export const getStores = query({
   args: {
     searchQuery: v.optional(v.string()),
-    page: v.optional(v.number()),
-    limit: v.optional(v.number()),
+    page: v.number(),
+    limit: v.number(),
     timePeriod: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly"))),
   },
   handler: async (ctx, args) => {
-    const { searchQuery = "", page = 1, limit = 10, timePeriod = "monthly" } = args;
-
-    // Get all store owners
-    let storeOwnersQuery = ctx.db
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
       .query("userProfiles")
-      .filter(q => q.eq(q.field("accountType"), "store_owner"));
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
 
-    const allStoreOwners = await storeOwnersQuery.collect();
+    // Get all store owners with limit
+    const allStoreOwners = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_account_type", (q) => q.eq("accountType", "store_owner"))
+      .take(500); // Reasonable limit
 
     // Filter by search query
     const filteredStoreOwners = searchQuery
@@ -771,17 +801,11 @@ export const getStores = query({
     // Get shelves for each store owner
     const storesWithStats = await Promise.all(
       filteredStoreOwners.map(async (store) => {
-        // Get user profile first
-        const storeProfile = await ctx.db
-          .query("userProfiles")
-          .withIndex("by_user", q => q.eq("userId", store.userId))
-          .first();
-        
-        const shelves = storeProfile ? await ctx.db
+        // Use the store directly as it's already the profile
+        const shelves = await ctx.db
           .query("shelves")
-          .withIndex("by_profile")
-          .filter(q => q.eq(q.field("profileId"), storeProfile._id))
-          .collect() : [];
+          .filter(q => q.eq(q.field("profileId"), store._id))
+          .collect();
 
         const approvedShelves = shelves.filter(s => s.status === "approved").length;
         const totalShelves = shelves.length;
@@ -789,7 +813,6 @@ export const getStores = query({
         // Get rental requests for this store
         const rentals = await ctx.db
           .query("rentalRequests")
-          .withIndex("by_owner")
           .filter(q => q.eq(q.field("ownerId"), store.userId))
           .collect();
 
@@ -805,12 +828,18 @@ export const getStores = query({
           phoneNumber: store.phoneNumber,
           shelves: totalShelves,
           approvedShelves,
+          rentedShelves: activeRentals, // Add this for consistency
           rentals: activeRentals,
           revenue: totalRevenue,
           status: store.isActive ? "active" : "suspended",
           joinDate: store.createdAt,
           businessRegistration: store.commercialRegisterNumber,
           businessRegistrationUrl: store.commercialRegisterDocument,
+          // Add additional fields for better display
+          fullName: store.fullName,
+          storeName: store.storeName,
+          storeType: store.storeType,
+          location: store.storeLocation,
         };
       })
     );
@@ -825,49 +854,96 @@ export const getStores = query({
     const endIndex = startIndex + limit;
     const paginatedStores = storesWithStats.slice(startIndex, endIndex);
 
-    // Calculate time-based stats
-    const now = new Date();
-    const { startDate: periodStart, endDate: periodEnd } = getDateRange(now, timePeriod);
-    const { startDate: previousStart, endDate: previousEnd } = getDateRange(periodStart, timePeriod);
-
-    // Get stores by creation date (cumulative)
-    const storesUntilNow = storesWithStats.filter(store => {
-      const joinDate = new Date(store.joinDate);
-      return joinDate <= periodEnd;
-    }).length;
-
-    const storesUntilPrevious = storesWithStats.filter(store => {
-      const joinDate = new Date(store.joinDate);
-      return joinDate <= previousEnd;
-    }).length;
-
-    // Calculate counts
+    // Calculate stats
     const totalStores = storesWithStats.length;
     const activeStores = storesWithStats.filter(s => s.status === "active").length;
     const suspendedStores = storesWithStats.filter(s => s.status === "suspended").length;
+    
+    // Calculate shelf stats
+    const totalShelves = storesWithStats.reduce((sum, store) => sum + store.shelves, 0);
+    const totalRentedShelves = storesWithStats.reduce((sum, store) => sum + store.rentals, 0);
 
-    // Calculate percentage changes (cumulative growth)
-    const totalChange = storesUntilPrevious > 0
-      ? Math.round(((storesUntilNow - storesUntilPrevious) / storesUntilPrevious) * 100 * 10) / 10
-      : storesUntilNow > 0 ? 100 : 0;
+    // Calculate percentage changes based on timePeriod
+    const now = new Date();
+    const { startDate: periodStart } = getDateRange(now, timePeriod);
+    const { startDate: previousStart } = getDateRange(periodStart, timePeriod);
 
-    // Use actual calculated changes, return 0 if no change
-    const activeChange = 0;
-    const suspendedChange = 0;
-    const finalTotalChange = totalChange;
+    const storesInPeriod = storesWithStats.filter(store => {
+      const joinDate = new Date(store.joinDate);
+      return joinDate >= periodStart;
+    }).length;
+
+    const storesInPreviousPeriod = storesWithStats.filter(store => {
+      const joinDate = new Date(store.joinDate);
+      return joinDate >= previousStart && joinDate < periodStart;
+    }).length;
+
+    const totalChange = storesInPreviousPeriod > 0
+      ? Math.round(((storesInPeriod - storesInPreviousPeriod) / storesInPreviousPeriod) * 100 * 10) / 10
+      : storesInPeriod > 0 ? 100 : 0;
+    
+    // Calculate shelves change for the period
+    const shelvesInPeriod = await ctx.db
+      .query("shelves")
+      .filter(q => q.gte(q.field("createdAt"), periodStart.toISOString()))
+      .collect();
+    
+    const shelvesInPreviousPeriod = await ctx.db
+      .query("shelves")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("createdAt"), previousStart.toISOString()),
+          q.lt(q.field("createdAt"), periodStart.toISOString())
+        )
+      )
+      .collect();
+    
+    const shelvesChange = shelvesInPreviousPeriod.length > 0
+      ? Math.round(((shelvesInPeriod.length - shelvesInPreviousPeriod.length) / shelvesInPreviousPeriod.length) * 100 * 10) / 10
+      : shelvesInPeriod.length > 0 ? 100 : 0;
+    
+    // Calculate rented shelves change for the period
+    const rentalsInPeriod = await ctx.db
+      .query("rentalRequests")
+      .filter(q => 
+        q.and(
+          q.eq(q.field("status"), "active"),
+          q.gte(q.field("createdAt"), periodStart.toISOString())
+        )
+      )
+      .collect();
+    
+    const rentalsInPreviousPeriod = await ctx.db
+      .query("rentalRequests")
+      .filter(q => 
+        q.and(
+          q.eq(q.field("status"), "active"),
+          q.and(
+            q.gte(q.field("createdAt"), previousStart.toISOString()),
+            q.lt(q.field("createdAt"), periodStart.toISOString())
+          )
+        )
+      )
+      .collect();
+    
+    const rentedChange = rentalsInPreviousPeriod.length > 0
+      ? Math.round(((rentalsInPeriod.length - rentalsInPreviousPeriod.length) / rentalsInPreviousPeriod.length) * 100 * 10) / 10
+      : rentalsInPeriod.length > 0 ? 100 : 0;
 
     return {
-      stores: paginatedStores,
-      total: storesWithStats.length,
-      page,
+      items: paginatedStores,
       totalPages: Math.ceil(storesWithStats.length / limit),
       stats: {
         totalStores,
-        totalChange: finalTotalChange,
+        totalChange,
         activeStores,
-        activeChange: activeChange,
+        activeChange: 0, // Would need historical data to calculate
         suspendedStores,
-        suspendedChange: suspendedChange,
+        suspendedChange: 0, // Would need historical data to calculate
+        totalShelves,
+        shelvesChange,
+        rentedShelves: totalRentedShelves,
+        rentedChange,
       },
     };
   },
@@ -877,19 +953,33 @@ export const getStores = query({
 export const getBrands = query({
   args: {
     searchQuery: v.optional(v.string()),
-    page: v.optional(v.number()),
-    limit: v.optional(v.number()),
+    page: v.number(),
+    limit: v.number(),
     timePeriod: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly"))),
   },
   handler: async (ctx, args) => {
-    const { searchQuery = "", page = 1, limit = 10, timePeriod = "monthly" } = args;
-
-    // Get all brand owners
-    let brandOwnersQuery = ctx.db
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
       .query("userProfiles")
-      .filter(q => q.eq(q.field("accountType"), "brand_owner"));
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
 
-    const allBrandOwners = await brandOwnersQuery.collect();
+    // Get all brand owners with limit
+    const allBrandOwners = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_account_type", (q) => q.eq("accountType", "brand_owner"))
+      .take(500); // Reasonable limit
 
     // Filter by search query
     const filteredBrandOwners = searchQuery
@@ -906,7 +996,6 @@ export const getBrands = query({
         // Get products for this brand
         const products = await ctx.db
           .query("products")
-          .withIndex("by_owner")
           .filter(q => q.eq(q.field("ownerId"), brand.userId))
           .collect();
 
@@ -916,7 +1005,6 @@ export const getBrands = query({
         // Get rental requests for this brand
         const rentals = await ctx.db
           .query("rentalRequests")
-          .withIndex("by_requester")
           .filter(q => q.eq(q.field("requesterId"), brand.userId))
           .collect();
 
@@ -939,7 +1027,7 @@ export const getBrands = query({
           rentals: activeRentals,
           revenue: totalProductRevenue + totalRentalRevenue,
           status: brand.isActive ? "active" : "suspended",
-          category: brand.businessType || "general",
+          category: brand.brandType || "general",
           joinDate: brand.createdAt,
           businessRegistration: brand.brandCommercialRegisterNumber || brand.freelanceLicenseNumber,
           businessRegistrationUrl: brand.brandCommercialRegisterDocument || brand.freelanceLicenseDocument,
@@ -958,53 +1046,40 @@ export const getBrands = query({
     const endIndex = startIndex + limit;
     const paginatedBrands = brandsWithStats.slice(startIndex, endIndex);
 
-    // Calculate aggregated stats based on time period
-    const now = new Date();
-    let startDate: Date;
-    
-    switch (timePeriod) {
-      case "daily":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "weekly":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "monthly":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "yearly":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    
-    // Filter brands by time period for stats
-    const periodBrands = brandsWithStats.filter(b => new Date(b.joinDate) >= startDate);
-    
-    // Calculate total stats
+    // Calculate stats
+    const totalBrands = brandsWithStats.length;
     const totalProducts = brandsWithStats.reduce((sum, b) => sum + b.products, 0);
     const totalRevenue = brandsWithStats.reduce((sum, b) => sum + b.revenue, 0);
-    const periodRevenue = periodBrands.reduce((sum, b) => sum + b.revenue, 0);
-    
-    // Calculate percentage changes - return 0 as we don't have historical data tracking yet
-    const brandsChange = 0;
-    const productsChange = 0;
-    const revenueChange = 0;
-    
+
+    // Calculate percentage changes based on timePeriod
+    const now = new Date();
+    const { startDate: periodStart } = getDateRange(now, timePeriod);
+    const { startDate: previousStart } = getDateRange(periodStart, timePeriod);
+
+    const brandsInPeriod = brandsWithStats.filter(brand => {
+      const joinDate = new Date(brand.joinDate);
+      return joinDate >= periodStart;
+    }).length;
+
+    const brandsInPreviousPeriod = brandsWithStats.filter(brand => {
+      const joinDate = new Date(brand.joinDate);
+      return joinDate >= previousStart && joinDate < periodStart;
+    }).length;
+
+    const brandsChange = brandsInPreviousPeriod > 0
+      ? Math.round(((brandsInPeriod - brandsInPreviousPeriod) / brandsInPreviousPeriod) * 100 * 10) / 10
+      : brandsInPeriod > 0 ? 100 : 0;
+
     return {
-      brands: paginatedBrands,
-      total: brandsWithStats.length,
-      page,
+      items: paginatedBrands,
       totalPages: Math.ceil(brandsWithStats.length / limit),
       stats: {
-        totalBrands: brandsWithStats.length,
+        totalBrands,
         brandsChange,
         totalProducts,
-        productsChange,
+        productsChange: 0, // Would need historical data to calculate
         totalRevenue,
-        periodRevenue,
-        revenueChange,
+        revenueChange: 0, // Would need historical data to calculate
       },
     };
   },
@@ -1015,21 +1090,37 @@ export const getPosts = query({
   args: {
     searchQuery: v.optional(v.string()),
     status: v.optional(v.string()),
-    page: v.optional(v.number()),
-    limit: v.optional(v.number()),
+    page: v.number(),
+    limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const { searchQuery = "", status = "all", page = 1, limit = 10 } = args;
-
-    // Get all shelves
-    let shelvesQuery = ctx.db.query("shelves");
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
     
-    const allShelves = await shelvesQuery.collect();
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    const { searchQuery = "", status = "all", page, limit } = args;
+
+    // Get shelves with limit for performance
+    let shelves = await ctx.db
+      .query("shelves")
+      .order("desc")
+      .take(500); // Reasonable limit for admin
 
     // Filter by status
     const filteredByStatus = status === "all" 
-      ? allShelves
-      : allShelves.filter(shelf => {
+      ? shelves
+      : shelves.filter(shelf => {
           if (status === "published") return shelf.status === "approved" || shelf.status === "pending_approval";
           if (status === "approved") return shelf.status === "approved";
           return false;
@@ -1040,9 +1131,6 @@ export const getPosts = query({
       filteredByStatus.map(async (shelf) => {
         const ownerProfile = await ctx.db.get(shelf.profileId);
         if (!ownerProfile) return null;
-        
-        const owner = await ctx.db.get(ownerProfile.userId);
-        if (!owner) return null;
 
         return {
           id: shelf._id,
@@ -1053,7 +1141,7 @@ export const getPosts = query({
           businessRegistration: ownerProfile.commercialRegisterNumber,
           branch: shelf.branch || shelf.city,
           shelfName: shelf.shelfName,
-          percentage: 0, // Not defined in schema
+          percentage: shelf.storeCommission || 8, // Use store commission or default platform fee
           price: shelf.monthlyPrice,
           addedDate: shelf.createdAt,
           status: shelf.status === "approved" ? "published" : shelf.status,
@@ -1090,9 +1178,7 @@ export const getPosts = query({
     const paginatedPosts = filteredShelves.slice(startIndex, endIndex);
 
     return {
-      posts: paginatedPosts,
-      total: filteredShelves.length,
-      page,
+      items: paginatedPosts, // Changed from 'posts' to 'items' for consistency
       totalPages: Math.ceil(filteredShelves.length / limit),
     };
   },
@@ -1103,16 +1189,31 @@ export const getPayments = query({
   args: {
     searchQuery: v.optional(v.string()),
     status: v.optional(v.string()),
-    page: v.optional(v.number()),
-    limit: v.optional(v.number()),
+    page: v.number(),
+    limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const { searchQuery = "", status = "all", page = 1, limit = 10 } = args;
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    const { searchQuery = "", status = "all", page, limit } = args;
 
     // Get all rental requests that have payment information
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .collect();
+      .take(500); // Reasonable limit
 
     // Filter by payment status
     const filteredByStatus = status === "all" 
@@ -1182,87 +1283,9 @@ export const getPayments = query({
     const endIndex = startIndex + limit;
     const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
 
-    // Calculate summary stats
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-    const totalReceived = validPayments
-      .filter(p => p.status === "paid")
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const currentMonthPayments = validPayments
-      .filter(p => {
-        const paymentDate = new Date(p.date);
-        return paymentDate.getMonth() === currentMonth && 
-               paymentDate.getFullYear() === currentYear &&
-               p.status === "paid";
-      })
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const lastMonthPayments = validPayments
-      .filter(p => {
-        const paymentDate = new Date(p.date);
-        return paymentDate.getMonth() === lastMonth && 
-               paymentDate.getFullYear() === lastMonthYear &&
-               p.status === "paid";
-      })
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const pendingPayments = validPayments
-      .filter(p => p.status === "unpaid")
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const lastMonthPending = validPayments
-      .filter(p => {
-        const paymentDate = new Date(p.date);
-        return paymentDate.getMonth() === lastMonth && 
-               paymentDate.getFullYear() === lastMonthYear &&
-               p.status === "unpaid";
-      })
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const invoicesIssued = validPayments.length;
-    const lastMonthInvoices = validPayments.filter(p => {
-      const paymentDate = new Date(p.date);
-      return paymentDate.getMonth() === lastMonth && 
-             paymentDate.getFullYear() === lastMonthYear;
-    }).length;
-
-    // Calculate percentage changes
-    const totalReceivedChange = lastMonthPayments > 0 
-      ? Math.round(((currentMonthPayments - lastMonthPayments) / lastMonthPayments) * 100 * 10) / 10
-      : 0;
-
-    const currentMonthChange = lastMonthPayments > 0
-      ? Math.round(((currentMonthPayments - lastMonthPayments) / lastMonthPayments) * 100 * 10) / 10
-      : 0;
-
-    const pendingChange = lastMonthPending > 0
-      ? Math.round(((pendingPayments - lastMonthPending) / lastMonthPending) * 100 * 10) / 10
-      : 0;
-
-    const invoicesChange = lastMonthInvoices > 0
-      ? Math.round(((invoicesIssued - lastMonthInvoices) / lastMonthInvoices) * 100 * 10) / 10
-      : 0;
-
     return {
-      payments: paginatedPayments,
-      total: filteredPayments.length,
-      page,
+      items: paginatedPayments,
       totalPages: Math.ceil(filteredPayments.length / limit),
-      stats: {
-        totalReceived,
-        totalReceivedChange,
-        currentMonthPayments,
-        currentMonthChange,
-        pendingPayments,
-        pendingChange,
-        invoicesIssued,
-        invoicesChange,
-      },
     };
   },
 });

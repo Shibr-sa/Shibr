@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
@@ -26,115 +27,50 @@ import { Search, Eye, Package, TrendingUp, ShoppingBag, DollarSign } from "lucid
 import { cn } from "@/lib/utils"
 import { BrandDetailsDialog } from "@/components/dialogs/brand-details-dialog"
 
-const brandsData = [
-  {
-    id: 1,
-    name: "Nike",
-    logo: "N",
-    category: "sports",
-    products: 156,
-    stores: 45,
-    revenue: 125000,
-    status: "active",
-    joinDate: "January 15, 2023",
-  },
-  {
-    id: 2,
-    name: "Apple Store",
-    logo: "A",
-    category: "electronics",
-    products: 89,
-    stores: 32,
-    revenue: 250000,
-    status: "active",
-    joinDate: "February 22, 2023",
-  },
-  {
-    id: 3,
-    name: "Zara",
-    logo: "Z",
-    category: "fashion",
-    products: 234,
-    stores: 67,
-    revenue: 180000,
-    status: "active",
-    joinDate: "March 10, 2023",
-  },
-  {
-    id: 4,
-    name: "Samsung",
-    logo: "S",
-    category: "electronics",
-    products: 112,
-    stores: 28,
-    revenue: 195000,
-    status: "suspended",
-    joinDate: "April 5, 2023",
-  },
-  {
-    id: 5,
-    name: "Adidas",
-    logo: "A",
-    category: "sports",
-    products: 143,
-    stores: 41,
-    revenue: 115000,
-    status: "active",
-    joinDate: "May 18, 2023",
-  },
-  {
-    id: 6,
-    name: "L'Oreal",
-    logo: "L",
-    category: "beauty",
-    products: 78,
-    stores: 23,
-    revenue: 95000,
-    status: "active",
-    joinDate: "June 12, 2023",
-  },
-  {
-    id: 7,
-    name: "H&M",
-    logo: "H",
-    category: "fashion",
-    products: 198,
-    stores: 54,
-    revenue: 145000,
-    status: "active",
-    joinDate: "July 8, 2023",
-  },
-  {
-    id: 8,
-    name: "Sony",
-    logo: "S",
-    category: "electronics",
-    products: 95,
-    stores: 30,
-    revenue: 175000,
-    status: "active",
-    joinDate: "August 3, 2023",
-  },
-]
-
 export default function BrandsPage() {
   const { t, language } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  // Initialize state from URL params for persistence
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">(
+    (searchParams.get("period") as "daily" | "weekly" | "monthly" | "yearly") || "monthly"
+  )
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
   const [selectedBrand, setSelectedBrand] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
   
-  // Fetch real data from Convex
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set("search", searchQuery)
+    if (timePeriod !== "monthly") params.set("period", timePeriod)
+    if (currentPage > 1) params.set("page", String(currentPage))
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [searchQuery, timePeriod, currentPage, pathname, router])
+  
+  // Fetch stats data with time period
+  const statsResult = useQuery(api.admin.getBrands, {
+    searchQuery: "",
+    page: 1,
+    limit: 1, // We only need stats, not items
+    timePeriod,
+  })
+  
+  // Fetch brands table data without time period
   const brandsResult = useQuery(api.admin.getBrands, {
     searchQuery,
     page: currentPage,
     limit: itemsPerPage,
-    timePeriod,
+    // Don't pass timePeriod for table data
   })
   
-  const brandsData = brandsResult?.brands || []
+  const brands = brandsResult?.items || []
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -151,64 +87,88 @@ export default function BrandsPage() {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
 
-  // Use data from Convex query
-  const filteredBrands = brandsData
   const totalPages = brandsResult?.totalPages || 1
-  const paginatedBrands = brandsData
-
-  const getTranslatedData = (brand: any) => {
-    if (language === "ar") {
-      return {
-        joinDate: brand.id === 1 ? "15 يناير 2023" :
-                  brand.id === 2 ? "22 فبراير 2023" :
-                  brand.id === 3 ? "10 مارس 2023" :
-                  brand.id === 4 ? "5 أبريل 2023" :
-                  brand.id === 5 ? "18 مايو 2023" :
-                  brand.id === 6 ? "12 يونيو 2023" :
-                  brand.id === 7 ? "8 يوليو 2023" :
-                  "3 أغسطس 2023",
-      }
-    }
-    return {
-      joinDate: brand.joinDate,
-    }
-  }
 
   return (
     <div className="space-y-6">
-      {/* Header Card with Stats */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold">{t("brands.title")}</CardTitle>
-              <CardDescription className="mt-1">{t("brands.description")}</CardDescription>
-            </div>
-            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
-              <TabsList className="grid grid-cols-4 w-auto bg-muted">
-                <TabsTrigger value="daily" className="px-4">
-                  {t("dashboard.daily")}
-                </TabsTrigger>
-                <TabsTrigger value="weekly" className="px-4">
-                  {t("dashboard.weekly")}
-                </TabsTrigger>
-                <TabsTrigger value="monthly" className="px-4">
-                  {t("dashboard.monthly")}
-                </TabsTrigger>
-                <TabsTrigger value="yearly" className="px-4">
-                  {t("dashboard.yearly")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">{t("brands.title")}</h2>
+          <p className="text-muted-foreground mt-1">{t("brands.description")}</p>
+        </div>
+        <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
+          <TabsList className="grid grid-cols-4 w-auto bg-muted">
+            <TabsTrigger value="daily" className="px-4">
+              {t("dashboard.daily")}
+            </TabsTrigger>
+            <TabsTrigger value="weekly" className="px-4">
+              {t("dashboard.weekly")}
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="px-4">
+              {t("dashboard.monthly")}
+            </TabsTrigger>
+            <TabsTrigger value="yearly" className="px-4">
+              {t("dashboard.yearly")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {statsResult === undefined ? (
+          <>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("brands.total_brands")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Package className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("brands.total_products")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ShoppingBag className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("brands.total_revenue")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
             <StatCard
               title={t("brands.total_brands")}
-              value={brandsResult?.stats?.totalBrands || 0}
+              value={statsResult.stats?.totalBrands || 0}
               trend={{
-                value: brandsResult?.stats?.brandsChange || 0,
+                value: statsResult.stats?.brandsChange || 0,
                 label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
                        timePeriod === "weekly" ? t("dashboard.from_last_week") :
                        timePeriod === "yearly" ? t("dashboard.from_last_year") :
@@ -219,9 +179,9 @@ export default function BrandsPage() {
             
             <StatCard
               title={t("brands.total_products")}
-              value={brandsResult?.stats?.totalProducts || 0}
+              value={statsResult.stats?.totalProducts || 0}
               trend={{
-                value: brandsResult?.stats?.productsChange || 0,
+                value: statsResult.stats?.productsChange || 0,
                 label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
                        timePeriod === "weekly" ? t("dashboard.from_last_week") :
                        timePeriod === "yearly" ? t("dashboard.from_last_year") :
@@ -232,9 +192,9 @@ export default function BrandsPage() {
             
             <StatCard
               title={t("brands.total_revenue")}
-              value={formatCurrency(brandsResult?.stats?.totalRevenue || 0)}
+              value={formatCurrency(statsResult.stats?.totalRevenue || 0)}
               trend={{
-                value: brandsResult?.stats?.revenueChange || 0,
+                value: statsResult.stats?.revenueChange || 0,
                 label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
                        timePeriod === "weekly" ? t("dashboard.from_last_week") :
                        timePeriod === "yearly" ? t("dashboard.from_last_year") :
@@ -242,94 +202,108 @@ export default function BrandsPage() {
               }}
               icon={<DollarSign className="h-6 w-6 text-primary" />}
             />
-          </div>
-        </CardContent>
-      </Card>
+          </>
+        )}
+      </div>
+
+      {/* Brands Section Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold">{t("brands.all_brands")}</h3>
+        <div className="relative w-80">
+          <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input 
+            placeholder={t("brands.search_placeholder")} 
+            className="pe-10"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1) // Reset to first page on search
+            }}
+          />
+        </div>
+      </div>
 
       {/* Brands Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">{t("brands.all_brands")}</CardTitle>
-            <div className="relative w-80">
-              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input 
-                placeholder={t("brands.search_placeholder")} 
-                className="pe-10"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setCurrentPage(1) // Reset to first page on search
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border">
-            <div className="min-h-[420px]"> {/* Fixed height for 5 rows */}
-              <Table>
+      <div className="rounded-md border">
+        <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[25%]">
                       {t("brands.table.brand")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("brands.table.category")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[10%]">
                       {t("brands.table.products")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[10%]">
                       {t("brands.table.stores")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("brands.table.revenue")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("brands.table.status")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[10%]">
                       {t("dashboard.options")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedBrands.length > 0 ? (
+                  {brandsResult === undefined ? (
+                    // Loading state - show skeletons
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={`loading-${index}`} className="h-[72px]">
+                        <TableCell className="py-3 w-[25%]">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="w-10 h-10 rounded-full" />
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-3 w-20" />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : brands.length > 0 ? (
                     <>
-                      {paginatedBrands.map((brand, index) => {
-                        const translatedData = getTranslatedData(brand)
-                        return (
+                      {brands.map((brand, index) => (
                           <TableRow 
                             key={brand.id}
-                            className={`h-[72px] ${index < paginatedBrands.length - 1 ? 'border-b' : ''}`}
+                            className={`h-[72px] ${index < brands.length - 1 ? 'border-b' : ''}`}
                           >
-                            <TableCell className="py-3">
+                            <TableCell className="py-3 w-[25%]">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
-                                  <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${brand.name?.charAt(0)}`} />
                                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                    {brand.name?.charAt(0)?.toUpperCase()}
+                                    {brand.name?.charAt(0)?.toUpperCase() || "B"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <div className="font-medium">{brand.name}</div>
-                                  <div className="text-sm text-muted-foreground">{translatedData.joinDate}</div>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="py-3">
-                              <Badge variant="outline">{t(`brands.category.${brand.category}`)}</Badge>
+                            <TableCell className="py-3 w-[15%]">
+                              <Badge variant="outline">{brand.category || t("brands.category.general")}</Badge>
                             </TableCell>
-                            <TableCell className="py-3 text-muted-foreground">{brand.products}</TableCell>
-                            <TableCell className="py-3 text-muted-foreground">{brand.stores}</TableCell>
-                            <TableCell className="py-3 font-medium">{formatCurrency(brand.revenue)}</TableCell>
-                            <TableCell className="py-3">
+                            <TableCell className="py-3 text-muted-foreground w-[10%]">{brand.products}</TableCell>
+                            <TableCell className="py-3 text-muted-foreground w-[10%]">{brand.stores}</TableCell>
+                            <TableCell className="py-3 font-medium w-[15%]">{formatCurrency(brand.revenue)}</TableCell>
+                            <TableCell className="py-3 w-[15%]">
                               <Badge variant={getStatusVariant(brand.status)} className="font-normal">
                                 {t(`brands.status.${brand.status}`)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="py-3">
+                            <TableCell className="py-3 w-[10%]">
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -343,68 +317,51 @@ export default function BrandsPage() {
                               </Button>
                             </TableCell>
                           </TableRow>
-                        )
-                      })}
-                      {/* Fill remaining rows if less than 5 items */}
-                      {paginatedBrands.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedBrands.length }).map((_, index) => (
-                        <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedBrands.length - 1 ? 'border-b' : ''}`}>
-                          <TableCell className="py-3">
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="h-10 w-10 rounded-full" />
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-24" />
-                                <Skeleton className="h-3 w-20" />
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-6 w-16" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-6 w-16" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-8 w-8" /></TableCell>
+                      ))}
+                      {/* Fill remaining rows to always show 5 rows */}
+                      {brands.length < 5 && Array.from({ length: 5 - brands.length }).map((_, index) => (
+                        <TableRow key={`filler-${index}`} className="h-[72px]">
+                          <TableCell className="py-3" colSpan={7}></TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Empty state - show 5 skeleton rows when loading or no results
-                    Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
-                        {brandsResult === undefined ? (
-                          // Loading state - show skeletons
-                          <>
-                            <TableCell className="py-3">
-                              <div className="flex items-center gap-3">
-                                <Skeleton className="h-10 w-10 rounded-full" />
-                                <div className="space-y-2">
-                                  <Skeleton className="h-4 w-24" />
-                                  <Skeleton className="h-3 w-20" />
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-16" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-16" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-8 w-8" /></TableCell>
-                          </>
-                        ) : (
-                          // No results state - show message
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
-                            {index === 2 && t("brands.no_results")}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))
+                    // Empty state - centered view with fixed height
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-[360px] text-center">
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex flex-col items-center gap-1 py-10">
+                            <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <h3 className="font-medium">
+                              {searchQuery ? t("brands.no_results") : t("brands.no_brands")}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {searchQuery ? t("brands.try_different_search") : t("brands.brands_will_appear_here")}
+                            </p>
+                            {searchQuery && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => {
+                                  setSearchQuery("")
+                                  setCurrentPage(1)
+                                }}
+                              >
+                                {t("common.clear_search")}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
-              </Table>
-            </div>
-          </div>
+        </Table>
+      </div>
 
-          {/* Pagination Controls - Always visible */}
-          <Pagination>
+      {/* Pagination Controls */}
+      <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
@@ -465,8 +422,6 @@ export default function BrandsPage() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </CardContent>
-      </Card>
 
       {/* Brand Details Dialog */}
       {selectedBrand && (

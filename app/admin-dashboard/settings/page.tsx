@@ -1,6 +1,9 @@
 "use client"
 
 import { useLanguage } from "@/contexts/localization-context"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,12 +19,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const { t, language } = useLanguage()
-  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  // Initialize state from URL params
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general")
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
   const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false)
+  
+  // Update URL when state changes
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeTab !== "general") params.set("tab", activeTab)
+    if (searchQuery) params.set("search", searchQuery)
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [activeTab, searchQuery, pathname, router])
+  
+  // Fetch data from Convex
+  const adminAccess = useQuery(api.admin.verifyAdminAccess)
+  const platformSettings = useQuery(api.adminSettings.getPlatformSettings)
+  const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery })
+  const updatePlatformSettings = useMutation(api.admin.updatePlatformSettings)
+  const toggleAdminStatus = useMutation(api.adminSettings.toggleAdminUserStatus)
+  const addAdminUser = useMutation(api.adminSettings.addAdminUser)
   const [newAdminData, setNewAdminData] = useState({
     username: "",
     email: "",
@@ -29,42 +58,8 @@ export default function SettingsPage() {
     permission: "admin"
   })
 
-  // Mock admin users data
-  const adminUsers = [
-    {
-      id: 1,
-      username: "admin",
-      email: "admin@shibr.com",
-      permission: "super_admin",
-      status: "active"
-    },
-    {
-      id: 2,
-      username: "محمد أحمد",
-      email: "mohammed@shibr.com",
-      permission: "admin",
-      status: "active"
-    },
-    {
-      id: 3,
-      username: "سارة عبدالله",
-      email: "sara@shibr.com",
-      permission: "admin",
-      status: "active"
-    },
-    {
-      id: 4,
-      username: "خالد محمد",
-      email: "khalid@shibr.com",
-      permission: "admin",
-      status: "inactive"
-    }
-  ]
-
-  const filteredUsers = adminUsers.filter(user => 
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Use real data from Convex
+  const adminUsers = adminUsersData || []
 
   return (
     <div className="space-y-6">
@@ -74,7 +69,7 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">{t("admin.settings.description")}</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="general">{t("admin.settings.general")}</TabsTrigger>
           <TabsTrigger value="users">{t("admin.settings.users")}</TabsTrigger>
@@ -231,7 +226,7 @@ export default function SettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {adminUsers.map((user) => (
                       <TableRow key={user.id} className="h-[72px]">
                         <TableCell>
                           <div className="flex items-center gap-3">

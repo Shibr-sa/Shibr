@@ -67,17 +67,17 @@ interface StoreDetailsDialogProps {
 // Transform store data for display
 const getStoreDetailsData = (language: string, store: any) => ({
   owner: store.name,
-  ownerEmail: store.email || "email@store.com",
-  ownerPhone: store.phoneNumber || "05XXXXXXXX",
-  location: language === "ar" ? "الرياض" : "Riyadh",
+  ownerEmail: store.email || "-",
+  ownerPhone: store.phoneNumber || "-",
+  location: store.location?.city || (language === "ar" ? "غير محدد" : "Not specified"),
   joinDate: store.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
   registrationDate: store.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
-  commercialRegistryNumber: store.businessRegistration || "1234567890",
+  commercialRegistryNumber: store.businessRegistration || "-",
   commercialRegistry: store.businessRegistrationUrl ? "PDF" : "-",
   branchesCount: 1,
   totalRevenue: store.revenue || 0,
   monthlyRevenue: Math.round((store.revenue || 0) / 3), // Estimate based on 3 months
-  shelfUtilization: store.shelves > 0 ? Math.round(((store.rentedShelves || 0) / store.shelves) * 100) : 0,
+  shelfUtilization: store.shelves > 0 ? Math.round(((store.rentedShelves || store.rentals || 0) / store.shelves) * 100) : 0,
   branches: [
     { 
       name: language === "ar" ? "الفرع الرئيسي" : "Main Branch", 
@@ -290,8 +290,9 @@ export function StoreDetailsDialog({ open, onOpenChange, store }: StoreDetailsDi
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={`/placeholder.svg?height=48&width=48&text=${store.name.charAt(0)}`} />
-                <AvatarFallback>{store.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {store.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <div>
                 <DialogTitle className="text-xl font-semibold">{store.name}</DialogTitle>

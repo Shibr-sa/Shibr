@@ -37,9 +37,8 @@ import {
 
 const sidebarItems = [
   { title: "dashboard.home", href: "/admin-dashboard", icon: Home, pageTitle: "dashboard.control_panel" },
-  { title: "dashboard.posts", href: "/admin-dashboard/posts", icon: FileText, pageTitle: "dashboard.posts" },
   { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store, pageTitle: "dashboard.stores" },
-  { title: "dashboard.shelves", href: "/admin-dashboard/brands", icon: Package, pageTitle: "dashboard.shelves" },
+  { title: "dashboard.brands", href: "/admin-dashboard/brands", icon: Package, pageTitle: "dashboard.brands" },
   { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard, pageTitle: "dashboard.payments" },
   { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
 ]
@@ -186,7 +185,7 @@ export default function AdminDashboardLayout({
                           {user?.fullName || t("dashboard.user.name")}
                         </span>
                         <span className="text-xs">
-                          {user?.email || "admin@example.com"}
+                          {user?.email || ""}
                         </span>
                       </div>
                       <ChevronUp className="ms-auto size-4" />
