@@ -113,7 +113,7 @@ export const sendMessage = mutation({
     if (recipientId) {
       await ctx.db.insert("notifications", {
         userId: recipientId,
-      title: senderProfile?.fullName || "New Message",
+        title: "New Message", // Simplified - fullName removed from userProfiles
       message: args.text.substring(0, 100) + (args.text.length > 100 ? "..." : ""),
       type: "new_message",
         conversationId: args.conversationId,
@@ -149,7 +149,7 @@ export const getMessages = query({
           .first() : null
         return {
           ...message,
-          senderName: senderProfile?.fullName || senderProfile?.storeName || senderProfile?.brandName || "Unknown",
+          senderName: senderProfile?.storeName || senderProfile?.brandName || "Unknown",
           senderType: senderProfile?.accountType,
         }
       })
@@ -247,7 +247,7 @@ export const getUserConversations = query({
         return {
           ...conv,
           otherUserId: otherUserId,
-          otherUserName: otherUserProfile?.fullName || otherUserProfile?.storeName || otherUserProfile?.brandName || "Unknown",
+          otherUserName: otherUserProfile?.storeName || otherUserProfile?.brandName || "Unknown",
           shelfName: shelf?.shelfName || "Unknown Shelf",
           unreadCount: userProfile.accountType === "brand_owner" ? (conv.brandUnreadCount || 0) : (conv.storeUnreadCount || 0),
         }
@@ -313,7 +313,7 @@ export const getAdminConversations = query({
         return {
           ...conv,
           otherUserId: adminUser?._id,
-          otherUserName: adminProfile?.fullName || "Admin Support",
+          otherUserName: "Admin Support",
           shelfName: shelf?.shelfName || "Support",
           unreadCount: conv.storeUnreadCount || 0,
         }
@@ -344,8 +344,8 @@ export const getConversation = query({
 
     return {
       ...conversation,
-      brandOwnerName: brandOwnerProfile?.fullName || brandOwnerProfile?.brandName || "Brand Owner",
-      storeOwnerName: storeOwnerProfile?.fullName || storeOwnerProfile?.storeName || "Store Owner",
+      brandOwnerName: brandOwnerProfile?.brandName || "Brand Owner",
+      storeOwnerName: storeOwnerProfile?.storeName || "Store Owner",
       shelfDetails: shelf,
     }
   },

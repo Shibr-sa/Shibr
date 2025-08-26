@@ -4,7 +4,9 @@ import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
+import { formatDate } from "@/lib/formatters"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
@@ -48,6 +50,12 @@ export default function PaymentsPage() {
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
   const itemsPerPage = 5
   
+  // Track if we've loaded initial data
+  const [hasInitialData, setHasInitialData] = useState(false)
+  
+  // Debounced search value
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams()
@@ -67,15 +75,25 @@ export default function PaymentsPage() {
     limit: 1, // We only need stats, not items
   })
   
-  // Fetch table data with filters
+  // Fetch table data with debounced search
   const paymentsResult = useQuery(api.admin.getPayments, {
-    searchQuery,
+    searchQuery: debouncedSearchQuery,
     status: filterStatus,
     page: currentPage,
     limit: itemsPerPage,
   })
   
   const payments = paymentsResult?.items || []
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+  
+  // Track when we have initial data
+  useEffect(() => {
+    if (paymentsResult !== undefined && !hasInitialData) {
+      setHasInitialData(true)
+    }
+  }, [paymentsResult, hasInitialData])
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -90,11 +108,6 @@ export default function PaymentsPage() {
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${t("common.currency")}`
-  }
-
-  const formatDate = (date: string) => {
-    // Use the date as-is from the backend, properly formatted
-    return date
   }
 
   const totalPages = paymentsResult?.totalPages || 1
@@ -253,28 +266,22 @@ export default function PaymentsPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="h-12 text-start font-medium w-[12%]">
+              <TableHead className="h-12 text-start font-medium w-[16%]">
                 {t("payments.table.invoice_number")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[15%]">
-                {t("payments.table.merchant")}
-              </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[15%]">
+              <TableHead className="h-12 text-start font-medium w-[20%]">
                 {t("payments.table.store")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[12%]">
+              <TableHead className="h-12 text-start font-medium w-[16%]">
                 {t("payments.table.date")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[10%]">
+              <TableHead className="h-12 text-start font-medium w-[15%]">
                 {t("payments.table.amount")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[8%]">
-                {t("payments.table.percentage")}
-              </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[10%]">
+              <TableHead className="h-12 text-start font-medium w-[13%]">
                 {t("payments.table.method")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[10%]">
+              <TableHead className="h-12 text-start font-medium w-[12%]">
                 {t("payments.table.status")}
               </TableHead>
               <TableHead className="h-12 text-start font-medium w-[8%]">
@@ -283,18 +290,16 @@ export default function PaymentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paymentsResult === undefined ? (
+            {!hasInitialData || paymentsResult === undefined || isSearching ? (
               // Loading state - show skeletons
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`loading-${index}`} className="h-[72px]">
-                  <TableCell className="py-3 w-[12%]"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="py-3 w-[12%]"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="py-3 w-[8%]"><Skeleton className="h-4 w-12" /></TableCell>
-                  <TableCell className="py-3 w-[10%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                  <TableCell className="py-3 w-[10%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                  <TableCell className="py-3 w-[16%]"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="py-3 w-[16%]"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="py-3 w-[13%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                  <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
                   <TableCell className="py-3 w-[8%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                 </TableRow>
               ))
@@ -305,22 +310,18 @@ export default function PaymentsPage() {
                     key={payment.invoiceNumber}
                     className={`h-[72px] ${index < payments.length - 1 ? 'border-b' : ''}`}
                   >
-                    <TableCell className="py-3 font-medium w-[12%]">{payment.invoiceNumber}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[15%]">
-                            {payment.merchant}
+                    <TableCell className="py-3 font-medium w-[16%]">{payment.invoiceNumber}</TableCell>
+                    <TableCell className="py-3 w-[20%]">{payment.store}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground w-[16%]">
+                            {formatDate(payment.date, language, 'long')}
                     </TableCell>
-                    <TableCell className="py-3 w-[15%]">{payment.store}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[12%]">
-                            {formatDate(payment.date)}
-                    </TableCell>
-                    <TableCell className="py-3 font-medium w-[10%]">{formatCurrency(payment.amount)}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[8%]">{payment.percentage}%</TableCell>
-                          <TableCell className="py-3 w-[10%]">
+                    <TableCell className="py-3 font-medium w-[15%]">{formatCurrency(payment.amount)}</TableCell>
+                          <TableCell className="py-3 w-[13%]">
                             <Badge variant="outline" className="font-normal">
                               {t(`payments.method.${payment.method}`)}
                             </Badge>
                     </TableCell>
-                    <TableCell className="py-3 w-[10%]">
+                    <TableCell className="py-3 w-[12%]">
                             <Badge
                               variant={getStatusVariant(payment.status)}
                               className="font-normal"
@@ -347,14 +348,14 @@ export default function PaymentsPage() {
                 {/* Fill remaining rows to always show 5 rows */}
                 {payments.length < 5 && Array.from({ length: 5 - payments.length }).map((_, index) => (
                   <TableRow key={`filler-${index}`} className="h-[72px]">
-                    <TableCell className="py-3" colSpan={9}></TableCell>
+                    <TableCell className="py-3" colSpan={7}></TableCell>
                   </TableRow>
                 ))}
               </>
             ) : (
               // Empty state - centered view with fixed height
               <TableRow>
-                <TableCell colSpan={9} className="h-[360px] text-center">
+                <TableCell colSpan={7} className="h-[360px] text-center">
                         <div className="flex h-full w-full items-center justify-center">
                           <div className="flex flex-col items-center gap-1 py-10">
                             <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-2" />

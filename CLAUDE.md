@@ -66,6 +66,16 @@ This project uses Bun. Install dependencies with `bun install`.
 ### Project Context
 Shibr is a smart platform connecting physical and online stores through a shelf rental system, targeting the Saudi Arabian market. The platform enables physical stores to rent out shelf space to online brands.
 
+### Core Development Principles
+- **Navigation**: Prefer page-based navigation over modals/dialogs for detail views
+- **Performance**: Implement server-side search and pagination for large datasets
+- **User Experience**: Maintain data visibility during loading states, use skeleton loaders
+- **Code Quality**: 
+  - Remove all console.log statements before production
+  - Clean up unused imports and dead code regularly
+  - Simplify complex logic for better maintainability
+  - Delete temporary files and migrations after use
+
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript with strict mode
@@ -99,6 +109,21 @@ The application has three distinct user types, each with their own dashboard:
 Public routes include `/marketplace` for store discovery and `/signin`, `/signup` for authentication.
 
 ### Key Architectural Patterns
+
+#### Navigation Patterns
+- **Detail Views**: Use dedicated pages for detailed information rather than modals
+- **Hierarchical Routes**: Follow logical nesting (parent/[id]/child/[childId])
+- **Breadcrumbs**: Implement dynamic breadcrumbs for nested routes
+- **URL State**: Persist UI state (filters, pagination, tabs) in URL parameters
+
+#### Data Management Patterns
+- **Search Implementation**: Debounce user input (300ms) before API calls
+- **Loading States**: 
+  - Show skeletons on initial load
+  - Keep previous data visible during updates
+  - Indicate loading without blocking UI
+- **Pagination**: Server-side with 5-10 items per page
+- **Filtering**: Process on server for better performance
 
 #### Internationalization
 The app supports Arabic/English with RTL/LTR switching:

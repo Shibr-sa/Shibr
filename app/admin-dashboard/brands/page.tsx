@@ -5,6 +5,7 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
@@ -43,6 +44,12 @@ export default function BrandsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
   
+  // Track if we've loaded initial data
+  const [hasInitialData, setHasInitialData] = useState(false)
+  
+  // Debounced search value
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams()
@@ -62,15 +69,25 @@ export default function BrandsPage() {
     timePeriod,
   })
   
-  // Fetch brands table data without time period
+  // Fetch brands table data with debounced search
   const brandsResult = useQuery(api.admin.getBrands, {
-    searchQuery,
+    searchQuery: debouncedSearchQuery,
     page: currentPage,
     limit: itemsPerPage,
     // Don't pass timePeriod for table data
   })
   
   const brands = brandsResult?.items || []
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+  
+  // Track when we have initial data
+  useEffect(() => {
+    if (brandsResult !== undefined && !hasInitialData) {
+      setHasInitialData(true)
+    }
+  }, [brandsResult, hasInitialData])
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -252,7 +269,7 @@ export default function BrandsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {brandsResult === undefined ? (
+                  {!hasInitialData || brandsResult === undefined || isSearching ? (
                     // Loading state - show skeletons
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`loading-${index}`} className="h-[72px]">
@@ -283,6 +300,7 @@ export default function BrandsPage() {
                             <TableCell className="py-3 w-[25%]">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
+                                  <AvatarImage src={brand.profileImageUrl} alt={brand.name} />
                                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                                     {brand.name?.charAt(0)?.toUpperCase() || "B"}
                                   </AvatarFallback>

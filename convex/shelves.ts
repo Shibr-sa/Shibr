@@ -149,7 +149,7 @@ export const getOwnerShelves = query({
             .query("userProfiles")
             .withIndex("by_user", (q) => q.eq("userId", activeRental.requesterId))
             .first() : null
-          renterName = renterProfile?.brandName || renterProfile?.fullName || null
+          renterName = renterProfile?.brandName || null // Simplified - fullName removed
         }
         
         // Calculate next collection date for rented shelves
@@ -403,10 +403,10 @@ export const getShelfById = query({
     
     return {
       ...shelf,
-      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
-      ownerEmail: ownerProfile?.email || owner?.email,
-      renterName: renterProfile?.brandName || renterProfile?.fullName || null,
-      renterEmail: renterProfile?.email || renter?.email || null,
+      ownerName: ownerProfile?.storeName || "Unknown",
+      ownerEmail: owner?.email || "",
+      renterName: renterProfile?.brandName || null,
+      renterEmail: renter?.email || "",
       renterRating: null, // Rating field not yet implemented in users table
       // Return both the URL fields and the expected field names for compatibility
       exteriorImageUrl,

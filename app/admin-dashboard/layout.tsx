@@ -3,10 +3,9 @@
 import React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, FileText, Store, CreditCard, Settings, ChevronUp, LogOut, Users, Package, TrendingUp } from "lucide-react"
+import { Home, Store, CreditCard, Settings, ChevronUp, LogOut, Package } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -88,6 +87,9 @@ export default function AdminDashboardLayout({
           title = t(sidebarItem.title)
         } else {
           // Handle sub-pages
+          const prevSegment = pathSegments[i - 1]
+          const prevPrevSegment = i >= 2 ? pathSegments[i - 2] : null
+          
           switch(segment) {
             case 'add':
               title = t("common.add")
@@ -99,11 +101,24 @@ export default function AdminDashboardLayout({
               title = t("common.details")
               break
             default:
-              // For dynamic IDs, show "Details"
-              if (segment.match(/^[a-zA-Z0-9]+$/)) {
-                title = t("common.details")
+              // For dynamic IDs, check the context
+              if (segment.match(/^[a-zA-Z0-9-]+$/)) {
+                // Check if this is a nested ID (shelf under store)
+                if (prevSegment && prevSegment.match(/^[a-zA-Z0-9-]+$/) && prevPrevSegment === 'stores') {
+                  // This is a shelf ID: /stores/[storeId]/[shelfId]
+                  title = t("stores.shelf_details")
+                } else if (prevSegment === 'stores') {
+                  // This is a store ID: /stores/[storeId]
+                  title = t("stores.store_details")
+                } else if (prevSegment === 'brands') {
+                  // This is a brand ID: /brands/[brandId]
+                  title = t("brands.brand_details")
+                } else {
+                  title = t("common.details")
+                }
               } else {
-                title = segment.charAt(0).toUpperCase() + segment.slice(1)
+                // Capitalize the segment name
+                title = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
               }
           }
         }

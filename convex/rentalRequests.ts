@@ -138,7 +138,7 @@ export const createRentalRequest = mutation({
     await ctx.db.insert("notifications", {
       userId: storeOwnerProfile?.userId!,
       title: "طلب إيجار جديد\nNew Rental Request",
-      message: `يرغب ${brandOwnerProfile?.brandName || brandOwnerProfile?.fullName || "صاحب العلامة"} في استئجار رفك\n${brandOwnerProfile?.brandName || brandOwnerProfile?.fullName || "Brand owner"} wants to rent your shelf`,
+      message: `يرغب ${brandOwnerProfile?.brandName || "صاحب العلامة"} في استئجار رفك\n${brandOwnerProfile?.brandName || "Brand owner"} wants to rent your shelf`,
       type: "rental_request",
       rentalRequestId: requestId,
       actionUrl: `/store-dashboard/orders`,
@@ -439,16 +439,16 @@ export const getRentalRequestById = query({
     return {
       ...request,
       otherUserId: brandOwner?._id,
-      otherUserName: brandOwnerProfile?.brandName || brandOwnerProfile?.fullName || "Unknown",
-      otherUserEmail: brandOwnerProfile?.email || brandOwner?.email,
+      otherUserName: brandOwnerProfile?.brandName || "Unknown",
+      otherUserEmail: brandOwner?.email || "",
       city: shelf?.city,
       shelfCity: shelf?.city,
       shelfName: shelf?.shelfName,
       shelfBranch: shelf?.branch,
       // Brand specific details
       activityType: brandOwnerProfile?.brandType || "Not specified",
-      phoneNumber: brandOwnerProfile?.phoneNumber,
-      mobileNumber: brandOwnerProfile?.phoneNumber,
+      phoneNumber: "N/A", // phoneNumber moved to users table
+      mobileNumber: "N/A", // phoneNumber moved to users table
       website: "",
       commercialRegisterNumber: brandOwnerProfile?.brandCommercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
       commercialRegisterFile: brandOwnerProfile?.brandCommercialRegisterDocument 
@@ -459,7 +459,7 @@ export const getRentalRequestById = query({
       crNumber: brandOwnerProfile?.brandCommercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
       crFile: "",
       brandLogo: "",
-      ownerName: brandOwnerProfile?.fullName,
+      ownerName: brandOwnerProfile?.brandName || "Brand Owner",
       // Rating information (fields not available yet in schema)
       brandRating: 0, // brandOwner?.averageRating || 0,
       brandTotalRatings: 0, // brandOwner?.totalRatings || 0,
@@ -516,16 +516,16 @@ export const getUserRentalRequests = query({
           return {
             ...request,
             otherUserId: otherUser._id,
-            otherUserName: otherUserProfile.brandName || otherUserProfile.fullName || "Unknown",
-            otherUserEmail: otherUserProfile?.email || "",
+            otherUserName: otherUserProfile.brandName || "Unknown",
+            otherUserEmail: otherUser?.email || "",
             city: shelf?.city,
             shelfCity: shelf?.city,
             shelfName: shelf?.shelfName,
             shelfBranch: shelf?.branch,
             // Brand specific details
             activityType: otherUserProfile.brandType || "Not specified",
-            phoneNumber: otherUserProfile.phoneNumber,
-            mobileNumber: otherUserProfile.phoneNumber,
+            phoneNumber: "N/A", // phoneNumber moved to users table
+            mobileNumber: "N/A", // phoneNumber moved to users table
             website: "", // otherUserProfile.website - field doesn't exist in schema
             commercialRegisterNumber: otherUserProfile.brandCommercialRegisterNumber || otherUserProfile.freelanceLicenseNumber,
             commercialRegisterFile: otherUserProfile.brandCommercialRegisterDocument 
@@ -536,7 +536,7 @@ export const getUserRentalRequests = query({
             crNumber: otherUserProfile.brandCommercialRegisterNumber || otherUserProfile.freelanceLicenseNumber,
             crFile: "", // Document URL would need to be retrieved from storage
             brandLogo: "",
-            ownerName: otherUserProfile.fullName,
+            ownerName: otherUserProfile.brandName || "Brand Owner",
             // Note: Social media and brand description fields don't exist in the schema yet
             // They would need to be added to the userProfiles table if needed
           }
@@ -546,12 +546,12 @@ export const getUserRentalRequests = query({
         return {
           ...request,
           otherUserId: otherUser?._id,
-          otherUserName: otherUserProfile?.storeName || otherUserProfile?.fullName || "Unknown",
-          otherUserEmail: otherUserProfile?.email || "",
+          otherUserName: otherUserProfile?.storeName || "Unknown",
+          otherUserEmail: otherUser?.email || "",
           city: shelf?.city,
           shelfName: shelf?.shelfName,
           shelfBranch: shelf?.branch,
-          phoneNumber: otherUserProfile?.phoneNumber,
+          phoneNumber: "N/A", // phoneNumber moved to users table
         }
       })
     )
@@ -956,7 +956,7 @@ export const confirmPayment = mutation({
       await ctx.db.insert("notifications", {
         userId: storeOwnerId,
         title: "تأكيد دفع جديد\nNew Payment Confirmation",
-        message: `أكد ${brandOwnerProfile?.fullName || "مستخدم"} إتمام التحويل البنكي بمبلغ ${args.paymentAmount} ريال\n${brandOwnerProfile?.fullName || "User"} confirmed bank transfer of ${args.paymentAmount} SAR`,
+        message: `أكد ${brandOwnerProfile?.brandName || "مستخدم"} إتمام التحويل البنكي بمبلغ ${args.paymentAmount} ريال\n${brandOwnerProfile?.brandName || "User"} confirmed bank transfer of ${args.paymentAmount} SAR`,
         type: "payment_confirmation",
         rentalRequestId: request._id,
         actionUrl: `/store-dashboard/orders`,

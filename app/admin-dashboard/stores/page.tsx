@@ -5,6 +5,7 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Pagination,
@@ -22,11 +23,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Search, Eye, Store, CheckCircle, Package } from "lucide-react"
+import { Search, Eye, Store, DollarSign, Package } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { StoreDetailsDialog } from "@/components/dialogs/store-details-dialog"
-import { PostDetailsDialog } from "@/components/dialogs/post-details-dialog"
 
 export default function StoresPage() {
   const { t, language } = useLanguage()
@@ -34,27 +33,37 @@ export default function StoresPage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString()} ${t("common.currency")}`
+  }
+  
   // Initialize state from URL params for persistence
   const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">(
     (searchParams.get("period") as "daily" | "weekly" | "monthly" | "yearly") || "monthly"
   )
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "stores")
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
-  const [selectedStore, setSelectedStore] = useState<any>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
   
   // Posts section state
   const [filterStatus, setFilterStatus] = useState(searchParams.get("postStatus") || "all")
   const [postsSearchQuery, setPostsSearchQuery] = useState(searchParams.get("postSearch") || "")
   const [postsCurrentPage, setPostsCurrentPage] = useState(Number(searchParams.get("postPage")) || 1)
-  const [selectedPost, setSelectedPost] = useState<any>(null)
-  const [postDialogOpen, setPostDialogOpen] = useState(false)
+  
+  // Track if we've loaded initial data
+  const [hasInitialStoresData, setHasInitialStoresData] = useState(false)
+  const [hasInitialPostsData, setHasInitialPostsData] = useState(false)
+  
+  // Debounced search values for better performance
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  const debouncedPostsSearchQuery = useDebouncedValue(postsSearchQuery, 300)
   
   const itemsPerPage = 5
   
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams()
+    if (activeTab !== "stores") params.set("tab", activeTab)
     if (searchQuery) params.set("search", searchQuery)
     if (timePeriod !== "monthly") params.set("period", timePeriod)
     if (currentPage > 1) params.set("page", String(currentPage))
@@ -64,7 +73,7 @@ export default function StoresPage() {
     
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
     router.replace(newUrl, { scroll: false })
-  }, [searchQuery, timePeriod, currentPage, postsSearchQuery, filterStatus, postsCurrentPage, pathname, router])
+  }, [activeTab, searchQuery, timePeriod, currentPage, postsSearchQuery, filterStatus, postsCurrentPage, pathname, router])
   
   // Fetch stats data with time period
   const statsResult = useQuery(api.admin.getStores, {
@@ -74,9 +83,9 @@ export default function StoresPage() {
     timePeriod,
   })
   
-  // Fetch stores table data without time period
+  // Fetch stores table data with debounced search
   const storesResult = useQuery(api.admin.getStores, {
-    searchQuery,
+    searchQuery: debouncedSearchQuery, // Use debounced value for API call
     page: currentPage,
     limit: itemsPerPage,
     // Don't pass timePeriod for table data
@@ -84,16 +93,36 @@ export default function StoresPage() {
   
   const stores = storesResult?.items || []
   
-  // Fetch posts data from Convex
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+  
+  // Track when we have initial data
+  useEffect(() => {
+    if (storesResult !== undefined && !hasInitialStoresData) {
+      setHasInitialStoresData(true)
+    }
+  }, [storesResult, hasInitialStoresData])
+  
+  // Fetch posts data with debounced search
   const postsResult = useQuery(api.admin.getPosts, {
-    searchQuery: postsSearchQuery,
+    searchQuery: debouncedPostsSearchQuery, // Use debounced value for API call
     status: filterStatus,
     page: postsCurrentPage,
     limit: itemsPerPage,
   })
   
+  // Check if posts search is in progress
+  const isPostsSearching = postsSearchQuery !== debouncedPostsSearchQuery
+  
   const postsData = postsResult?.items || []
   const postsTotalPages = postsResult?.totalPages || 1
+  
+  // Track when we have initial posts data
+  useEffect(() => {
+    if (postsResult !== undefined && !hasInitialPostsData) {
+      setHasInitialPostsData(true)
+    }
+  }, [postsResult, hasInitialPostsData])
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -172,12 +201,12 @@ export default function StoresPage() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">{t("stores.rented_shelves")}</p>
+                    <p className="text-sm text-muted-foreground">{t("dashboard.total_revenue")}</p>
                     <Skeleton className="h-[30px] w-24 mt-1" />
                     <Skeleton className="h-[16px] w-32 mt-1" />
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <CheckCircle className="h-5 w-5 text-primary" />
+                    <DollarSign className="h-5 w-5 text-primary" />
                   </div>
                 </div>
               </CardContent>
@@ -212,40 +241,91 @@ export default function StoresPage() {
             />
 
             <StatCard
-              title={t("stores.rented_shelves")}
-              value={statsResult.stats?.rentedShelves || 0}
+              title={t("dashboard.total_revenue")}
+              value={formatCurrency(statsResult.stats?.totalRevenue || 0)}
               trend={{
-                value: statsResult.stats?.rentedChange || 0,
+                value: statsResult.stats?.revenueChange || 0,
                 label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
                        timePeriod === "weekly" ? t("dashboard.from_last_week") :
                        timePeriod === "yearly" ? t("dashboard.from_last_year") :
                        t("dashboard.from_last_month")
               }}
-              icon={<CheckCircle className="h-5 w-5 text-primary" />}
+              icon={<DollarSign className="h-5 w-5 text-primary" />}
             />
           </>
         )}
       </div>
 
-      {/* Stores Section Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold">{t("stores.all_stores")}</h3>
-        <div className="relative w-80">
-          <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input 
-            placeholder={t("stores.search_placeholder")} 
-            className="pe-10"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCurrentPage(1) // Reset to first page on search
-            }}
-          />
+      {/* Tables Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Tab Header with Search */}
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-auto grid-cols-2">
+            <TabsTrigger value="stores">{t("stores.stores_tab")}</TabsTrigger>
+            <TabsTrigger value="posts">{t("posts.shelves_tab")}</TabsTrigger>
+          </TabsList>
+          
+          {/* Dynamic Search Bar based on active tab */}
+          {activeTab === "stores" ? (
+            <div className="relative w-80">
+              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input 
+                placeholder={t("stores.search_placeholder")} 
+                className="pe-10"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1) // Reset to first page on search
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              {/* Filter Pills */}
+              <ToggleGroup 
+                type="single" 
+                value={filterStatus}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFilterStatus(value)
+                    setPostsCurrentPage(1)
+                  }
+                }}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="all" aria-label="Show all posts">
+                  {t("posts.filter_all")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="rented" aria-label="Show rented posts">
+                  {t("posts.status.rented")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="published" aria-label="Show published posts">
+                  {t("posts.status.published")}
+                </ToggleGroupItem>
+              </ToggleGroup>
+              
+              {/* Search Bar */}
+              <div className="relative w-80">
+                <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input 
+                  placeholder={t("posts.search_placeholder")} 
+                  className="pe-10"
+                  value={postsSearchQuery}
+                  onChange={(e) => {
+                    setPostsSearchQuery(e.target.value)
+                    setPostsCurrentPage(1) // Reset to first page on search
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Stores Table */}
-      <div className="rounded-md border">
+        {/* Stores Tab Content */}
+        <TabsContent value="stores" className="space-y-6">
+
+          {/* Stores Table */}
+        <div className="rounded-md border">
         <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -267,7 +347,7 @@ export default function StoresPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {storesResult === undefined ? (
+                  {!hasInitialStoresData || storesResult === undefined || isSearching ? (
                     // Loading state - show skeletons
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`loading-${index}`} className="h-[72px]">
@@ -294,6 +374,7 @@ export default function StoresPage() {
                           <TableCell className="py-3 w-[35%]">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-10 h-10">
+                                <AvatarImage src={store.profileImageUrl} alt={store.name} />
                                 <AvatarFallback className="bg-primary/10 text-primary">
                                   {store.name ? store.name.charAt(0).toUpperCase() : "S"}
                                 </AvatarFallback>
@@ -313,10 +394,7 @@ export default function StoresPage() {
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8"
-                              onClick={() => {
-                                setSelectedStore(store)
-                                setDialogOpen(true)
-                              }}
+                              onClick={() => router.push(`/admin-dashboard/stores/${store.id}`)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -363,10 +441,10 @@ export default function StoresPage() {
                   )}
                 </TableBody>
         </Table>
-      </div>
+        </div>
 
-      {/* Pagination Controls */}
-      <Pagination>
+        {/* Pagination Controls */}
+        <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
@@ -427,62 +505,11 @@ export default function StoresPage() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
+        </TabsContent>
 
-      {/* Store Details Dialog */}
-      {selectedStore && (
-        <StoreDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          store={selectedStore}
-        />
-      )}
-
-      {/* Posts Section */}
-      <div className="space-y-6 mt-12">
-        {/* Posts Section Header with Search */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">{t("posts.all_shelves")}</h3>
-          <div className="flex items-center gap-4">
-            {/* Filter Pills */}
-            <ToggleGroup 
-              type="single" 
-              value={filterStatus}
-              onValueChange={(value) => {
-                if (value) {
-                  setFilterStatus(value)
-                  setPostsCurrentPage(1)
-                }
-              }}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="all" aria-label="Show all posts">
-                {t("posts.filter_all")}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="rented" aria-label="Show rented posts">
-                {t("posts.status.rented")}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="published" aria-label="Show published posts">
-                {t("posts.status.published")}
-              </ToggleGroupItem>
-            </ToggleGroup>
-            
-            {/* Search Bar */}
-            <div className="relative w-80">
-              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input 
-                placeholder={t("posts.search_placeholder")} 
-                className="pe-10"
-                value={postsSearchQuery}
-                onChange={(e) => {
-                  setPostsSearchQuery(e.target.value)
-                  setPostsCurrentPage(1) // Reset to first page on search
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Posts Table */}
+        {/* Posts Tab Content */}
+        <TabsContent value="posts" className="space-y-6">
+          {/* Posts Table */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -511,7 +538,7 @@ export default function StoresPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {postsResult === undefined ? (
+              {!hasInitialPostsData || postsResult === undefined || isPostsSearching ? (
                 // Loading state - show skeletons
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={`loading-${index}`} className="h-[72px]">
@@ -576,8 +603,8 @@ export default function StoresPage() {
                           size="icon" 
                           className="h-8 w-8"
                           onClick={() => {
-                            setSelectedPost(post)
-                            setPostDialogOpen(true)
+                            // Navigate to shelf details page under the store
+                            router.push(`/admin-dashboard/stores/${post.storeId}/${post.id}`)
                           }}
                         >
                           <Eye className="h-4 w-4" />
@@ -692,17 +719,10 @@ export default function StoresPage() {
               </PaginationNext>
             </PaginationItem>
           </PaginationContent>
-        </Pagination>
-      </div>
+          </Pagination>
+        </TabsContent>
+      </Tabs>
 
-      {/* Post Details Dialog */}
-      {selectedPost && (
-        <PostDetailsDialog
-          open={postDialogOpen}
-          onOpenChange={setPostDialogOpen}
-          post={selectedPost}
-        />
-      )}
     </div>
   )
 }

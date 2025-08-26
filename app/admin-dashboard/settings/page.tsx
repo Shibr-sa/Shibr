@@ -21,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 
 export default function SettingsPage() {
   const { t, language } = useLanguage()
@@ -34,6 +35,13 @@ export default function SettingsPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
   const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false)
   
+  // Track if we've loaded initial data and previous data
+  const [hasInitialData, setHasInitialData] = useState(false)
+  const [previousAdminUsers, setPreviousAdminUsers] = useState<any[]>([])
+  
+  // Debounced search value
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  
   // Update URL when state changes
   useEffect(() => {
     const params = new URLSearchParams()
@@ -46,9 +54,11 @@ export default function SettingsPage() {
   
   // Fetch data from Convex
   const adminAccess = useQuery(api.admin.verifyAdminAccess)
+  const adminProfile = useQuery(api.adminSettings.getCurrentAdminProfile)
   const platformSettings = useQuery(api.adminSettings.getPlatformSettings)
-  const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery })
+  const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery: debouncedSearchQuery })
   const updatePlatformSettings = useMutation(api.admin.updatePlatformSettings)
+  const updateAdminProfile = useMutation(api.adminSettings.updateAdminProfile)
   const toggleAdminStatus = useMutation(api.adminSettings.toggleAdminUserStatus)
   const addAdminUser = useMutation(api.adminSettings.addAdminUser)
   const [newAdminData, setNewAdminData] = useState({
@@ -57,9 +67,71 @@ export default function SettingsPage() {
     password: "",
     permission: "admin"
   })
+  
+  // Form state for admin profile
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    currentPassword: "",
+    newPassword: "",
+  })
+  
+  // Initialize form when profile data loads
+  useEffect(() => {
+    if (adminProfile) {
+      setProfileForm({
+        fullName: adminProfile.fullName || "",
+        email: adminProfile.email || "",
+        phoneNumber: adminProfile.phoneNumber || "",
+        currentPassword: "",
+        newPassword: "",
+      })
+    }
+  }, [adminProfile])
 
-  // Use real data from Convex
-  const adminUsers = adminUsersData || []
+  // Use previous data while loading new search results
+  const adminUsers = adminUsersData ?? previousAdminUsers
+  
+  // Track when we have initial data and update previous data
+  useEffect(() => {
+    if (adminUsersData !== undefined) {
+      if (!hasInitialData) {
+        setHasInitialData(true)
+      }
+      if (adminUsersData) {
+        setPreviousAdminUsers(adminUsersData)
+      }
+    }
+  }, [adminUsersData, hasInitialData])
+  
+  // Handle save profile
+  const handleSaveProfile = async () => {
+    try {
+      const result = await updateAdminProfile({
+        fullName: profileForm.fullName,
+        email: profileForm.email,
+        phoneNumber: profileForm.phoneNumber,
+        currentPassword: profileForm.currentPassword || undefined,
+        newPassword: profileForm.newPassword || undefined,
+      })
+      
+      if (result.success) {
+        toast({
+          title: language === "ar" ? "تم الحفظ" : "Saved",
+          description: language === "ar" ? "تم تحديث الملف الشخصي بنجاح" : "Profile updated successfully",
+        })
+        // Clear password fields
+        setProfileForm(prev => ({ ...prev, currentPassword: "", newPassword: "" }))
+      }
+    } catch (error: any) {
+      toast({
+        title: language === "ar" ? "خطأ" : "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -129,7 +201,8 @@ export default function SettingsPage() {
                     </Label>
                     <Input 
                       id="adminName" 
-                      defaultValue="محمد أحمد"
+                      value={profileForm.fullName}
+                      onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
                       className="text-start" 
                     />
                   </div>
@@ -140,7 +213,8 @@ export default function SettingsPage() {
                     <Input 
                       id="phoneNumber" 
                       type="tel" 
-                      defaultValue="+966 50 123 4567"
+                      value={profileForm.phoneNumber}
+                      onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
                       placeholder="+966 5X XXX XXXX" 
                       className="text-start" 
                     />
@@ -152,17 +226,20 @@ export default function SettingsPage() {
                     <Input 
                       id="email" 
                       type="email" 
-                      defaultValue="admin@shibr.com"
+                      value={profileForm.email}
+                      onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                       className="text-start" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-start block">
-                      {language === "ar" ? "كلمة المرور" : "Password"}
+                    <Label htmlFor="newPassword" className="text-start block">
+                      {language === "ar" ? "كلمة المرور الجديدة" : "New Password"}
                     </Label>
                     <Input 
-                      id="password" 
+                      id="newPassword" 
                       type="password" 
+                      value={profileForm.newPassword}
+                      onChange={(e) => setProfileForm({ ...profileForm, newPassword: e.target.value })}
                       placeholder="••••••••" 
                       className="text-start" 
                     />
@@ -172,7 +249,7 @@ export default function SettingsPage() {
 
 
               <div className="flex justify-end">
-                <Button className="gap-2">
+                <Button className="gap-2" onClick={handleSaveProfile}>
                   <Save className="h-4 w-4" />
                   {language === "ar" ? "حفظ التغييرات" : "Save Changes"}
                 </Button>
@@ -380,11 +457,31 @@ export default function SettingsPage() {
               {language === "ar" ? "إلغاء" : "Cancel"}
             </Button>
             <Button 
-              onClick={() => {
-                // Here you would handle the admin creation
-                console.log("Creating admin:", newAdminData)
-                setIsAddAdminDialogOpen(false)
-                setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+              onClick={async () => {
+                try {
+                  const result = await addAdminUser({
+                    email: newAdminData.email,
+                    fullName: newAdminData.username,
+                    adminRole: newAdminData.permission === "super_admin" ? "super_admin" : "support"
+                  })
+                  
+                  toast({
+                    title: language === "ar" ? "تم الإضافة" : "Added",
+                    description: result.message,
+                    variant: result.success ? "default" : "destructive"
+                  })
+                  
+                  if (result.success) {
+                    setIsAddAdminDialogOpen(false)
+                    setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+                  }
+                } catch (error: any) {
+                  toast({
+                    title: language === "ar" ? "خطأ" : "Error",
+                    description: error.message,
+                    variant: "destructive"
+                  })
+                }
               }}
               disabled={!newAdminData.username || !newAdminData.email || !newAdminData.password || newAdminData.password.length < 8}
             >

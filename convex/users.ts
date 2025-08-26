@@ -70,9 +70,6 @@ export const createOrUpdateUserProfile = mutation({
       v.literal("brand_owner"),
       v.literal("admin")
     ),
-    fullName: v.string(),
-    phoneNumber: v.string(),
-    email: v.string(),
     
     // Store owner fields
     storeName: v.optional(v.string()),
@@ -99,27 +96,11 @@ export const createOrUpdateUserProfile = mutation({
       throw new Error("Not authenticated");
     }
     
-    // First check if profile exists by userId
-    let existingProfile = await ctx.db
+    // Check if profile exists by userId
+    const existingProfile = await ctx.db
       .query("userProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    
-    // If no profile found by userId, check by email (for pre-created admin profiles)
-    if (!existingProfile) {
-      existingProfile = await ctx.db
-        .query("userProfiles")
-        .withIndex("by_email", (q) => q.eq("email", args.email))
-        .first();
-      
-      // If found by email, update the userId to link it to the authenticated user
-      if (existingProfile) {
-        await ctx.db.patch(existingProfile._id, {
-          userId,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    }
     
     const now = new Date().toISOString();
     
@@ -228,12 +209,15 @@ export const checkStoreDataComplete = query({
       return false;
     }
     
+    // Get user for email
+    const authUser = await ctx.db.get(args.userId)
+    
     // Check all required store owner fields (similar to brand owner)
     // 1. Basic Information
     const hasBasicInfo = !!(
-      profile.fullName && 
-      profile.phoneNumber && 
-      profile.email
+      authUser?.name && 
+      authUser?.phone && 
+      authUser?.email
     );
     
     // 2. Store Information
@@ -267,12 +251,15 @@ export const checkBrandDataComplete = query({
       return false;
     }
     
+    // Get user for email
+    const authUser = await ctx.db.get(args.userId)
+    
     // Check all required brand owner fields
     // 1. Basic Information
     const hasBasicInfo = !!(
-      profile.fullName && 
-      profile.phoneNumber && 
-      profile.email
+      authUser?.name && 
+      authUser?.phone && 
+      authUser?.email
     );
     
     // 2. Brand Information
@@ -388,15 +375,8 @@ export const updateGeneralSettings = mutation({
         updatedAt: new Date().toISOString(),
       };
       
-      if (args.ownerName) {
-        profileUpdates.fullName = args.ownerName;
-      }
-      if (args.phoneNumber) {
-        profileUpdates.phoneNumber = args.phoneNumber;
-      }
-      if (args.email) {
-        profileUpdates.email = args.email;
-      }
+      // Note: ownerName and phoneNumber are now stored in users table, not userProfiles
+      // These fields will be handled by the userUpdates above
       
       await ctx.db.patch(profile._id, profileUpdates);
     }
@@ -435,7 +415,8 @@ export const updateBrandData = mutation({
       businessType: args.isFreelance ? "freelancer" : "registered_company",
       brandCommercialRegisterNumber: !args.isFreelance ? args.businessRegistration : undefined,
       freelanceLicenseNumber: args.isFreelance ? args.businessRegistration : undefined,
-      phoneNumber: args.phoneNumber || profile.phoneNumber,
+      // Note: phoneNumber is now stored in users table, not userProfiles
+      // This will be handled separately if needed
       updatedAt: new Date().toISOString(),
     });
     
@@ -475,7 +456,8 @@ export const updateStoreData = mutation({
     const updateData: any = {
       storeName: args.storeName,
       storeType: args.storeType,
-      phoneNumber: args.phoneNumber,
+      // Note: phoneNumber is now stored in users table, not userProfiles
+      // This will be handled separately if needed
       updatedAt: new Date().toISOString(),
     };
     

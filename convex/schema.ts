@@ -15,9 +15,6 @@ const schema = defineSchema({
     ),
     
     // Common fields
-    fullName: v.string(),
-    phoneNumber: v.string(),
-    email: v.string(),
     isVerified: v.boolean(),
     isActive: v.boolean(),
     createdAt: v.string(),
@@ -70,8 +67,6 @@ const schema = defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_account_type", ["accountType"])
-    .index("by_email", ["email"])
-    .index("by_phone", ["phoneNumber"])
     .index("by_account_type_active", ["accountType", "isActive"])
     .index("by_created", ["createdAt"]),
   
@@ -372,6 +367,69 @@ const schema = defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_default", ["isDefault"]),
+  
+  // Payments/Transactions table
+  payments: defineTable({
+    rentalRequestId: v.id("rentalRequests"), // Reference to the rental
+    
+    // Payment type
+    type: v.union(
+      v.literal("brand_payment"), // Brand paying for shelf rental
+      v.literal("store_settlement"), // Payment to store after rental completion
+      v.literal("refund"), // Refund to brand
+      v.literal("platform_fee") // Platform commission
+    ),
+    
+    // Parties involved
+    fromUserId: v.optional(v.id("users")), // Who paid (brand for brand_payment, platform for store_settlement)
+    toUserId: v.optional(v.id("users")), // Who receives (platform for brand_payment, store for store_settlement)
+    fromProfileId: v.optional(v.id("userProfiles")),
+    toProfileId: v.optional(v.id("userProfiles")),
+    
+    // Amounts
+    amount: v.number(), // Base amount
+    platformFee: v.optional(v.number()), // Platform commission (8%)
+    netAmount: v.optional(v.number()), // Amount after platform fee
+    currency: v.string(),
+    
+    // Payment details
+    invoiceNumber: v.string(),
+    paymentMethod: v.optional(v.string()), // bank_transfer, credit_card, etc.
+    transactionReference: v.optional(v.string()), // External payment reference
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("refunded")
+    ),
+    
+    // Dates
+    paymentDate: v.string(), // When payment was initiated
+    processedDate: v.optional(v.string()), // When payment was processed
+    settlementDate: v.optional(v.string()), // When funds were settled
+    dueDate: v.optional(v.string()), // Payment due date
+    
+    // Additional info
+    description: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    
+    // Metadata
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_rental", ["rentalRequestId"])
+    .index("by_from_user", ["fromUserId"])
+    .index("by_to_user", ["toUserId"])
+    .index("by_type", ["type"])
+    .index("by_status", ["status"])
+    .index("by_invoice", ["invoiceNumber"])
+    .index("by_payment_date", ["paymentDate"])
+    .index("by_type_status", ["type", "status"]),
   
   // Platform settings (for admins)
   platformSettings: defineTable({

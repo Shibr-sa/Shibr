@@ -105,16 +105,14 @@ export default function SignUpPage() {
       authFormData.append("password", formData.password)
       authFormData.append("flow", "signUp")
       authFormData.append("name", formData.fullName.trim())
+      authFormData.append("phone", formatSaudiPhoneNumber(formData.phoneNumber))
       
-      // Sign up the user first
+      // Sign up the user first (name and phone stored in users table)
       await signIn("password", authFormData)
       
-      // Prepare profile data
+      // Prepare profile data (email, name, phone are stored in users table)
       const profileData = {
         accountType: accountType === "store-owner" ? "store_owner" as const : "brand_owner" as const,
-        fullName: formData.fullName.trim(),
-        phoneNumber: formatSaudiPhoneNumber(formData.phoneNumber),
-        email: formData.email.toLowerCase().trim(),
         ...(accountType === "store-owner" ? {
           storeName: formData.storeName.trim(),
         } : {

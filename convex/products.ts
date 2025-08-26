@@ -477,9 +477,11 @@ export const getLatestSalesOperations = query({
           .first() : null
         const shelf = await ctx.db.get(request.shelfId)
         
+        // Get store owner name from users table
+        // Removed to avoid variable redeclaration
         return {
           ...request,
-          storeName: storeProfile?.storeName || storeProfile?.fullName || "متجر",
+          storeName: storeProfile?.storeName || "متجر",
           city: shelf?.city || "الرياض",
         }
       })

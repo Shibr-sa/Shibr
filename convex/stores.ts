@@ -134,8 +134,8 @@ export const getMarketplaceStores = query({
           shelfImage: shelfImageUrl,
           exteriorImage: exteriorImageUrl,
           interiorImage: interiorImageUrl,
-          ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
-          ownerEmail: ownerProfile?.email || owner?.email,
+          ownerName: ownerProfile?.storeName || "Unknown",
+          ownerEmail: owner?.email || "",
           ownerImage: owner?.image || null, // Add owner's profile image
           storeType: ownerProfile?.storeType,
           // Add latitude and longitude from coordinates for map compatibility
@@ -167,10 +167,10 @@ export const getStoreDetails = query({
     
     return {
       ...shelf,
-      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
-      ownerEmail: ownerProfile?.email || owner?.email,
+      ownerName: ownerProfile?.storeName || "Unknown",
+      ownerEmail: owner?.email || "",
       storeType: ownerProfile?.storeType,
-      ownerPhone: ownerProfile?.phoneNumber,
+      ownerPhone: "N/A", // phoneNumber moved to users table
     }
   },
 })
@@ -214,11 +214,11 @@ export const getStoreById = query({
       shelfImage: shelfImageUrl,
       exteriorImage: exteriorImageUrl,
       interiorImage: interiorImageUrl,
-      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Store Owner",
-      ownerEmail: ownerProfile?.email || owner?.email,
+      ownerName: ownerProfile?.storeName || "Store Owner",
+      ownerEmail: owner?.email || "",
       ownerImage: owner?.image || null, // Add owner's profile image
       storeType: ownerProfile?.storeType,
-      ownerPhone: ownerProfile?.phoneNumber,
+      ownerPhone: "N/A", // phoneNumber moved to users table
       // Add latitude and longitude from coordinates for map compatibility
       latitude: shelf.coordinates?.lat,
       longitude: shelf.coordinates?.lng,
