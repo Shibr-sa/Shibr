@@ -139,7 +139,7 @@ export const getMessages = query({
       .filter((q) => q.eq(q.field("conversationId"), args.conversationId))
       .collect()
 
-    // Get sender information for each message
+    // Get sender information for each message and convert attachments
     const messagesWithSenders = await Promise.all(
       messages.map(async (message) => {
         const sender = await ctx.db.get(message.senderId)
@@ -147,8 +147,16 @@ export const getMessages = query({
           .query("userProfiles")
           .withIndex("by_user", (q) => q.eq("userId", message.senderId))
           .first() : null
+        
+        // Convert attachment storage ID to URL if exists
+        let attachmentUrl = null
+        if (message.attachment) {
+          attachmentUrl = await ctx.storage.getUrl(message.attachment)
+        }
+        
         return {
           ...message,
+          attachmentUrl,
           senderName: senderProfile?.storeName || senderProfile?.brandName || "Unknown",
           senderType: senderProfile?.accountType,
         }

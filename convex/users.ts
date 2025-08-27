@@ -168,7 +168,30 @@ export const getUserProfile = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     
-    return profile;
+    if (!profile) {
+      return null;
+    }
+    
+    // Convert document storage IDs to URLs if they exist
+    const documentUrls: any = {};
+    
+    if (profile.brandCommercialRegisterDocument) {
+      documentUrls.brandCommercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.brandCommercialRegisterDocument);
+    }
+    if (profile.freelanceLicenseDocument) {
+      documentUrls.freelanceLicenseDocumentUrl = await ctx.storage.getUrl(profile.freelanceLicenseDocument);
+    }
+    if (profile.commercialRegisterDocument) {
+      documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
+    }
+    if (profile.vatCertificate) {
+      documentUrls.vatCertificateUrl = await ctx.storage.getUrl(profile.vatCertificate);
+    }
+    
+    return {
+      ...profile,
+      ...documentUrls,
+    };
   },
 })
 

@@ -4,24 +4,22 @@ import { useLanguage } from "@/contexts/localization-context"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Settings, Users, Search, Trash2, UserPlus } from "lucide-react"
+import { Camera, Save, Search, UserPlus, Trash2 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useAuthActions } from "@convex-dev/auth/react"
 
 export default function SettingsPage() {
   const { t, language } = useLanguage()
@@ -29,6 +27,7 @@ export default function SettingsPage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { signIn } = useAuthActions()
   
   // Initialize state from URL params
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general")
@@ -52,8 +51,7 @@ export default function SettingsPage() {
     router.replace(newUrl, { scroll: false })
   }, [activeTab, searchQuery, pathname, router])
   
-  // Fetch data from Convex
-  const adminAccess = useQuery(api.admin.verifyAdminAccess)
+  // Fetch data from Convex - let Convex handle auth errors
   const adminProfile = useQuery(api.adminSettings.getCurrentAdminProfile)
   const platformSettings = useQuery(api.adminSettings.getPlatformSettings)
   const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery: debouncedSearchQuery })
@@ -61,6 +59,7 @@ export default function SettingsPage() {
   const updateAdminProfile = useMutation(api.adminSettings.updateAdminProfile)
   const toggleAdminStatus = useMutation(api.adminSettings.toggleAdminUserStatus)
   const addAdminUser = useMutation(api.adminSettings.addAdminUser)
+  const createAdminProfile = useMutation(api.adminSettings.createAdminProfile)
   const [newAdminData, setNewAdminData] = useState({
     username: "",
     email: "",
@@ -142,7 +141,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList>
           <TabsTrigger value="general">{t("admin.settings.general")}</TabsTrigger>
           <TabsTrigger value="users">{t("admin.settings.users")}</TabsTrigger>
         </TabsList>
@@ -259,29 +258,30 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">
-                {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
-                    className="w-[300px] ps-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Button className="gap-2" onClick={() => setIsAddAdminDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4" />
-                  {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
-                </Button>
+          {/* Header */}
+          <div className="flex flex-row items-center justify-between">
+            <h2 className="text-xl font-semibold">
+              {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
+            </h2>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
+                  className="w-[300px] ps-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+              <Button className="gap-2" onClick={() => setIsAddAdminDialogOpen(true)}>
+                <UserPlus className="h-4 w-4" />
+                {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -309,7 +309,7 @@ export default function SettingsPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {user.username.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                {user.username.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="font-medium">{user.username}</div>
@@ -350,9 +350,7 @@ export default function SettingsPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -459,28 +457,70 @@ export default function SettingsPage() {
             <Button 
               onClick={async () => {
                 try {
-                  const result = await addAdminUser({
+                  // First create the auth account with password
+                  const authFormData = new FormData()
+                  authFormData.append("email", newAdminData.email.toLowerCase().trim())
+                  authFormData.append("password", newAdminData.password)
+                  authFormData.append("flow", "signUp")
+                  authFormData.append("name", newAdminData.username.trim())
+                  
+                  // Sign up the user
+                  await signIn("password", authFormData)
+                  
+                  // Wait a bit for auth to propagate
+                  await new Promise(resolve => setTimeout(resolve, 1000))
+                  
+                  // Create admin profile
+                  const profileResult = await createAdminProfile({
                     email: newAdminData.email,
-                    fullName: newAdminData.username,
                     adminRole: newAdminData.permission === "super_admin" ? "super_admin" : "support"
                   })
                   
                   toast({
                     title: language === "ar" ? "تم الإضافة" : "Added",
-                    description: result.message,
-                    variant: result.success ? "default" : "destructive"
+                    description: language === "ar" 
+                      ? `تم إنشاء حساب المسؤول ${newAdminData.email} بنجاح`
+                      : `Admin account created successfully for ${newAdminData.email}`,
                   })
                   
-                  if (result.success) {
-                    setIsAddAdminDialogOpen(false)
-                    setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
-                  }
+                  setIsAddAdminDialogOpen(false)
+                  setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+                  
                 } catch (error: any) {
-                  toast({
-                    title: language === "ar" ? "خطأ" : "Error",
-                    description: error.message,
-                    variant: "destructive"
-                  })
+                  // Check if user already exists and try to upgrade them
+                  if (error.message?.includes("already exists") || error.code === "USER_ALREADY_EXISTS") {
+                    try {
+                      // Try the old method of upgrading existing user
+                      const result = await addAdminUser({
+                        email: newAdminData.email,
+                        fullName: newAdminData.username,
+                        adminRole: newAdminData.permission === "super_admin" ? "super_admin" : "support"
+                      })
+                      
+                      toast({
+                        title: language === "ar" ? "تم الإضافة" : "Added",
+                        description: result.message,
+                        variant: result.success ? "default" : "destructive"
+                      })
+                      
+                      if (result.success) {
+                        setIsAddAdminDialogOpen(false)
+                        setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+                      }
+                    } catch (innerError: any) {
+                      toast({
+                        title: language === "ar" ? "خطأ" : "Error",
+                        description: innerError.message,
+                        variant: "destructive"
+                      })
+                    }
+                  } else {
+                    toast({
+                      title: language === "ar" ? "خطأ" : "Error",
+                      description: error.message || "Failed to create admin account",
+                      variant: "destructive"
+                    })
+                  }
                 }
               }}
               disabled={!newAdminData.username || !newAdminData.email || !newAdminData.password || newAdminData.password.length < 8}

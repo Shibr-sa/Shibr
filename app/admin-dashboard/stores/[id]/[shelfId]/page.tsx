@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   ArrowLeft,
   Store,
@@ -20,6 +22,13 @@ import {
   CheckCircle,
   XCircle,
   Image as ImageIcon,
+  Package,
+  Building2,
+  DollarSign,
+  Hash,
+  ZoomIn,
+  ExternalLink,
+  Download,
 } from "lucide-react"
 
 export default function ShelfDetailsPage() {
@@ -28,6 +37,10 @@ export default function ShelfDetailsPage() {
   const params = useParams()
   const storeId = params.id as string  // This matches [id] folder
   const shelfId = params.shelfId as string
+  
+  // State for image gallery
+  const [selectedImage, setSelectedImage] = useState<number>(0)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   
   // The storeId from the URL is actually the profileId
   // Fetch store shelves using the profileId directly
@@ -52,6 +65,13 @@ export default function ShelfDetailsPage() {
   })
   
   const store = storesResult?.items?.find((s: any) => s.id === storeId)
+  
+  // Fetch active rental request for this shelf if it's not available
+  const rentalRequest = useQuery(api.admin.getRentalRequest,
+    shelf && !shelf.isAvailable ? { 
+      shelfId: shelf._id as Id<"shelves">
+    } : "skip"
+  )
   
   if (!shelf) {
     return null
@@ -79,246 +99,377 @@ export default function ShelfDetailsPage() {
   
   return (
     <div className="space-y-6">
-      {/* Header with Back Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="h-9 w-9"
-          >
-            <ArrowLeft className={`h-4 w-4 ${direction === "rtl" ? "rotate-180" : ""}`} />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{shelf.shelfName || t("posts.shelf")}</h1>
-            <p className="text-sm text-muted-foreground">{store?.name || "-"}</p>
-          </div>
-        </div>
-        <Badge variant={shelf.isAvailable ? "default" : "secondary"}>
-          {shelf.isAvailable ? t("posts.status.published") : t("posts.status.rented")}
-        </Badge>
-      </div>
-      
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Shelf Information */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("posts.shelf_information")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.shelf_name")}</Label>
-                  <p className="font-medium">{shelf.shelfName}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.branch")}</Label>
-                  <p className="font-medium">{shelf.branch}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.monthly_price")}</Label>
-                  <p className="font-medium">{formatCurrency(shelf.monthlyPrice || 0)}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.commission_percentage")}</Label>
-                  <p className="font-medium">{shelf.percentage}%</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.date_added")}</Label>
-                  <p className="font-medium">{formatDate(shelf.addedDate)}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.availability")}</Label>
-                  <div className="flex items-center gap-2">
-                    {shelf.isAvailable ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-green-600">{t("posts.available")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-4 w-4 text-red-600" />
-                        <span className="text-red-600">{t("posts.rented")}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Dimensions Section */}
-              <Separator />
-              <div>
-                <h3 className="font-medium mb-4">{t("posts.dimensions")}</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">{t("posts.width")}</Label>
-                    <p className="font-medium">{shelf.width || 100} {t("common.cm")}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">{t("posts.height")}</Label>
-                    <p className="font-medium">{shelf.height || 200} {t("common.cm")}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">{t("posts.depth")}</Label>
-                    <p className="font-medium">{shelf.depth || 50} {t("common.cm")}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Description */}
-              {shelf.description && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="font-medium mb-2">{t("posts.description")}</h3>
-                    <p className="text-muted-foreground">{shelf.description}</p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Shelf Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("posts.shelf_images")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {shelf.images && shelf.images.length > 0 ? (
-                  shelf.images.map((image: string, index: number) => (
-                    <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                      <img 
-                        src={image} 
-                        alt={`${shelf.shelfName} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+          {/* Enhanced Shelf Information Card */}
+          <Card className="overflow-hidden">
+            <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
+              <h3 className="text-base font-semibold">
+                {t("posts.shelf_information")}
+              </h3>
+              <Badge variant={shelf.isAvailable ? "secondary" : "default"}>
+                {shelf.isAvailable ? t("posts.status.published") : t("posts.status.rented")}
+              </Badge>
+            </div>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {/* First Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Package className="h-4 w-4 text-primary" />
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 aspect-video bg-muted rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">{t("posts.no_images")}</p>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.shelf_name")}
+                      </Label>
+                      <p className="text-sm font-medium">{shelf.shelfName}</p>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.branch")}
+                      </Label>
+                      <p className="text-sm font-medium">{shelf.branch}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.monthly_price")}
+                      </Label>
+                      <p className="text-sm font-medium">{formatCurrency(shelf.monthlyPrice || 0)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Second Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Hash className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.commission_percentage")}
+                      </Label>
+                      <p className="text-sm font-medium">{shelf.storeCommission || shelf.percentage || 10}%</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.date_added")}
+                      </Label>
+                      <p className="text-sm font-medium">{formatDate(shelf.createdAt || shelf.addedDate)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("posts.location")}
+                      </Label>
+                      <p className="text-sm font-medium">
+                        {(() => {
+                          const locationParts = []
+                          // Don't include branch as it's shown separately
+                          if (shelf.area) locationParts.push(shelf.area)
+                          if (shelf.city) locationParts.push(shelf.city)
+                          if (shelf.address) locationParts.push(shelf.address)
+                          
+                          // If no location data, check store location
+                          if (locationParts.length === 0 && shelf.location) {
+                            if (typeof shelf.location === 'string') {
+                              return shelf.location
+                            } else if (shelf.location.city || shelf.location.area || shelf.location.address) {
+                              if (shelf.location.area) locationParts.push(shelf.location.area)
+                              if (shelf.location.city) locationParts.push(shelf.location.city)
+                              if (shelf.location.address) locationParts.push(shelf.location.address)
+                            }
+                          }
+                          
+                          return locationParts.length > 0 ? locationParts.join(", ") : "-"
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dimensions Section */}
+                <Separator className="my-6" />
+                <div>
+                  <h3 className="text-sm font-semibold mb-4">{t("posts.dimensions")}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <ArrowLeft className="h-4 w-4 text-primary rotate-90" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("posts.width")}
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {shelf.shelfSize?.width || shelf.width || 100} 
+                          <span className="text-muted-foreground ms-1">{shelf.shelfSize?.unit || t("common.cm")}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <ArrowLeft className="h-4 w-4 text-primary rotate-180" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("posts.height")}
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {shelf.shelfSize?.height || shelf.height || 200} 
+                          <span className="text-muted-foreground ms-1">{shelf.shelfSize?.unit || t("common.cm")}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("posts.depth")}
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {shelf.shelfSize?.depth || shelf.depth || 50} 
+                          <span className="text-muted-foreground ms-1">{shelf.shelfSize?.unit || t("common.cm")}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Description */}
+                {shelf.description && (
+                  <>
+                    <Separator className="my-6" />
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">{t("posts.description")}</h3>
+                      <p className="text-sm text-muted-foreground">{shelf.description}</p>
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>
           </Card>
+          
+          {/* Renter Details Table */}
+          <h3 className="text-lg font-semibold mb-4">
+            {t("posts.renter_details")}
+          </h3>
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="h-12 text-start font-medium">{t("posts.merchant_name")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{t("posts.rental_amount")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{t("posts.rental_date")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{t("posts.end_date")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{t("posts.contact_method")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{t("posts.commercial_registry")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!shelf.isAvailable && rentalRequest ? (
+                    <TableRow>
+                      <TableCell className="py-3 font-medium">{rentalRequest.renterName || "-"}</TableCell>
+                      <TableCell className="py-3">{formatCurrency(rentalRequest.monthlyPrice || shelf.monthlyPrice || 0)}</TableCell>
+                      <TableCell className="py-3">{formatDate(rentalRequest.startDate)}</TableCell>
+                      <TableCell className="py-3">{formatDate(rentalRequest.endDate)}</TableCell>
+                      <TableCell className="py-3">{rentalRequest.renterPhone || rentalRequest.renterEmail || "-"}</TableCell>
+                      <TableCell className="py-3">
+                        {rentalRequest.commercialRegistry ? (
+                          <Button variant="link" size="sm" className="p-0 h-auto text-primary">
+                            {t("posts.download_registry")}
+                          </Button>
+                        ) : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        {shelf.isAvailable ? t("posts.shelf_not_rented") : t("posts.no_renter_details")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          
         </div>
         
-        {/* Right Column - Store Information */}
+        {/* Right Column - Shelf Images */}
         <div className="space-y-6">
-          {/* Store Details Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("posts.store_details")}</CardTitle>
+          {/* Enhanced Shelf Images Card */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{t("posts.shelf_images")}</CardTitle>
+                {(() => {
+                  const images = []
+                  if (shelf.shelfImageUrl) images.push(shelf.shelfImageUrl)
+                  if (shelf.exteriorImageUrl) images.push(shelf.exteriorImageUrl)
+                  if (shelf.interiorImageUrl) images.push(shelf.interiorImageUrl)
+                  if (shelf.additionalImageUrls?.length > 0) {
+                    images.push(...shelf.additionalImageUrls)
+                  }
+                  if (images.length === 0 && shelf.images?.length > 0) {
+                    images.push(...shelf.images)
+                  }
+                  return images.length > 0 ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {images.length} {language === "ar" ? "صور" : "Images"}
+                    </Badge>
+                  ) : null
+                })()}
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={shelf.storeImage} alt={shelf.storeName} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {shelf.storeName?.charAt(0)?.toUpperCase() || "S"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{shelf.storeName}</p>
-                  <p className="text-sm text-muted-foreground">{shelf.branch}</p>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Store className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">{t("posts.store_type")}</p>
-                    <p className="text-sm font-medium">{shelf.storeType || t("posts.retail_store")}</p>
-                  </div>
-                </div>
+            <CardContent className="p-0">
+              {(() => {
+                // Collect all available image URLs with labels
+                const images: { url: string; label: string }[] = []
+                if (shelf.shelfImageUrl) {
+                  images.push({ 
+                    url: shelf.shelfImageUrl, 
+                    label: language === "ar" ? "صورة الرف" : "Shelf Image" 
+                  })
+                }
+                if (shelf.exteriorImageUrl) {
+                  images.push({ 
+                    url: shelf.exteriorImageUrl, 
+                    label: language === "ar" ? "الواجهة الخارجية" : "Exterior View" 
+                  })
+                }
+                if (shelf.interiorImageUrl) {
+                  images.push({ 
+                    url: shelf.interiorImageUrl, 
+                    label: language === "ar" ? "المنظر الداخلي" : "Interior View" 
+                  })
+                }
+                if (shelf.additionalImageUrls?.length > 0) {
+                  shelf.additionalImageUrls.forEach((url: string, i: number) => {
+                    images.push({ 
+                      url, 
+                      label: `${language === "ar" ? "صورة إضافية" : "Additional Image"} ${i + 1}` 
+                    })
+                  })
+                }
+                // Fallback to old images array if exists
+                if (images.length === 0 && shelf.images?.length > 0) {
+                  shelf.images.forEach((url: string, i: number) => {
+                    images.push({ 
+                      url, 
+                      label: `${language === "ar" ? "صورة" : "Image"} ${i + 1}` 
+                    })
+                  })
+                }
                 
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">{t("posts.location")}</p>
-                    <p className="text-sm font-medium">{shelf.location || shelf.branch}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">{t("posts.store_owner")}</p>
-                    <p className="text-sm font-medium">{shelf.ownerName || "-"}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">{t("posts.member_since")}</p>
-                    <p className="text-sm font-medium">{formatDate(shelf.storeJoinDate)}</p>
-                  </div>
-                </div>
-              </div>
+                if (images.length > 0) {
+                  return (
+                    <div className="space-y-3">
+                      {/* Main image display */}
+                      <div className="relative aspect-video bg-muted">
+                        <img 
+                          src={images[selectedImage].url} 
+                          alt={images[selectedImage].label}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-2 end-2 flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            className="h-8 w-8 bg-black/50 hover:bg-black/70 text-white border-0"
+                            onClick={() => window.open(images[selectedImage].url, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                          <p className="text-white text-sm font-medium">
+                            {images[selectedImage].label}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Thumbnail gallery */}
+                      {images.length > 1 && (
+                        <div className="px-4 pb-4">
+                          <div className="grid grid-cols-3 gap-2">
+                            {images.map((image, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setSelectedImage(index)}
+                                className={`relative aspect-video rounded-md overflow-hidden border-2 transition-all ${
+                                  selectedImage === index 
+                                    ? 'border-primary ring-2 ring-primary/20' 
+                                    : 'border-transparent hover:border-muted-foreground/50'
+                                }`}
+                              >
+                                <img 
+                                  src={image.url} 
+                                  alt={image.label}
+                                  className="w-full h-full object-cover"
+                                />
+                                {selectedImage === index && (
+                                  <div className="absolute inset-0 bg-primary/10" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div className="aspect-video bg-muted flex items-center justify-center">
+                      <div className="text-center p-6">
+                        <div className="w-16 h-16 rounded-full bg-muted-foreground/10 flex items-center justify-center mx-auto mb-3">
+                          <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">
+                          {t("posts.no_images")}
+                        </p>
+                        <p className="text-xs text-muted-foreground/60">
+                          {language === "ar" ? "لم يتم رفع أي صور لهذا الرف" : "No images have been uploaded for this shelf"}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
+              })()}
             </CardContent>
           </Card>
           
-          {/* Rental Information (if rented) */}
-          {shelf.status === "rented" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("posts.rental_information")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.renter_name")}</Label>
-                  <p className="font-medium">{shelf.renterName || "-"}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.rental_start_date")}</Label>
-                  <p className="font-medium">{formatDate(shelf.rentalStartDate)}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.rental_end_date")}</Label>
-                  <p className="font-medium">{formatDate(shelf.rentalEndDate)}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t("posts.rental_duration")}</Label>
-                  <p className="font-medium">{shelf.rentalDuration || "-"} {t("common.months")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Actions */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <Button 
-                  className="w-full"
-                  onClick={() => router.push(`/admin-dashboard/stores/${storeId}`)}
-                >
-                  <Store className="h-4 w-4 me-2" />
-                  {t("posts.view_store")}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push(`/admin-dashboard/stores/${storeId}`)}
-                >
-                  {t("posts.back_to_store_details")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

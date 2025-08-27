@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/pagination"
 import { Search, Eye, Package, TrendingUp, ShoppingBag, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { BrandDetailsDialog } from "@/components/dialogs/brand-details-dialog"
 
 export default function BrandsPage() {
   const { t, language } = useLanguage()
@@ -40,8 +39,6 @@ export default function BrandsPage() {
   )
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
-  const [selectedBrand, setSelectedBrand] = useState<any>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
   const itemsPerPage = 5
   
   // Track if we've loaded initial data
@@ -300,7 +297,7 @@ export default function BrandsPage() {
                             <TableCell className="py-3 w-[25%]">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
-                                  <AvatarImage src={brand.profileImageUrl} alt={brand.name} />
+                                  <AvatarImage src={brand.profileImageUrl || undefined} alt={brand.name} />
                                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                                     {brand.name?.charAt(0)?.toUpperCase() || "B"}
                                   </AvatarFallback>
@@ -326,10 +323,7 @@ export default function BrandsPage() {
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8"
-                                onClick={() => {
-                                  setSelectedBrand(brand)
-                                  setDialogOpen(true)
-                                }}
+                                onClick={() => router.push(`/admin-dashboard/brands/${brand.id}`)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -441,14 +435,6 @@ export default function BrandsPage() {
             </PaginationContent>
           </Pagination>
 
-      {/* Brand Details Dialog */}
-      {selectedBrand && (
-        <BrandDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          brand={selectedBrand}
-        />
-      )}
     </div>
   )
 }

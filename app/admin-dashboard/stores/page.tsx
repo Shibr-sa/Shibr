@@ -374,7 +374,7 @@ export default function StoresPage() {
                           <TableCell className="py-3 w-[35%]">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-10 h-10">
-                                <AvatarImage src={store.profileImageUrl} alt={store.name} />
+                                <AvatarImage src={store.profileImageUrl || undefined} alt={store.name} />
                                 <AvatarFallback className="bg-primary/10 text-primary">
                                   {store.name ? store.name.charAt(0).toUpperCase() : "S"}
                                 </AvatarFallback>

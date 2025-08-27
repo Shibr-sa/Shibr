@@ -9,7 +9,8 @@ export const getCurrentAdminProfile = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
+      // Return null instead of throwing to avoid console errors on signout
+      return null
     }
     
     const userProfile = await ctx.db
@@ -18,7 +19,8 @@ export const getCurrentAdminProfile = query({
       .first()
     
     if (!userProfile || userProfile.accountType !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+      // Return null instead of throwing to avoid console errors
+      return null
     }
     
     // Get the auth user for email, name, and image
@@ -122,7 +124,12 @@ export const getPlatformSettings = query({
     // Verify admin access
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
+      // Return empty settings instead of throwing
+      return {
+        platformFeePercentage: 8,
+        minimumShelfPrice: 100,
+        maximumDiscountPercentage: 50,
+      }
     }
     
     const userProfile = await ctx.db
@@ -131,7 +138,12 @@ export const getPlatformSettings = query({
       .first()
     
     if (!userProfile || userProfile.accountType !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+      // Return empty settings instead of throwing
+      return {
+        platformFeePercentage: 8,
+        minimumShelfPrice: 100,
+        maximumDiscountPercentage: 50,
+      }
     }
     
     // Get all platform settings
@@ -161,7 +173,8 @@ export const getAdminUsers = query({
     // Verify admin access
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
+      // Return empty array instead of throwing
+      return []
     }
     
     const userProfile = await ctx.db
@@ -170,7 +183,8 @@ export const getAdminUsers = query({
       .first()
     
     if (!userProfile || userProfile.accountType !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+      // Return empty array instead of throwing
+      return []
     }
     
     // Get all admin users
@@ -214,7 +228,90 @@ export const getAdminUsers = query({
   },
 });
 
-// Add new admin user
+// Create admin profile for a newly registered user
+export const createAdminProfile = mutation({
+  args: {
+    email: v.string(),
+    adminRole: v.optional(v.union(
+      v.literal("super_admin"),
+      v.literal("support"),
+      v.literal("finance"),
+      v.literal("operations")
+    )),
+  },
+  handler: async (ctx, args) => {
+    // Verify that the current user is an admin (the one creating the new admin)
+    const currentUserId = await getAuthUserId(ctx)
+    if (!currentUserId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const currentUserProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", currentUserId))
+      .first()
+    
+    if (!currentUserProfile || currentUserProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Only admins can create admin accounts")
+    }
+    
+    // Find the newly created user by email
+    const allUsers = await ctx.db.query("users").collect()
+    const newUser = allUsers.find(u => u.email === args.email)
+    
+    if (!newUser) {
+      throw new Error("User not found. Make sure the account was created successfully.")
+    }
+    
+    // Check if user already has a profile
+    const existingProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", newUser._id))
+      .first()
+    
+    if (existingProfile) {
+      if (existingProfile.accountType === "admin") {
+        throw new Error("This user is already an admin")
+      }
+      
+      // Update existing profile to admin
+      await ctx.db.patch(existingProfile._id, {
+        accountType: "admin",
+        adminRole: args.adminRole || "super_admin",
+        permissions: args.adminRole === "super_admin" ? ["all"] : ["limited"],
+        isVerified: true,
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      })
+      
+      return {
+        success: true,
+        message: "User upgraded to admin successfully",
+        profileId: existingProfile._id,
+      }
+    }
+    
+    // Create new admin profile
+    const profileId = await ctx.db.insert("userProfiles", {
+      userId: newUser._id,
+      accountType: "admin",
+      adminRole: args.adminRole || "super_admin",
+      permissions: args.adminRole === "super_admin" ? ["all"] : ["limited"],
+      isVerified: true,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    
+    return {
+      success: true,
+      message: "Admin profile created successfully",
+      profileId,
+    }
+  },
+})
+
+// Add new admin user (legacy - for upgrading existing users)
 export const addAdminUser = mutation({
   args: {
     email: v.string(),

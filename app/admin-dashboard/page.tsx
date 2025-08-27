@@ -10,7 +10,6 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { 
@@ -18,7 +17,6 @@ import {
   Package, 
   DollarSign, 
   FileText, 
-  MoreHorizontal, 
   TrendingUp,
   TrendingDown,
   Store
@@ -84,7 +82,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header and Stats in Single Card */}
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
@@ -317,9 +314,9 @@ export default function AdminDashboard() {
                                 {store.name?.charAt(0)?.toUpperCase() || "S"}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="font-medium">
+                            <span className="font-medium">
                               {store.name || t("common.unknown")}
-                            </div>
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="py-3 text-muted-foreground">
@@ -340,7 +337,7 @@ export default function AdminDashboard() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {/* Fill remaining rows to always show 5 rows */}
+                      {/* Fill remaining rows to always show 5 rows */}
                     {chartData.topStores.length < 5 && 
                       Array.from({ length: 5 - chartData.topStores.length }).map((_, index) => (
                         <TableRow key={`filler-${index}`} className="h-[72px]">

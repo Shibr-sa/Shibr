@@ -941,6 +941,12 @@ export const getStores = query({
         // Profile image is now stored in users.image field as URL string
         const profileImageUrl = user?.image || null;
         
+        // Convert commercial register document storage ID to URL if exists
+        let businessRegistrationUrl = null;
+        if (store.commercialRegisterDocument) {
+          businessRegistrationUrl = await ctx.storage.getUrl(store.commercialRegisterDocument);
+        }
+        
         return {
           id: store._id,
           name: store.storeName || user?.name,
@@ -954,7 +960,7 @@ export const getStores = query({
           status: store.isActive ? "active" : "suspended",
           joinDate: store.createdAt,
           businessRegistration: store.commercialRegisterNumber,
-          businessRegistrationUrl: store.commercialRegisterDocument,
+          businessRegistrationUrl, // Now returns actual URL
           profileImageUrl, // Include the profile image URL
           fullName: user?.name,
           storeName: store.storeName,
@@ -1164,9 +1170,17 @@ export const getBrands = query({
         // Profile image is now stored in users.image field as URL string
         const profileImageUrl = user?.image || null;
         
+        // Convert business registration document storage ID to URL
+        let businessRegistrationUrl = null;
+        const docId = brand.brandCommercialRegisterDocument || brand.freelanceLicenseDocument;
+        if (docId) {
+          businessRegistrationUrl = await ctx.storage.getUrl(docId);
+        }
+        
         return {
           id: brand._id,
-          name: brand.brandName || user?.name,
+          name: brand.brandName || "",  // Use brand name only
+          ownerName: user?.name || "",  // Add actual owner name from users table
           email: brand.email,
           phoneNumber: user?.phone,
           products: totalProducts,
@@ -1175,9 +1189,10 @@ export const getBrands = query({
           revenue: totalProductRevenue, // Only product sales revenue, not rental costs
           status: brand.isActive ? "active" : "suspended",
           category: brand.brandType || "general",
+          website: "",  // Website field not in schema yet
           joinDate: brand.createdAt,
           businessRegistration: brand.brandCommercialRegisterNumber || brand.freelanceLicenseNumber,
-          businessRegistrationUrl: brand.brandCommercialRegisterDocument || brand.freelanceLicenseDocument,
+          businessRegistrationUrl,  // Use converted URL
           profileImageUrl, // Include the profile image URL
         };
       })
@@ -1551,6 +1566,43 @@ export const getPayments = query({
   },
 });
 // Get shelves for a specific store (admin store details page)
+export const getRentalRequest = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Find active rental request for this shelf
+    const rentalRequest = await ctx.db
+      .query("rentalRequests")
+      .filter(q => 
+        q.and(
+          q.eq(q.field("shelfId"), args.shelfId),
+          q.eq(q.field("status"), "active")
+        )
+      )
+      .first()
+    
+    if (!rentalRequest) {
+      return null
+    }
+    
+    // Get requester details
+    const requester = rentalRequest.requesterProfileId 
+      ? await ctx.db.get(rentalRequest.requesterProfileId)
+      : null
+    
+    const requesterUser = await ctx.db.get(rentalRequest.requesterId)
+    
+    return {
+      ...rentalRequest,
+      renterName: requester?.brandName || requester?.storeName || requesterUser?.name || "-",
+      renterEmail: requesterUser?.email || "-",
+      renterPhone: requesterUser?.phone || "-",
+      commercialRegistry: requester?.brandCommercialRegisterDocument || requester?.commercialRegisterDocument || null,
+    }
+  }
+})
+
 export const getStoreShelves = query({
   args: {
     profileId: v.id("userProfiles"),
@@ -1601,12 +1653,42 @@ export const getStoreShelves = query({
       })
     }
     
+    // Convert storage IDs to URLs for images
+    const shelvesWithUrls = await Promise.all(
+      shelves.map(async (shelf) => {
+        const imageUrls: any = {}
+        
+        // Convert individual image fields
+        if (shelf.shelfImage) {
+          imageUrls.shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage)
+        }
+        if (shelf.exteriorImage) {
+          imageUrls.exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage)
+        }
+        if (shelf.interiorImage) {
+          imageUrls.interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage)
+        }
+        
+        // Convert additional images array
+        if (shelf.additionalImages && shelf.additionalImages.length > 0) {
+          imageUrls.additionalImageUrls = await Promise.all(
+            shelf.additionalImages.map(id => ctx.storage.getUrl(id))
+          )
+        }
+        
+        return {
+          ...shelf,
+          ...imageUrls
+        }
+      })
+    )
+    
     // Pagination
-    const totalItems = shelves.length
+    const totalItems = shelvesWithUrls.length
     const totalPages = Math.ceil(totalItems / limit)
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
-    const paginatedShelves = shelves.slice(startIndex, endIndex)
+    const paginatedShelves = shelvesWithUrls.slice(startIndex, endIndex)
     
     return {
       items: paginatedShelves,
@@ -1614,6 +1696,190 @@ export const getStoreShelves = query({
       totalPages,
       currentPage: page,
     }
+  },
+})
+
+// Get products for a specific brand (admin brand details page)
+// Shows products that are currently being displayed on rented shelves
+export const getBrandProducts = query({
+  args: {
+    profileId: v.id("userProfiles"),
+    searchQuery: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    // Get the userId from the profile
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) return []
+    
+    // Get active rental requests for this brand
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
+      .filter(q => q.and(
+        q.eq(q.field("requesterId"), profile.userId),
+        q.eq(q.field("status"), "active")
+      ))
+      .collect()
+    
+    // Collect all products that are currently being displayed
+    const productsWithRentalQuantities = []
+    
+    for (const rental of activeRentals) {
+      if (rental.selectedProductIds && rental.selectedProductQuantities) {
+        for (let i = 0; i < rental.selectedProductIds.length; i++) {
+          const productId = rental.selectedProductIds[i]
+          const rentalQuantity = rental.selectedProductQuantities[i] || 1
+          
+          const product = await ctx.db.get(productId)
+          if (product) {
+            // Get product image URL - check both mainImage (storage) and imageUrl (external)
+            let imageUrl = null
+            
+            // First check if there's a storage ID to convert
+            if (product.mainImage) {
+              try {
+                imageUrl = await ctx.storage.getUrl(product.mainImage)
+              } catch (error) {
+                console.error("Error converting storage ID to URL:", error)
+                imageUrl = null
+              }
+            }
+            
+            // If no storage image, check for external URL
+            if (!imageUrl && product.imageUrl) {
+              imageUrl = product.imageUrl
+            }
+            
+            productsWithRentalQuantities.push({
+              id: product._id,
+              name: product.name,
+              category: product.category,
+              price: product.price,
+              quantity: rentalQuantity,  // Use rental request quantity, not total product quantity
+              isActive: product.isActive,
+              imageUrl,
+              sku: product.code || product.sku,
+              salesCount: 0,  // Sales count not tracked yet
+              createdAt: product.createdAt || product._creationTime,
+              rentalId: rental._id,  // Track which rental this product belongs to
+              shelfId: rental.shelfId,  // Track which shelf this product is on
+            })
+          }
+        }
+      }
+    }
+    
+    // Apply search filter if provided
+    let filteredProducts = productsWithRentalQuantities
+    if (args.searchQuery && args.searchQuery.trim()) {
+      const search = args.searchQuery.toLowerCase()
+      filteredProducts = productsWithRentalQuantities.filter(product => 
+        product.name?.toLowerCase().includes(search) ||
+        product.category?.toLowerCase().includes(search) ||
+        product.sku?.toLowerCase().includes(search)
+      )
+    }
+    
+    return filteredProducts
+  },
+})
+
+// Get rental requests for a specific brand (admin brand details page)
+export const getBrandRentals = query({
+  args: {
+    profileId: v.id("userProfiles"),
+    searchQuery: v.optional(v.string()),
+    statusFilter: v.optional(v.string()), // all, completed, needs_collection, upcoming
+  },
+  handler: async (ctx, args) => {
+    // Verify admin access
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized: Authentication required")
+    }
+    
+    const userProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!userProfile || userProfile.accountType !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    // Get the userId from the profile
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) return []
+    
+    const rentals = await ctx.db
+      .query("rentalRequests")
+      .filter(q => q.eq(q.field("requesterId"), profile.userId))
+      .collect()
+    
+    // Get additional details for each rental
+    const rentalsWithDetails = await Promise.all(
+      rentals.map(async (rental) => {
+        const shelf = await ctx.db.get(rental.shelfId)
+        const ownerProfile = rental.ownerProfileId 
+          ? await ctx.db.get(rental.ownerProfileId)
+          : null
+        
+        return {
+          id: rental._id,
+          shelfName: shelf?.shelfName || "-",
+          storeName: ownerProfile?.storeName || "-",
+          duration: `${rental.rentalPeriod || 1} ${rental.rentalPeriod === 1 ? "month" : "months"}`,
+          payment: rental.totalAmount || 0,
+          status: rental.status,
+          createdAt: rental.createdAt || rental._creationTime || new Date().toISOString(),
+          updatedAt: rental.updatedAt || rental._creationTime || new Date().toISOString(),
+        }
+      })
+    )
+    
+    // Apply search filter if provided
+    let filteredRentals = rentalsWithDetails
+    if (args.searchQuery && args.searchQuery.trim()) {
+      const search = args.searchQuery.toLowerCase()
+      filteredRentals = rentalsWithDetails.filter(rental => 
+        rental.shelfName?.toLowerCase().includes(search) ||
+        rental.storeName?.toLowerCase().includes(search)
+      )
+    }
+    
+    // Apply status filter if provided
+    if (args.statusFilter && args.statusFilter !== "all") {
+      const now = new Date()
+      filteredRentals = filteredRentals.filter(rental => {
+        if (args.statusFilter === "completed") {
+          return rental.status === "completed"
+        } else if (args.statusFilter === "needs_collection") {
+          return rental.status === "active" || rental.status === "payment_pending"
+        } else if (args.statusFilter === "upcoming") {
+          // Parse createdAt date and check if it's in the future or recent
+          const rentalDate = new Date(rental.createdAt)
+          const daysDiff = Math.floor((rentalDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          return rental.status === "pending" || rental.status === "accepted" || daysDiff > 0
+        }
+        return true
+      })
+    }
+    
+    return filteredRentals
   },
 })
 
