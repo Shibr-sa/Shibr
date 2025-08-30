@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Store, TrendingUp, TrendingDown, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Edit2, Inbox, Layout, Eye, Star } from "lucide-react"
+import { TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Inbox, Layout, Eye, Star } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
@@ -19,9 +19,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Id } from "@/convex/_generated/dataModel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
-import { ar, enUS } from "date-fns/locale"
-import { formatDate, formatDuration, formatCurrency } from "@/lib/formatters"
+import { formatCurrency } from "@/lib/formatters"
 
 // Helper function to get badge variant based on request status
 function getRequestStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -59,6 +57,9 @@ export default function StoreDashboardPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<RentalRequestDetails | null>(null)
   
+  // Track if we've loaded initial data
+  const [hasInitialData, setHasInitialData] = useState(false)
+  
   // Use the global store data context
   const { isLoading: storeLoading, isStoreDataComplete } = useStoreData()
   
@@ -83,6 +84,12 @@ export default function StoreDashboardPage() {
     } : "skip"
   )
   
+  // Track when we have initial data
+  useEffect(() => {
+    if (shelves !== undefined && shelfStats !== undefined && rentalRequests !== undefined && !hasInitialData) {
+      setHasInitialData(true)
+    }
+  }, [shelves, shelfStats, rentalRequests, hasInitialData])
   
   // Get recent shelves (max 3)
   const recentShelves = shelves?.slice(0, 3) || []
@@ -90,8 +97,8 @@ export default function StoreDashboardPage() {
   // Get recent rental requests (max 3)
   const recentRequests = rentalRequests?.slice(0, 3) || []
   
-  // Loading state
-  const isLoading = storeLoading || !shelves || !shelfStats
+  // Loading state - only true on initial load
+  const isLoading = storeLoading || !hasInitialData
 
   return (
     <div className="space-y-6">
@@ -117,101 +124,135 @@ export default function StoreDashboardPage() {
         </Alert>
       )}
 
-      {/* Statistics Section - Same as Shelves Page */}
-      <Card>
-        <CardContent className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold">
-                {t("dashboard.manage_store_starts_here")}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("dashboard.monitor_performance_description")}
-              </p>
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button 
-                      className="gap-1" 
-                      disabled={isLoading || !isStoreDataComplete}
-                      onClick={() => router.push("/store-dashboard/shelves/new")}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      {t("dashboard.display_shelf_now")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!isStoreDataComplete && !isLoading && (
-                  <TooltipContent>
-                    <p>{t("dashboard.complete_profile_first")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t("dashboard.manage_store_starts_here")}</h1>
+          <p className="text-muted-foreground mt-1">
+            {t("dashboard.monitor_performance_description")}
+          </p>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  className="gap-1" 
+                  disabled={isLoading || !isStoreDataComplete}
+                  onClick={() => router.push("/store-dashboard/shelves/new")}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  {t("dashboard.display_shelf_now")}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!isStoreDataComplete && !isLoading && (
+              <TooltipContent>
+                <p>{t("dashboard.complete_profile_first")}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
-          {/* Statistics Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Rented Shelves Card */}
-            <StatCard
-              title={t("dashboard.currently_rented_brands")}
-              value={shelfStats?.rentedShelves || 0}
-              trend={{
-                value: shelfStats?.rentedChange || 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<Package className="h-5 w-5 text-primary" />}
-            />
+      {/* Statistics Cards Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
+            {!hasInitialData ? (
+              // Loading state
+              <>
+                <Card className="bg-muted/50 border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <Skeleton className="h-[14px] w-20" />
+                        <Skeleton className="h-[30px] w-16 mt-1" />
+                        <Skeleton className="h-[16px] w-24 mt-1" />
+                      </div>
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/50 border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <Skeleton className="h-[14px] w-20" />
+                        <Skeleton className="h-[30px] w-24 mt-1" />
+                        <Skeleton className="h-[16px] w-24 mt-1" />
+                      </div>
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/50 border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <Skeleton className="h-[14px] w-20" />
+                        <Skeleton className="h-[30px] w-12 mt-1" />
+                        <Skeleton className="h-[16px] w-24 mt-1" />
+                      </div>
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Rented Shelves Card */}
+                <StatCard
+                  title={t("dashboard.currently_rented_brands")}
+                  value={shelfStats?.rentedShelves || 0}
+                  trend={{
+                    value: shelfStats?.rentedChange || 0,
+                    label: `${t("time.from")} ${t("time.last_month")}`
+                  }}
+                  icon={<Package className="h-5 w-5 text-primary" />}
+                />
 
-            {/* Revenue Card */}
-            <StatCard
-              title={t("dashboard.total_sales")}
-              value={formatCurrency(shelfStats?.totalRevenue || 0, language)}
-              trend={{
-                value: shelfStats?.revenueChange || 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<TrendingUp className="h-5 w-5 text-primary" />}
-            />
+                {/* Revenue Card */}
+                <StatCard
+                  title={t("dashboard.total_sales")}
+                  value={formatCurrency(shelfStats?.totalRevenue || 0, language)}
+                  trend={{
+                    value: shelfStats?.revenueChange || 0,
+                    label: `${t("time.from")} ${t("time.last_month")}`
+                  }}
+                  icon={<TrendingUp className="h-5 w-5 text-primary" />}
+                />
 
-            {/* Incoming Orders Card */}
-            <StatCard
-              title={t("dashboard.incoming_orders")}
-              value={rentalRequests?.filter(r => r.status === "pending").length || 0}
-              trend={{
-                value: (rentalRequests?.filter(r => r.status === "pending").length || 0) > 0 ? 100.0 : 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<ShoppingBag className="h-5 w-5 text-primary" />}
-            />
-          </div>
-        </CardContent>
-      </Card>
+                {/* Incoming Orders Card */}
+                <StatCard
+                  title={t("dashboard.incoming_orders")}
+                  value={rentalRequests?.filter(r => r.status === "pending").length || 0}
+                  trend={{
+                    value: (rentalRequests?.filter(r => r.status === "pending").length || 0) > 0 ? 100.0 : 0,
+                    label: `${t("time.from")} ${t("time.last_month")}`
+                  }}
+                  icon={<ShoppingBag className="h-5 w-5 text-primary" />}
+                />
+              </>
+            )}
+      </div>
 
-      {/* Rental Requests and Shelves */}
-      <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold">{t("dashboard.new_rental_requests")}</CardTitle>
-            <Button 
-              variant="link" 
-              size="sm"
-              className="h-auto p-0"
-              disabled={isLoading || !isStoreDataComplete}
-              asChild
-            >
-              <Link href="/store-dashboard/orders">
-                {t("dashboard.see_more")}
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
+      {/* Rental Requests Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{t("dashboard.rental_requests")}</h2>
+          <Button 
+            variant="outline" 
+            size="sm"
+            disabled={isLoading || !isStoreDataComplete}
+            asChild
+          >
+            <Link href="/store-dashboard/orders">
+              {t("dashboard.see_more")}
+            </Link>
+          </Button>
+        </div>
+        
+        <div className="rounded-md border">
+            <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("table.store")}</TableHead>
@@ -224,7 +265,7 @@ export default function StoreDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading || !rentalRequests ? (
+                    {!hasInitialData ? (
                       // Show 3 skeleton rows while loading
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-request-${index}`} className="h-[72px]">
@@ -238,21 +279,22 @@ export default function StoreDashboardPage() {
                         </TableRow>
                       ))
                     ) : recentRequests.length === 0 ? (
-                      // Show empty state with 3 rows
-                      Array.from({ length: 3 }).map((_, index) => (
-                        <TableRow key={`empty-request-${index}`} className="h-[72px]">
-                          {index === 1 ? (
-                            <TableCell colSpan={7} className="text-center text-muted-foreground">
-                              <div className="flex items-center justify-center gap-2">
-                                <Inbox className="h-5 w-5 text-muted-foreground" />
-                                <span className="text-sm">{t("dashboard.no_rental_requests")}</span>
-                              </div>
-                            </TableCell>
-                          ) : (
-                            <TableCell colSpan={7}>&nbsp;</TableCell>
-                          )}
-                        </TableRow>
-                      ))
+                      // Empty state
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-[216px] text-center">
+                          <div className="flex h-full w-full items-center justify-center">
+                            <div className="flex flex-col items-center gap-1 py-10">
+                              <Inbox className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                              <h3 className="font-medium">
+                                {t("dashboard.no_rental_requests")}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {t("dashboard.rental_requests_will_appear_here")}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       <>
                         {/* Show actual rental requests (max 3) */}
@@ -304,46 +346,37 @@ export default function StoreDashboardPage() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {/* Fill remaining rows to always show 3 total */}
+                        {/* Fill remaining rows to maintain consistent height */}
                         {recentRequests.length < 3 && Array.from({ length: 3 - recentRequests.length }).map((_, index) => (
-                          <TableRow key={`empty-row-request-${index}`} className="h-[72px]">
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                          <TableRow key={`filler-request-${index}`} className="h-[72px]">
+                            <TableCell className="py-3" colSpan={7}>&nbsp;</TableCell>
                           </TableRow>
                         ))}
                       </>
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+      </div>
+
+      {/* Shelves Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{t("dashboard.your_shelves")}</h2>
+          <Button 
+            variant="outline" 
+            size="sm"
+            disabled={isLoading || !isStoreDataComplete}
+            asChild
+          >
+            <Link href="/store-dashboard/shelves">
+              {t("dashboard.see_more")}
+            </Link>
+          </Button>
+        </div>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold">{t("dashboard.your_shelves")}</CardTitle>
-            <Button 
-              variant="link" 
-              size="sm"
-              className="h-auto p-0"
-              disabled={isLoading || !isStoreDataComplete}
-              asChild
-            >
-              <Link href="/store-dashboard/shelves">
-                {t("dashboard.see_more")}
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
+        <div className="rounded-md border">
+            <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
@@ -356,7 +389,7 @@ export default function StoreDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading ? (
+                    {!hasInitialData ? (
                       // Show 3 skeleton rows while loading
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-${index}`} className="h-[72px]">
@@ -370,48 +403,36 @@ export default function StoreDashboardPage() {
                         </TableRow>
                       ))
                     ) : recentShelves.length === 0 ? (
-                      // Show empty state with 3 rows
-                      Array.from({ length: 3 }).map((_, index) => (
-                        <TableRow key={`empty-shelf-${index}`} className="h-[72px]">
-                          {index === 1 ? (
-                            <TableCell colSpan={7} className="text-center text-muted-foreground">
-                              <div className="flex items-center justify-center gap-3">
-                                <Layout className="h-5 w-5 text-muted-foreground" />
-                                <span className="text-sm">{t("dashboard.no_shelves_displayed")}</span>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span>
-                                        <Button 
-                                          variant="link" 
-                                          size="sm"
-                                          className="gap-1 h-auto p-0"
-                                          disabled={isLoading || !isStoreDataComplete}
-                                          onClick={() => router.push("/store-dashboard/shelves/new")}
-                                        >
-                                          <PlusCircle className="h-4 w-4" />
-                                          <span>{t("dashboard.display_shelf_now")}</span>
-                                        </Button>
-                                      </span>
-                                    </TooltipTrigger>
-                                    {!isStoreDataComplete && !isLoading && (
-                                      <TooltipContent>
-                                        <p>{t("dashboard.complete_profile_first")}</p>
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </TableCell>
-                          ) : (
-                            <TableCell colSpan={7}>&nbsp;</TableCell>
-                          )}
-                        </TableRow>
-                      ))
+                      // Empty state
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-[216px] text-center">
+                          <div className="flex h-full w-full items-center justify-center">
+                            <div className="flex flex-col items-center gap-1 py-10">
+                              <Layout className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                              <h3 className="font-medium">
+                                {t("dashboard.no_shelves_displayed")}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {t("dashboard.shelves_will_appear_here")}
+                              </p>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="mt-4"
+                                disabled={isLoading || !isStoreDataComplete}
+                                onClick={() => router.push("/store-dashboard/shelves/new")}
+                              >
+                                <PlusCircle className="h-4 w-4 me-2" />
+                                {t("dashboard.display_shelf_now")}
+                              </Button>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       <>
                         {/* Show actual shelves (max 3) */}
-                        {recentShelves.slice(0, 3).map((shelf: any) => (
+                        {recentShelves.map((shelf: any) => (
                           <TableRow key={shelf._id} className="h-[72px]">
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                             <TableCell>{shelf.branch}</TableCell>
@@ -438,7 +459,7 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               {shelf.status === "rented" && shelf.nextCollectionDate ? 
-                                format(new Date(shelf.nextCollectionDate), "dd/MM/yyyy", { locale: language === "ar" ? ar : enUS }) : 
+                                new Date(shelf.nextCollectionDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : 
                                 "-"
                               }
                             </TableCell>
@@ -449,31 +470,22 @@ export default function StoreDashboardPage() {
                                 className="h-8 w-8"
                                 onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
                               >
-                                <Edit2 className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </Button>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {/* Fill remaining rows to always show 3 total */}
+                        {/* Fill remaining rows to maintain consistent height */}
                         {recentShelves.length < 3 && Array.from({ length: 3 - recentShelves.length }).map((_, index) => (
-                          <TableRow key={`empty-row-${index}`} className="h-[72px]">
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                          <TableRow key={`filler-shelf-${index}`} className="h-[72px]">
+                            <TableCell className="py-3" colSpan={7}>&nbsp;</TableCell>
                           </TableRow>
                         ))}
                       </>
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       {/* Request Details Dialog */}

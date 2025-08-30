@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Label } from "@/components/ui/label"
 import { 
   AlertTriangle, 
   MessageSquare, 
@@ -23,10 +24,13 @@ import {
   Globe,
   Clock,
   MapPin,
-  Phone,
-  Mail,
   Star,
-  Package
+  Package,
+  User,
+  FileText,
+  Calendar,
+  Store,
+  DollarSign
 } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -181,12 +185,13 @@ export default function RequestDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
         {/* Main Content - Left Side */}
         <div className="lg:col-span-2 space-y-6 overflow-y-auto">
-          {/* Brand Information Card */}
-          <Card>
-            <CardContent className="space-y-6 pt-6">
-              {/* Brand Details Header with Rating */}
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">{t("orders.brand_details")}</h3>
+          {/* Brand Information Card - Enhanced Design */}
+          <Card className="overflow-hidden">
+            <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
+              <h3 className="text-base font-semibold">
+                {t("orders.brand_details")}
+              </h3>
+              <div className="flex items-center gap-3">
                 {rentalRequest.brandRating > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
@@ -212,133 +217,245 @@ export default function RequestDetailsPage() {
                     )}
                   </div>
                 )}
-              </div>
-              
-              {/* Brand Info Grid - First Row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.owner_name")}</p>
-                  <p className="font-medium text-sm">{rentalRequest.ownerName || "-"}</p>
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.city")}</p>
-                  <p className="font-medium text-sm">{rentalRequest.city || rentalRequest.shelfCity || "-"}</p>
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.activity_type")}</p>
-                  <p className="font-medium text-sm">{rentalRequest.activityType || "-"}</p>
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.mobile_number")}</p>
-                  <p className="font-medium text-sm dir-ltr text-start">{rentalRequest.phoneNumber || "-"}</p>
-                </div>
-              </div>
-
-              {/* Brand Info Grid - Second Row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.email")}</p>
-                  <p className="font-medium text-sm break-all">{rentalRequest.otherUserEmail || "-"}</p>
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.website")}</p>
-                  {rentalRequest.website ? (
-                    <a 
-                      href={rentalRequest.website.startsWith('http') ? rentalRequest.website : `https://${rentalRequest.website}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-sm text-primary hover:underline"
+                {rentalRequest.status === "pending" && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={isProcessing}
                     >
-                      {rentalRequest.website}
-                    </a>
-                  ) : (
-                    <p className="font-medium text-sm">-</p>
-                  )}
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register_number")}</p>
-                  <p className="font-medium text-sm">{rentalRequest.commercialRegisterNumber || "-"}</p>
-                </div>
-                <div className="border rounded-lg p-4 bg-background">
-                  <p className="text-xs text-muted-foreground mb-1">{t("orders.commercial_register")}</p>
-                  {rentalRequest.commercialRegisterFile ? (
-                    <button
-                      className="font-medium text-sm text-primary hover:underline flex items-center gap-1"
-                      onClick={() => {
-                        if (rentalRequest.commercialRegisterFile) {
-                          window.open(rentalRequest.commercialRegisterFile, '_blank')
-                        }
-                      }}
+                      {t("orders.reject")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={handleAccept}
+                      disabled={isProcessing}
                     >
-                      <Download className="h-3 w-3" />
-                      {t("common.download")}
-                    </button>
-                  ) : (
-                    <p className="font-medium text-sm">-</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Alert Row */}
-              {rentalRequest.status === "pending" && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="font-medium">
-                    {t("orders.cancel_warning")}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Request Details Section */}
-              <div className="pt-6 border-t">
-                <h3 className="font-semibold text-sm mb-4">{t("orders.request_details_title")}</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-start">{t("orders.branch")}</TableHead>
-                        <TableHead className="text-start">{t("orders.activity")}</TableHead>
-                        <TableHead className="text-start">{t("orders.rental_duration")}</TableHead>
-                        <TableHead className="text-start">{t("orders.rental_date")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            {rentalRequest.shelfBranch || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell>{rentalRequest.shelfName || "-"}</TableCell>
-                        <TableCell>
-                          {rentalRequest.startDate && rentalRequest.endDate 
-                            ? formatDuration(rentalRequest.startDate, rentalRequest.endDate, language)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {rentalRequest.createdAt 
-                            ? formatDate(rentalRequest.createdAt, language, 'long')
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-                
-                {rentalRequest.additionalNotes && (
-                  <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm font-medium mb-1">{t("orders.notes")}</p>
-                    <p className="text-sm text-muted-foreground">{rentalRequest.additionalNotes}</p>
+                      {t("orders.accept")}
+                    </Button>
                   </div>
                 )}
               </div>
+            </div>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {/* First Row - 3 items */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.owner_name")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.ownerName || "-"}>
+                        {rentalRequest.ownerName || "-"}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Products Section */}
-              {rentalRequest.products && rentalRequest.products.length > 0 && (
-                <div className="pt-6 border-t">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.city")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.city || rentalRequest.shelfCity || "-"}>
+                        {rentalRequest.city || rentalRequest.shelfCity || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.activity_type")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.activityType || "-"}>
+                        {rentalRequest.activityType || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Second Row - 3 items */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Globe className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.website")}
+                      </Label>
+                      {rentalRequest.website ? (
+                        <a 
+                          href={rentalRequest.website.startsWith('http') ? rentalRequest.website : `https://${rentalRequest.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline truncate block"
+                          title={rentalRequest.website}
+                        >
+                          {rentalRequest.website}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium">-</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.commercial_register_number")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.commercialRegisterNumber || "-"}>
+                        {rentalRequest.commercialRegisterNumber || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.commercial_register")}
+                      </Label>
+                      {rentalRequest.commercialRegisterFile ? (
+                        <button
+                          className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
+                          onClick={() => {
+                            if (rentalRequest.commercialRegisterFile) {
+                              window.open(rentalRequest.commercialRegisterFile, '_blank')
+                            }
+                          }}
+                        >
+                          <Download className="h-3 w-3" />
+                          {t("common.download")}
+                        </button>
+                      ) : (
+                        <p className="text-sm font-medium">-</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Request Details Section - Inside the same card */}
+              <div className="border-t pt-6 mt-6">
+                <h3 className="font-semibold text-sm mb-4">{t("orders.request_details_title")}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.branch")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.shelfBranch || "-"}>
+                        {rentalRequest.shelfBranch || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.request_date")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.createdAt ? formatDate(rentalRequest.createdAt, language, 'long') : "-"}>
+                        {rentalRequest.createdAt 
+                          ? formatDate(rentalRequest.createdAt, language, 'long')
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.rental_duration")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.startDate && rentalRequest.endDate ? formatDuration(rentalRequest.startDate, rentalRequest.endDate, language) : "-"}>
+                        {rentalRequest.startDate && rentalRequest.endDate 
+                          ? formatDuration(rentalRequest.startDate, rentalRequest.endDate, language)
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.price")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={rentalRequest.monthlyPrice ? `${t("common.currency")} ${rentalRequest.monthlyPrice}` : "-"}>
+                        {rentalRequest.monthlyPrice 
+                          ? `${t("common.currency")} ${rentalRequest.monthlyPrice}`
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Store Notes - Full width single row */}
+                <div className="mt-4">
+                  <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("orders.store_notes")}
+                      </Label>
+                      <p className="text-sm font-medium">
+                        {rentalRequest.additionalNotes || t("common.no_notes")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Alert Row */}
+          {rentalRequest.status === "pending" && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="font-medium">
+                {t("orders.cancel_warning")}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Products Section */}
+          {rentalRequest.products && rentalRequest.products.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
                     {/* Temporary debug button */}
                     {process.env.NODE_ENV === 'development' && (!allProducts || allProducts.length === 0) && (
                       <Button 
@@ -351,52 +468,53 @@ export default function RequestDetailsPage() {
                         Create Sample Products (Debug)
                       </Button>
                     )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-start">{t("table.image")}</TableHead>
+                      <TableHead className="text-start">{t("table.product_name")}</TableHead>
+                      <TableHead className="text-start">{t("table.sku")}</TableHead>
+                      <TableHead className="text-start">{t("table.quantity")}</TableHead>
+                      <TableHead className="text-start">{t("table.price")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {rentalRequest.products.map((product: any, index: number) => (
-                      <div key={product._id || index} className="border rounded-lg p-3 bg-background">
-                        <div className="flex items-start gap-3">
+                      <TableRow key={product._id || index}>
+                        <TableCell>
                           {product.imageUrl ? (
                             <img 
                               src={product.imageUrl} 
                               alt={product.name}
-                              className="h-16 w-16 rounded object-cover border"
+                              className="h-10 w-10 rounded object-cover border"
                             />
                           ) : (
-                            <div className="h-16 w-16 rounded bg-muted flex items-center justify-center border">
-                              <Package className="h-8 w-8 text-muted-foreground" />
+                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center border">
+                              <Package className="h-5 w-5 text-muted-foreground" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{product.name}</p>
-                            {product.sku && (
-                              <p className="text-xs text-muted-foreground mt-1">SKU: {product.sku}</p>
-                            )}
-                            {product.requestedQuantity && (
-                              <p className="text-xs text-muted-foreground">
-                                {t("brand.products.quantity")}: {product.requestedQuantity}
-                              </p>
-                            )}
-                            {product.price && (
-                              <p className="text-sm font-medium mt-2">
-                                {language === "ar" ? `${t("common.currency")} ${product.price}` : `${t("common.currency")} ${product.price}`}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{product.name || "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{product.sku || "-"}</TableCell>
+                        <TableCell>{product.requestedQuantity || "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {product.price ? `${t("common.currency")} ${product.price}` : "-"}
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Show product info from description if no individual products */}
-              {(!rentalRequest.products || rentalRequest.products.length === 0) && rentalRequest.productDescription && (
-                <div className="pt-6 border-t">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
-                  </div>
-                  <div className="p-4 bg-muted/50 rounded-lg">
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+          
+          {/* Show product info from description if no individual products */}
+          {(!rentalRequest.products || rentalRequest.products.length === 0) && rentalRequest.productDescription && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
+              <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm">
                       <span className="font-medium">{t("common.product_type")}:</span> {rentalRequest.productType || "-"}
                     </p>
@@ -408,11 +526,9 @@ export default function RequestDetailsPage() {
                         <span className="font-medium">{t("common.total_quantity")}:</span> {rentalRequest.productCount}
                       </p>
                     )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar - Right Side */}
@@ -439,32 +555,6 @@ export default function RequestDetailsPage() {
             </Card>
           )}
 
-          {/* Action Buttons */}
-          {rentalRequest.status === "pending" && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <Button
-                    className="w-full"
-                    onClick={handleAccept}
-                    disabled={isProcessing}
-                  >
-                    <Check className="h-4 w-4 me-2" />
-                    {t("orders.accept_request")}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleReject}
-                    disabled={isProcessing}
-                  >
-                    <X className="h-4 w-4 me-2" />
-                    {t("orders.reject_request")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

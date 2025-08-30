@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Eye } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -73,8 +73,10 @@ export default function StoreDashboardSettingsPage() {
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
   
-  // Convex queries - only payment methods since userData comes from context
+  // Convex queries - payment methods only (payment records query needs to be created for store owners)
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
+  // TODO: Create a query for store owners to fetch their payment records
+  const paymentRecords = null // Temporarily disabled until proper query is created
   
   // Load user data when available from context - only initialize once
   useEffect(() => {
@@ -640,18 +642,17 @@ export default function StoreDashboardSettingsPage() {
 
         {/* Payment Settings Tab */}
         <TabsContent value="payment" className="space-y-6">
-          {/* Payment Methods Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</CardTitle>
+          {/* Payment Methods Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</h3>
               <Button className="gap-2" onClick={() => setIsPaymentDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 {t("settings.payment.add_payment_method")}
               </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
-                <Table>
+            </div>
+            <div className="rounded-md border">
+              <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start font-medium">{t("settings.payment.table.method")}</TableHead>
@@ -714,18 +715,14 @@ export default function StoreDashboardSettingsPage() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Payment Records Table */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
-                <Table>
+          {/* Payment Records Section */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
+            <div className="rounded-md border">
+              <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start font-medium">{t("settings.payment.summary.date")}</TableHead>
@@ -736,45 +733,55 @@ export default function StoreDashboardSettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")}</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.payment_from_riyadh_shelf")}</TableCell>
-                      <TableCell>{t("settings.payment.completed")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            {t("settings.payment.download_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")} ({t("common.new")})</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.shelf_renewal_fees")}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {t("settings.payment.pending_confirmation")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <Calendar className="w-4 h-4" />
-                            {t("settings.payment.pay_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    {paymentRecords?.payments && paymentRecords.payments.length > 0 ? (
+                      paymentRecords.payments.map((payment) => (
+                        <TableRow key={payment._id}>
+                          <TableCell className="font-medium">
+                            {new Date(payment.paymentDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {payment.type === "brand_payment" ? t("settings.payment.brand_payment") :
+                             payment.type === "store_settlement" ? t("settings.payment.store_settlement") :
+                             payment.type === "refund" ? t("settings.payment.refund") :
+                             t("settings.payment.platform_fee")}
+                          </TableCell>
+                          <TableCell>{payment.paymentMethod || t("settings.payment.bank_transfer")}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              payment.status === "completed" ? "default" :
+                              payment.status === "pending" ? "secondary" :
+                              payment.status === "failed" ? "destructive" :
+                              "outline"
+                            }>
+                              {payment.status === "completed" ? t("settings.payment.completed") :
+                               payment.status === "pending" ? t("settings.payment.pending") :
+                               payment.status === "failed" ? t("settings.payment.failed") :
+                               payment.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {payment.invoiceNumber && (
+                                <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
+                                  <Eye className="w-4 h-4" />
+                                  {t("settings.payment.view_invoice")}
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          {t("settings.payment.no_payment_records")}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

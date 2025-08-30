@@ -15,7 +15,8 @@ export const addShelf = mutation({
     length: v.string(),
     width: v.string(),
     depth: v.string(),
-    productType: v.optional(v.string()),
+    productType: v.optional(v.string()), // Deprecated
+    productTypes: v.optional(v.array(v.string())), // New: array of categories
     description: v.optional(v.string()),
     address: v.optional(v.string()),
     latitude: v.optional(v.number()),
@@ -71,7 +72,8 @@ export const addShelf = mutation({
         depth: parseFloat(args.depth),
         unit: "cm"
       },
-      productType: args.productType,
+      productType: args.productType, // Keep for backward compatibility
+      productTypes: args.productTypes || (args.productType ? [args.productType] : []),
       description: args.description,
       monthlyPrice: args.monthlyPrice,
       storeCommission: args.storeCommission,
@@ -251,6 +253,7 @@ export const updateShelf = mutation({
     width: v.optional(v.string()),
     depth: v.optional(v.string()),
     productType: v.optional(v.string()),
+    productTypes: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     address: v.optional(v.string()),
     latitude: v.optional(v.number()),
@@ -279,6 +282,7 @@ export const updateShelf = mutation({
     if (otherData.availableFrom !== undefined) patchData.availableFrom = otherData.availableFrom
     if (otherData.isAvailable !== undefined) patchData.isAvailable = otherData.isAvailable
     if (otherData.productType !== undefined) patchData.productType = otherData.productType
+    if (otherData.productTypes !== undefined) patchData.productTypes = otherData.productTypes
     if (otherData.description !== undefined) patchData.description = otherData.description
     if (otherData.address !== undefined) patchData.address = otherData.address
     
@@ -396,10 +400,12 @@ export const getShelfById = query({
     interiorImageUrl = await getImageUrl(shelf.interiorImage)
     shelfImageUrl = await getImageUrl(shelf.shelfImage)
     
-    // Format product types - if it's a string, convert to array
-    const productTypes = shelf.productType 
-      ? (typeof shelf.productType === 'string' ? [shelf.productType] : shelf.productType)
-      : []
+    // Format product types - use the new productTypes array field, fallback to old productType field
+    const productTypes = shelf.productTypes && shelf.productTypes.length > 0
+      ? shelf.productTypes
+      : shelf.productType 
+        ? (typeof shelf.productType === 'string' ? [shelf.productType] : shelf.productType)
+        : []
     
     return {
       ...shelf,
@@ -633,5 +639,134 @@ export const getShelfStatsWithChanges = query({
       availableChange,
       revenueChange,
     }
+  },
+})
+
+// Get rental requests for a shelf
+export const getShelfRentalRequests = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Get all rental requests for this shelf
+    const rentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .collect()
+    
+    // Get profile information for each requester
+    const requestsWithProfiles = await Promise.all(
+      rentalRequests.map(async (request) => {
+        const requesterProfile = request.requesterProfileId
+          ? await ctx.db.get(request.requesterProfileId)
+          : null
+        
+        return {
+          ...request,
+          requesterProfile,
+        }
+      })
+    )
+    
+    return requestsWithProfiles
+  },
+})
+
+// Get products displayed on a shelf (from active rental)
+export const getShelfProducts = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Find active rental for this shelf
+    const activeRental = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first()
+    
+    if (!activeRental || !activeRental.selectedProductIds) {
+      return []
+    }
+    
+    // Get the selected products
+    const products = await Promise.all(
+      activeRental.selectedProductIds.map(async (productId) => {
+        const product = await ctx.db.get(productId)
+        return product
+      })
+    )
+    
+    return products.filter(Boolean)
+  },
+})
+
+// Get payment history for a shelf
+export const getShelfPayments = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Get all rental requests for this shelf
+    const rentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .collect()
+    
+    const rentalRequestIds = rentalRequests.map(r => r._id)
+    
+    // Get all payments for these rental requests
+    const payments = await ctx.db
+      .query("payments")
+      .filter((q) => 
+        rentalRequestIds.reduce(
+          (acc, id) => q.or(acc, q.eq(q.field("rentalRequestId"), id)),
+          q.eq(q.field("rentalRequestId"), rentalRequestIds[0])
+        )
+      )
+      .collect()
+    
+    return payments
+  },
+})
+
+// Delete a shelf
+export const deleteShelf = mutation({
+  args: { 
+    shelfId: v.id("shelves") 
+  },
+  handler: async (ctx, args) => {
+    // Get the shelf to check if it exists and is not rented
+    const shelf = await ctx.db.get(args.shelfId)
+    
+    if (!shelf) {
+      throw new Error("Shelf not found")
+    }
+    
+    // Check if shelf is rented (isAvailable = false means it's rented)
+    if (shelf.isAvailable === false) {
+      throw new Error("Cannot delete a rented shelf")
+    }
+    
+    // Also check for any active rental requests
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "payment_pending")
+        )
+      )
+      .collect()
+    
+    if (activeRentals.length > 0) {
+      throw new Error("Cannot delete a shelf with active rental requests")
+    }
+    
+    // Delete the shelf
+    await ctx.db.delete(args.shelfId)
+    
+    return { success: true }
   },
 })

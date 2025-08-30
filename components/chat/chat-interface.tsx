@@ -35,6 +35,7 @@ export function ChatInterface({
   const [isTyping, setIsTyping] = useState(false)
   const [isArchived, setIsArchived] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   
   // Fetch conversation details
   const conversation = useQuery(api.chats.getConversation, { conversationId })
@@ -79,6 +80,10 @@ export function ChatInterface({
         text: message,
       })
       setMessage("")
+      // Keep focus on input field after sending
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
     } catch (error) {
       console.error("Failed to send message:", error)
     } finally {
@@ -95,7 +100,7 @@ export function ChatInterface({
   
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="border-b">
+      <CardHeader className="border-b py-3 px-4">
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src="/placeholder.svg" alt={otherUserName} />
@@ -173,6 +178,7 @@ export function ChatInterface({
           <div className="p-4 border-t">
             <div className="relative">
               <Input
+                ref={inputRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}

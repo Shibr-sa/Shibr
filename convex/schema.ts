@@ -95,7 +95,8 @@ const schema = defineSchema({
       depth: v.number(),
       unit: v.string(), // cm, m, etc.
     }),
-    productType: v.optional(v.string()),
+    productType: v.optional(v.string()), // Deprecated - kept for backward compatibility
+    productTypes: v.optional(v.array(v.string())), // New: array of product categories
     targetAudience: v.optional(v.string()),
     footTraffic: v.optional(v.string()), // high, medium, low
     

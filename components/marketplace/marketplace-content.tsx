@@ -80,6 +80,9 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   const availableCities = useQuery(api.stores.getAvailableCities)
   const availableProductTypes = useQuery(api.stores.getAvailableProductTypes)
   
+  // Get platform settings to calculate total commission
+  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
+  
   // Get price range based on current filters (excluding price itself)
   const priceRangeData = useQuery(api.stores.getPriceRange, {
     city: selectedCity !== "all" ? selectedCity : undefined,
@@ -429,7 +432,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
                                   <p className="text-lg font-bold">
-                                    {store.storeCommission || 10}%
+                                    {((store.storeCommission || 10) + (platformSettings?.platformFeePercentage || 8))}%
                                   </p>
                                 </div>
 
