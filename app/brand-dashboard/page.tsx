@@ -1,7 +1,7 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { StatCard } from "@/components/ui/stat-card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +25,7 @@ import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -32,11 +33,13 @@ import { Id } from "@/convex/_generated/dataModel"
 import { formatCurrency, formatNumber, formatDate } from "@/lib/formatters"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import BrandDashboardLoading from "./loading"
 
 export default function BrandDashboardPage() {
   const { t, direction, language } = useLanguage()
   const router = useRouter()
-  const { user } = useCurrentUser()
+  const { user, isLoading: userLoading } = useCurrentUser()
+  const [activeTab, setActiveTab] = useState("shelves")
   
   // Use the brand data context for consistent state
   const { isBrandDataComplete, isLoading } = useBrandData()
@@ -122,6 +125,11 @@ export default function BrandDashboardPage() {
     }
   }
 
+  // Show loading skeleton while user is loading
+  if (userLoading) {
+    return <BrandDashboardLoading />
+  }
+
   return (
     <div className="space-y-6">
       {/* Data Completion Warning - Only show if data is incomplete */}
@@ -146,83 +154,136 @@ export default function BrandDashboardPage() {
         </Alert>
       )}
 
-      {/* Statistics Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl font-semibold">{t("brand.dashboard.welcome_to_shelfy")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("brand.dashboard.monitor_description")}
-              </p>
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button 
-                      className="gap-2"
-                      disabled={!isBrandDataComplete}
-                      onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
-                    >
-                      {!isBrandDataComplete && <Lock className="h-4 w-4" />}
-                      {isBrandDataComplete && <Plus className="h-4 w-4" />}
-                      {t("brand.dashboard.rent_new_shelf")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!isBrandDataComplete && (
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <StatCard
-              title={t("brand.dashboard.rented_shelves_count")}
-              value={activeRentals.length}
-              trend={{
-                value: rentalStats?.activeChange || 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<Store className="h-5 w-5 text-primary" />}
-            />
-            
-            <StatCard
-              title={t("brand.dashboard.total_sales")}
-              value={formatCurrency(totalRevenue, language)}
-              trend={{
-                value: productStats?.revenueChange || 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<TrendingUp className="h-5 w-5 text-primary" />}
-            />
-            
-            <StatCard
-              title={t("brand.dashboard.total_products")}
-              value={products?.length || 0}
-              trend={{
-                value: productStats?.productsChange || 0,
-                label: `${t("time.from")} ${t("time.last_month")}`
-              }}
-              icon={<Package className="h-5 w-5 text-primary" />}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t("brand.dashboard.welcome_to_shelfy")}</h1>
+          <p className="text-muted-foreground mt-1">
+            {t("brand.dashboard.monitor_description")}
+          </p>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  className="gap-2"
+                  disabled={!isBrandDataComplete}
+                  onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
+                >
+                  {!isBrandDataComplete && <Lock className="h-4 w-4" />}
+                  {isBrandDataComplete && <Plus className="h-4 w-4" />}
+                  {t("brand.dashboard.rent_new_shelf")}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!isBrandDataComplete && (
+              <TooltipContent>
+                <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
-      {/* Sales and Shelves Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">{t("brand.dashboard.sales")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {salesChartData.length > 0 ? (
+      {/* Stats Grid */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {!rentalRequests || !rentalStats ? (
+          // Loading skeleton for first stat card
+          <div className="rounded-lg border bg-card">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-8 w-20 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <StatCard
+            title={t("brand.dashboard.rented_shelves_count")}
+            value={activeRentals.length}
+            trend={{
+              value: rentalStats?.activeChange || 0,
+              label: `${t("time.from")} ${t("time.last_month")}`
+            }}
+            icon={<Store className="h-6 w-6 text-primary" />}
+          />
+        )}
+        
+        {!productStats ? (
+          // Loading skeleton for second stat card
+          <div className="rounded-lg border bg-card">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-8 w-20 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <StatCard
+            title={t("brand.dashboard.total_sales")}
+            value={formatCurrency(totalRevenue, language)}
+            trend={{
+              value: productStats?.revenueChange || 0,
+              label: `${t("time.from")} ${t("time.last_month")}`
+            }}
+            icon={<TrendingUp className="h-6 w-6 text-primary" />}
+          />
+        )}
+        
+        {!products || !productStats ? (
+          // Loading skeleton for third stat card
+          <div className="rounded-lg border bg-card">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-8 w-20 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <StatCard
+            title={t("brand.dashboard.total_products")}
+            value={products?.length || 0}
+            trend={{
+              value: productStats?.productsChange || 0,
+              label: `${t("time.from")} ${t("time.last_month")}`
+            }}
+            icon={<Package className="h-6 w-6 text-primary" />}
+          />
+        )}
+      </div>
+
+      {/* Sales Chart Section */}
+      <div className="rounded-md border">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold mb-4">{t("brand.dashboard.sales")}</h2>
+          {salesChartDataRaw === undefined ? (
+            // Loading state for chart
+            <div className="h-[280px] flex items-center justify-center">
+              <div className="space-y-3 w-full">
+                <Skeleton className="h-[200px] w-full" />
+                <div className="flex gap-2 justify-center">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <Skeleton key={i} className="h-2 w-8" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : salesChartData.length > 0 ? (
               <ChartContainer config={chartConfig} className="h-[300px] w-full">
                 <BarChart 
                   data={salesChartData}
@@ -266,54 +327,69 @@ export default function BrandDashboardPage() {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-semibold">{t("brand.dashboard.your_rented_shelves")}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {t("brand.dashboard.rented_shelves_description")}
-                </p>
-              </div>
-            {isBrandDataComplete ? (
-              <Button variant="link" size="sm" className="h-auto p-0" asChild>
-                <Link href="/brand-dashboard/shelves">
-                  {t("brand.dashboard.see_more")}
-                </Link>
-              </Button>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
+        </div>
+      </div>
+
+      {/* Tabs Section for Tables */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Tab Header with See More Button */}
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-auto grid-cols-2">
+            <TabsTrigger value="shelves">{t("brand.dashboard.rented_shelves_tab")}</TabsTrigger>
+            <TabsTrigger value="sales">{t("brand.dashboard.sales_operations_tab")}</TabsTrigger>
+          </TabsList>
+          
+          {isBrandDataComplete ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={activeTab === "shelves" ? "/brand-dashboard/shelves" : "/brand-dashboard/products"}>
+                {t("brand.dashboard.see_more")}
+              </Link>
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button variant="outline" size="sm" disabled>
+                      <Lock className="h-3 w-3 me-2" />
                       {t("brand.dashboard.see_more")}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+
+        {/* Rented Shelves Tab */}
+        <TabsContent value="shelves" className="mt-6">
+          <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="text-start">{t("table.store_name")}</TableHead>
-                    <TableHead className="text-start">{t("table.city")}</TableHead>
-                    <TableHead className="text-start">{t("table.product_count")}</TableHead>
-                    <TableHead className="text-start">{t("table.sales_count")}</TableHead>
-                    <TableHead className="text-start">{t("brand.dashboard.table.rental_status")}</TableHead>
+                    <TableHead className="text-start w-[30%]">{t("table.store_name")}</TableHead>
+                    <TableHead className="text-start w-[20%]">{t("table.city")}</TableHead>
+                    <TableHead className="text-start w-[15%]">{t("table.product_count")}</TableHead>
+                    <TableHead className="text-start w-[15%]">{t("table.sales_count")}</TableHead>
+                    <TableHead className="text-start w-[20%]">{t("brand.dashboard.table.rental_status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeRentals.length > 0 ? (
+                  {!rentalRequests ? (
+                    // Loading state - show 3 skeleton rows
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <TableRow key={`rental-loading-${index}`} className="h-[52px]">
+                        <TableCell className="w-[30%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="w-[20%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                        <TableCell className="w-[20%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : activeRentals.length > 0 ? (
                     <>
                       {activeRentals.map((rental, index) => (
                         <TableRow key={rental._id} className="h-[52px]">
@@ -336,91 +412,48 @@ export default function BrandDashboardPage() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {/* Add skeleton rows to maintain 3 rows */}
+                      {/* Add empty rows to maintain 3 rows */}
                       {activeRentals.length < 3 && Array.from({ length: 3 - activeRentals.length }).map((_, index) => (
                         <TableRow key={`empty-${index}`} className="h-[52px]">
-                          <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                          <TableCell colSpan={5}>&nbsp;</TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Show empty state message in the middle of 3 rows
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[52px]">
-                        {index === 1 ? (
-                          <TableCell colSpan={5} className="text-center text-muted-foreground">
-                            <div className="flex items-center justify-center gap-2">
-                              <Layers className="h-4 w-4" />
-                              <span>{t("brand.dashboard.no_shelves_currently")}</span>
-                            </div>
-                          </TableCell>
-                        ) : (
-                          <>
-                            <TableCell>&nbsp;</TableCell>
-                            <TableCell>&nbsp;</TableCell>
-                            <TableCell>&nbsp;</TableCell>
-                            <TableCell>&nbsp;</TableCell>
-                            <TableCell>&nbsp;</TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    ))
+                    // Empty state - centered view with fixed height for 3 rows
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-[156px] text-center">
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex flex-col items-center gap-1 py-10">
+                            <Layers className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <h3 className="font-medium">
+                              {t("brand.dashboard.no_shelves_currently")}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {t("brand.dashboard.rented_shelves_description")}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Latest Sales Operations */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-xl font-semibold">{t("brand.dashboard.latest_sales_operations")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("brand.dashboard.sales_operations_description")}
-              </p>
-            </div>
-            {isBrandDataComplete ? (
-              <Button variant="link" size="sm" className="h-auto p-0" asChild>
-                <Link href="/brand-dashboard/products">
-                  {t("brand.dashboard.see_more")}
-                </Link>
-              </Button>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm text-muted-foreground cursor-not-allowed flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
-                      {t("brand.dashboard.see_more")}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("brand.dashboard.complete_profile_to_enable")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-hidden">
+        </TabsContent>
+
+        {/* Sales Operations Tab */}
+        <TabsContent value="sales" className="mt-6">
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="text-start">{t("table.order_number")}</TableHead>
-                  <TableHead className="text-start">{t("table.product_name")}</TableHead>
-                  <TableHead className="text-start">{t("table.store_name")}</TableHead>
-                  <TableHead className="text-start">{t("table.city")}</TableHead>
-                  <TableHead className="text-start">{t("table.price")}</TableHead>
-                  <TableHead className="text-start">{t("table.date")}</TableHead>
+                  <TableHead className="text-start w-[15%]">{t("table.order_number")}</TableHead>
+                  <TableHead className="text-start w-[25%]">{t("table.product_name")}</TableHead>
+                  <TableHead className="text-start w-[20%]">{t("table.store_name")}</TableHead>
+                  <TableHead className="text-start w-[15%]">{t("table.city")}</TableHead>
+                  <TableHead className="text-start w-[10%]">{t("table.price")}</TableHead>
+                  <TableHead className="text-start w-[15%]">{t("table.date")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -428,17 +461,18 @@ export default function BrandDashboardPage() {
                   // Loading state - show 3 skeleton rows
                   Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={`sales-loading-${index}`} className="h-[52px]">
-                      <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                      <TableCell className="w-[25%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                      <TableCell className="w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                      <TableCell className="w-[10%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
+                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[70px]" /></TableCell>
                     </TableRow>
                   ))
                 ) : salesOperations.length > 0 ? (
                   <>
-                    {salesOperations.map((sale, index) => (
+                    {/* Show only first 3 sales operations */}
+                    {salesOperations.slice(0, 3).map((sale, index) => (
                       <TableRow key={sale.orderNumber} className="h-[52px]">
                         <TableCell className="font-medium">
                           {sale.orderNumber}
@@ -460,47 +494,36 @@ export default function BrandDashboardPage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {/* Add skeleton rows to maintain 3 rows */}
+                    {/* Add empty rows to maintain exactly 3 rows */}
                     {salesOperations.length < 3 && Array.from({ length: 3 - salesOperations.length }).map((_, index) => (
                       <TableRow key={`empty-${index}`} className="h-[52px]">
-                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell colSpan={6}>&nbsp;</TableCell>
                       </TableRow>
                     ))}
                   </>
                 ) : (
-                  // Show empty state message in table
-                  Array.from({ length: 3 }).map((_, index) => (
-                    <TableRow key={`sales-empty-${index}`} className="h-[52px]">
-                      {index === 1 ? (
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                          <div className="flex items-center justify-center gap-2">
-                            <ShoppingCart className="h-4 w-4" />
-                            <span>{t("brand.dashboard.no_sales_operations")}</span>
-                          </div>
-                        </TableCell>
-                      ) : (
-                        <>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                        </>
-                      )}
-                    </TableRow>
-                  ))
+                  // Empty state - centered view with fixed height for 3 rows
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-[156px] text-center">
+                      <div className="flex h-full w-full items-center justify-center">
+                        <div className="flex flex-col items-center gap-1 py-10">
+                          <ShoppingCart className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                          <h3 className="font-medium">
+                            {t("brand.dashboard.no_sales_operations")}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {t("brand.dashboard.sales_operations_description")}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

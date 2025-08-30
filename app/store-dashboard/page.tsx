@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Id } from "@/convex/_generated/dataModel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency } from "@/lib/formatters"
+import { formatCurrency, formatDuration, formatDate } from "@/lib/formatters"
 
 // Helper function to get badge variant based on request status
 function getRequestStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -40,7 +40,8 @@ function getRequestStatusBadgeVariant(status: string): "default" | "secondary" |
 
 // Helper function to get badge variant based on shelf status
 function getShelfStatusBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  if (shelf.status === "rented") {
+  // Check if shelf is rented (has a renterName)
+  if (shelf.renterName) {
     return "default"
   } else if (shelf.status === "approved" && shelf.isAvailable) {
     return "secondary"
@@ -437,7 +438,7 @@ export default function StoreDashboardPage() {
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                             <TableCell>{shelf.branch}</TableCell>
                             <TableCell>
-                              {shelf.status === "rented" && shelf.renterName ? 
+                              {shelf.renterName ? 
                                 shelf.renterName : 
                                 "-"
                               }
@@ -447,7 +448,7 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={getShelfStatusBadgeVariant(shelf)}>
-                                {shelf.status === "rented" 
+                                {shelf.renterName 
                                   ? t("shelves.status.rented")
                                   : shelf.status === "approved" && shelf.isAvailable
                                   ? t("shelves.status.available")
@@ -458,7 +459,7 @@ export default function StoreDashboardPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {shelf.status === "rented" && shelf.nextCollectionDate ? 
+                              {shelf.renterName && shelf.nextCollectionDate ? 
                                 new Date(shelf.nextCollectionDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : 
                                 "-"
                               }

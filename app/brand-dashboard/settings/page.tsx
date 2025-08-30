@@ -699,16 +699,15 @@ export default function BrandDashboardSettingsPage() {
         {/* Payment Settings Tab */}
         <TabsContent value="payment" className="space-y-6">
           {/* Payment Methods Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</CardTitle>
+          <div className="space-y-4">
+            <div className="flex flex-row items-center justify-between">
+              <h3 className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</h3>
               <Button className="gap-2" onClick={() => setIsPaymentDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 {t("settings.payment.add_payment_method")}
               </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+            </div>
+            <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -772,17 +771,13 @@ export default function BrandDashboardSettingsPage() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Payment Records Table */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
+            <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -795,44 +790,14 @@ export default function BrandDashboardSettingsPage() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")}</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.payment_from_shelf_rental")}</TableCell>
-                      <TableCell>{t("settings.payment.completed")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            {t("settings.payment.download_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")} ({t("common.new")})</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.shelf_rental_payment")}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {t("settings.payment.pending_confirmation")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <Calendar className="w-4 h-4" />
-                            {t("settings.payment.pay_invoice")}
-                          </Button>
-                        </div>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        {t("settings.payment.no_payment_records")}
                       </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

@@ -164,12 +164,12 @@ export const getSalesChartData = query({
       .filter(p => (p.totalRevenue || 0) > 0)
       .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
     
-    // Create array for 6 items
+    // Create array for 10 items
     const chartData = []
     
     // If we have products with sales, add them
     if (topProducts.length > 0) {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 10; i++) {
         if (i < topProducts.length) {
           chartData.push({
             name: topProducts[i].name,
@@ -190,37 +190,9 @@ export const getSalesChartData = query({
       return chartData
     }
     
-    // Otherwise return products sorted by price potential
-    const estimatedProducts = products
-      .map(product => ({
-        name: product.name,
-        revenue: product.price * Math.min(product.quantity || 0, 10), // Estimate based on price
-        sales: 0,
-        percentage: 0,
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-    
-    // Create array with exactly 6 items
-    const result = []
-    for (let i = 0; i < 6; i++) {
-      if (i < estimatedProducts.length) {
-        const product = estimatedProducts[i]
-        if (estimatedProducts[0].revenue > 0) {
-          product.percentage = Math.round((product.revenue / estimatedProducts[0].revenue) * 100)
-        }
-        result.push(product)
-      } else {
-        // Add empty bar placeholder
-        result.push({
-          name: "",
-          revenue: 0,
-          sales: 0,
-          percentage: 0,
-        })
-      }
-    }
-    
-    return result
+    // If no products have actual sales, return empty array to show "no data" state
+    // Don't show estimated/fake data
+    return []
   },
 })
 

@@ -99,24 +99,7 @@ export function ChatInterface({
   }
   
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="border-b py-3 px-4">
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src="/placeholder.svg" alt={otherUserName} />
-            <AvatarFallback >
-              {otherUserName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className={`font-semibold `}>
-              {otherUserName}
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
           <div className="space-y-4" ref={scrollAreaRef}>
             {messages?.length === 0 ? (
@@ -208,7 +191,6 @@ export function ChatInterface({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   )
 }
