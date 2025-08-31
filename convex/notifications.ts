@@ -71,7 +71,7 @@ export const markAsRead = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.notificationId, {
       isRead: true,
-      readAt: new Date().toISOString(),
+      readAt: Date.now(),
     })
   },
 })
@@ -96,7 +96,7 @@ export const markAllAsRead = mutation({
       )
       .collect()
 
-    const now = new Date().toISOString()
+    const now = Date.now()
     
     await Promise.all(
       unreadNotifications.map((notification) =>
@@ -207,7 +207,7 @@ export const markRentalRequestNotificationsAsRead = mutation({
       )
       .collect()
 
-    const now = new Date().toISOString()
+    const now = Date.now()
     
     // Mark all notifications as read
     await Promise.all(
@@ -232,7 +232,7 @@ export const clearOldNotifications = mutation({
       throw new Error("Not authenticated");
     }
     
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     
     const oldNotifications = await ctx.db
       .query("notifications")
@@ -240,7 +240,7 @@ export const clearOldNotifications = mutation({
       .filter((q) => 
         q.and(
           q.eq(q.field("userId"), userId),
-          q.lt(q.field("createdAt"), thirtyDaysAgo)
+          q.lt(q.field("_creationTime"), thirtyDaysAgo)
         )
       )
       .collect()

@@ -50,7 +50,7 @@ export default function StoreDashboardSettingsPage() {
   
   // Form states for Store Data tab
   const [storeName, setStoreName] = useState("")
-  const [storeType, setStoreType] = useState("")
+  const [businessType, setBusinessType] = useState("")
   const [website, setWebsite] = useState("")
   const [businessReg, setBusinessReg] = useState("")
   const [city, setCity] = useState("")
@@ -83,11 +83,15 @@ export default function StoreDashboardSettingsPage() {
     if (storeUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = storeUserData.profile
+      
+      // Load basic user data (always available)
       setOwnerName(profile?.fullName || storeUserData.name || "")
       setPhoneNumber(profile?.phoneNumber || storeUserData.phone || "")
       setEmail(profile?.email || storeUserData.email || "")
+      
+      // Load store-specific data (only if profile exists)
       setStoreName(profile?.storeName || "")
-      setStoreType(profile?.storeType || "")
+      setBusinessType(profile?.businessType || "")
       setWebsite(profile?.website || "")
       setBusinessReg(profile?.commercialRegisterNumber || "")
       setCity(profile?.storeLocation?.city || "")
@@ -201,7 +205,7 @@ export default function StoreDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={direction}>
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
@@ -233,7 +237,7 @@ export default function StoreDashboardSettingsPage() {
                     </svg>
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-3 text-start flex-1">
+                <div className="space-y-3 flex-1">
                   <h3 className="text-lg font-semibold">{t("settings.general.upload_logo")}</h3>
                   <p className="text-sm text-muted-foreground">{t("settings.general.logo_hint")}</p>
                   <input
@@ -260,49 +264,49 @@ export default function StoreDashboardSettingsPage() {
 
               {/* Contact Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-start">{t("settings.general.contact_info")}</h3>
+                <h3 className="text-lg font-semibold">{t("settings.general.contact_info")}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
+                    <Label htmlFor="ownerName" className="block">{t("settings.general.owner_name")}</Label>
                     <Input 
                       id="ownerName" 
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
-                      className="text-start" 
+                      className="" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-start block">{t("settings.general.phone_number")}</Label>
+                    <Label htmlFor="phoneNumber" className="block">{t("settings.general.phone_number")}</Label>
                     <Input 
                       id="phoneNumber" 
                       type="tel" 
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="+966 5X XXX XXXX" 
-                      className="text-start" 
+                      className="" 
                        
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-start block">{t("settings.general.email")}</Label>
+                    <Label htmlFor="email" className="block">{t("settings.general.email")}</Label>
                     <Input 
                       id="email" 
                       type="email" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="text-start" 
+                      className="" 
                        
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-start block">{t("settings.general.password")}</Label>
+                    <Label htmlFor="password" className="block">{t("settings.general.password")}</Label>
                     <Input 
                       id="password" 
                       type="password" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••" 
-                      className="text-start" 
+                      className="" 
                     />
                   </div>
                 </div>
@@ -318,8 +322,8 @@ export default function StoreDashboardSettingsPage() {
                     setIsLoading(true)
                     try {
                       const updateData: any = {}
-                      if (ownerName) updateData.ownerName = ownerName
-                      if (phoneNumber) updateData.phoneNumber = phoneNumber
+                      if (ownerName) updateData.name = ownerName
+                      if (phoneNumber) updateData.phone = phoneNumber
                       if (email) updateData.email = email
                       if (password) updateData.password = password
                       
@@ -356,7 +360,7 @@ export default function StoreDashboardSettingsPage() {
                 {/* Store Name and Type */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="storeName" className="text-start block">
+                    <Label htmlFor="storeName" className="block">
                       {t("settings.store_data.store_name")} *
                     </Label>
                     <Input 
@@ -364,20 +368,18 @@ export default function StoreDashboardSettingsPage() {
                       value={storeName}
                       onChange={(e) => setStoreName(e.target.value)}
                       placeholder={t("settings.store_data.store_name_placeholder")}
-                      className="text-start" 
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="storeType" className="text-start block">
+                    <Label htmlFor="businessType" className="block">
                       {t("settings.store_data.store_type")} *
                     </Label>
                     <Input 
-                      id="storeType" 
-                      value={storeType}
-                      onChange={(e) => setStoreType(e.target.value)}
+                      id="businessType" 
+                      value={businessType}
+                      onChange={(e) => setBusinessType(e.target.value)}
                       placeholder={t("settings.store_data.store_type_placeholder")}
-                      className="text-start" 
                       required
                     />
                   </div>
@@ -385,7 +387,7 @@ export default function StoreDashboardSettingsPage() {
 
                 {/* Website */}
                 <div className="space-y-2">
-                  <Label htmlFor="website" className="text-start block">
+                  <Label htmlFor="website" className="block">
                     {t("settings.store_data.website")}
                   </Label>
                   <Input 
@@ -393,29 +395,27 @@ export default function StoreDashboardSettingsPage() {
                     type="url" 
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    placeholder={t("settings.store_data.website_placeholder")}
-                    className="text-start" 
+                    placeholder={t("settings.store_data.website_placeholder")} 
                                      />
                 </div>
 
                 {/* Commercial Registration Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="businessReg" className="text-start block">
+                  <Label htmlFor="businessReg" className="block">
                     {t("settings.store_data.commercial_reg")} *
                   </Label>
                   <Input 
                     id="businessReg" 
                     value={businessReg}
                     onChange={(e) => setBusinessReg(e.target.value)}
-                    placeholder={t("settings.store_data.commercial_reg_placeholder")}
-                    className="text-start" 
+                    placeholder={t("settings.store_data.commercial_reg_placeholder")} 
                     required
                   />
                 </div>
 
                 {/* Commercial Register Document Upload Section */}
                 <div className="space-y-2">
-                  <Label className="text-start block">
+                  <Label className="block">
                     {t("settings.store_data.commercial_register_document")} *
                   </Label>
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
@@ -427,7 +427,7 @@ export default function StoreDashboardSettingsPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                             </svg>
                           </div>
-                          <div className="text-start">
+                          <div>
                             <p className="text-sm font-medium">{t("settings.store_data.document_uploaded")}</p>
                             <p className="text-xs text-muted-foreground">{t("settings.store_data.document_ready")}</p>
                           </div>
@@ -539,7 +539,7 @@ export default function StoreDashboardSettingsPage() {
                       return
                     }
                     
-                    if (!storeName || !storeType || !businessReg) {
+                    if (!storeName || !businessType || !businessReg) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -578,7 +578,7 @@ export default function StoreDashboardSettingsPage() {
                         
                         // Update the document in the database
                         await updateBusinessRegistrationDocument({
-                          documentId: storageId,
+                          storageId: storageId,
                         })
                         
                         // Get the actual URL for the uploaded file
@@ -592,19 +592,17 @@ export default function StoreDashboardSettingsPage() {
                       
                       // First update general settings with basic info
                       await updateGeneralSettings({
-                        ownerName,
+                        name: ownerName,
                         email,
-                        phoneNumber,
+                        phone: phoneNumber,
                       })
                       
                       // Then update store-specific data
                       await updateStoreData({
                         storeName,
-                        storeType,
-                        businessRegistration: businessReg,
-                        isFreelance: false,
+                        businessType,
+                        commercialRegisterNumber: businessReg,
                         website: website || undefined,
-                        phoneNumber,
                       })
                       
                       toast({
@@ -617,7 +615,7 @@ export default function StoreDashboardSettingsPage() {
                       sessionStorage.setItem('currentUser', JSON.stringify({
                         ...currentUser,
                         storeName,
-                        storeType,
+                        businessType,
                         businessReg: businessReg,
                         phoneNumber,
                       }))
@@ -655,11 +653,11 @@ export default function StoreDashboardSettingsPage() {
               <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.details")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.actions")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.method")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.details")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.status")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.type")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -667,7 +665,7 @@ export default function StoreDashboardSettingsPage() {
                       <TableRow key={method._id}>
                         <TableCell className="font-medium">{method.bankName}</TableCell>
                         <TableCell>
-                          {method.accountNumber || 'N/A'} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || 'N/A'}
+                          {method.accountNumber || ''} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || ''}
                         </TableCell>
                         <TableCell>
                           <Badge variant={method.isActive ? "default" : "secondary"}>
@@ -725,11 +723,11 @@ export default function StoreDashboardSettingsPage() {
               <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.date")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.actions")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.date")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.type")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.status")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -787,7 +785,7 @@ export default function StoreDashboardSettingsPage() {
 
       {/* Add Payment Method Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" >
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
               {t("settings.payment.dialog.title")}
@@ -797,7 +795,7 @@ export default function StoreDashboardSettingsPage() {
           <div className="space-y-4 py-4">
             {/* Bank Selection */}
             <div className="space-y-2">
-              <Label htmlFor="bank" className="text-start block">
+              <Label htmlFor="bank" className="block">
                 {t("settings.payment.dialog.select_bank")}
               </Label>
               <Select value={bankName} onValueChange={setBankName}>
@@ -816,7 +814,7 @@ export default function StoreDashboardSettingsPage() {
 
             {/* Account Holder Name */}
             <div className="space-y-2">
-              <Label htmlFor="accountName" className="text-start block">
+              <Label htmlFor="accountName" className="block">
                 {t("settings.payment.dialog.account_name")}
               </Label>
               <Input
@@ -830,7 +828,7 @@ export default function StoreDashboardSettingsPage() {
 
             {/* Bank Card/Account Number */}
             <div className="space-y-2">
-              <Label htmlFor="accountNumber" className="text-start block">
+              <Label htmlFor="accountNumber" className="block">
                 {t("settings.payment.dialog.account_number")}
               </Label>
               <Input
@@ -844,7 +842,7 @@ export default function StoreDashboardSettingsPage() {
 
             {/* IBAN */}
             <div className="space-y-2">
-              <Label htmlFor="iban" className="text-start block">
+              <Label htmlFor="iban" className="block">
                 {t("settings.payment.dialog.iban")}
               </Label>
               <Input

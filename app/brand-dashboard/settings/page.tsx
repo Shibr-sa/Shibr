@@ -360,8 +360,8 @@ export default function BrandDashboardSettingsPage() {
                     setIsLoading(true)
                     try {
                       const updateData: any = {}
-                      if (ownerName) updateData.ownerName = ownerName
-                      if (phoneNumber) updateData.phoneNumber = phoneNumber
+                      if (ownerName) updateData.name = ownerName
+                      if (phoneNumber) updateData.phone = phoneNumber
                       if (email) updateData.email = email
                       if (password) updateData.password = password
                       
@@ -723,7 +723,7 @@ export default function BrandDashboardSettingsPage() {
                       <TableRow key={method._id}>
                         <TableCell className="font-medium">{method.bankName}</TableCell>
                         <TableCell>
-                          {method.accountNumber || 'N/A'} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || 'N/A'}
+                          {method.accountNumber || ''} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || ''}
                         </TableCell>
                         <TableCell>
                           <Badge variant={method.isActive ? "default" : "secondary"}>

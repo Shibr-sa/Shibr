@@ -109,18 +109,11 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const getFileUrl = useMutation(api.files.getFileUrl)
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
   
-  // Debug: Log initial data
-  console.log("ShelfForm mode:", mode)
-  console.log("ShelfForm initialData:", initialData)
-  if (initialData) {
-    console.log("storeCommission:", initialData.storeCommission)
-    console.log("discountPercentage:", initialData.discountPercentage)
-  }
   
   // Form states - Initialize with data if in edit mode
   const [shelfName, setShelfName] = useState(mode === "edit" ? (initialData?.shelfName || "") : "")
   const [city, setCity] = useState(mode === "edit" ? (initialData?.city || "") : "")
-  const [branch, setBranch] = useState(mode === "edit" ? (initialData?.branch || "") : "")
+  const [branch, setBranch] = useState(mode === "edit" ? (initialData?.storeBranch || "") : "")
   const [storeCommission, setStoreCommission] = useState(
     mode === "edit" ? 
     (initialData?.storeCommission?.toString() || initialData?.discountPercentage?.toString() || "") : 
@@ -142,9 +135,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   
   // Location states - initialize with data if in edit mode
   const [selectedLocation, setSelectedLocation] = useState({
-    address: mode === "edit" && initialData?.address || "",
-    latitude: mode === "edit" && (initialData?.coordinates?.lat || initialData?.latitude) || 24.7136,
-    longitude: mode === "edit" && (initialData?.coordinates?.lng || initialData?.longitude) || 46.6753
+    address: mode === "edit" && initialData?.location?.address || "",
+    latitude: mode === "edit" && (initialData?.location?.lat || initialData?.latitude) || 24.7136,
+    longitude: mode === "edit" && (initialData?.location?.lng || initialData?.longitude) || 46.6753
   })
   
   // City coordinates in Saudi Arabia
@@ -312,7 +305,8 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       const shelfData: any = {
         shelfName,
         city,
-        branch,
+        storeBranch: branch,
+        address: selectedLocation.address,
         monthlyPrice: parseFloat(monthlyPrice),
         storeCommission: parseFloat(storeCommission),
         availableFrom: format(availableFrom, "yyyy-MM-dd"),
@@ -321,7 +315,6 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
         depth,
         productTypes: selectedCategories,
         description,
-        address: selectedLocation.address,
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
       }
@@ -848,7 +841,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             {/* Map */}
             <div className="space-y-2">
               <Label className="text-start block">
-                {t("add_shelf.address")} *
+                {t("add_shelf.location")} *
               </Label>
               <div className="space-y-3">
                 {/* Interactive Map Container */}

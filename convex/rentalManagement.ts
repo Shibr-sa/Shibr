@@ -1,18 +1,18 @@
 import { v } from "convex/values"
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
 import { Doc, Id } from "./_generated/dataModel"
+import { getUserProfile } from "./profileHelpers"
 
 // Internal function to check and update rental statuses
 export const checkRentalStatuses = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const now = new Date().toISOString()
+    const now = Date.now()
     
     // Get all active rentals
     const activeRentals = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
     
     for (const rental of activeRentals) {
@@ -21,60 +21,64 @@ export const checkRentalStatuses = internalMutation({
         // Mark rental as completed
         await ctx.db.patch(rental._id, {
           status: "completed",
-          updatedAt: now,
+          completedAt: now
         })
         
-        // Release the shelf - remove invalid fields that don't exist in shelf schema
+        // Release the shelf
         await ctx.db.patch(rental.shelfId, {
           isAvailable: true,
-          status: "approved",
-          updatedAt: now,
+          status: "active" as const,
         })
         
         // Update conversation status if conversation exists
         if (rental.conversationId) {
           await ctx.db.patch(rental.conversationId, {
             status: "archived",
-            updatedAt: now,
           })
         }
         
         // Send completion notifications
-        if (rental.requesterId) {
+        const brandProfile = rental.brandProfileId ? await ctx.db.get(rental.brandProfileId) : null
+        const brandUserId = brandProfile?.userId
+        if (brandUserId) {
           await ctx.db.insert("notifications", {
-            userId: rental.requesterId,
+            userId: brandUserId,
+            profileId: brandProfile?._id as any,
+            profileType: "brand" as const,
             title: "Rental Completed",
             message: `Your rental period has ended. Please rate your experience.`,
             type: "rental_completed",
             rentalRequestId: rental._id,
             conversationId: rental.conversationId,
             isRead: false,
-            createdAt: now,
           })
         }
         
-        if (rental.ownerId) {
+        const storeProfile = rental.storeProfileId ? await ctx.db.get(rental.storeProfileId) : null
+        const storeUserId = storeProfile?.userId
+        if (storeUserId) {
           await ctx.db.insert("notifications", {
-            userId: rental.ownerId,
+            userId: storeUserId,
+            profileId: storeProfile?._id as any,
+            profileType: "store" as const,
             title: "Rental Completed",
             message: `The rental period has ended. The shelf is now available. Please rate your experience.`,
             type: "rental_completed",
             rentalRequestId: rental._id,
             conversationId: rental.conversationId,
             isRead: false,
-            createdAt: now,
           })
         }
         
         // Add system message to conversation if conversation exists
-        if (rental.conversationId && rental.ownerId) {
+        if (rental.conversationId && storeProfile) {
           await ctx.db.insert("messages", {
             conversationId: rental.conversationId,
-            senderId: rental.ownerId, // System message from store owner perspective
+            senderType: "store" as const,
+            senderId: storeProfile._id as any, // System message from store owner perspective
             text: "The rental period has been completed successfully. Thank you for using our platform!",
             messageType: "system",
             isRead: false,
-            createdAt: now,
           })
         }
       }
@@ -83,28 +87,29 @@ export const checkRentalStatuses = internalMutation({
     // Check for expired pending requests (48 hours)
     const pendingRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect()
     
     for (const request of pendingRequests) {
       if (request.expiresAt && request.expiresAt <= now) {
         await ctx.db.patch(request._id, {
           status: "expired",
-          updatedAt: now,
         })
         
         // Send expiration notification
-        if (request.requesterId) {
+        const brandProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
+        const brandUserId = brandProfile?.userId
+        if (brandUserId) {
           await ctx.db.insert("notifications", {
-            userId: request.requesterId,
+            userId: brandUserId,
+            profileId: brandProfile?._id as any,
+            profileType: "brand" as const,
             title: "Rental Request Expired",
             message: "Your rental request has expired after 48 hours without response.",
             type: "rental_expired",
             rentalRequestId: request._id,
             conversationId: request.conversationId,
             isRead: false,
-            createdAt: now,
           })
         }
       }
@@ -116,42 +121,43 @@ export const checkRentalStatuses = internalMutation({
 export const sendRentalReminders = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const now = new Date()
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const nowStr = now.toISOString()
-    const sevenDaysStr = sevenDaysFromNow.toISOString()
+    const now = Date.now()
+    const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000
     
     // Get rentals ending in 7 days
     const expiringRentals = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
     
     for (const rental of expiringRentals) {
       // Check if rental ends within 7 days
-      if (rental.endDate > nowStr && rental.endDate <= sevenDaysStr) {
+      if (rental.endDate > now && rental.endDate <= sevenDaysFromNow) {
         // Calculate days remaining
-        const endDate = new Date(rental.endDate)
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        const daysRemaining = Math.ceil((rental.endDate - now) / (1000 * 60 * 60 * 24))
         
         // Check if we haven't already sent a reminder for this day
-        const existingReminder = await ctx.db
-          .query("notifications")
-          .withIndex("by_user", (q) => q.eq("userId", rental.requesterId!))
-          .filter((q) => 
-            q.and(
-              q.eq(q.field("rentalRequestId"), rental._id),
-              q.eq(q.field("type"), "system")
-            )
-          )
-          .first()
+        const brandProfile = rental.brandProfileId ? await ctx.db.get(rental.brandProfileId) : null
+        const brandUserId = brandProfile?.userId
         
-        if (!existingReminder || !existingReminder.message.includes(`${daysRemaining} day`)) {
-          // Send reminder to brand owner
-          if (rental.requesterId) {
+        if (brandUserId) {
+          const existingReminder = await ctx.db
+            .query("notifications")
+            .withIndex("by_user", (q) => q.eq("userId", brandUserId))
+            .filter((q) => 
+              q.and(
+                q.eq(q.field("rentalRequestId"), rental._id),
+                q.eq(q.field("type"), "system")
+              )
+            )
+            .first()
+          
+          if (!existingReminder || !existingReminder.message.includes(`${daysRemaining} day`)) {
+            // Send reminder to brand owner
             await ctx.db.insert("notifications", {
-              userId: rental.requesterId,
+              userId: brandUserId,
+              profileId: brandProfile?._id as any,
+              profileType: "brand" as const,
               title: "Rental Ending Soon",
               message: `Your rental will end in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}. Consider renewing if you'd like to continue.`,
               type: "system",
@@ -160,14 +166,17 @@ export const sendRentalReminders = internalMutation({
               actionUrl: `/brand-dashboard/shelves`,
               actionLabel: "View Rental",
               isRead: false,
-              createdAt: nowStr,
             })
           }
           
           // Send reminder to store owner
-          if (rental.ownerId) {
+          const storeProfile = rental.storeProfileId ? await ctx.db.get(rental.storeProfileId) : null
+          const storeUserId = storeProfile?.userId
+          if (storeUserId) {
             await ctx.db.insert("notifications", {
-              userId: rental.ownerId,
+              userId: storeUserId,
+              profileId: storeProfile?._id as any,
+              profileType: "store" as const,
               title: "Rental Ending Soon",
               message: `A rental on your shelf will end in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}.`,
               type: "system",
@@ -176,7 +185,6 @@ export const sendRentalReminders = internalMutation({
               actionUrl: `/store-dashboard/orders`,
               actionLabel: "View Order",
               isRead: false,
-              createdAt: nowStr,
             })
           }
         }
@@ -205,23 +213,27 @@ export const renewRental = mutation({
       .filter((q) => q.eq(q.field("email"), identity.email!))
       .first()
     
-    if (!user || user._id !== rental.requesterId) {
+    if (!user) {
+      throw new Error("User not found")
+    }
+    
+    // Get user profile and verify they own this rental
+    const profileData = await getUserProfile(ctx, user._id)
+    if (!profileData || profileData.type !== "brand_owner" || profileData.profile._id !== rental.brandProfileId) {
       throw new Error("Unauthorized")
     }
     
     // Calculate new total price
     const newTotalPrice = rental.monthlyPrice * args.additionalMonths
-    const now = new Date().toISOString()
+    const now = Date.now()
     
     // Create a new rental request for renewal
     const renewalRequest = await ctx.db.insert("rentalRequests", {
       shelfId: rental.shelfId,
-      requesterId: rental.requesterId,
-      requesterProfileId: rental.requesterProfileId,
-      ownerId: rental.ownerId,
-      ownerProfileId: rental.ownerProfileId,
+      brandProfileId: rental.brandProfileId,
+      storeProfileId: rental.storeProfileId,
       startDate: rental.endDate, // Start from current end date
-      endDate: args.newEndDate,
+      endDate: new Date(args.newEndDate).getTime(),
       productType: rental.productType,
       productDescription: rental.productDescription,
       productCount: rental.productCount,
@@ -231,16 +243,18 @@ export const renewRental = mutation({
       monthlyPrice: rental.monthlyPrice,
       totalAmount: newTotalPrice,
       status: "pending",
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      expiresAt: now + 48 * 60 * 60 * 1000,
       conversationId: rental.conversationId,
     })
     
     // Send notification to store owner
-    if (rental.ownerId) {
+    const storeProfile = rental.storeProfileId ? await ctx.db.get(rental.storeProfileId) : null
+    const storeUserId = storeProfile?.userId
+    if (storeUserId) {
       await ctx.db.insert("notifications", {
-        userId: rental.ownerId,
+        userId: storeUserId,
+        profileId: storeProfile?._id as any,
+        profileType: "store" as const,
         title: "Renewal Request",
         message: `The brand owner wants to renew their rental for ${args.additionalMonths} more month${args.additionalMonths > 1 ? 's' : ''}.`,
         type: "rental_request",
@@ -249,19 +263,18 @@ export const renewRental = mutation({
         actionUrl: `/store-dashboard/orders/${renewalRequest}`,
         actionLabel: "Review Request",
         isRead: false,
-        createdAt: now,
       })
     }
     
     // Add message to conversation if it exists
-    if (rental.conversationId && rental.requesterId) {
+    if (rental.conversationId && profileData) {
       await ctx.db.insert("messages", {
         conversationId: rental.conversationId,
-        senderId: rental.requesterId,
+        senderType: "brand" as const,
+        senderId: profileData.profile._id as any,
         text: `I would like to renew the rental for ${args.additionalMonths} more month${args.additionalMonths > 1 ? 's' : ''}.`,
         messageType: "rental_request",
         isRead: false,
-        createdAt: now,
       })
     }
     

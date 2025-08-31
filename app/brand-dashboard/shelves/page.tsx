@@ -346,7 +346,6 @@ export default function BrandShelvesPage() {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       // TODO: Implement rating dialog
-                      console.log("Rate store:", request.otherUserName)
                     }}
                   >
                     <Star className="h-4 w-4" />

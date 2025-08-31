@@ -5,87 +5,107 @@ import { authTables } from "@convex-dev/auth/server"
 const schema = defineSchema({
   ...authTables,
   
-  // User profiles for different account types
-  userProfiles: defineTable({
-    userId: v.id("users"), // Reference to auth user
-    accountType: v.union(
-      v.literal("store_owner"),
-      v.literal("brand_owner"),
-      v.literal("admin")
-    ),
+  // Store owner profile
+  storeProfiles: defineTable({
+    userId: v.id("users"), // Direct reference to auth user
     
-    // Common fields
-    isVerified: v.boolean(),
+    // Account status
     isActive: v.boolean(),
-    createdAt: v.string(),
-    updatedAt: v.string(),
     
-    // Store owner specific fields
-    storeName: v.optional(v.string()),
-    storeType: v.optional(v.string()), // grocery, pharmacy, etc.
-    commercialRegisterNumber: v.optional(v.string()),
+    // Store information
+    storeName: v.string(),
+    businessType: v.string(), // grocery, pharmacy, etc.
+    commercialRegisterNumber: v.string(),
     commercialRegisterDocument: v.optional(v.id("_storage")),
-    storeLocation: v.optional(v.object({
-      city: v.string(),
-      area: v.string(),
-      address: v.string(),
-      coordinates: v.optional(v.object({
-        lat: v.number(),
-        lng: v.number(),
-      })),
-    })),
     
-    // Brand owner specific fields
+    // Website
+    website: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_active", ["isActive"]),
+  
+  // Brand owner profile
+  brandProfiles: defineTable({
+    userId: v.id("users"), // Direct reference to auth user
+    
+    // Account status
+    isActive: v.boolean(),
+    
+    // Brand information
     brandName: v.optional(v.string()),
-    brandType: v.optional(v.string()), // Type of products/business (e.g., "Electronics", "Fashion")
+    brandType: v.optional(v.string()), // Type of products/business
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
     )),
+    
+    // Contact information
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    
+    // Business documents
     brandCommercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
     brandCommercialRegisterDocument: v.optional(v.id("_storage")),
     freelanceLicenseDocument: v.optional(v.id("_storage")),
     
-    // Business verification documents
+    // Business verification
     vatNumber: v.optional(v.string()),
     vatCertificate: v.optional(v.id("_storage")),
-    bankAccountInfo: v.optional(v.object({
-      bankName: v.string(),
-      accountNumber: v.string(),
-      iban: v.string(),
-    })),
+    website: v.optional(v.string()),
     
-    // Admin specific fields
-    adminRole: v.optional(v.union(
+    // Brand metrics
+    totalProducts: v.optional(v.number()),
+    activeRentals: v.optional(v.number()),
+    totalRevenue: v.optional(v.number()),
+    rating: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_active", ["isActive"]),
+  
+  // Admin profile
+  adminProfiles: defineTable({
+    userId: v.id("users"), // Direct reference to auth user
+    
+    // Account status
+    isActive: v.boolean(),
+    
+    // Admin role and permissions
+    adminRole: v.union(
       v.literal("super_admin"),
       v.literal("support"),
       v.literal("finance"),
       v.literal("operations")
-    )),
-    permissions: v.optional(v.array(v.string())),
+    ),
+    permissions: v.array(v.string()),
+    
+    // Contact information
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    
+    // Admin metadata
+    department: v.optional(v.string()),
+    lastActiveAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_account_type", ["accountType"])
-    .index("by_account_type_active", ["accountType", "isActive"])
-    .index("by_created", ["createdAt"]),
+    .index("by_role", ["adminRole"])
+    .index("by_active", ["isActive"]),
   
   // Shelves/Stores for marketplace
   shelves: defineTable({
-    profileId: v.id("userProfiles"),
+    storeProfileId: v.id("storeProfiles"),
     
     // Basic info
     shelfName: v.string(),
     description: v.optional(v.string()),
     
-    // Location
+    // Location (denormalized for search performance)
     city: v.string(),
-    area: v.string(),
-    branch: v.string(),
-    address: v.optional(v.string()),
-    coordinates: v.optional(v.object({
+    storeBranch: v.string(),
+    location: v.optional(v.object({
       lat: v.number(),
       lng: v.number(),
+      address: v.string(), // Actual street address (required)
     })),
     
     // Shelf details
@@ -95,67 +115,57 @@ const schema = defineSchema({
       depth: v.number(),
       unit: v.string(), // cm, m, etc.
     }),
-    productType: v.optional(v.string()), // Deprecated - kept for backward compatibility
-    productTypes: v.optional(v.array(v.string())), // New: array of product categories
-    targetAudience: v.optional(v.string()),
-    footTraffic: v.optional(v.string()), // high, medium, low
+    productTypes: v.array(v.string()), // Array of product categories
     
     // Pricing
     monthlyPrice: v.number(),
-    currency: v.string(),
-    minimumRentalPeriod: v.number(), // in months
     storeCommission: v.optional(v.number()), // Store commission percentage on sales
     
     // Availability
     isAvailable: v.boolean(),
-    availableFrom: v.string(),
-    availableUntil: v.optional(v.string()),
+    availableFrom: v.number(), // Unix timestamp
     
-    // Images
-    shelfImage: v.optional(v.id("_storage")),
-    exteriorImage: v.optional(v.id("_storage")),
-    interiorImage: v.optional(v.id("_storage")),
-    additionalImages: v.optional(v.array(v.id("_storage"))),
+    // Images - consolidated into single array
+    images: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      type: v.union(
+        v.literal("shelf"),
+        v.literal("exterior"),
+        v.literal("interior"),
+        v.literal("additional")
+      ),
+      order: v.number(),
+    }))),
     
-    // Status
+    // Status - simplified since admin doesn't review anymore
     status: v.union(
       v.literal("draft"),
-      v.literal("pending_approval"),
-      v.literal("approved"),
-      v.literal("rejected"),
+      v.literal("active"),
       v.literal("suspended")
     ),
-    rejectionReason: v.optional(v.string()),
     
     // Metadata
-    createdAt: v.string(),
-    updatedAt: v.string(),
-    views: v.number(),
     rating: v.optional(v.number()),
-    totalRentals: v.number(),
   })
-    .index("by_profile", ["profileId"])
+    .index("by_store_profile", ["storeProfileId"])
     .index("by_status", ["status"])
     .index("by_city", ["city"])
     .index("by_availability", ["isAvailable"])
     .index("by_price", ["monthlyPrice"])
     .index("by_status_available", ["status", "isAvailable"])
-    .index("by_created", ["createdAt"]),
+    .index("by_city_available", ["city", "isAvailable", "status"]),
   
   // Rental requests
   rentalRequests: defineTable({
     shelfId: v.id("shelves"),
-    requesterId: v.id("users"), // The brand owner requesting
-    requesterProfileId: v.optional(v.id("userProfiles")),
-    ownerId: v.id("users"), // The store owner
-    ownerProfileId: v.optional(v.id("userProfiles")),
+    brandProfileId: v.id("brandProfiles"),
+    storeProfileId: v.id("storeProfiles"),
     
     // Request details
-    startDate: v.string(),
-    endDate: v.string(),
-    rentalPeriod: v.optional(v.number()), // in months
+    startDate: v.number(), // Unix timestamp
+    endDate: v.number(), // Unix timestamp
     monthlyPrice: v.number(),
-    totalAmount: v.optional(v.number()),
+    totalAmount: v.number(),
     
     // Product details
     productType: v.string(),
@@ -191,30 +201,26 @@ const schema = defineSchema({
     // Communication
     message: v.optional(v.string()),
     additionalNotes: v.optional(v.string()),
-    rejectionReason: v.optional(v.string()),
     storeOwnerResponse: v.optional(v.string()),
     conversationId: v.optional(v.id("conversations")),
     
-    // Metadata
-    createdAt: v.string(),
-    updatedAt: v.string(),
-    acceptedAt: v.optional(v.string()),
-    completedAt: v.optional(v.string()),
-    expiresAt: v.optional(v.string()),
-    respondedAt: v.optional(v.string()),
+    // Timestamps
+    acceptedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    respondedAt: v.optional(v.number()),
   })
     .index("by_shelf", ["shelfId"])
-    .index("by_requester", ["requesterId"])
-    .index("by_owner", ["ownerId"])
+    .index("by_brand", ["brandProfileId"])
+    .index("by_store", ["storeProfileId"])
     .index("by_status", ["status"])
     .index("by_payment_status", ["paymentStatus"])
-    .index("by_created", ["createdAt"])
-    .index("by_owner_status", ["ownerId", "status"]),
+    .index("by_store_status", ["storeProfileId", "status"])
+    .index("by_date_range", ["startDate", "endDate"]),
   
   // Products managed by brand owners
   products: defineTable({
-    ownerId: v.id("users"),
-    profileId: v.optional(v.id("userProfiles")),
+    brandProfileId: v.id("brandProfiles"),
     
     name: v.string(),
     code: v.optional(v.string()),
@@ -222,7 +228,6 @@ const schema = defineSchema({
     category: v.string(),
     price: v.number(),
     cost: v.optional(v.number()),
-    currency: v.string(),
     
     // Images
     mainImage: v.optional(v.id("_storage")),
@@ -232,7 +237,6 @@ const schema = defineSchema({
     // Stock info
     sku: v.optional(v.string()),
     barcode: v.optional(v.string()),
-    quantity: v.optional(v.number()), // Available quantity
     stockQuantity: v.optional(v.number()),
     minQuantity: v.optional(v.number()),
     
@@ -243,18 +247,16 @@ const schema = defineSchema({
     
     // Status
     isActive: v.boolean(),
-    createdAt: v.string(),
-    updatedAt: v.string(),
   })
-    .index("by_owner", ["ownerId"])
-    .index("by_profile", ["profileId"])
+    .index("by_brand_profile", ["brandProfileId"])
     .index("by_category", ["category"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_brand_active_category", ["brandProfileId", "isActive", "category"]),
   
   // Conversations (chat system)
   conversations: defineTable({
-    brandProfileId: v.id("userProfiles"),
-    storeProfileId: v.id("userProfiles"),
+    brandProfileId: v.id("brandProfiles"),
+    storeProfileId: v.id("storeProfiles"),
     shelfId: v.id("shelves"),
     rentalRequestId: v.optional(v.id("rentalRequests")),
     
@@ -268,11 +270,12 @@ const schema = defineSchema({
     storeUnreadCount: v.number(),
     
     lastMessageText: v.optional(v.string()),
-    lastMessageTime: v.optional(v.string()),
-    lastMessageSenderId: v.optional(v.id("users")),
-    
-    createdAt: v.string(),
-    updatedAt: v.string(),
+    lastMessageTime: v.optional(v.number()), // Unix timestamp
+    lastMessageSenderType: v.optional(v.union(
+      v.literal("brand"),
+      v.literal("store"),
+      v.literal("system")
+    )),
   })
     .index("by_brand_profile", ["brandProfileId"])
     .index("by_store_profile", ["storeProfileId"])
@@ -281,7 +284,15 @@ const schema = defineSchema({
   
   messages: defineTable({
     conversationId: v.id("conversations"),
-    senderId: v.id("users"),
+    senderType: v.union(
+      v.literal("brand"),
+      v.literal("store"),
+      v.literal("system")
+    ),
+    senderId: v.optional(v.union(
+      v.id("brandProfiles"),
+      v.id("storeProfiles")
+    )),
     
     text: v.string(),
     messageType: v.optional(v.union(
@@ -295,16 +306,24 @@ const schema = defineSchema({
     attachment: v.optional(v.id("_storage")),
     
     isRead: v.boolean(),
-    readAt: v.optional(v.string()),
-    
-    createdAt: v.string(),
+    readAt: v.optional(v.number()), // Unix timestamp
   })
     .index("by_conversation", ["conversationId"])
-    .index("by_sender", ["senderId"]),
+    .index("by_conversation_read", ["conversationId", "isRead"]),
   
   // Notifications
   notifications: defineTable({
-    userId: v.id("users"),
+    userId: v.id("users"), // Keep for quick user lookup
+    profileId: v.optional(v.union(
+      v.id("storeProfiles"),
+      v.id("brandProfiles"),
+      v.id("adminProfiles")
+    )),
+    profileType: v.union(
+      v.literal("store"),
+      v.literal("brand"),
+      v.literal("admin")
+    ),
     
     title: v.string(),
     message: v.string(),
@@ -329,17 +348,30 @@ const schema = defineSchema({
     actionLabel: v.optional(v.string()), // Label for action button
     
     isRead: v.boolean(),
-    readAt: v.optional(v.string()),
-    
-    createdAt: v.string(),
+    readAt: v.optional(v.number()), // Unix timestamp
   })
     .index("by_user", ["userId"])
-    .index("by_read", ["isRead"])
+    .index("by_user_unread", ["userId", "isRead"])
+    .index("by_profile", ["profileId"])
     .index("by_type", ["type"]),
   
   // Payment methods
   paymentMethods: defineTable({
-    userId: v.id("users"),
+    // Profile-based ownership (business entities own payment methods)
+    profileId: v.optional(v.union(
+      v.id("storeProfiles"),
+      v.id("brandProfiles")
+    )),
+    profileType: v.optional(v.union(
+      v.literal("store"),
+      v.literal("brand")
+    )),
+    // Temporary legacy fields for existing data
+    userId: v.optional(v.id("users")),
+    userType: v.optional(v.union(
+      v.literal("store_owner"),
+      v.literal("brand_owner")
+    )),
     
     type: v.union(
       v.literal("credit_card"),
@@ -349,25 +381,20 @@ const schema = defineSchema({
       v.literal("stc_pay")
     ),
     
-    // Card details (encrypted)
+    // Token from payment provider (not actual card details)
+    paymentToken: v.optional(v.string()),
     last4Digits: v.optional(v.string()),
     cardBrand: v.optional(v.string()),
-    expiryMonth: v.optional(v.number()),
-    expiryYear: v.optional(v.number()),
     
-    // Bank details
+    // Bank details (for bank transfers)
     bankName: v.optional(v.string()),
-    accountNumber: v.optional(v.string()),
     iban: v.optional(v.string()),
     
     isDefault: v.boolean(),
     isActive: v.boolean(),
-    
-    createdAt: v.string(),
-    updatedAt: v.string(),
   })
-    .index("by_user", ["userId"])
-    .index("by_default", ["isDefault"]),
+    .index("by_profile", ["profileId"])
+    .index("by_profile_default", ["profileId", "isDefault"]),
   
   // Payments/Transactions table
   payments: defineTable({
@@ -381,17 +408,20 @@ const schema = defineSchema({
       v.literal("platform_fee") // Platform commission
     ),
     
-    // Parties involved
-    fromUserId: v.optional(v.id("users")), // Who paid (brand for brand_payment, platform for store_settlement)
-    toUserId: v.optional(v.id("users")), // Who receives (platform for brand_payment, store for store_settlement)
-    fromProfileId: v.optional(v.id("userProfiles")),
-    toProfileId: v.optional(v.id("userProfiles")),
+    // Parties involved (using profile IDs)
+    fromProfileId: v.optional(v.union(
+      v.id("brandProfiles"),
+      v.id("storeProfiles")
+    )),
+    toProfileId: v.optional(v.union(
+      v.id("brandProfiles"),
+      v.id("storeProfiles")
+    )),
     
     // Amounts
     amount: v.number(), // Base amount
     platformFee: v.optional(v.number()), // Platform commission (8%)
     netAmount: v.optional(v.number()), // Amount after platform fee
-    currency: v.string(),
     
     // Payment details
     invoiceNumber: v.string(),
@@ -409,23 +439,17 @@ const schema = defineSchema({
     ),
     
     // Dates
-    paymentDate: v.string(), // When payment was initiated
-    processedDate: v.optional(v.string()), // When payment was processed
-    settlementDate: v.optional(v.string()), // When funds were settled
-    dueDate: v.optional(v.string()), // Payment due date
+    paymentDate: v.number(), // Unix timestamp - when payment was initiated
+    processedDate: v.optional(v.number()), // Unix timestamp - when payment was processed
+    settlementDate: v.optional(v.number()), // Unix timestamp - when funds were settled
+    dueDate: v.optional(v.number()), // Unix timestamp - payment due date
     
     // Additional info
     description: v.optional(v.string()),
     notes: v.optional(v.string()),
     failureReason: v.optional(v.string()),
-    
-    // Metadata
-    createdAt: v.string(),
-    updatedAt: v.string(),
   })
     .index("by_rental", ["rentalRequestId"])
-    .index("by_from_user", ["fromUserId"])
-    .index("by_to_user", ["toUserId"])
     .index("by_type", ["type"])
     .index("by_status", ["status"])
     .index("by_invoice", ["invoiceNumber"])
@@ -437,15 +461,15 @@ const schema = defineSchema({
     key: v.string(),
     value: v.any(),
     description: v.optional(v.string()),
-    updatedBy: v.optional(v.id("users")),
-    updatedAt: v.string(),
+    updatedByAdminId: v.optional(v.id("adminProfiles")),
+    updatedAt: v.number(), // Unix timestamp
   })
     .index("by_key", ["key"]),
   
   // Files/Documents storage reference
   files: defineTable({
     storageId: v.id("_storage"),
-    userId: v.id("users"),
+    uploadedByUserId: v.id("users"), // Who uploaded the file
     
     fileName: v.string(),
     fileType: v.string(),
@@ -465,9 +489,9 @@ const schema = defineSchema({
     relatedId: v.optional(v.string()),
     relatedType: v.optional(v.string()),
     
-    uploadedAt: v.string(),
+    uploadedAt: v.number(), // Unix timestamp
   })
-    .index("by_user", ["userId"])
+    .index("by_user", ["uploadedByUserId"])
     .index("by_purpose", ["purpose"])
     .index("by_storage", ["storageId"]),
 })

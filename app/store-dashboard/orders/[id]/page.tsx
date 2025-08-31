@@ -462,7 +462,7 @@ export default function RequestDetailsPage() {
                         size="sm" 
                         variant="outline"
                         onClick={() => {
-                          console.log('Debug: Sample products needed')
+                          // Debug: Sample products needed
                         }}
                       >
                         Create Sample Products (Debug)

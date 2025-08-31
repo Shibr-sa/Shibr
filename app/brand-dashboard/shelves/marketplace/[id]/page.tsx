@@ -322,8 +322,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       <Label className="text-xs text-muted-foreground font-normal">
                         {t("marketplace.branch")}
                       </Label>
-                      <p className="text-sm font-medium truncate" title={shelfDetails.branch}>
-                        {shelfDetails.branch}
+                      <p className="text-sm font-medium truncate" title={shelfDetails.storeBranch}>
+                        {shelfDetails.storeBranch}
                       </p>
                     </div>
                   </div>
@@ -394,7 +394,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 {/* Address Section if exists */}
-                {shelfDetails.address && (
+                {shelfDetails.location?.address && (
                   <>
                     <Separator />
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
@@ -406,7 +406,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {t("marketplace.full_address")}
                         </Label>
                         <p className="text-sm leading-relaxed">
-                          {shelfDetails.address}
+                          {shelfDetails.location?.address}
                         </p>
                       </div>
                     </div>

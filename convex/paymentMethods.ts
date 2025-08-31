@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getUserProfile } from "./profileHelpers";
 
 // Add payment method
 export const addPaymentMethod = mutation({
@@ -17,17 +18,24 @@ export const addPaymentMethod = mutation({
       throw new Error("Not authenticated");
     }
     
+    // Get user profile to determine profileType
+    const profileData = await getUserProfile(ctx, userId);
+    if (!profileData) {
+      throw new Error("User profile not found");
+    }
+    
+    const profileType = profileData.type === "store_owner" ? "store" : "brand";
+    const profileId = profileData.profile._id;
+    
     // Create new payment method
     const paymentMethodId = await ctx.db.insert("paymentMethods", {
-      userId,
+      profileId: profileId as any,
+      profileType,
       type: "bank_transfer",
       bankName: args.bankName,
-      accountNumber: args.accountNumber,
       iban: args.iban,
       isDefault: true,
       isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     });
     
     return { success: true, paymentMethodId };
@@ -43,9 +51,15 @@ export const getPaymentMethods = query({
       return [];
     }
     
+    // Get user profile to find payment methods
+    const profileData = await getUserProfile(ctx, userId);
+    if (!profileData) {
+      return [];
+    }
+    
     const paymentMethods = await ctx.db
       .query("paymentMethods")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_profile", (q) => q.eq("profileId", profileData.profile._id as any))
       .collect();
     
     return paymentMethods;
@@ -73,7 +87,6 @@ export const updatePaymentMethod = mutation({
     
     await ctx.db.patch(paymentMethodId, {
       ...filteredData,
-      updatedAt: new Date().toISOString(),
     });
     
     return { success: true };

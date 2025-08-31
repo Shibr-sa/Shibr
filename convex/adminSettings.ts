@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
+import { getUserProfile } from "./profileHelpers"
 
 // Get current admin profile
 export const getCurrentAdminProfile = query({
@@ -13,15 +14,14 @@ export const getCurrentAdminProfile = query({
       return null
     }
     
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!userProfile || userProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
       // Return null instead of throwing to avoid console errors
       return null
     }
+    
+    const adminProfile = profileData.profile as any
     
     // Get the auth user for email, name, and image
     const authUser = await ctx.db.get(userId)
@@ -30,11 +30,11 @@ export const getCurrentAdminProfile = query({
     const profileImageUrl = authUser?.image || null
     
     return {
-      id: userProfile._id,
+      id: adminProfile._id,
       fullName: authUser?.name,
       email: authUser?.email || "",  // Get email from users table
       phoneNumber: authUser?.phone,
-      adminRole: userProfile.adminRole,
+      adminRole: adminProfile.adminRole,
       profileImage: profileImageUrl,
     }
   },
@@ -55,23 +55,19 @@ export const updateAdminProfile = mutation({
       throw new Error("Unauthorized: Authentication required")
     }
     
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!userProfile || userProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
+    
+    const adminProfile = profileData.profile as any
     
     // Get current user for email comparison
     const currentUser = await ctx.db.get(userId)
     
-    const updates: any = {
-      updatedAt: new Date().toISOString(),
-    }
+    const updates: any = {}
     
-    // Note: fullName and phoneNumber are now stored in users table, not userProfiles
     // We'll update the users table instead
     const userUpdates: any = {}
     if (args.fullName) userUpdates.name = args.fullName
@@ -100,11 +96,8 @@ export const updateAdminProfile = mutation({
     }
     
     // Update the profile (if there are any profile-specific updates)
-    if (Object.keys(updates).length > 1) { // More than just updatedAt
-      await ctx.db.patch(userProfile._id, updates)
-    } else {
-      // Just update the timestamp
-      await ctx.db.patch(userProfile._id, updates)
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(adminProfile._id, updates)
     }
     
     // Note: Password update would need to be handled through the auth system
@@ -132,12 +125,9 @@ export const getPlatformSettings = query({
       }
     }
     
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!userProfile || userProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
       // Return empty settings instead of throwing
       return {
         platformFeePercentage: 8,
@@ -177,20 +167,16 @@ export const getAdminUsers = query({
       return []
     }
     
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!userProfile || userProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
       // Return empty array instead of throwing
       return []
     }
     
     // Get all admin users
     let adminProfiles = await ctx.db
-      .query("userProfiles")
-      .filter(q => q.eq(q.field("accountType"), "admin"))
+      .query("adminProfiles")
       .collect()
     
     // Get emails and names from users table for each admin
@@ -199,7 +185,7 @@ export const getAdminUsers = query({
         const authUser = await ctx.db.get(profile.userId)
         return {
           ...profile,
-          email: authUser?.email || "",
+          email: profile.email || authUser?.email || "",
           name: authUser?.name || ""
         }
       })
@@ -223,7 +209,7 @@ export const getAdminUsers = query({
       email: user.email,
       permission: user.adminRole || "support",
       status: user.isActive ? "active" : "inactive",
-      createdAt: user.createdAt,
+      createdAt: user._creationTime,
     }))
   },
 });
@@ -246,12 +232,9 @@ export const createAdminProfile = mutation({
       throw new Error("Unauthorized: Authentication required")
     }
     
-    const currentUserProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", currentUserId))
-      .first()
+    const currentProfileData = await getUserProfile(ctx, currentUserId)
     
-    if (!currentUserProfile || currentUserProfile.accountType !== "admin") {
+    if (!currentProfileData || currentProfileData.type !== "admin") {
       throw new Error("Unauthorized: Only admins can create admin accounts")
     }
     
@@ -263,44 +246,25 @@ export const createAdminProfile = mutation({
       throw new Error("User not found. Make sure the account was created successfully.")
     }
     
-    // Check if user already has a profile
+    // Check if user already has an admin profile
     const existingProfile = await ctx.db
-      .query("userProfiles")
+      .query("adminProfiles")
       .withIndex("by_user", (q) => q.eq("userId", newUser._id))
       .first()
     
     if (existingProfile) {
-      if (existingProfile.accountType === "admin") {
-        throw new Error("This user is already an admin")
-      }
-      
-      // Update existing profile to admin
-      await ctx.db.patch(existingProfile._id, {
-        accountType: "admin",
-        adminRole: args.adminRole || "super_admin",
-        permissions: args.adminRole === "super_admin" ? ["all"] : ["limited"],
-        isVerified: true,
-        isActive: true,
-        updatedAt: new Date().toISOString(),
-      })
-      
-      return {
-        success: true,
-        message: "User upgraded to admin successfully",
-        profileId: existingProfile._id,
-      }
+      throw new Error("This user is already an admin")
     }
     
     // Create new admin profile
-    const profileId = await ctx.db.insert("userProfiles", {
+    const profileId = await ctx.db.insert("adminProfiles", {
       userId: newUser._id,
-      accountType: "admin",
       adminRole: args.adminRole || "super_admin",
       permissions: args.adminRole === "super_admin" ? ["all"] : ["limited"],
-      isVerified: true,
       isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      department: undefined,
+      phoneNumber: undefined,
+      email: args.email,
     })
     
     return {
@@ -330,12 +294,9 @@ export const addAdminUser = mutation({
       throw new Error("Unauthorized: Authentication required")
     }
     
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!userProfile || userProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
     
@@ -344,30 +305,30 @@ export const addAdminUser = mutation({
     const existingAuthUser = allUsers.find(u => u.email === args.email)
     
     if (existingAuthUser) {
-      // Check if they have a profile
+      // Check if they have an admin profile
       const existingProfile = await ctx.db
-        .query("userProfiles")
+        .query("adminProfiles")
         .withIndex("by_user", (q) => q.eq("userId", existingAuthUser._id))
         .first()
       
       if (existingProfile) {
-        if (existingProfile.accountType === "admin") {
-          throw new Error("This email is already registered as an admin")
-        }
-        
-        // Upgrade existing user to admin
-        await ctx.db.patch(existingProfile._id, {
-          accountType: "admin",
-          adminRole: args.adminRole || "super_admin",
-          permissions: ["all"],
-          isVerified: true,
-          updatedAt: new Date().toISOString(),
-        })
-        
-        return {
-          success: true,
-          message: `User ${args.email} has been promoted to admin`,
-        }
+        throw new Error("This email is already registered as an admin")
+      }
+      
+      // Create admin profile for existing user
+      await ctx.db.insert("adminProfiles", {
+        userId: existingAuthUser._id,
+        adminRole: args.adminRole || "super_admin",
+        permissions: ["all"],
+        isActive: true,
+        department: "",
+        phoneNumber: "",
+        email: args.email,
+      })
+      
+      return {
+        success: true,
+        message: `User ${args.email} has been promoted to admin`,
       }
     }
     
@@ -391,12 +352,17 @@ export const toggleAdminUserStatus = mutation({
       throw new Error("Not authenticated")
     }
     
-    const adminProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!adminProfile || adminProfile.accountType !== "admin") {
+    if (!profileData || profileData.type !== "admin") {
+      throw new Error("Unauthorized: Admin access required")
+    }
+    
+    const adminProfile = profileData.profile as any
+
+    // Get the calling admin's profile data first
+    const callerProfileData = await getUserProfile(ctx, userId)
+    if (!callerProfileData || callerProfileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -410,20 +376,18 @@ export const toggleAdminUserStatus = mutation({
       throw new Error("User not found")
     }
     
-    const targetProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.targetUserId))
-      .first()
+    const targetProfileData = await getUserProfile(ctx, args.targetUserId)
     
-    if (!targetProfile) {
+    if (!targetProfileData) {
       throw new Error("User profile not found")
     }
+    
+    const targetProfile = targetProfileData.profile as any
 
     // Toggle active status
     const newStatus = !targetProfile.isActive
     await ctx.db.patch(targetProfile._id, {
       isActive: newStatus,
-      updatedAt: new Date().toISOString(),
     })
 
     return { 
@@ -446,12 +410,14 @@ export const deleteAdminUser = mutation({
       throw new Error("Not authenticated")
     }
     
-    const adminProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first()
+    const profileData = await getUserProfile(ctx, userId)
     
-    if (!adminProfile || adminProfile.accountType !== "admin" || adminProfile.adminRole !== "super_admin") {
+    if (!profileData || profileData.type !== "admin") {
+      throw new Error("Unauthorized: Super admin access required")
+    }
+    
+    const adminProfile = profileData.profile as any
+    if (adminProfile.adminRole !== "super_admin") {
       throw new Error("Unauthorized: Super admin access required")
     }
 
@@ -460,14 +426,13 @@ export const deleteAdminUser = mutation({
       throw new Error("Cannot delete your own admin account")
     }
 
-    const targetProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.targetUserId))
-      .first()
+    const targetProfileData = await getUserProfile(ctx, args.targetUserId)
     
-    if (!targetProfile) {
+    if (!targetProfileData) {
       throw new Error("User profile not found")
     }
+    
+    const targetProfile = targetProfileData.profile as any
 
     // Delete the user profile
     await ctx.db.delete(targetProfile._id)

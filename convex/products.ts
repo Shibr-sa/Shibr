@@ -2,19 +2,20 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
+import { getUserProfile } from "./profileHelpers"
 
 // Get products for a brand owner
 export const getOwnerProducts = query({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
   },
   handler: async (ctx, args) => {
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
       .collect()
     
-    return products.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return products.sort((a, b) => b._creationTime - a._creationTime)
   },
 })
 
@@ -27,9 +28,15 @@ export const getUserProducts = query({
       return [];
     }
     
+    // Get user profile first
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
     
     return products.map(p => ({
@@ -38,7 +45,7 @@ export const getUserProducts = query({
       code: p.code,
       category: p.category,
       price: p.price,
-      quantity: p.quantity,
+      quantity: p.stockQuantity,
       imageUrl: p.imageUrl,
       isActive: p.isActive
     }))
@@ -57,7 +64,7 @@ export const getAllProducts = query({
 // Seed sample products for a user
 export const seedSampleProducts = mutation({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
   },
   handler: async (ctx, args) => {
     const sampleProducts = [
@@ -68,8 +75,7 @@ export const seedSampleProducts = mutation({
         category: "مشروبات",
         price: 45,
         cost: 25,
-        currency: "SAR",
-        quantity: 100,
+        stockQuantity: 100,
         minQuantity: 20,
         sku: "SKU-COFFEE-001",
         imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200",
@@ -81,8 +87,7 @@ export const seedSampleProducts = mutation({
         category: "مشروبات",
         price: 35,
         cost: 18,
-        currency: "SAR",
-        quantity: 150,
+        stockQuantity: 150,
         minQuantity: 30,
         sku: "SKU-TEA-001",
         imageUrl: "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=200",
@@ -94,8 +99,7 @@ export const seedSampleProducts = mutation({
         category: "أغذية",
         price: 120,
         cost: 80,
-        currency: "SAR",
-        quantity: 50,
+        stockQuantity: 50,
         minQuantity: 10,
         sku: "SKU-HONEY-001",
         imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200",
@@ -107,8 +111,7 @@ export const seedSampleProducts = mutation({
         category: "أغذية",
         price: 65,
         cost: 40,
-        currency: "SAR",
-        quantity: 200,
+        stockQuantity: 200,
         minQuantity: 40,
         sku: "SKU-DATES-001",
         imageUrl: "https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200",
@@ -120,8 +123,7 @@ export const seedSampleProducts = mutation({
         category: "توابل",
         price: 250,
         cost: 180,
-        currency: "SAR",
-        quantity: 30,
+        stockQuantity: 30,
         minQuantity: 5,
         sku: "SKU-SAFFRON-001",
         imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200",
@@ -131,14 +133,12 @@ export const seedSampleProducts = mutation({
     const productIds = []
     for (const product of sampleProducts) {
       const productId = await ctx.db.insert("products", {
-        ownerId: args.ownerId,
+        brandProfileId: args.brandProfileId,
         ...product,
         totalSales: 0,
         totalRevenue: 0,
         shelfCount: 0,
         isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       })
       productIds.push(productId)
     }
@@ -150,13 +150,13 @@ export const seedSampleProducts = mutation({
 // Get sales chart data for dashboard
 export const getSalesChartData = query({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
   },
   handler: async (ctx, args) => {
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
       .collect()
     
     // Sort by revenue and take top products
@@ -199,7 +199,7 @@ export const getSalesChartData = query({
 // Get product statistics for dashboard
 export const getProductStats = query({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
@@ -225,7 +225,7 @@ export const getProductStats = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
       .collect()
     
     // Calculate current stats
@@ -233,7 +233,7 @@ export const getProductStats = query({
     const activeProducts = products.filter(p => p.isActive).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
     
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
@@ -275,6 +275,21 @@ export const getUserProductStats = query({
       };
     }
     
+    // Get user profile first
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return {
+        totalProducts: 0,
+        activeProducts: 0,
+        totalSales: 0,
+        totalRevenue: 0,
+        totalInventory: 0,
+        salesChange: 0,
+        revenueChange: 0,
+        productsChange: 0,
+      }
+    }
+    
     const now = new Date()
     let compareDate = new Date()
     
@@ -297,7 +312,7 @@ export const getUserProductStats = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
     
     // Calculate current stats
@@ -305,7 +320,7 @@ export const getUserProductStats = query({
     const activeProducts = products.filter(p => p.isActive).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
     
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
@@ -330,30 +345,28 @@ export const getUserProductStats = query({
 // Create a new product
 export const createProduct = mutation({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
     name: v.string(),
     code: v.string(),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     price: v.number(),
     cost: v.optional(v.number()),
-    currency: v.string(),
-    quantity: v.number(),
+    stockQuantity: v.number(),
     minQuantity: v.optional(v.number()),
     sku: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const productId = await ctx.db.insert("products", {
-      ownerId: args.ownerId,
+      brandProfileId: args.brandProfileId,
       name: args.name,
       code: args.code,
       description: args.description || "",
       category: args.category || "",
       price: args.price,
       cost: args.cost,
-      currency: args.currency || "SAR",
-      quantity: args.quantity,
+      stockQuantity: args.stockQuantity,
       minQuantity: args.minQuantity,
       sku: args.sku,
       imageUrl: args.imageUrl,
@@ -361,8 +374,6 @@ export const createProduct = mutation({
       totalRevenue: 0,
       shelfCount: 0,
       isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     })
     
     return productId
@@ -379,7 +390,7 @@ export const updateProduct = mutation({
     category: v.optional(v.string()),
     price: v.optional(v.number()),
     cost: v.optional(v.number()),
-    quantity: v.optional(v.number()),
+    stockQuantity: v.optional(v.number()),
     minQuantity: v.optional(v.number()),
     sku: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
@@ -390,7 +401,6 @@ export const updateProduct = mutation({
     
     await ctx.db.patch(productId, {
       ...updates,
-      updatedAt: new Date().toISOString(),
     })
     
     return { success: true }
@@ -405,7 +415,6 @@ export const deleteProduct = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.productId, {
       isActive: false,
-      updatedAt: new Date().toISOString(),
     })
     
     return { success: true }
@@ -415,7 +424,7 @@ export const deleteProduct = mutation({
 // Get latest sales operations for brand dashboard
 export const getLatestSalesOperations = query({
   args: {
-    ownerId: v.id("users"),
+    brandProfileId: v.id("brandProfiles"),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -424,33 +433,24 @@ export const getLatestSalesOperations = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
       .collect()
     
     // Get rental requests with full information
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_requester")
-      .filter((q) => q.and(
-        q.eq(q.field("requesterId"), args.ownerId),
-        q.eq(q.field("status"), "active")
-      ))
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     
     // Get store user information for each rental
     const rentalsWithStoreInfo = await Promise.all(
       rentalRequests.map(async (request) => {
-        if (!request.ownerId) return { ...request, storeName: "متجر", city: "الرياض" }
+        if (!request.storeProfileId) return { ...request, storeName: "متجر", city: "الرياض" }
         
-        const storeUser = await ctx.db.get(request.ownerId)
-        const storeProfile = storeUser ? await ctx.db
-          .query("userProfiles")
-          .withIndex("by_user", (q) => q.eq("userId", request.ownerId!))
-          .first() : null
+        const storeProfile = await ctx.db.get(request.storeProfileId)
         const shelf = await ctx.db.get(request.shelfId)
         
-        // Get store owner name from users table
-        // Removed to avoid variable redeclaration
         return {
           ...request,
           storeName: storeProfile?.storeName || "متجر",

@@ -137,7 +137,7 @@ export default function ShelfDetailsPage() {
                       <Label className="text-xs text-muted-foreground font-normal">
                         {t("posts.branch")}
                       </Label>
-                      <p className="text-sm font-medium">{shelf.branch}</p>
+                      <p className="text-sm font-medium">{shelf.storeBranch}</p>
                     </div>
                   </div>
 
@@ -191,19 +191,16 @@ export default function ShelfDetailsPage() {
                       <p className="text-sm font-medium">
                         {(() => {
                           const locationParts = []
-                          // Don't include branch as it's shown separately
-                          if (shelf.area) locationParts.push(shelf.area)
+                          // Show city and address if available
                           if (shelf.city) locationParts.push(shelf.city)
-                          if (shelf.address) locationParts.push(shelf.address)
+                          if (shelf.location?.address) locationParts.push(shelf.location.address)
                           
                           // If no location data, check store location
                           if (locationParts.length === 0 && shelf.location) {
                             if (typeof shelf.location === 'string') {
                               return shelf.location
-                            } else if (shelf.location.city || shelf.location.area || shelf.location.address) {
-                              if (shelf.location.area) locationParts.push(shelf.location.area)
-                              if (shelf.location.city) locationParts.push(shelf.location.city)
-                              if (shelf.location.address) locationParts.push(shelf.location.address)
+                            } else if (shelf.location.city) {
+                              locationParts.push(shelf.location.city)
                             }
                           }
                           
