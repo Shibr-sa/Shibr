@@ -30,7 +30,7 @@ export default function BrandDashboardSettingsPage() {
   const { userData: brandUserData } = useBrandData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [isVirtual, setIsVirtual] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -48,9 +48,10 @@ export default function BrandDashboardSettingsPage() {
   
   // Form states for Brand Data tab
   const [brandName, setBrandName] = useState("")
-  const [brandType, setBrandType] = useState("")
+  const [businessCategory, setBusinessCategory] = useState("")
   const [website, setWebsite] = useState("")
-  const [businessReg, setBusinessReg] = useState("")
+  const [commercialRegisterNumber, setCommercialRegisterNumber] = useState("")
+  const [freelanceLicenseNumber, setFreelanceLicenseNumber] = useState("")
   const [isFreelance, setIsFreelance] = useState(false)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
@@ -59,7 +60,7 @@ export default function BrandDashboardSettingsPage() {
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
-  const [accountName, setAccountName] = useState("")
+  const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
   
@@ -86,14 +87,15 @@ export default function BrandDashboardSettingsPage() {
       setPhoneNumber(profile?.phoneNumber || brandUserData.phone || "")
       setEmail(profile?.email || brandUserData.email || "")
       setBrandName(profile?.brandName || "")
-      setBrandType(profile?.brandType || "") // Load brandType, not businessType
+      setBusinessCategory(profile?.businessCategory || "")
       setWebsite(profile?.website || "")
-      setBusinessReg(profile?.brandCommercialRegisterNumber || profile?.freelanceLicenseNumber || "")
+      setCommercialRegisterNumber(profile?.commercialRegisterNumber || "")
+      setFreelanceLicenseNumber(profile?.freelanceLicenseNumber || "")
       setIsFreelance(profile?.businessType === "freelancer" || false)
       setProfileImageUrl(brandUserData.image || null)
       
       // Handle initial document URL loading
-      const backendDocumentUrl = profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
       if (backendDocumentUrl) {
         setDocumentUrl(backendDocumentUrl)
         sessionStorage.removeItem('temp_document_url')
@@ -112,7 +114,7 @@ export default function BrandDashboardSettingsPage() {
   useEffect(() => {
     if (brandUserData && hasInitialized) {
       const profile = brandUserData.profile
-      const backendDocumentUrl = profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
       
       if (backendDocumentUrl && !pendingDocumentFile) {
         // Update document URL if backend has a new one and we're not in the middle of selecting a new file
@@ -413,14 +415,14 @@ export default function BrandDashboardSettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="brandType" className="text-start block">
-                      {t("settings.brand_data.brand_type")} *
+                    <Label htmlFor="businessCategory" className="text-start block">
+                      {t("settings.brand_data.business_category")} *
                     </Label>
                     <Input 
-                      id="brandType" 
-                      value={brandType}
-                      onChange={(e) => setBrandType(e.target.value)}
-                      placeholder={t("settings.brand_data.brand_type_placeholder")}
+                      id="businessCategory" 
+                      value={businessCategory}
+                      onChange={(e) => setBusinessCategory(e.target.value)}
+                      placeholder={t("settings.brand_data.business_category_placeholder")}
                       className="text-start" 
                       required
                     />
@@ -444,16 +446,16 @@ export default function BrandDashboardSettingsPage() {
 
                 {/* Commercial Registration Number / Freelance Document */}
                 <div className="space-y-2">
-                  <Label htmlFor="businessReg" className="text-start block">
+                  <Label htmlFor="registration" className="text-start block">
                     {isFreelance ? t("settings.brand_data.freelance_document_number") : t("settings.brand_data.commercial_reg")} *
                   </Label>
                   <Input 
-                    id="businessReg" 
-                    value={businessReg}
-                    onChange={(e) => setBusinessReg(e.target.value)}
+                    id="registration" 
+                    value={isFreelance ? freelanceLicenseNumber : commercialRegisterNumber}
+                    onChange={(e) => isFreelance ? setFreelanceLicenseNumber(e.target.value) : setCommercialRegisterNumber(e.target.value)}
                     placeholder={isFreelance ? t("settings.brand_data.freelance_document_placeholder") : t("settings.brand_data.commercial_reg_placeholder")}
                     className="text-start" 
-                                       required
+                    required
                   />
                 </div>
 
@@ -595,7 +597,8 @@ export default function BrandDashboardSettingsPage() {
                     if (!user?.id) return
                     
                     // Validate required fields
-                    if (!brandName || !brandType || !businessReg || !phoneNumber) {
+                    const registrationNumber = isFreelance ? freelanceLicenseNumber : commercialRegisterNumber;
+                    if (!brandName || !businessCategory || !registrationNumber || !phoneNumber) {
                       toast({
                         title: t("settings.brand_data.validation_error"),
                         description: t("settings.brand_data.fill_required_fields"),
@@ -635,11 +638,11 @@ export default function BrandDashboardSettingsPage() {
                         // Update brand with the document storage ID
                         if (isFreelance) {
                           await updateFreelanceDocument({
-                            documentId: storageId,
+                            storageId: storageId,
                           })
                         } else {
                           await updateBusinessRegistrationDocument({
-                            documentId: storageId,
+                            storageId: storageId,
                           })
                         }
                         
@@ -655,11 +658,11 @@ export default function BrandDashboardSettingsPage() {
                       // Then update the brand data
                       await updateBrandData({
                         brandName,
-                        brandType,
-                        isFreelance,
-                        businessRegistration: businessReg,
+                        businessCategory,
+                        businessType: isFreelance ? "freelancer" : "registered_company",
+                        commercialRegisterNumber: !isFreelance ? commercialRegisterNumber : undefined,
+                        freelanceLicenseNumber: isFreelance ? freelanceLicenseNumber : undefined,
                         website: website || undefined,
-                        phoneNumber: phoneNumber || undefined,
                       })
                       
                       toast({
@@ -672,8 +675,9 @@ export default function BrandDashboardSettingsPage() {
                       sessionStorage.setItem('currentUser', JSON.stringify({
                         ...currentUser,
                         brandName,
-                        brandType,
-                        businessReg: businessReg || (isFreelance ? 'freelance' : ''),
+                        businessCategory,
+                        commercialRegisterNumber: !isFreelance ? commercialRegisterNumber : '',
+                        freelanceLicenseNumber: isFreelance ? freelanceLicenseNumber : '',
                         isFreelance,
                         phoneNumber,
                       }))
@@ -837,8 +841,8 @@ export default function BrandDashboardSettingsPage() {
               </Label>
               <Input
                 id="accountName"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
+                value={accountHolderName}
+                onChange={(e) => setAccountHolderName(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_name_placeholder")}
                 className="w-full"
               />
@@ -876,8 +880,8 @@ export default function BrandDashboardSettingsPage() {
             <div className="flex items-center gap-2">
               <Checkbox 
                 id="virtual" 
-                checked={isVirtual}
-                onCheckedChange={(checked) => setIsVirtual(checked as boolean)}
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
               <Label 
                 htmlFor="virtual" 
@@ -914,10 +918,10 @@ export default function BrandDashboardSettingsPage() {
                 try {
                   await addPaymentMethod({
                     bankName,
-                    accountName,
+                    accountHolderName,
                     accountNumber,
                     iban,
-                    isVirtual,
+                    isDefault,
                   })
                   
                   toast({
@@ -927,10 +931,10 @@ export default function BrandDashboardSettingsPage() {
                   
                   // Reset form
                   setBankName("")
-                  setAccountName("")
+                  setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIsVirtual(false)
+                  setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {
                   toast({

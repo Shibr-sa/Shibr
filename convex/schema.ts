@@ -33,31 +33,22 @@ const schema = defineSchema({
     
     // Brand information
     brandName: v.optional(v.string()),
-    brandType: v.optional(v.string()), // Type of products/business
+    businessCategory: v.optional(v.string()), // Type of products/business (e.g., "Electronics", "Food")
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
     )),
     
-    // Contact information
-    phoneNumber: v.optional(v.string()),
-    email: v.optional(v.string()),
-    
     // Business documents
-    brandCommercialRegisterNumber: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
-    brandCommercialRegisterDocument: v.optional(v.id("_storage")),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
     freelanceLicenseDocument: v.optional(v.id("_storage")),
     
-    // Business verification
-    vatNumber: v.optional(v.string()),
-    vatCertificate: v.optional(v.id("_storage")),
+    // Website
     website: v.optional(v.string()),
     
-    // Brand metrics
-    totalProducts: v.optional(v.number()),
-    activeRentals: v.optional(v.number()),
-    totalRevenue: v.optional(v.number()),
+    // Rating
     rating: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
@@ -137,9 +128,8 @@ const schema = defineSchema({
       order: v.number(),
     }))),
     
-    // Status - simplified since admin doesn't review anymore
+    // Status
     status: v.union(
-      v.literal("draft"),
       v.literal("active"),
       v.literal("suspended")
     ),
@@ -355,43 +345,22 @@ const schema = defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_type", ["type"]),
   
-  // Payment methods
+  // Payment methods (bank accounts for receiving payments)
   paymentMethods: defineTable({
-    // Profile-based ownership (business entities own payment methods)
+    // Profile-based ownership (store owners receive payments)
     profileId: v.optional(v.union(
       v.id("storeProfiles"),
       v.id("brandProfiles")
     )),
-    profileType: v.optional(v.union(
-      v.literal("store"),
-      v.literal("brand")
-    )),
-    // Temporary legacy fields for existing data
-    userId: v.optional(v.id("users")),
-    userType: v.optional(v.union(
-      v.literal("store_owner"),
-      v.literal("brand_owner")
-    )),
     
-    type: v.union(
-      v.literal("credit_card"),
-      v.literal("debit_card"),
-      v.literal("bank_transfer"),
-      v.literal("apple_pay"),
-      v.literal("stc_pay")
-    ),
-    
-    // Token from payment provider (not actual card details)
-    paymentToken: v.optional(v.string()),
-    last4Digits: v.optional(v.string()),
-    cardBrand: v.optional(v.string()),
-    
-    // Bank details (for bank transfers)
-    bankName: v.optional(v.string()),
-    iban: v.optional(v.string()),
+    // Bank account details for receiving payments
+    bankName: v.string(), // Name of the bank
+    accountHolderName: v.string(), // Account holder's name
+    iban: v.string(), // IBAN for international transfers
+    accountNumber: v.optional(v.string()), // Local account number if needed
     
     isDefault: v.boolean(),
-    isActive: v.boolean(),
+    isActive: v.boolean(), // Whether this payment method is active
   })
     .index("by_profile", ["profileId"])
     .index("by_profile_default", ["profileId", "isDefault"]),

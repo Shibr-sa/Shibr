@@ -466,11 +466,11 @@ export const getRentalRequestById = query({
       shelfName: shelf?.shelfName,
       shelfBranch: shelf?.storeBranch,
       // Brand specific details
-      activityType: brandOwnerProfile?.brandType,
+      activityType: brandOwnerProfile?.businessType,
       website: brandOwnerProfile?.website,
-      commercialRegisterNumber: brandOwnerProfile?.brandCommercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
-      commercialRegisterFile: brandOwnerProfile?.brandCommercialRegisterDocument 
-        ? await ctx.storage.getUrl(brandOwnerProfile.brandCommercialRegisterDocument) 
+      commercialRegisterNumber: brandOwnerProfile?.commercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
+      commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument 
+        ? await ctx.storage.getUrl(brandOwnerProfile.commercialRegisterDocument) 
         : brandOwnerProfile?.freelanceLicenseDocument
         ? await ctx.storage.getUrl(brandOwnerProfile.freelanceLicenseDocument)
         : undefined,
@@ -548,9 +548,9 @@ export const getUserRentalRequests = query({
             shelfBranch: shelf?.storeBranch,
             activityType: (otherUserProfile as any).brandType,
                   website: (otherUserProfile as any).website,
-            commercialRegisterNumber: (otherUserProfile as any).brandCommercialRegisterNumber || (otherUserProfile as any).freelanceLicenseNumber,
-            commercialRegisterFile: (otherUserProfile as any).brandCommercialRegisterDocument 
-              ? await ctx.storage.getUrl((otherUserProfile as any).brandCommercialRegisterDocument) 
+            commercialRegisterNumber: (otherUserProfile as any).commercialRegisterNumber || (otherUserProfile as any).freelanceLicenseNumber,
+            commercialRegisterFile: (otherUserProfile as any).commercialRegisterDocument 
+              ? await ctx.storage.getUrl((otherUserProfile as any).commercialRegisterDocument) 
               : (otherUserProfile as any).freelanceLicenseDocument
               ? await ctx.storage.getUrl((otherUserProfile as any).freelanceLicenseDocument)
               : undefined,

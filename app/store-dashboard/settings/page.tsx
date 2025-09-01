@@ -30,7 +30,7 @@ export default function StoreDashboardSettingsPage() {
   const { userData: storeUserData } = useStoreData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [isVirtual, setIsVirtual] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -52,14 +52,14 @@ export default function StoreDashboardSettingsPage() {
   const [storeName, setStoreName] = useState("")
   const [businessType, setBusinessType] = useState("")
   const [website, setWebsite] = useState("")
-  const [businessReg, setBusinessReg] = useState("")
+  const [commercialRegisterNumber, setCommercialRegisterNumber] = useState("")
   const [city, setCity] = useState("")
   const [area, setArea] = useState("")
   const [address, setAddress] = useState("")
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
-  const [accountName, setAccountName] = useState("")
+  const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
   
@@ -93,7 +93,7 @@ export default function StoreDashboardSettingsPage() {
       setStoreName(profile?.storeName || "")
       setBusinessType(profile?.businessType || "")
       setWebsite(profile?.website || "")
-      setBusinessReg(profile?.commercialRegisterNumber || "")
+      setCommercialRegisterNumber(profile?.commercialRegisterNumber || "")
       setCity(profile?.storeLocation?.city || "")
       setArea(profile?.storeLocation?.area || "")
       setAddress(profile?.storeLocation?.address || "")
@@ -401,13 +401,13 @@ export default function StoreDashboardSettingsPage() {
 
                 {/* Commercial Registration Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="businessReg" className="block">
+                  <Label htmlFor="commercialRegisterNumber" className="block">
                     {t("settings.store_data.commercial_reg")} *
                   </Label>
                   <Input 
-                    id="businessReg" 
-                    value={businessReg}
-                    onChange={(e) => setBusinessReg(e.target.value)}
+                    id="commercialRegisterNumber" 
+                    value={commercialRegisterNumber}
+                    onChange={(e) => setCommercialRegisterNumber(e.target.value)}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")} 
                     required
                   />
@@ -539,7 +539,7 @@ export default function StoreDashboardSettingsPage() {
                       return
                     }
                     
-                    if (!storeName || !businessType || !businessReg) {
+                    if (!storeName || !businessType || !commercialRegisterNumber) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -601,7 +601,7 @@ export default function StoreDashboardSettingsPage() {
                       await updateStoreData({
                         storeName,
                         businessType,
-                        commercialRegisterNumber: businessReg,
+                        commercialRegisterNumber,
                         website: website || undefined,
                       })
                       
@@ -616,7 +616,7 @@ export default function StoreDashboardSettingsPage() {
                         ...currentUser,
                         storeName,
                         businessType,
-                        businessReg: businessReg,
+                        commercialRegisterNumber,
                         phoneNumber,
                       }))
                     } catch (error) {
@@ -819,8 +819,8 @@ export default function StoreDashboardSettingsPage() {
               </Label>
               <Input
                 id="accountName"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
+                value={accountHolderName}
+                onChange={(e) => setAccountHolderName(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_name_placeholder")}
                 className="w-full"
               />
@@ -858,8 +858,8 @@ export default function StoreDashboardSettingsPage() {
             <div className="flex items-center gap-2">
               <Checkbox 
                 id="virtual" 
-                checked={isVirtual}
-                onCheckedChange={(checked) => setIsVirtual(checked as boolean)}
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
               <Label 
                 htmlFor="virtual" 
@@ -883,7 +883,7 @@ export default function StoreDashboardSettingsPage() {
                 if (!user?.id) return
                 
                 // Validate required fields
-                if (!bankName || !accountName || !accountNumber || !iban) {
+                if (!bankName || !accountHolderName || !accountNumber || !iban) {
                   toast({
                     title: t("settings.payment.validation_error"),
                     description: t("settings.payment.fill_all_fields"),
@@ -896,10 +896,10 @@ export default function StoreDashboardSettingsPage() {
                 try {
                   await addPaymentMethod({
                     bankName,
-                    accountName,
+                    accountHolderName,
                     accountNumber,
                     iban,
-                    isVirtual,
+                    isDefault,
                   })
                   
                   toast({
@@ -909,10 +909,10 @@ export default function StoreDashboardSettingsPage() {
                   
                   // Reset form
                   setBankName("")
-                  setAccountName("")
+                  setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIsVirtual(false)
+                  setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {
                   toast({

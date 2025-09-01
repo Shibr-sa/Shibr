@@ -359,7 +359,6 @@ export const getAdminStats = query({
     const allShelves = await ctx.db.query("shelves").collect()
     const availableShelves = allShelves.filter(s => s.isAvailable && s.status === "active")
     const approvedShelves = allShelves.filter(s => s.status === "active")
-    const pendingShelves = allShelves.filter(s => s.status === "draft")
 
     // Get rental request statistics
     const rentalRequests = await ctx.db.query("rentalRequests").collect()
@@ -383,7 +382,6 @@ export const getAdminStats = query({
     const filteredShelves = allShelves.filter(s => new Date(s._creationTime) >= startDate)
     const filteredAvailableShelves = availableShelves.filter(s => new Date(s._creationTime) >= startDate)
     const filteredApprovedShelves = approvedShelves.filter(s => new Date(s._creationTime) >= startDate)
-    const filteredPendingShelves = pendingShelves.filter(s => new Date(s._creationTime) >= startDate)
     
     // Filter rental requests by time period
     const filteredRentalRequests = rentalRequests.filter(r => new Date(r._creationTime) >= startDate)
@@ -638,7 +636,6 @@ export const getAdminStats = query({
         total: currentPeriodShelves, // Show period-specific count
         available: filteredAvailableShelves.length, // Period-specific
         approved: filteredApprovedShelves.length, // Period-specific
-        pending: filteredPendingShelves.length,
         change: parseFloat(shelvesChange.toFixed(1)),
         newInPeriod: currentPeriodShelves, // Same as total now
       },
@@ -1134,7 +1131,7 @@ export const getBrands = query({
         
         // Convert business registration document storage ID to URL
         let businessRegistrationUrl = null;
-        const docId = brand.brandCommercialRegisterDocument || brand.freelanceLicenseDocument;
+        const docId = brand.commercialRegisterDocument || brand.freelanceLicenseDocument;
         if (docId) {
           businessRegistrationUrl = await ctx.storage.getUrl(docId);
         }
@@ -1150,10 +1147,10 @@ export const getBrands = query({
           rentals: activeRentals,
           revenue: totalProductRevenue, // Only product sales revenue, not rental costs
           status: brand.isActive ? "active" : "suspended",
-          category: brand.brandType || "",
+          category: brand.businessType || "",
           website: brand.website,  // Now available in schema
           joinDate: brand._creationTime,
-          businessRegistration: brand.brandCommercialRegisterNumber || brand.freelanceLicenseNumber,
+          businessRegistration: brand.commercialRegisterNumber || brand.freelanceLicenseNumber,
           businessRegistrationUrl,  // Use converted URL
           profileImageUrl, // Include the profile image URL
         };
@@ -1552,7 +1549,7 @@ export const getRentalRequest = query({
       renterName: requester?.brandName || requesterUser?.name || "-",
       renterEmail: requesterUser?.email || "-",
       renterPhone: requesterUser?.phone || "-",
-      commercialRegistry: requester?.brandCommercialRegisterDocument || null,
+      commercialRegistry: requester?.commercialRegisterDocument || null,
     }
   }
 })

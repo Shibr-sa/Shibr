@@ -7,12 +7,30 @@ import { getUserProfile } from "./profileHelpers"
 // Get products for a brand owner
 export const getOwnerProducts = query({
   args: {
-    brandProfileId: v.id("brandProfiles"),
+    ownerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Get the user first
+    const user = await ctx.db.get(args.ownerId)
+    if (!user) {
+      return []
+    }
+    
+    // Try to get existing brand profile
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.ownerId))
+      .first()
+    
+    // If no profile exists, return empty array
+    // The profile will be created when they first try to add a product
+    if (!brandProfile) {
+      return []
+    }
+    
     const products = await ctx.db
       .query("products")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfile._id))
       .collect()
     
     return products.sort((a, b) => b._creationTime - a._creationTime)
@@ -64,9 +82,17 @@ export const getAllProducts = query({
 // Seed sample products for a user
 export const seedSampleProducts = mutation({
   args: {
-    brandProfileId: v.id("brandProfiles"),
+    ownerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      throw new Error("User is not a brand owner")
+    }
+    
+    const brandProfileId = userProfile.profile._id
     const sampleProducts = [
       {
         name: "قهوة عربية فاخرة",
@@ -133,7 +159,7 @@ export const seedSampleProducts = mutation({
     const productIds = []
     for (const product of sampleProducts) {
       const productId = await ctx.db.insert("products", {
-        brandProfileId: args.brandProfileId,
+        brandProfileId,
         ...product,
         totalSales: 0,
         totalRevenue: 0,
@@ -150,13 +176,22 @@ export const seedSampleProducts = mutation({
 // Get sales chart data for dashboard
 export const getSalesChartData = query({
   args: {
-    brandProfileId: v.id("brandProfiles"),
+    ownerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
+    const brandProfileId = userProfile.profile._id
+    
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Sort by revenue and take top products
@@ -199,10 +234,27 @@ export const getSalesChartData = query({
 // Get product statistics for dashboard
 export const getProductStats = query({
   args: {
-    brandProfileId: v.id("brandProfiles"),
+    ownerId: v.id("users"),
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return {
+        totalProducts: 0,
+        activeProducts: 0,
+        outOfStock: 0,
+        inventoryHealth: 0,
+        productsChange: 0,
+        activeChange: 0,
+        outOfStockChange: 0,
+        inventoryHealthChange: 0,
+      }
+    }
+    
+    const brandProfileId = userProfile.profile._id
     const now = new Date()
     let compareDate = new Date()
     
@@ -225,7 +277,7 @@ export const getProductStats = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Calculate current stats
@@ -345,7 +397,6 @@ export const getUserProductStats = query({
 // Create a new product
 export const createProduct = mutation({
   args: {
-    brandProfileId: v.id("brandProfiles"),
     name: v.string(),
     code: v.string(),
     description: v.optional(v.string()),
@@ -358,8 +409,33 @@ export const createProduct = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
+    
+    // Get or create brand profile
+    let brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!brandProfile) {
+      const user = await ctx.db.get(userId)
+      const brandProfileId = await ctx.db.insert("brandProfiles", {
+        userId,
+        isActive: true,
+        brandName: user?.name || "My Brand",
+      })
+      brandProfile = await ctx.db.get(brandProfileId)
+    }
+    
+    if (!brandProfile) {
+      throw new Error("Could not create brand profile")
+    }
+    
     const productId = await ctx.db.insert("products", {
-      brandProfileId: args.brandProfileId,
+      brandProfileId: brandProfile._id,
       name: args.name,
       code: args.code,
       description: args.description || "",
@@ -424,22 +500,31 @@ export const deleteProduct = mutation({
 // Get latest sales operations for brand dashboard
 export const getLatestSalesOperations = query({
   args: {
-    brandProfileId: v.id("brandProfiles"),
+    ownerId: v.id("users"),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 3
     
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
+    const brandProfileId = userProfile.profile._id
+    
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Get rental requests with full information
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_brand", (q) => q.eq("brandProfileId", args.brandProfileId))
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", brandProfileId))
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     

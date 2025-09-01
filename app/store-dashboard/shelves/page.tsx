@@ -35,12 +35,12 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 
 // Helper function to get badge variant based on shelf status
 function getShelfBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  // Check if shelf has active rental (instead of checking status === "rented")
+  // Check if shelf has active rental
   if (shelf.isAvailable === false) {
     return "default"
-  } else if (shelf.status === "approved" && shelf.isAvailable) {
+  } else if (shelf.status === "active" && shelf.isAvailable) {
     return "secondary"
-  } else if (shelf.status === "pending") {
+  } else if (shelf.status === "suspended") {
     return "outline"
   }
   return "secondary"
@@ -93,7 +93,7 @@ export default function StoreDashboardShelvesPage() {
       // Check for shelves that are not available (meaning they're rented)
       filtered = filtered.filter(shelf => shelf.isAvailable === false)
     } else if (filter === "available") {
-      filtered = filtered.filter(shelf => shelf.status === "approved" && shelf.isAvailable)
+      filtered = filtered.filter(shelf => shelf.status === "active" && shelf.isAvailable)
     }
     
     // Apply search filter with debounced value
@@ -101,7 +101,7 @@ export default function StoreDashboardShelvesPage() {
       filtered = filtered.filter(shelf => 
         shelf.shelfName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         shelf.city.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        shelf.branch.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        shelf.storeBranch.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       )
     }
     
@@ -386,7 +386,7 @@ export default function StoreDashboardShelvesPage() {
                           className="h-[72px]"
                         >
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                          <TableCell>{shelf.branch}</TableCell>
+                          <TableCell>{shelf.storeBranch}</TableCell>
                           <TableCell>
                             {!shelf.isAvailable && shelf.renterName ? 
                               shelf.renterName : 
@@ -400,10 +400,10 @@ export default function StoreDashboardShelvesPage() {
                             <Badge variant={getShelfBadgeVariant(shelf)}>
                               {!shelf.isAvailable 
                                 ? t("shelves.status.rented")
-                                : shelf.status === "approved" && shelf.isAvailable
+                                : shelf.status === "active" && shelf.isAvailable
                                 ? t("shelves.status.available")
-                                : shelf.status === "pending_approval"
-                                ? t("shelves.status.pending")
+                                : shelf.status === "suspended"
+                                ? t("shelves.status.suspended")
                                 : t("shelves.status.unavailable")
                               }
                             </Badge>

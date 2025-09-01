@@ -88,12 +88,12 @@ export default function ShelfDetailsPage() {
   
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "published":
-        return <Badge variant="default">{t("posts.status.published")}</Badge>
-      case "rented":
-        return <Badge variant="secondary">{t("posts.status.rented")}</Badge>
+      case "active":
+        return <Badge variant="default">{t("posts.status.active")}</Badge>
+      case "suspended":
+        return <Badge variant="outline">{t("posts.status.suspended")}</Badge>
       default:
-        return <Badge variant="outline">{t("posts.status.draft")}</Badge>
+        return <Badge variant="secondary">{t("posts.status.unknown")}</Badge>
     }
   }
   

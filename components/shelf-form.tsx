@@ -113,7 +113,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   // Form states - Initialize with data if in edit mode
   const [shelfName, setShelfName] = useState(mode === "edit" ? (initialData?.shelfName || "") : "")
   const [city, setCity] = useState(mode === "edit" ? (initialData?.city || "") : "")
-  const [branch, setBranch] = useState(mode === "edit" ? (initialData?.storeBranch || "") : "")
+  const [storeBranch, setStoreBranch] = useState(mode === "edit" ? (initialData?.storeBranch || "") : "")
   const [storeCommission, setStoreCommission] = useState(
     mode === "edit" ? 
     (initialData?.storeCommission?.toString() || initialData?.discountPercentage?.toString() || "") : 
@@ -247,7 +247,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
     
     // Validate required fields
-    if (!shelfName || !city || !branch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
+    if (!shelfName || !city || !storeBranch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
       toast({
         title: t("common.error"),
         description: t("add_shelf.required_fields_error"),
@@ -305,7 +305,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       const shelfData: any = {
         shelfName,
         city,
-        storeBranch: branch,
+        storeBranch,
         address: selectedLocation.address,
         monthlyPrice: parseFloat(monthlyPrice),
         storeCommission: parseFloat(storeCommission),
@@ -482,13 +482,13 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="branch" className="text-start block">
+              <Label htmlFor="storeBranch" className="text-start block">
                 {t("add_shelf.branch")} *
               </Label>
               <Input
-                id="branch"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
+                id="storeBranch"
+                value={storeBranch}
+                onChange={(e) => setStoreBranch(e.target.value)}
                 placeholder={t("add_shelf.branch_placeholder")}
                 className="text-start"
                 required

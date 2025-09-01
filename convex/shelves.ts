@@ -471,7 +471,6 @@ export const getShelfStats = query({
     const totalShelves = shelves.length
     const rentedShelves = activeRentals.length // Count by active rentals, not shelf status
     const availableShelves = shelves.filter(s => s.status === "active" && s.isAvailable).length
-    const pendingShelves = shelves.filter(s => s.status === "draft").length
     
     // Calculate total revenue from active rentals
     const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
@@ -480,7 +479,7 @@ export const getShelfStats = query({
       totalShelves,
       rentedShelves,
       availableShelves,
-      pendingShelves,
+      pendingShelves: 0, // No pending status for shelves
       totalRevenue,
     }
   },
@@ -634,7 +633,6 @@ export const getShelfStatsWithChanges = query({
       totalShelves: allShelves.length,
       rentedShelves: currentRented,
       availableShelves: currentAvailable,
-      pendingShelves: allShelves.filter(s => s.status === "draft").length,
       totalRevenue: currentRevenue,
       // Percentage changes
       rentedChange,

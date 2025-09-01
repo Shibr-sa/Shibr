@@ -52,8 +52,8 @@ export const getCurrentUserWithProfile = query({
       }
     } else if (profileData.type === "brand_owner") {
       const profile = profileData.profile as any;
-      if (profile.brandCommercialRegisterDocument) {
-        documentUrls.brandCommercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.brandCommercialRegisterDocument);
+      if (profile.commercialRegisterDocument) {
+        documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
       }
       if (profile.freelanceLicenseDocument) {
         documentUrls.freelanceLicenseDocumentUrl = await ctx.storage.getUrl(profile.freelanceLicenseDocument);
@@ -85,10 +85,9 @@ export const createOrUpdateUserProfile = mutation({
     // Store owner fields
     storeName: v.optional(v.string()),
     businessType: v.optional(v.string()),
-    commercialRegisterNumber: v.optional(v.string()),
+    storeCommercialRegisterNumber: v.optional(v.string()),
     // Brand owner fields
     brandName: v.optional(v.string()),
-    brandType: v.optional(v.string()),
     brandBusinessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
@@ -114,25 +113,25 @@ export const createOrUpdateUserProfile = mutation({
 
     // Create appropriate profile based on account type
     if (args.accountType === "store_owner") {
+      if (!args.storeName || !args.businessType || !args.storeCommercialRegisterNumber) {
+        throw new Error("Store name, business type, and commercial register number are required for store owners");
+      }
       const profileId = await ctx.db.insert("storeProfiles", {
         userId,
         isActive: true,
         storeName: args.storeName,
         businessType: args.businessType,
-        commercialRegisterNumber: args.commercialRegisterNumber,
+        commercialRegisterNumber: args.storeCommercialRegisterNumber,
       });
       return { success: true, profileId };
     } else if (args.accountType === "brand_owner") {
       const profileId = await ctx.db.insert("brandProfiles", {
         userId,
-          isActive: true,
+        isActive: true,
         brandName: args.brandName,
-        brandType: args.brandType,
         businessType: args.brandBusinessType,
-        brandCommercialRegisterNumber: args.brandCommercialRegisterNumber,
+        commercialRegisterNumber: args.brandCommercialRegisterNumber,
         freelanceLicenseNumber: args.freelanceLicenseNumber,
-        phoneNumber: args.phoneNumber,
-        email: args.email,
       });
       return { success: true, profileId };
     } else if (args.accountType === "admin") {
@@ -198,15 +197,36 @@ export const checkBrandDataComplete = query({
     // Check required fields
     if (!brandProfile.brandName) missingFields.push("brandName");
     if (!brandProfile.businessType) missingFields.push("businessType");
-    if (brandProfile.businessType === "registered_company" && !brandProfile.brandCommercialRegisterNumber) {
-      missingFields.push("brandCommercialRegisterNumber");
+    
+    // Check business type specific requirements
+    if (brandProfile.businessType === "registered_company") {
+      if (!brandProfile.commercialRegisterNumber) {
+        missingFields.push("commercialRegisterNumber");
+      }
+      if (!brandProfile.commercialRegisterDocument) {
+        missingFields.push("commercialRegisterDocument");
+      }
+    } else if (brandProfile.businessType === "freelancer") {
+      if (!brandProfile.freelanceLicenseNumber) {
+        missingFields.push("freelanceLicenseNumber");
+      }
+      if (!brandProfile.freelanceLicenseDocument) {
+        missingFields.push("freelanceLicenseDocument");
+      }
+    } else {
+      // If businessType is set but not one of the expected values, 
+      // still require one of the document sets
+      if (!brandProfile.commercialRegisterNumber && !brandProfile.freelanceLicenseNumber) {
+        missingFields.push("commercialRegisterNumber or freelanceLicenseNumber");
+      }
+      if (!brandProfile.commercialRegisterDocument && !brandProfile.freelanceLicenseDocument) {
+        missingFields.push("commercialRegisterDocument or freelanceLicenseDocument");
+      }
     }
-    if (brandProfile.businessType === "freelancer" && !brandProfile.freelanceLicenseNumber) {
-      missingFields.push("freelanceLicenseNumber");
-    }
-    if (!brandProfile.phoneNumber) missingFields.push("phoneNumber");
-    if (!brandProfile.email) missingFields.push("email");
-
+    
+    // Don't require phone/email for profile completion - they're in the user table
+    // This follows the same pattern as checkStoreDataComplete
+    
     return {
       isComplete: missingFields.length === 0,
       missingFields,
@@ -258,19 +278,15 @@ export const createStoreProfile = mutation({
 export const createBrandProfile = mutation({
   args: {
     brandName: v.string(),
-    brandType: v.string(),
     businessType: v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
     ),
-    brandCommercialRegisterNumber: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    email: v.optional(v.string()),
-    vatNumber: v.optional(v.string()),
-    brandCommercialRegisterDocument: v.optional(v.id("_storage")),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
     freelanceLicenseDocument: v.optional(v.id("_storage")),
-    vatCertificate: v.optional(v.id("_storage")),
+    website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -293,19 +309,12 @@ export const createBrandProfile = mutation({
       userId,
       isActive: true,
       brandName: args.brandName,
-      brandType: args.brandType,
       businessType: args.businessType,
-      brandCommercialRegisterNumber: args.brandCommercialRegisterNumber,
+      commercialRegisterNumber: args.commercialRegisterNumber,
       freelanceLicenseNumber: args.freelanceLicenseNumber,
-      brandCommercialRegisterDocument: args.brandCommercialRegisterDocument,
+      commercialRegisterDocument: args.commercialRegisterDocument,
       freelanceLicenseDocument: args.freelanceLicenseDocument,
-      phoneNumber: args.phoneNumber,
-      email: args.email,
-      vatNumber: args.vatNumber,
-      vatCertificate: args.vatCertificate,
-      totalProducts: 0,
-      activeRentals: 0,
-      totalRevenue: 0,
+      website: args.website,
     });
     
     return profileId;
@@ -347,17 +356,16 @@ export const updateStoreProfile = mutation({
 export const updateBrandProfile = mutation({
   args: {
     brandName: v.optional(v.string()),
-    brandType: v.optional(v.string()),
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
     )),
-    brandCommercialRegisterNumber: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     email: v.optional(v.string()),
     vatNumber: v.optional(v.string()),
-    brandCommercialRegisterDocument: v.optional(v.id("_storage")),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
     freelanceLicenseDocument: v.optional(v.id("_storage")),
     vatCertificate: v.optional(v.id("_storage")),
   },
@@ -573,7 +581,8 @@ export const updateGeneralSettings = mutation({
     // Update the auth user record
     await ctx.db.patch(userId, updateData);
 
-    // Note: email and phone are only stored in the users table now
+    // Phone and email are stored in the user table, not in profiles
+    // This follows the same pattern as store profiles
 
     return { success: true };
   },
@@ -600,6 +609,9 @@ export const updateStoreData = mutation({
 
     if (!storeProfile) {
       // Create new store profile if it doesn't exist
+      if (!args.storeName || !args.businessType || !args.commercialRegisterNumber) {
+        throw new Error("Store name, business type, and commercial register number are required");
+      }
       const newProfileId = await ctx.db.insert("storeProfiles", {
         userId,
         isActive: true,
@@ -629,14 +641,14 @@ export const updateStoreData = mutation({
 export const updateBrandData = mutation({
   args: {
     brandName: v.optional(v.string()),
-    brandType: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
     )),
-    brandCommercialRegisterNumber: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
-    vatNumber: v.optional(v.string()),
+    website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -655,11 +667,11 @@ export const updateBrandData = mutation({
 
     const updates: any = {};
     if (args.brandName !== undefined) updates.brandName = args.brandName;
-    if (args.brandType !== undefined) updates.brandType = args.brandType;
+    if (args.businessCategory !== undefined) updates.businessCategory = args.businessCategory;
     if (args.businessType !== undefined) updates.businessType = args.businessType;
-    if (args.brandCommercialRegisterNumber !== undefined) updates.brandCommercialRegisterNumber = args.brandCommercialRegisterNumber;
+    if (args.commercialRegisterNumber !== undefined) updates.commercialRegisterNumber = args.commercialRegisterNumber;
     if (args.freelanceLicenseNumber !== undefined) updates.freelanceLicenseNumber = args.freelanceLicenseNumber;
-    if (args.vatNumber !== undefined) updates.vatNumber = args.vatNumber;
+    if (args.website !== undefined) updates.website = args.website;
 
     await ctx.db.patch(brandProfile._id, updates);
     return { success: true };
@@ -716,7 +728,7 @@ export const updateBusinessRegistrationDocument = mutation({
 
     if (brandProfile) {
       await ctx.db.patch(brandProfile._id, {
-        brandCommercialRegisterDocument: args.storageId,
+        commercialRegisterDocument: args.storageId,
       });
       return { success: true };
     }
