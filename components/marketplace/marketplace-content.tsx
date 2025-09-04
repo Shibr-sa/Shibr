@@ -289,7 +289,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                 <SelectItem value="all">{t("marketplace.all_types")}</SelectItem>
                 {availableProductTypes?.map((type) => (
                   <SelectItem key={type} value={type}>
-                    {type}
+                    {t(`product_categories.${type}` as any) || type}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -414,7 +414,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 </div>
                                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                   <MapPin className="h-3.5 w-3.5" />
-                                  <span>{store.city}, {store.branch}</span>
+                                  <span>{store.city}, {store.storeBranch}</span>
                                 </div>
                               </div>
 
@@ -440,7 +440,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.shelf_size")}</p>
                                   <p className="text-sm font-medium">
-                                    {store.width}×{store.length}×{store.depth} cm
+                                    {store.shelfSize?.width || 0}×{store.shelfSize?.height || 0}×{store.shelfSize?.depth || 0} cm
                                   </p>
                                 </div>
 
@@ -463,8 +463,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
-                                    <p className="text-xs font-medium">{store.ownerName || "Store Owner"}</p>
-                                    <p className="text-xs text-muted-foreground">{t("marketplace.store_owner")}</p>
+                                    <p className="text-xs font-medium">{store.ownerName || "-"}</p>
                                   </div>
                                 </div>
                               </div>

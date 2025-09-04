@@ -96,6 +96,16 @@ export default function BrandDashboardPage() {
   const totalRevenue = productStats?.totalRevenue || 0
   const totalSales = productStats?.totalSales || 0
   
+  // Calculate products on shelves (products from active rentals)
+  const productsOnShelves = rentalRequests?.filter(r => r.status === "active")
+    .reduce((total, rental) => {
+      // Count selected products from the new structure
+      if (rental.selectedProducts && rental.selectedProducts.length > 0) {
+        return total + rental.selectedProducts.length
+      }
+      return total
+    }, 0) || 0
+  
   // Prepare chart data - use real data if available, otherwise show empty state
   const salesChartData = salesChartDataRaw || []
   
@@ -257,7 +267,7 @@ export default function BrandDashboardPage() {
         ) : (
           <StatCard
             title={t("brand.dashboard.total_products")}
-            value={products?.length || 0}
+            value={productsOnShelves}
             trend={{
               value: productStats?.productsChange || 0,
               label: `${t("time.from")} ${t("time.last_month")}`
@@ -400,7 +410,11 @@ export default function BrandDashboardPage() {
                             {(rental as any).shelfCity || rental.city || t("common.riyadh")}
                           </TableCell>
                           <TableCell>
-                            {formatNumber(rental.productCount || 0)}
+                            {formatNumber(
+                              rental.selectedProducts?.length || 
+                              rental.selectedProductIds?.length || 
+                              0
+                            )}
                           </TableCell>
                           <TableCell>
                             {formatNumber(0)}

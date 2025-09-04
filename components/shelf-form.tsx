@@ -171,24 +171,23 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   // Load existing images when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      // Load existing images
-      const loadImages = async () => {
-        if (initialData.exteriorImage) {
-          const url = await getFileUrl({ storageId: initialData.exteriorImage })
-          if (url) setExteriorPreview(url)
+      // Load existing images from the images array with url property
+      const loadImages = () => {
+        const previews: any = {}
+        
+        if (initialData.images && Array.isArray(initialData.images)) {
+          for (const img of initialData.images) {
+            if (img.url && img.type) {
+              previews[img.type] = img.url
+            }
+          }
         }
-        if (initialData.interiorImage) {
-          const url = await getFileUrl({ storageId: initialData.interiorImage })
-          if (url) setInteriorPreview(url)
-        }
-        if (initialData.shelfImage) {
-          const url = await getFileUrl({ storageId: initialData.shelfImage })
-          if (url) setShelfPreview(url)
-        }
+        
+        setImagePreviews(previews)
       }
       loadImages()
     }
-  }, [mode, initialData, getFileUrl])
+  }, [mode, initialData])
   
   // Update location when city changes (only in create mode)
   useEffect(() => {
@@ -201,13 +200,17 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
   }, [city, mode])
   
-  // File states
-  const [exteriorImage, setExteriorImage] = useState<File | null>(null)
-  const [interiorImage, setInteriorImage] = useState<File | null>(null)
-  const [shelfImage, setShelfImage] = useState<File | null>(null)
-  const [exteriorPreview, setExteriorPreview] = useState<string | null>(null)
-  const [interiorPreview, setInteriorPreview] = useState<string | null>(null)
-  const [shelfPreview, setShelfPreview] = useState<string | null>(null)
+  // File states - using new images array format
+  const [images, setImages] = useState<{
+    shelf?: File | null,
+    exterior?: File | null,
+    interior?: File | null
+  }>({})
+  const [imagePreviews, setImagePreviews] = useState<{
+    shelf?: string | null,
+    exterior?: string | null,
+    interior?: string | null
+  }>({})
   const [uploadingImages, setUploadingImages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
@@ -271,35 +274,58 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     setSubmitting(true)
     
     try {
-      // Upload images if they exist
-      let exteriorImageId = null
-      let interiorImageId = null
-      let shelfImageId = null
+      // Upload images and create images array
+      const uploadedImages: any[] = []
       
-      // Only keep existing image IDs if they are storage IDs (not URLs)
-      if (mode === "edit" && initialData) {
-        // Check if the existing images are storage IDs (not URLs)
-        if (initialData.exteriorImage && !initialData.exteriorImage.startsWith('http')) {
-          exteriorImageId = initialData.exteriorImage
-        }
-        if (initialData.interiorImage && !initialData.interiorImage.startsWith('http')) {
-          interiorImageId = initialData.interiorImage
-        }
-        if (initialData.shelfImage && !initialData.shelfImage.startsWith('http')) {
-          shelfImageId = initialData.shelfImage
-        }
+      // Keep existing images if in edit mode
+      if (mode === "edit" && initialData?.images) {
+        // Keep images that have the correct structure from backend
+        const validImages = initialData.images
+          .filter(img => img && typeof img === 'object' && 'storageId' in img && 'type' in img && 'order' in img)
+          .map(img => ({
+            storageId: img.storageId,
+            type: img.type,
+            order: img.order
+          }))
+        uploadedImages.push(...validImages)
       }
       
       setUploadingImages(true)
-      if (exteriorImage) {
-        exteriorImageId = await uploadFile(exteriorImage)
+      
+      // Upload new images
+      if (images.shelf) {
+        const shelfImageId = await uploadFile(images.shelf)
+        if (shelfImageId) {
+          // Remove existing shelf image if any
+          const filtered = uploadedImages.filter(img => img.type !== "shelf")
+          filtered.push({ storageId: shelfImageId, type: "shelf", order: 0 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
-      if (interiorImage) {
-        interiorImageId = await uploadFile(interiorImage)
+      
+      if (images.exterior) {
+        const exteriorImageId = await uploadFile(images.exterior)
+        if (exteriorImageId) {
+          // Remove existing exterior image if any
+          const filtered = uploadedImages.filter(img => img.type !== "exterior")
+          filtered.push({ storageId: exteriorImageId, type: "exterior", order: 1 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
-      if (shelfImage) {
-        shelfImageId = await uploadFile(shelfImage)
+      
+      if (images.interior) {
+        const interiorImageId = await uploadFile(images.interior)
+        if (interiorImageId) {
+          // Remove existing interior image if any
+          const filtered = uploadedImages.filter(img => img.type !== "interior")
+          filtered.push({ storageId: interiorImageId, type: "interior", order: 2 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
+      
       setUploadingImages(false)
       
       const shelfData: any = {
@@ -319,15 +345,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
         longitude: selectedLocation.longitude,
       }
       
-      // Only include image fields if they have valid storage IDs
-      if (exteriorImageId) {
-        shelfData.exteriorImage = exteriorImageId
-      }
-      if (interiorImageId) {
-        shelfData.interiorImage = interiorImageId
-      }
-      if (shelfImageId) {
-        shelfData.shelfImage = shelfImageId
+      // Include images array if we have any images
+      if (uploadedImages.length > 0) {
+        shelfData.images = uploadedImages
       }
       
       if (mode === "create") {
@@ -379,49 +399,29 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       return
     }
     
+    // Update images state
+    setImages(prev => ({
+      ...prev,
+      [type]: file
+    }))
+    
     // Create preview URL for images
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onloadend = () => {
         const previewUrl = reader.result as string
-        switch (type) {
-          case 'exterior':
-            setExteriorPreview(previewUrl)
-            break
-          case 'interior':
-            setInteriorPreview(previewUrl)
-            break
-          case 'shelf':
-            setShelfPreview(previewUrl)
-            break
-        }
+        setImagePreviews(prev => ({
+          ...prev,
+          [type]: previewUrl
+        }))
       }
       reader.readAsDataURL(file)
     } else {
       // Clear preview if not an image
-      switch (type) {
-        case 'exterior':
-          setExteriorPreview(null)
-          break
-        case 'interior':
-          setInteriorPreview(null)
-          break
-        case 'shelf':
-          setShelfPreview(null)
-          break
-      }
-    }
-    
-    switch (type) {
-      case 'exterior':
-        setExteriorImage(file)
-        break
-      case 'interior':
-        setInteriorImage(file)
-        break
-      case 'shelf':
-        setShelfImage(file)
-        break
+      setImagePreviews(prev => ({
+        ...prev,
+        [type]: null
+      }))
     }
   }
 
@@ -670,9 +670,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                       {length || '?'}
                     </text>
                     
-                    {/* Depth (diagonal) */}
+                    {/* Depth (diagonal) - moved above the box */}
                     <line x1="145" y1="55" x2="175" y2="40" className="stroke-primary/60" strokeWidth="1" strokeDasharray="2,2" />
-                    <text x="190" y="45" textAnchor="start" className="fill-primary text-[11px] font-medium">
+                    <text x="140" y="25" textAnchor="middle" className="fill-primary text-[11px] font-medium">
                       {depth || '?'} {t("add_shelf.cm")}
                     </text>
                     
@@ -683,7 +683,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                     <text x="35" y="105" textAnchor="middle" className="fill-muted-foreground text-[9px]">
                       {t("add_shelf.length")}  
                     </text>
-                    <text x="190" y="57" textAnchor="start" className="fill-muted-foreground text-[9px]">
+                    <text x="140" y="15" textAnchor="middle" className="fill-muted-foreground text-[9px]">
                       {t("add_shelf.depth")}
                     </text>
                   </svg>
@@ -895,24 +895,24 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 />
                 <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
                   <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {exteriorImage || exteriorPreview ? (
+                    {images.exterior || imagePreviews.exterior ? (
                       <>
-                        {exteriorPreview ? (
+                        {imagePreviews.exterior ? (
                           <img 
-                            src={exteriorPreview} 
+                            src={imagePreviews.exterior} 
                             alt="Exterior preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{exteriorImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.exterior?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setExteriorImage(null)
-                            setExteriorPreview(null)
+                            setImages(prev => ({ ...prev, exterior: null }))
+                            setImagePreviews(prev => ({ ...prev, exterior: null }))
                             if (exteriorInputRef.current) exteriorInputRef.current.value = ''
                           }}
                         >
@@ -951,24 +951,24 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 />
                 <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
                   <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {interiorImage || interiorPreview ? (
+                    {images.interior || imagePreviews.interior ? (
                       <>
-                        {interiorPreview ? (
+                        {imagePreviews.interior ? (
                           <img 
-                            src={interiorPreview} 
+                            src={imagePreviews.interior} 
                             alt="Interior preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{interiorImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.interior?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setInteriorImage(null)
-                            setInteriorPreview(null)
+                            setImages(prev => ({ ...prev, interior: null }))
+                            setImagePreviews(prev => ({ ...prev, interior: null }))
                             if (interiorInputRef.current) interiorInputRef.current.value = ''
                           }}
                         >
@@ -1007,24 +1007,24 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 />
                 <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
                   <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {shelfImage || shelfPreview ? (
+                    {images.shelf || imagePreviews.shelf ? (
                       <>
-                        {shelfPreview ? (
+                        {imagePreviews.shelf ? (
                           <img 
-                            src={shelfPreview} 
+                            src={imagePreviews.shelf} 
                             alt="Shelf preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{shelfImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setShelfImage(null)
-                            setShelfPreview(null)
+                            setImages(prev => ({ ...prev, shelf: null }))
+                            setImagePreviews(prev => ({ ...prev, shelf: null }))
                             if (shelfInputRef.current) shelfInputRef.current.value = ''
                           }}
                         >

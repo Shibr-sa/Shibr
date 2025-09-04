@@ -1,7 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 
 // Get current admin profile
@@ -27,12 +26,12 @@ export const getCurrentAdminProfile = query({
     const authUser = await ctx.db.get(userId)
     
     // Profile image is now stored in users.image field as URL string
-    const profileImageUrl = authUser?.image || null
+    const profileImageUrl = authUser?.image
     
     return {
       id: adminProfile._id,
       fullName: authUser?.name,
-      email: authUser?.email || "",  // Get email from users table
+      email: authUser?.email,  // Get email from users table
       phoneNumber: authUser?.phone,
       adminRole: adminProfile.adminRole,
       profileImage: profileImageUrl,
@@ -185,8 +184,8 @@ export const getAdminUsers = query({
         const authUser = await ctx.db.get(profile.userId)
         return {
           ...profile,
-          email: profile.email || authUser?.email || "",
-          name: authUser?.name || ""
+          email: authUser?.email,
+          name: authUser?.name
         }
       })
     )
@@ -197,7 +196,7 @@ export const getAdminUsers = query({
       const query = args.searchQuery.toLowerCase()
       filteredAdmins = adminUsersWithEmails.filter(user =>
         user.name?.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
+        user.email?.toLowerCase().includes(query)
       )
     }
     
@@ -263,8 +262,6 @@ export const createAdminProfile = mutation({
       permissions: args.adminRole === "super_admin" ? ["all"] : ["limited"],
       isActive: true,
       department: undefined,
-      phoneNumber: undefined,
-      email: args.email,
     })
     
     return {
@@ -322,8 +319,6 @@ export const addAdminUser = mutation({
         permissions: ["all"],
         isActive: true,
         department: "",
-        phoneNumber: "",
-        email: args.email,
       })
       
       return {
@@ -446,3 +441,4 @@ export const deleteAdminUser = mutation({
     }
   },
 });
+

@@ -74,82 +74,6 @@ export const getCurrentUserWithProfile = query({
   },
 })
 
-// Create or update user profile (used during signup)
-export const createOrUpdateUserProfile = mutation({
-  args: {
-    accountType: v.union(
-      v.literal("store_owner"),
-      v.literal("brand_owner"),
-      v.literal("admin")
-    ),
-    // Store owner fields
-    storeName: v.optional(v.string()),
-    businessType: v.optional(v.string()),
-    storeCommercialRegisterNumber: v.optional(v.string()),
-    // Brand owner fields
-    brandName: v.optional(v.string()),
-    brandBusinessType: v.optional(v.union(
-      v.literal("registered_company"),
-      v.literal("freelancer")
-    )),
-    brandCommercialRegisterNumber: v.optional(v.string()),
-    freelanceLicenseNumber: v.optional(v.string()),
-    // Common fields
-    phoneNumber: v.optional(v.string()),
-    email: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if profile already exists
-    const existingProfile = await getUserProfileHelper(ctx, userId);
-    if (existingProfile) {
-      // Profile already exists, could update it here if needed
-      return { success: true, profileId: existingProfile.profile._id };
-    }
-
-    // Create appropriate profile based on account type
-    if (args.accountType === "store_owner") {
-      if (!args.storeName || !args.businessType || !args.storeCommercialRegisterNumber) {
-        throw new Error("Store name, business type, and commercial register number are required for store owners");
-      }
-      const profileId = await ctx.db.insert("storeProfiles", {
-        userId,
-        isActive: true,
-        storeName: args.storeName,
-        businessType: args.businessType,
-        commercialRegisterNumber: args.storeCommercialRegisterNumber,
-      });
-      return { success: true, profileId };
-    } else if (args.accountType === "brand_owner") {
-      const profileId = await ctx.db.insert("brandProfiles", {
-        userId,
-        isActive: true,
-        brandName: args.brandName,
-        businessType: args.brandBusinessType,
-        commercialRegisterNumber: args.brandCommercialRegisterNumber,
-        freelanceLicenseNumber: args.freelanceLicenseNumber,
-      });
-      return { success: true, profileId };
-    } else if (args.accountType === "admin") {
-      const profileId = await ctx.db.insert("adminProfiles", {
-        userId,
-        isActive: true,
-        adminRole: "support",
-        permissions: [],
-        phoneNumber: args.phoneNumber,
-        email: args.email,
-      });
-      return { success: true, profileId };
-    }
-
-    throw new Error("Invalid account type");
-  },
-})
-
 // Check if store data is complete
 export const checkStoreDataComplete = query({
   args: {
@@ -168,7 +92,7 @@ export const checkStoreDataComplete = query({
     // Check required fields
     const isComplete = !!(
       storeProfile.storeName &&
-      storeProfile.businessType &&
+      storeProfile.businessCategory &&
       storeProfile.commercialRegisterNumber &&
       storeProfile.commercialRegisterDocument
     );
@@ -237,7 +161,7 @@ export const checkBrandDataComplete = query({
 export const createStoreProfile = mutation({
   args: {
     storeName: v.string(),
-    businessType: v.string(),
+    businessCategory: v.string(),
     commercialRegisterNumber: v.string(),
     phoneNumber: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -266,7 +190,7 @@ export const createStoreProfile = mutation({
       userId,
       isActive: true,
       storeName: args.storeName,
-      businessType: args.businessType,
+      businessCategory: args.businessCategory,
       commercialRegisterNumber: args.commercialRegisterNumber,
       commercialRegisterDocument: args.commercialRegisterDocument,
     });
@@ -324,7 +248,7 @@ export const createBrandProfile = mutation({
 export const updateStoreProfile = mutation({
   args: {
     storeName: v.optional(v.string()),
-    businessType: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
     commercialRegisterNumber: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -409,123 +333,7 @@ export const getUserProfile = query({
   },
 })
 
-export const getUsersByType = query({
-  args: {
-    accountType: v.union(
-      v.literal("store_owner"),
-      v.literal("brand_owner"),
-      v.literal("admin")
-    )
-  },
-  handler: async (ctx, args) => {
-    let profiles: any[] = [];
-    
-    switch (args.accountType) {
-      case "store_owner":
-        profiles = await ctx.db.query("storeProfiles").collect();
-        break;
-      case "brand_owner":
-        profiles = await ctx.db.query("brandProfiles").collect();
-        break;
-      case "admin":
-        profiles = await ctx.db.query("adminProfiles").collect();
-        break;
-    }
-    
-    const usersWithProfiles = await Promise.all(
-      profiles.map(async (profile) => {
-        const user = await ctx.db.get(profile.userId);
-        return {
-          user,
-          profile,
-          accountType: args.accountType,
-        };
-      })
-    );
-    
-    return usersWithProfiles.filter(u => u.user !== null);
-  },
-})
 
-export const checkUserProfile = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return { hasProfile: false, accountType: null };
-    }
-    
-    const profileData = await getUserProfileHelper(ctx, userId);
-    
-    if (!profileData) {
-      return { hasProfile: false, accountType: null };
-    }
-    
-    return {
-      hasProfile: true,
-      accountType: profileData.type,
-    };
-  },
-})
-
-
-
-// Admin function to create admin profile
-export const createAdminProfile = mutation({
-  args: {
-    userId: v.id("users"),
-    adminRole: v.union(
-      v.literal("super_admin"),
-      v.literal("support"),
-      v.literal("finance"),
-      v.literal("operations")
-    ),
-    permissions: v.array(v.string()),
-    department: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    email: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // This should only be called by super admins
-    const currentUserId = await getAuthUserId(ctx);
-    if (!currentUserId) {
-      throw new Error("Not authenticated");
-    }
-    
-    // Check if caller is a super admin
-    const callerProfile = await ctx.db
-      .query("adminProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", currentUserId))
-      .first();
-    
-    if (!callerProfile || callerProfile.adminRole !== "super_admin") {
-      throw new Error("Only super admins can create admin profiles");
-    }
-    
-    // Check if profile already exists
-    const existing = await ctx.db
-      .query("adminProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    
-    if (existing) {
-      throw new Error("Admin profile already exists");
-    }
-    
-    // Create admin profile
-    const profileId = await ctx.db.insert("adminProfiles", {
-      userId: args.userId,
-      isActive: true,
-      adminRole: args.adminRole,
-      permissions: args.permissions,
-      department: args.department,
-      phoneNumber: args.phoneNumber,
-      email: args.email,
-    });
-    
-    return profileId;
-  },
-})
 
 // Get user's dashboard based on their account type
 export const getUserDashboard = query({
@@ -592,7 +400,7 @@ export const updateGeneralSettings = mutation({
 export const updateStoreData = mutation({
   args: {
     storeName: v.optional(v.string()),
-    businessType: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
     commercialRegisterNumber: v.optional(v.string()),
     website: v.optional(v.string()),
   },
@@ -609,14 +417,14 @@ export const updateStoreData = mutation({
 
     if (!storeProfile) {
       // Create new store profile if it doesn't exist
-      if (!args.storeName || !args.businessType || !args.commercialRegisterNumber) {
-        throw new Error("Store name, business type, and commercial register number are required");
+      if (!args.storeName || !args.businessCategory || !args.commercialRegisterNumber) {
+        throw new Error("Store name, business category, and commercial register number are required");
       }
       const newProfileId = await ctx.db.insert("storeProfiles", {
         userId,
         isActive: true,
         storeName: args.storeName,
-        businessType: args.businessType,
+        businessCategory: args.businessCategory,
         commercialRegisterNumber: args.commercialRegisterNumber,
         website: args.website,
       });
@@ -626,7 +434,7 @@ export const updateStoreData = mutation({
     // Update existing profile
     const updates: any = {};
     if (args.storeName !== undefined) updates.storeName = args.storeName;
-    if (args.businessType !== undefined) updates.businessType = args.businessType;
+    if (args.businessCategory !== undefined) updates.businessCategory = args.businessCategory;
     if (args.commercialRegisterNumber !== undefined) updates.commercialRegisterNumber = args.commercialRegisterNumber;
     if (args.website !== undefined) updates.website = args.website;
     

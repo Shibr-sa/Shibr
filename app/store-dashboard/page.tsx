@@ -26,7 +26,6 @@ function getRequestStatusBadgeVariant(status: string): "default" | "secondary" |
   switch (status) {
     case "active":
       return "default"
-    case "accepted":
     case "payment_pending":
       return "default" // Changed from "warning" to "default"
     case "rejected":
@@ -312,9 +311,7 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={getRequestStatusBadgeVariant(request.status)}>
-                                {request.status === "accepted" 
-                                  ? t("status.payment_pending")
-                                  : t(`status.${request.status}`)}
+                                {t(`status.${request.status}`)}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-muted-foreground">
@@ -460,7 +457,7 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               {shelf.renterName && shelf.nextCollectionDate ? 
-                                new Date(shelf.nextCollectionDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : 
+                                new Date(shelf.nextCollectionDate).toLocaleDateString("en-US") : 
                                 "-"
                               }
                             </TableCell>

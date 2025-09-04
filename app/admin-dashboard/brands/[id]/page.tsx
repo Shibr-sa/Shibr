@@ -138,7 +138,7 @@ export default function BrandDetailsPage() {
 
   const formatDate = (date: string) => {
     if (!date) return "-"
-    return new Date(date).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US")
+    return new Date(date).toLocaleDateString("en-US")
   }
 
   const getStatusVariant = (status: string) => {
@@ -442,8 +442,8 @@ export default function BrandDetailsPage() {
                         <TableCell className="py-3" style={{ width: '120px' }}>{formatCurrency(payment.payment || 0)}</TableCell>
                         <TableCell className="py-3" style={{ width: '140px' }}>{t("brands.payment_transfer")}</TableCell>
                         <TableCell className="py-3" style={{ width: '100px' }}>
-                          <Badge variant={payment.status === "accepted" ? "default" : "secondary"}>
-                            {payment.status === "accepted" ? t("brands.payment_completed") : t("brands.payment_pending")}
+                          <Badge variant={payment.status === "payment_pending" ? "secondary" : payment.status === "active" ? "default" : "secondary"}>
+                            {payment.status === "active" ? t("brands.payment_completed") : t("brands.payment_pending")}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3" style={{ width: '60px' }}>
@@ -461,7 +461,7 @@ export default function BrandDetailsPage() {
                                 Store: ${payment.storeName || "-"}\n
                                 Amount: ${formatCurrency(payment.payment || 0)}\n
                                 Payment Method: ${t("brands.payment_transfer")}\n
-                                Status: ${payment.status === "accepted" ? t("brands.payment_completed") : t("brands.payment_pending")}\n
+                                Status: ${payment.status === "active" ? t("brands.payment_completed") : t("brands.payment_pending")}\n
                                 ====================\n
                               `;
                               const blob = new Blob([receiptContent], { type: 'text/plain' });

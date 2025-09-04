@@ -50,7 +50,7 @@ export default function StoreDashboardSettingsPage() {
   
   // Form states for Store Data tab
   const [storeName, setStoreName] = useState("")
-  const [businessType, setBusinessType] = useState("")
+  const [businessCategory, setBusinessCategory] = useState("")
   const [website, setWebsite] = useState("")
   const [commercialRegisterNumber, setCommercialRegisterNumber] = useState("")
   const [city, setCity] = useState("")
@@ -91,7 +91,7 @@ export default function StoreDashboardSettingsPage() {
       
       // Load store-specific data (only if profile exists)
       setStoreName(profile?.storeName || "")
-      setBusinessType(profile?.businessType || "")
+      setBusinessCategory(profile?.businessCategory || "")
       setWebsite(profile?.website || "")
       setCommercialRegisterNumber(profile?.commercialRegisterNumber || "")
       setCity(profile?.storeLocation?.city || "")
@@ -205,7 +205,7 @@ export default function StoreDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={direction}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
@@ -372,13 +372,13 @@ export default function StoreDashboardSettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="businessType" className="block">
+                    <Label htmlFor="businessCategory" className="block">
                       {t("settings.store_data.store_type")} *
                     </Label>
                     <Input 
-                      id="businessType" 
-                      value={businessType}
-                      onChange={(e) => setBusinessType(e.target.value)}
+                      id="businessCategory" 
+                      value={businessCategory}
+                      onChange={(e) => setBusinessCategory(e.target.value)}
                       placeholder={t("settings.store_data.store_type_placeholder")}
                       required
                     />
@@ -539,7 +539,7 @@ export default function StoreDashboardSettingsPage() {
                       return
                     }
                     
-                    if (!storeName || !businessType || !commercialRegisterNumber) {
+                    if (!storeName || !businessCategory || !commercialRegisterNumber) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -600,7 +600,7 @@ export default function StoreDashboardSettingsPage() {
                       // Then update store-specific data
                       await updateStoreData({
                         storeName,
-                        businessType,
+                        businessCategory,
                         commercialRegisterNumber,
                         website: website || undefined,
                       })
@@ -615,7 +615,7 @@ export default function StoreDashboardSettingsPage() {
                       sessionStorage.setItem('currentUser', JSON.stringify({
                         ...currentUser,
                         storeName,
-                        businessType,
+                        businessCategory,
                         commercialRegisterNumber,
                         phoneNumber,
                       }))

@@ -3,36 +3,9 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { getImageUrlsFromArray } from "./helpers"
+import { api } from "./_generated/api"
 
-// Helper to extract image URLs from new image structure
-const getImageUrlsFromArray = async (ctx: any, images: any[] | undefined) => {
-  const result = {
-    shelfImage: null as string | null,
-    exteriorImage: null as string | null,
-    interiorImage: null as string | null,
-  }
-  
-  if (!images || !Array.isArray(images)) return result
-  
-  for (const img of images) {
-    const url = await ctx.storage.getUrl(img.storageId)
-    if (!url) continue
-    
-    switch (img.type) {
-      case 'shelf':
-        result.shelfImage = url
-        break
-      case 'exterior':
-        result.exteriorImage = url
-        break
-      case 'interior':
-        result.interiorImage = url
-        break
-    }
-  }
-  
-  return result
-}
 
 // Create a new rental request
 export const createRentalRequest = mutation({
@@ -40,10 +13,6 @@ export const createRentalRequest = mutation({
     shelfId: v.id("shelves"),
     startDate: v.string(),
     endDate: v.string(),
-    productType: v.string(),
-    productDescription: v.string(),
-    productCount: v.number(),
-    additionalNotes: v.string(),
     conversationId: v.id("conversations"),
     selectedProductIds: v.array(v.id("products")),
     selectedProductQuantities: v.optional(v.array(v.number())),
@@ -98,26 +67,45 @@ export const createRentalRequest = mutation({
     
     // If there's an existing request, update it instead of creating a new one
     if (existingRequest) {
+      // Build selectedProducts array for update
+      const selectedProducts = []
+      if (args.selectedProductIds.length > 0) {
+        for (let i = 0; i < args.selectedProductIds.length; i++) {
+          const productId = args.selectedProductIds[i]
+          const quantity = args.selectedProductQuantities?.[i] || 1
+          const product = await ctx.db.get(productId)
+          
+          if (product) {
+            selectedProducts.push({
+              productId: productId,
+              quantity: quantity,
+              name: product.name,
+              price: product.price,
+              category: product.category || "other"
+            })
+          }
+        }
+      }
+      
+      // Calculate total commission (store + platform)
+      const platformFee = 8 // 8% platform fee
+      const storeCommissionRate = shelf.storeCommission || 0
+      const totalCommission = storeCommissionRate + platformFee
+      
       await ctx.db.patch(existingRequest._id, {
         startDate: new Date(args.startDate).getTime(),
         endDate: new Date(args.endDate).getTime(),
-        productType: args.productType,
-        productDescription: args.productDescription,
-        productCount: args.productCount,
-        additionalNotes: args.additionalNotes,
-        selectedProductIds: args.selectedProductIds,
-        selectedProductQuantities: args.selectedProductQuantities,
+        selectedProducts: selectedProducts,
+        storeCommission: totalCommission, // Store + Shibr platform commission
       })
       
-      // Send a message in the conversation about the update
+      // Send a system message in the conversation about the update
       if (args.conversationId) {
-        await ctx.db.insert("messages", {
+        await ctx.runMutation(api.chats.sendSystemMessage, {
           conversationId: args.conversationId,
-          senderType: "brand" as const,
           senderId: brandOwnerProfile._id as any,
           text: "تم تحديث تفاصيل طلب الإيجار\nRental request details have been updated",
-          messageType: "system",
-          isRead: false,
+          messageType: "text",
         })
       }
       
@@ -136,62 +124,63 @@ export const createRentalRequest = mutation({
     const months = Math.max(1, monthsDiff)
     const totalPrice = shelf.monthlyPrice * months
     
-    // Create the rental request with 48 hour expiry
-    const now = new Date()
-    const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000) // 48 hours from now
+    // Build selectedProducts array for new request
+    const selectedProducts = []
+    let totalProductCount = 0
+    let productDescriptions = []
     
+    if (args.selectedProductIds.length > 0) {
+      for (let i = 0; i < args.selectedProductIds.length; i++) {
+        const productId = args.selectedProductIds[i]
+        const quantity = args.selectedProductQuantities?.[i] || 1
+        const product = await ctx.db.get(productId)
+        
+        if (product) {
+          selectedProducts.push({
+            productId: productId,
+            quantity: quantity,
+            name: product.name,
+            price: product.price,
+            category: product.category || "other"
+          })
+          totalProductCount += quantity
+          productDescriptions.push(`${product.name} (${quantity})`)
+        }
+      }
+    }
+    
+    // Calculate total commission (store + platform)
+    const platformFee = 8 // 8% platform fee
+    const storeCommissionRate = shelf.storeCommission || 0
+    const totalCommission = storeCommissionRate + platformFee
+    
+    // Create the rental request
     const requestId = await ctx.db.insert("rentalRequests", {
       shelfId: args.shelfId,
       brandProfileId: brandOwnerProfile._id,
       storeProfileId: storeOwnerProfile?._id!,
       startDate: new Date(args.startDate).getTime(),
       endDate: new Date(args.endDate).getTime(),
-      productType: args.productType,
-      productDescription: args.productDescription,
-      productCount: args.productCount,
-      additionalNotes: args.additionalNotes,
-      brandName: brandOwnerProfile?.brandName,
+      selectedProducts: selectedProducts || [],
       monthlyPrice: shelf.monthlyPrice,
       totalAmount: totalPrice,
+      storeCommission: totalCommission, // Store + Shibr platform commission
       status: "pending",
-      expiresAt: expiresAt.getTime(),
       conversationId: args.conversationId,
-      selectedProductIds: args.selectedProductIds,
-      selectedProductQuantities: args.selectedProductQuantities,
     })
     
-    // Create a notification for the store owner
-    await ctx.db.insert("notifications", {
-      userId: storeOwnerProfile?.userId!,
-      profileId: storeOwnerProfile?._id as any,
-      profileType: "store" as const,
-      title: "طلب إيجار جديد\nNew Rental Request",
-      message: `يرغب ${brandOwnerProfile?.brandName || "صاحب العلامة"} في استئجار رفك\n${brandOwnerProfile?.brandName || "Brand owner"} wants to rent your shelf`,
-      type: "rental_request",
-      rentalRequestId: requestId,
-      actionUrl: `/store-dashboard/orders`,
-      actionLabel: "عرض الطلب\nView Request",
-      isRead: false,
-    })
     
-    // Send a system message in the conversation
+    // Send a system message in the conversation with proper unread count handling
     if (args.conversationId) {
-      await ctx.db.insert("messages", {
+      await ctx.runMutation(api.chats.sendSystemMessage, {
         conversationId: args.conversationId,
-        senderType: "system" as const,
         senderId: brandOwnerProfile._id as any,
         text: `تم إرسال طلب إيجار جديد للرف\nNew rental request sent for the shelf`,
         messageType: "rental_request",
-        isRead: false,
       })
     }
     
-    // Update the conversation with the rental request ID
-    if (args.conversationId) {
-      await ctx.db.patch(args.conversationId, {
-        rentalRequestId: requestId,
-      })
-    }
+    // No longer need to update conversation with rental request ID
     
     return { 
       requestId,
@@ -214,9 +203,44 @@ export const acceptRentalRequest = mutation({
     
     // Update request status to accepted (payment_pending)
     await ctx.db.patch(args.requestId, {
-      status: "accepted",
-      storeOwnerResponse: args.response || "Request accepted",
-      respondedAt: Date.now(),
+      status: "payment_pending",
+    })
+    
+    // Generate invoice for the rental payment
+    const currentYear = new Date().getFullYear()
+    const existingInvoices = await ctx.db
+      .query("payments")
+      .withIndex("by_type", (q) => q.eq("type", "brand_payment"))
+      .collect()
+    
+    const invoiceCount = existingInvoices.length + 1
+    const invoiceNumber = `INV-${currentYear}-${String(invoiceCount).padStart(4, '0')}`
+    
+    // Calculate platform fee (8%)
+    const platformFeePercentage = 8
+    const platformFee = (request.totalAmount * platformFeePercentage) / 100
+    const netAmount = request.totalAmount - platformFee
+    
+    // Create payment record (invoice)
+    await ctx.db.insert("payments", {
+      rentalRequestId: args.requestId,
+      type: "brand_payment",
+      fromProfileId: request.brandProfileId,
+      toProfileId: undefined, // Platform (no specific profile)
+      amount: request.totalAmount,
+      platformFee: platformFee,
+      netAmount: netAmount,
+      invoiceNumber: invoiceNumber,
+      paymentMethod: undefined, // Will be set when payment is made
+      transactionReference: undefined,
+      status: "pending",
+      paymentDate: Date.now(),
+      processedDate: undefined,
+      settlementDate: undefined,
+      dueDate: Date.now() + (7 * 24 * 60 * 60 * 1000), // Due in 7 days
+      description: `Shelf rental payment for ${Math.ceil((request.endDate - request.startDate) / (30 * 24 * 60 * 60 * 1000)) || 1} month(s)`,
+      notes: undefined,
+      failureReason: undefined,
     })
     
     // Get store user ID for messages
@@ -240,35 +264,16 @@ export const acceptRentalRequest = mutation({
     for (const otherRequest of otherPendingRequests) {
       await ctx.db.patch(otherRequest._id, {
         status: "rejected",
-        storeOwnerResponse: "Another rental request was accepted for this shelf / تم قبول طلب إيجار آخر لهذا الرف",
-        respondedAt: Date.now(),
       })
       
-      // Create notification for the brand owner
-      const rejectedProfile = otherRequest.brandProfileId ? await ctx.db.get(otherRequest.brandProfileId) : null
-      const rejectedUserId = rejectedProfile?.userId
-      if (rejectedUserId) {
-        await ctx.db.insert("notifications", {
-          userId: rejectedUserId,
-          profileId: rejectedProfile?._id as any,
-          profileType: "brand" as const,
-          title: "طلبك تم رفضه تلقائياً\nRequest Auto-Rejected",
-          message: `تم قبول طلب آخر لنفس الرف\nAnother request was accepted for the same shelf`,
-          type: "rental_rejected",
-          rentalRequestId: otherRequest._id,
-          isRead: false,
-        })
-      }
       
       // Send system message in conversation if exists
       if (otherRequest.conversationId && storeProfile) {
-        await ctx.db.insert("messages", {
+        await ctx.runMutation(api.chats.sendSystemMessage, {
           conversationId: otherRequest.conversationId,
-          senderType: "store" as const,
           senderId: storeProfile._id as any,
           text: "عذراً، تم قبول طلب إيجار آخر لهذا الرف.\nSorry, another rental request has been accepted for this shelf.",
           messageType: "rental_rejected",
-          isRead: false,
         })
         
         // Archive the conversation
@@ -281,37 +286,27 @@ export const acceptRentalRequest = mutation({
       }
     }
     
-    // Get brand owner details for notification
+    // Get related data
     const brandProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
     const brandOwner = brandProfile?.userId ? await ctx.db.get(brandProfile.userId) : null
     const shelf = await ctx.db.get(request.shelfId)
     
-    // Create notification for brand owner
-    const brandUserId = brandProfile?.userId
-    if (brandUserId) {
-      await ctx.db.insert("notifications", {
-        userId: brandUserId,
-        profileId: brandProfile?._id as any,
-        profileType: "brand" as const,
-        title: "طلبك تم قبوله!\nYour Request Was Accepted!",
-        message: `تم قبول طلب إيجار الرف. يرجى إتمام الدفع\nYour shelf rental request has been accepted. Please complete payment`,
-        type: "rental_accepted",
-        rentalRequestId: request._id,
-        actionUrl: `/brand-dashboard/shelves`,
-        actionLabel: "إتمام الدفع\nComplete Payment",
-        isRead: false,
-      })
-    }
     
-    // Send system message in conversation if exists
+    // Reactivate conversation if it was archived and send system message
     if (request.conversationId && storeProfile) {
-      await ctx.db.insert("messages", {
+      // Ensure conversation is active (in case it was previously archived)
+      const conversation = await ctx.db.get(request.conversationId)
+      if (conversation && conversation.status === "archived") {
+        await ctx.db.patch(request.conversationId, {
+          status: "active",
+        })
+      }
+      
+      await ctx.runMutation(api.chats.sendSystemMessage, {
         conversationId: request.conversationId,
-        senderType: "store" as const,
         senderId: storeProfile._id as any,
         text: args.response || "تم قبول طلب الإيجار! يرجى إتمام الدفع لتفعيل الإيجار.\nRental request accepted! Please complete payment to activate the rental.",
         messageType: "rental_accepted",
-        isRead: false,
       })
     }
     
@@ -323,7 +318,6 @@ export const acceptRentalRequest = mutation({
 export const rejectRentalRequest = mutation({
   args: {
     requestId: v.id("rentalRequests"),
-    response: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.requestId)
@@ -334,8 +328,6 @@ export const rejectRentalRequest = mutation({
     // Update request status to rejected
     await ctx.db.patch(args.requestId, {
       status: "rejected",
-      storeOwnerResponse: args.response || "Request rejected",
-      respondedAt: Date.now(),
     })
     
     // Archive the conversation to prevent further messages
@@ -348,35 +340,85 @@ export const rejectRentalRequest = mutation({
       }
     }
     
-    // Create notification for brand owner
-    const rejectedProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
-    const rejectedUserId = rejectedProfile?.userId
-    if (rejectedUserId) {
-      await ctx.db.insert("notifications", {
-        userId: rejectedUserId,
-        profileId: rejectedProfile?._id as any,
-        profileType: "brand" as const,
-        title: "طلبك تم رفضه\nYour Request Was Rejected",
-        message: `تم رفض طلب إيجار الرف\nYour shelf rental request has been rejected`,
-        type: "rental_rejected",
-        rentalRequestId: request._id,
-        isRead: false,
-      })
-    }
     
     // Send system message in conversation if exists
     const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
     if (request.conversationId && storeProfile) {
-      await ctx.db.insert("messages", {
+      await ctx.runMutation(api.chats.sendSystemMessage, {
         conversationId: request.conversationId,
-        senderType: "store" as const,
         senderId: storeProfile._id as any,
-        text: args.response || "عذراً، تم رفض طلب الإيجار.\nSorry, the rental request has been rejected.",
+        text: "عذراً، تم رفض طلب الإيجار.\nSorry, the rental request has been rejected.",
         messageType: "rental_rejected",
-        isRead: false,
       })
     }
     
+    return { success: true }
+  },
+})
+
+// Update a rental request (only for pending requests by brand owner)
+export const updateRentalRequest = mutation({
+  args: {
+    requestId: v.id("rentalRequests"),
+    selectedProducts: v.optional(v.array(v.object({
+      productId: v.id("products"),
+      quantity: v.number(),
+    }))),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    message: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
+
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      throw new Error("Request not found")
+    }
+
+    // Only allow updates for pending requests
+    if (request.status !== "pending") {
+      throw new Error("Can only update pending requests")
+    }
+
+    // Verify the user is the brand owner who created this request
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner" || 
+        userProfile.profile._id !== request.brandProfileId) {
+      throw new Error("Not authorized to update this request")
+    }
+
+    // Prepare update object
+    const updates: any = {}
+    if (args.selectedProducts !== undefined) {
+      updates.selectedProducts = args.selectedProducts
+    }
+    if (args.startDate !== undefined) {
+      updates.startDate = args.startDate
+    }
+    if (args.endDate !== undefined) {
+      updates.endDate = args.endDate
+    }
+    if (args.message !== undefined) {
+      updates.message = args.message
+    }
+
+    // Update the request
+    await ctx.db.patch(args.requestId, updates)
+
+    // Send system message about the update
+    if (request.conversationId) {
+      await ctx.runMutation(api.chats.sendSystemMessage, {
+        conversationId: request.conversationId,
+        senderId: request.brandProfileId as any,
+        text: "تم تحديث تفاصيل طلب الإيجار\nRental request details have been updated",
+        messageType: "text",
+      })
+    }
+
     return { success: true }
   },
 })
@@ -406,9 +448,9 @@ export const getRentalRequest = query({
       ...request,
       shelf: shelf && imageUrls ? {
         ...shelf,
-        shelfImage: imageUrls.shelfImage,
-        exteriorImage: imageUrls.exteriorImage,
-        interiorImage: imageUrls.interiorImage,
+        shelfImage: imageUrls.shelfImageUrl,
+        exteriorImage: imageUrls.exteriorImageUrl,
+        interiorImage: imageUrls.interiorImageUrl,
       } : null,
       brandOwner,
       storeOwner,
@@ -437,18 +479,25 @@ export const getRentalRequestById = query({
     
     // Get selected products with their requested quantities
     let products: any[] = []
-    if (request.selectedProductIds && request.selectedProductIds.length > 0) {
+    if (request.selectedProducts && request.selectedProducts.length > 0) {
       products = await Promise.all(
-        request.selectedProductIds.map(async (productId, index) => {
-          const product = await ctx.db.get(productId)
+        request.selectedProducts.map(async (selectedProduct) => {
+          const product = await ctx.db.get(selectedProduct.productId)
           if (product) {
             // Add the requested quantity to the product
             return {
               ...product,
-              requestedQuantity: request.selectedProductQuantities?.[index] || 1
+              requestedQuantity: selectedProduct.quantity || 1
             }
           }
-          return null
+          // If product not found in database, use the stored info
+          return {
+            _id: selectedProduct.productId,
+            name: selectedProduct.name,
+            category: selectedProduct.category,
+            price: selectedProduct.price,
+            requestedQuantity: selectedProduct.quantity || 1
+          }
         })
       )
       // Filter out any null products
@@ -467,6 +516,7 @@ export const getRentalRequestById = query({
       shelfBranch: shelf?.storeBranch,
       // Brand specific details
       activityType: brandOwnerProfile?.businessType,
+      businessCategory: brandOwnerProfile?.businessCategory,
       website: brandOwnerProfile?.website,
       commercialRegisterNumber: brandOwnerProfile?.commercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
       commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument 
@@ -578,49 +628,6 @@ export const getUserRentalRequests = query({
   },
 })
 
-// Automatically expire pending requests after 48 hours
-export const expireRentalRequest = mutation({
-  args: {
-    requestId: v.id("rentalRequests"),
-  },
-  handler: async (ctx, args) => {
-    const request = await ctx.db.get(args.requestId)
-    if (!request) {
-      throw new Error("Request not found")
-    }
-    // Update request status to rejected (expired)
-    await ctx.db.patch(request._id, {
-      status: "rejected",
-      storeOwnerResponse: "Request expired",
-      respondedAt: Date.now(),
-    })
-    // Archive conversation when request expires
-    if (request.conversationId) {
-      const conversation = await ctx.db.get(request.conversationId)
-      if (conversation) {
-        await ctx.db.patch(request.conversationId, {
-          status: "archived",
-        })
-      }
-    }
-    // Create notification for brand owner
-    const expiredProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
-    const expiredUserId = expiredProfile?.userId
-    if (expiredUserId) {
-      await ctx.db.insert("notifications", {
-        userId: expiredUserId,
-        profileId: expiredProfile?._id as any,
-        profileType: "brand" as const,
-        title: "انتهت صلاحية الطلب\nRequest Expired",
-        message: `انتهت صلاحية طلب إيجار الرف\nYour shelf rental request has expired`,
-        type: "rental_expired",
-        rentalRequestId: request._id,
-        isRead: false,
-      })
-    }
-    return { success: true }
-  },
-})
 
 // Get active rental request for a shelf
 export const getActiveRentalRequest = query({
@@ -887,14 +894,14 @@ export const getRentalStatsWithChanges = query({
     const currentActive = currentPeriodRequests.filter(r => r.status === "active").length
     const currentPending = currentPeriodRequests.filter(r => r.status === "pending").length
     const currentAccepted = currentPeriodRequests.filter(r => 
-      r.status === "accepted" || r.status === "payment_pending"
+      r.status === "payment_pending"
     ).length
     
     // Calculate stats for previous period
     const previousActive = previousPeriodRequests.filter(r => r.status === "active").length
     const previousPending = previousPeriodRequests.filter(r => r.status === "pending").length
     const previousAccepted = previousPeriodRequests.filter(r => 
-      r.status === "accepted" || r.status === "payment_pending"
+      r.status === "payment_pending"
     ).length
     
     // Calculate percentage changes
@@ -928,7 +935,7 @@ export const confirmPayment = mutation({
     }
     
     // Verify the request status is accepted or payment_pending
-    if (request.status !== "accepted" && request.status !== "payment_pending") {
+    if (request.status !== "payment_pending") {
       throw new Error("Invalid request status for payment confirmation")
     }
     
@@ -963,25 +970,8 @@ export const confirmPayment = mutation({
     for (const otherRequest of otherRequests) {
       await ctx.db.patch(otherRequest._id, {
         status: "rejected",
-        storeOwnerResponse: "Shelf has been rented to another brand / تم تأجير الرف لعلامة تجارية أخرى",
-        respondedAt: Date.now(),
       })
       
-      // Create notification
-      const otherBrandProfile = otherRequest.brandProfileId ? await ctx.db.get(otherRequest.brandProfileId) : null
-      const notificationUserId = otherBrandProfile?.userId
-      if (notificationUserId) {
-        await ctx.db.insert("notifications", {
-          userId: notificationUserId,
-          profileId: otherBrandProfile?._id as any,
-          profileType: "brand" as const,
-          title: "الرف لم يعد متاحاً\nShelf No Longer Available",
-          message: `تم تأجير الرف لعلامة تجارية أخرى\nThe shelf has been rented to another brand`,
-          type: "rental_rejected",
-          rentalRequestId: otherRequest._id,
-          isRead: false,
-        })
-      }
       
       // Archive conversation if exists
       if (otherRequest.conversationId) {
@@ -1000,22 +990,6 @@ export const confirmPayment = mutation({
     const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
     const storeOwner = storeProfile?.userId ? await ctx.db.get(storeProfile.userId) : null
     
-    // Create notification for store owner that payment is pending verification
-    const storeOwnerId = storeProfile?.userId
-    if (storeOwner && storeOwnerId) {
-      await ctx.db.insert("notifications", {
-        userId: storeOwnerId,
-        profileId: storeProfile?._id as any,
-        profileType: "store" as const,
-        title: "تأكيد دفع جديد\nNew Payment Confirmation",
-        message: `أكد ${brandProfile?.brandName || "مستخدم"} إتمام التحويل البنكي بمبلغ ${args.paymentAmount} ريال\n${brandProfile?.brandName || "User"} confirmed bank transfer of ${args.paymentAmount} SAR`,
-        type: "payment_confirmation",
-        rentalRequestId: request._id,
-        actionUrl: `/store-dashboard/orders`,
-        actionLabel: "التحقق من الدفع\nVerify Payment",
-        isRead: false,
-      })
-    }
     
     // Send system message in the conversation
     if (request.conversationId && brandProfile) {
@@ -1024,7 +998,7 @@ export const confirmPayment = mutation({
         senderType: "brand" as const,
         senderId: brandProfile._id as any,
         text: `تم تأكيد التحويل البنكي بمبلغ ${args.paymentAmount} ريال. يرجى الانتظار حتى يتم التحقق من الدفع.\nBank transfer of ${args.paymentAmount} SAR confirmed. Please wait for payment verification.`,
-        messageType: "system",
+        messageType: "text",
         isRead: false,
       })
     }
@@ -1033,140 +1007,4 @@ export const confirmPayment = mutation({
   },
 })
 
-// Verify payment and activate rental (for store owner)
-export const verifyPaymentAndActivate = mutation({
-  args: {
-    requestId: v.id("rentalRequests"),
-    verifiedBy: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    // Get the rental request
-    const request = await ctx.db.get(args.requestId)
-    if (!request) {
-      throw new Error("Rental request not found")
-    }
-    
-    // Verify the request status is accepted or payment_pending (removing payment_processing)
-    if (request.status !== "accepted" && request.status !== "payment_pending") {
-      throw new Error("Invalid request status for payment verification")
-    }
-    
-    // Update the request status to active
-    await ctx.db.patch(args.requestId, {
-      status: "active",
-    })
-    
-    // Now update the shelf as rented
-    await ctx.db.patch(request.shelfId, {
-      isAvailable: false,
-      status: "active" as const, // Keep as active, availability is managed by isAvailable field
-    })
-    
-    // Get brand owner details
-    const brandProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
-    const brandOwner = brandProfile?.userId ? await ctx.db.get(brandProfile.userId) : null
-    
-    // Create notification for brand owner that rental is now active
-    const activatedUserId = brandProfile?.userId
-    if (activatedUserId) {
-      await ctx.db.insert("notifications", {
-        userId: activatedUserId,
-        profileId: brandProfile?._id as any,
-        profileType: "brand" as const,
-        title: "تم تفعيل الإيجار!\nRental Activated!",
-        message: `تم التحقق من الدفع وتفعيل إيجار الرف\nPayment verified and shelf rental is now active`,
-        type: "system",
-        rentalRequestId: request._id,
-        actionUrl: `/brand-dashboard/shelves`,
-        actionLabel: "عرض الرف\nView Shelf",
-        isRead: false,
-      })
-    }
-    
-    // Send system message in the conversation
-    const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
-    if (request.conversationId && storeProfile) {
-      await ctx.db.insert("messages", {
-        conversationId: request.conversationId,
-        senderType: "store" as const,
-        senderId: storeProfile._id as any,
-        text: "تم تفعيل إيجار الرف بنجاح! ✅\nShelf rental has been activated successfully! ✅",
-        messageType: "system",
-        isRead: false,
-      })
-    }
-    
-    return { success: true }
-  },
-})
 
-// Expire active rentals that have passed their end date
-export const expireActiveRentals = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now()
-    
-    // Get all active rental requests
-    const activeRequests = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect()
-    
-    // Filter for expired rentals
-    const expiredRequests = activeRequests.filter(request => 
-      request.endDate && request.endDate < now
-    )
-    
-    // Update each expired rental
-    for (const request of expiredRequests) {
-      // Update request status to completed
-      await ctx.db.patch(request._id, {
-        status: "completed",
-        completedAt: now
-      })
-      
-      // Make the shelf available again
-      await ctx.db.patch(request.shelfId, {
-        isAvailable: true,
-        status: "active" as const
-      })
-      
-      // Create notifications for both parties
-      const brandProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
-      const brandUserId = brandProfile?.userId
-      if (brandUserId) {
-        await ctx.db.insert("notifications", {
-          userId: brandUserId,
-          profileId: brandProfile?._id as any,
-          profileType: "brand" as const,
-          title: "انتهت مدة الإيجار\nRental Period Ended",
-          message: `انتهت مدة إيجار الرف\nYour rental period for the shelf has ended`,
-          type: "rental_expired",
-          rentalRequestId: request._id,
-          isRead: false,
-        })
-      }
-      
-      const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
-      const storeUserId = storeProfile?.userId
-      if (storeUserId) {
-        await ctx.db.insert("notifications", {
-          userId: storeUserId,
-          profileId: storeProfile?._id as any,
-          profileType: "store" as const,
-          title: "الرف متاح مجدداً\nShelf Available Again",
-          message: `انتهت مدة الإيجار والرف متاح الآن\nThe rental period has ended and the shelf is now available`,
-          type: "rental_expired",
-          rentalRequestId: request._id,
-          isRead: false,
-        })
-      }
-    }
-    
-    return {
-      expiredCount: expiredRequests.length,
-      message: `Expired ${expiredRequests.length} rental(s)`,
-    }
-  },
-})

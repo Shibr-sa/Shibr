@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/pagination"
 import { 
   MapPin, 
-  ChevronLeft,
   Download,
   Edit,
   Ruler,
@@ -46,6 +45,7 @@ import {
   Percent,
   CalendarDays,
   Tag,
+  Store,
   Users,
   ShoppingBag,
   CreditCard,
@@ -55,7 +55,9 @@ import {
   Mail,
   User,
   Inbox,
-  Search
+  Search,
+  FileText,
+  Package
 } from "lucide-react"
 
 export default function ShelfDetailsPage() {
@@ -63,7 +65,7 @@ export default function ShelfDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const shelfIdParam = params.id as string
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("renter")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -93,9 +95,10 @@ export default function ShelfDetailsPage() {
     shelfIdParam ? { shelfId: shelfIdParam as Id<"shelves"> } : "skip"
   )
   
-  const shelfPayments = useQuery(api.shelves.getShelfPayments, 
-    shelfIdParam ? { shelfId: shelfIdParam as Id<"shelves"> } : "skip"
-  )
+  // Payment history removed - not implemented yet
+  // const shelfPayments = useQuery(api.shelves.getShelfPayments, 
+  //   shelfIdParam ? { shelfId: shelfIdParam as Id<"shelves"> } : "skip"
+  // )
   
   // Delete mutation
   const deleteShelf = useMutation(api.shelves.deleteShelf)
@@ -107,13 +110,6 @@ export default function ShelfDetailsPage() {
     }
   }, [shelfData, hasInitialData])
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % (shelfData ? getImages(shelfData).length : 3))
-  }
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + (shelfData ? getImages(shelfData).length : 3)) % (shelfData ? getImages(shelfData).length : 3))
-  }
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${t("common.currency")}`
@@ -153,13 +149,12 @@ export default function ShelfDetailsPage() {
 
   // Helper function to get images
   const getImages = (data: any) => {
-    const images = [
-      data.shelfImage,
-      data.exteriorImage,
-      data.interiorImage
-    ].filter(Boolean)
+    // The backend returns an images array with objects containing url property
+    if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+      return data.images.map((img: any) => img.url).filter(Boolean)
+    }
     
-    return images.length > 0 ? images : [
+    return [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600"
@@ -170,10 +165,10 @@ export default function ShelfDetailsPage() {
   if (shelfData === undefined) {
     return (
       <div className="space-y-6">
-        {/* Shelf Info and Images Skeleton */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Shelf Info Skeleton */}
+        <div className="space-y-6">
           {/* Shelf Info Skeleton */}
-          <Card className="overflow-hidden lg:col-span-2">
+          <Card className="overflow-hidden">
             <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
               <Skeleton className="h-5 w-32" />
               <div className="flex items-center gap-2">
@@ -206,18 +201,6 @@ export default function ShelfDetailsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Image Gallery Skeleton */}
-          <Card>
-            <CardContent className="p-0">
-              <Skeleton className="aspect-[4/3] rounded-t-lg" />
-              <div className="flex gap-2 p-4 justify-center">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-video w-24 rounded-lg" />
-                ))}
               </div>
             </CardContent>
           </Card>
@@ -324,17 +307,14 @@ export default function ShelfDetailsPage() {
     city: shelfData.city,
     branch: shelfData.storeBranch,
     address: shelfData.location?.address || shelfData.storeBranch,
+    description: shelfData.description,
     addedDate: shelfData.availableFrom || new Date(shelfData._creationTime).toLocaleDateString(),
     dimensions: {
       length: shelfData.shelfSize?.height || 0,
       width: shelfData.shelfSize?.width || 0,
       depth: shelfData.shelfSize?.depth || 0
     },
-    productTypes: shelfData.productTypes && shelfData.productTypes.length > 0 
-      ? shelfData.productTypes 
-      : shelfData.productType 
-        ? [shelfData.productType]
-        : [],
+    productTypes: shelfData.productTypes || [],
     renterName: shelfData.renterName,
     renterEmail: shelfData.renterEmail,
     images: getImages(shelfData)
@@ -365,8 +345,9 @@ export default function ShelfDetailsPage() {
   })) || []
   
   // Format payment records
+  const shelfPayments: any[] = [] // Temporary empty array until payments are implemented
   const allPaymentRecords = shelfPayments?.map(payment => ({
-    month: new Date(payment.paymentDate).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' }),
+    month: new Date(payment.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
     value: payment.amount,
     status: payment.status === "completed" ? "completed" : "pending",
     collectionDate: payment.processedDate ? new Date(payment.processedDate).toLocaleDateString() : "-"
@@ -402,10 +383,10 @@ export default function ShelfDetailsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Shelf Info and Images Side by Side */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Shelf Info - Full Width */}
+      <div className="space-y-6">
         {/* Shelf Info - Enhanced */}
-        <Card className="overflow-hidden lg:col-span-2">
+        <Card className="overflow-hidden">
           <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
             <h3 className="text-base font-semibold">
               {t("shelf_details.shelf_information")}
@@ -442,120 +423,227 @@ export default function ShelfDetailsPage() {
             </div>
           </div>
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              {/* First Row - 3 items */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Package2 className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.shelf_name")}
-                    </Label>
-                    <p className="text-sm font-medium truncate" title={formattedData.name}>
-                      {formattedData.name}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MapPinned className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.branch")}
-                    </Label>
-                    <p className="text-sm font-medium">{formattedData.branch}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MapPin className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.address")}
-                    </Label>
-                    <p className="text-sm font-medium truncate" title={formattedData.address}>
-                      {formattedData.address}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Second Row - 3 items */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.pricing_and_commission")}
-                    </Label>
-                    <div className="flex items-center gap-3">
-                      <p className="text-sm font-semibold">
-                        {formatCurrency(formattedData.price)}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left side - Shelf Information */}
+              <div className="lg:col-span-2 space-y-4">
+                {/* First Row - Shelf Name, Branch, Address */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Tag className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.shelf_name")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={formattedData.name}>
+                        {formattedData.name}
                       </p>
-                      <Badge variant="outline" className="h-6 px-2 border-primary/30 bg-primary/10 text-primary">
-                        <Percent className="h-3 w-3 me-1" />
-                        {formattedData.storeCommission}
-                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Store className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.branch")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={formattedData.branch}>
+                        {formattedData.branch}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("common.address")}
+                      </Label>
+                      {shelfData.location ? (
+                        <a 
+                          href={`https://www.google.com/maps?q=${shelfData.location.lat},${shelfData.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline block truncate"
+                          title={shelfData.location.address || shelfData.city}
+                        >
+                          {shelfData.location.address || shelfData.city || t("marketplace.view_on_map")}
+                        </a>
+                      ) : shelfData.coordinates ? (
+                        <a 
+                          href={`https://www.google.com/maps?q=${shelfData.coordinates.lat},${shelfData.coordinates.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline block truncate"
+                          title={formattedData.address || shelfData.city}
+                        >
+                          {formattedData.address || shelfData.city || t("marketplace.view_on_map")}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium">-</p>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <CalendarDays className="h-4 w-4 text-primary" />
+                {/* Second Row - Price & Commission, Dimensions, Available From */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.price_and_commission")}
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate" title={formatCurrency(formattedData.price)}>
+                          {formatCurrency(formattedData.price)}
+                        </p>
+                        <Badge variant="secondary" className="text-xs px-2 py-0">
+                          {`${formattedData.storeCommission + 8}%`}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.available_from")}
-                    </Label>
-                    <p className="text-sm font-medium">{formattedData.addedDate}</p>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Ruler className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.dimensions")}
+                      </Label>
+                      <p className="text-sm font-medium truncate" title={`${formattedData.dimensions.width}×${formattedData.dimensions.length}×${formattedData.dimensions.depth}${t("add_shelf.cm")}`}>
+                        {formattedData.dimensions.width}×{formattedData.dimensions.length}×{formattedData.dimensions.depth}{t("add_shelf.cm")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <CalendarDays className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.available_from")}
+                      </Label>
+                      <p className="text-sm font-medium truncate">
+                        {new Date(formattedData.addedDate).toLocaleDateString(
+                          "en-US",
+                          { month: 'short', day: 'numeric', year: 'numeric' }
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Ruler className="h-4 w-4 text-primary" />
+                {/* Store Description Section */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("shelf_details.dimensions")}
+                      {t("common.description")}
                     </Label>
-                    <p className="text-sm font-medium">
-                      {formattedData.dimensions.length} × {formattedData.dimensions.width} × {formattedData.dimensions.depth} {t("add_shelf.cm")}
+                    <p className="text-sm leading-relaxed">
+                      {formattedData.description || "-"}
                     </p>
+                  </div>
+                </div>
+
+                {/* Product Types Section */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      {t("marketplace.shelf_type")}
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formattedData.productTypes && formattedData.productTypes.length > 0 ? (
+                        formattedData.productTypes.map((type, index) => {
+                          // Try product_categories translation first
+                          let translationKey = `product_categories.${type}`;
+                          let translation = t(translationKey as any);
+                          
+                          // If not found, format the type name
+                          const displayText = translation === translationKey
+                            ? type.split('_').map(word => 
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                              ).join(' ')
+                            : translation;
+                          
+                          return (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {displayText}
+                            </Badge>
+                          );
+                        })
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          {t("product_categories.other")}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Product Types - Full Width */}
-              <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Tag className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <Label className="text-xs text-muted-foreground font-normal">
-                    {t("shelf_details.product_types")}
-                  </Label>
-                  <div className="flex gap-2 flex-wrap">
-                    {formattedData.productTypes.length > 0 ? (
-                      formattedData.productTypes.map((type, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs py-1 px-2">
-                          {t(`product_categories.${type}` as any) || type}
+              {/* Right side - Shelf Images */}
+              <div className="lg:col-span-1">
+                {formattedData.images && formattedData.images.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* Main Image */}
+                    <div className="relative">
+                      <img
+                        src={selectedImage || formattedData.images[0] || "/placeholder.svg?height=400&width=600"}
+                        alt={formattedData.name}
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
+                      {formattedData.images.length > 1 && (
+                        <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
+                          {formattedData.images.findIndex(img => img === (selectedImage || formattedData.images[0])) + 1} / {formattedData.images.length}
                         </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">{t("common.not_specified")}</span>
+                      )}
+                    </div>
+                    
+                    {/* Thumbnail Images - Only show if multiple images exist */}
+                    {formattedData.images.length > 1 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {formattedData.images.slice(0, 3).map((image, index) => (
+                          <div 
+                            key={index}
+                            className="relative group cursor-pointer"
+                            onClick={() => setSelectedImage(image)}
+                          >
+                            <img
+                              src={image}
+                              alt={`${formattedData.name} - Image ${index + 1}`}
+                              className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${
+                                (selectedImage === image || (!selectedImage && index === 0))
+                                  ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                              }`}
+                            />
+                            <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
+                ) : (
+                  <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
+                    <Store className="h-16 w-16 text-muted-foreground/50" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -591,47 +679,6 @@ export default function ShelfDetailsPage() {
           </CardContent>
         </Card>
 
-        {/* Image Gallery */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
-              <img 
-                src={formattedData.images[currentImageIndex] || "/placeholder.svg?height=400&width=600"} 
-                alt={`Shelf image ${currentImageIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute start-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                onClick={prevImage}
-              >
-                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute end-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                onClick={nextImage}
-              >
-                <ChevronLeft className="h-4 w-4 rotate-180 rtl:rotate-0" />
-              </Button>
-            </div>
-            <div className="flex gap-2 p-4 justify-center">
-              {formattedData.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`relative aspect-video w-24 overflow-hidden rounded-lg border-2 transition-all ${
-                    currentImageIndex === index ? "border-primary ring-2 ring-primary/20" : "border-transparent"
-                  }`}
-                >
-                  <img src={image || "/placeholder.svg?height=80&width=120"} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Tables with Tabs */}

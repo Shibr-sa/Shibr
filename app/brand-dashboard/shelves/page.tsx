@@ -46,7 +46,6 @@ export default function BrandShelvesPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<any>(null)
   const itemsPerPage = 5
-  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
   // Get user ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -59,24 +58,12 @@ export default function BrandShelvesPage() {
     } : "skip"
   )
   
-  // Get all rental request IDs for notification counts
-  const rentalRequestIds = useMemo(() => {
-    return rentalRequests?.map(r => r._id) || []
-  }, [rentalRequests])
-
-  // Fetch notification counts for all rental requests
-  const notificationCounts = useQuery(
-    api.notifications.getUnreadCountByRentalRequests,
-    userId && rentalRequestIds.length > 0 ? {
-      rentalRequestIds: rentalRequestIds
-    } : "skip"
+  // Get unread message counts
+  const unreadCounts = useQuery(
+    api.chats.getUnreadMessageCounts,
+    userId ? { userId: userId } : "skip"
   )
-
-  // Calculate total unread notifications
-  const totalUnreadNotifications = useMemo(() => {
-    if (!notificationCounts) return 0
-    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
-  }, [notificationCounts])
+  
 
   // Fetch rental statistics with percentage changes based on selected period
   const rentalStats = useQuery(
@@ -105,7 +92,7 @@ export default function BrandShelvesPage() {
   const allRequests = rentalRequests || []
   const activeRentals = allRequests.filter(r => r.status === "active").length
   const pendingRentals = allRequests.filter(r => r.status === "pending").length
-  const acceptedRentals = allRequests.filter(r => r.status === "accepted" || r.status === "payment_pending").length
+  const acceptedRentals = allRequests.filter(r => r.status === "payment_pending").length
   const totalRentals = allRequests.length
   
   // Loading state
@@ -128,7 +115,6 @@ export default function BrandShelvesPage() {
             {t("status.pending")}
           </Badge>
         )
-      case "accepted":
       case "payment_pending":
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
@@ -169,7 +155,6 @@ export default function BrandShelvesPage() {
   
   const getActionButton = (request: any) => {
     switch (request.status) {
-      case "accepted":
       case "payment_pending":
         return (
           <div className="flex items-center gap-2">
@@ -185,20 +170,9 @@ export default function BrandShelvesPage() {
                       if (request.conversationId && request.shelfId) {
                         router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
                       }
-                      // Mark notifications as read when viewing details
-                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                        await markNotificationsAsRead({
-                          rentalRequestId: request._id
-                        })
-                      }
                     }}
                   >
                     <Eye className="h-4 w-4" />
-                    {notificationCounts && notificationCounts[request._id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                        {notificationCounts[request._id]}
-                      </span>
-                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -231,32 +205,31 @@ export default function BrandShelvesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  className="h-8 w-8 p-0 relative"
-                  onClick={async () => {
-                    // Navigate to the shelf details page with conversation
-                    if (request.conversationId) {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                    } else {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
-                    }
-                    // Mark notifications as read when viewing details
-                    if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                      await markNotificationsAsRead({
-                        rentalRequestId: request._id
-                      })
-                    }
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  {notificationCounts && notificationCounts[request._id] > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                      {notificationCounts[request._id]}
-                    </span>
+                <div className="relative inline-block">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // Navigate to the shelf details page with conversation
+                      if (request.conversationId) {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                      } else {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                    >
+                      {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                    </Badge>
                   )}
-                </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t("action.view")}</p>
@@ -270,32 +243,31 @@ export default function BrandShelvesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  className="h-8 w-8 p-0 relative"
-                  onClick={async () => {
-                    // Navigate to the shelf details page with conversation
-                    if (request.conversationId) {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                    } else {
-                      router.push(`/brand-dashboard/shelves/${request._id}`)
-                    }
-                    // Mark notifications as read when viewing details
-                    if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                      await markNotificationsAsRead({
-                        rentalRequestId: request._id
-                      })
-                    }
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  {notificationCounts && notificationCounts[request._id] > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                      {notificationCounts[request._id]}
-                    </span>
+                <div className="relative inline-block">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // Navigate to the shelf details page with conversation
+                      if (request.conversationId) {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                      } else {
+                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                    >
+                      {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                    </Badge>
                   )}
-                </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t("action.view_details")}</p>
@@ -316,20 +288,9 @@ export default function BrandShelvesPage() {
                     className="h-8 w-8 p-0 relative"
                     onClick={async () => {
                       router.push(`/brand-dashboard/shelves/${request._id}`)
-                      // Mark notifications as read when viewing details
-                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                        await markNotificationsAsRead({
-                          rentalRequestId: request._id
-                        })
-                      }
                     }}
                   >
                     <Eye className="h-4 w-4" />
-                    {notificationCounts && notificationCounts[request._id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                        {notificationCounts[request._id]}
-                      </span>
-                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

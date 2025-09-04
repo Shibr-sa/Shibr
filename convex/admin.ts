@@ -3,225 +3,9 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { getImageUrlsFromArray, getDateRange } from "./helpers"
 
-// Helper to extract image URLs from new image structure
-const getImageUrlsFromArray = async (ctx: any, images: any[] | undefined) => {
-  const result = {
-    shelfImageUrl: null as string | null,
-    exteriorImageUrl: null as string | null,
-    interiorImageUrl: null as string | null,
-    additionalImageUrls: [] as string[],
-  }
-  
-  if (!images || !Array.isArray(images)) return result
-  
-  for (const img of images) {
-    const url = await ctx.storage.getUrl(img.storageId)
-    if (!url) continue
-    
-    switch (img.type) {
-      case 'shelf':
-        result.shelfImageUrl = url
-        break
-      case 'exterior':
-        result.exteriorImageUrl = url
-        break
-      case 'interior':
-        result.interiorImageUrl = url
-        break
-      case 'additional':
-        result.additionalImageUrls.push(url)
-        break
-    }
-  }
-  
-  return result
-}
 
-// Helper function to get date ranges based on time period
-function getDateRange(endDate: Date, period: string): { startDate: Date; endDate: Date } {
-  const startDate = new Date(endDate);
-  
-  switch (period) {
-    case "daily":
-      startDate.setDate(startDate.getDate() - 1);
-      break;
-    case "weekly":
-      startDate.setDate(startDate.getDate() - 7);
-      break;
-    case "monthly":
-      startDate.setMonth(startDate.getMonth() - 1);
-      break;
-    case "yearly":
-      startDate.setFullYear(startDate.getFullYear() - 1);
-      break;
-    default:
-      startDate.setMonth(startDate.getMonth() - 1);
-  }
-  
-  return { startDate, endDate: new Date(endDate) };
-}
-
-// Promote an existing user to admin
-// This is safer as it works with existing authenticated users
-export const promoteToAdmin = mutation({
-  args: {
-    email: v.string(),
-    adminRole: v.optional(v.union(
-      v.literal("super_admin"),
-      v.literal("support"),
-      v.literal("finance"),
-      v.literal("operations")
-    )),
-  },
-  handler: async (ctx, args) => {
-    // Find the user by email in the users table
-    const allUsers = await ctx.db.query("users").collect()
-    const authUser = allUsers.find(user => user.email === args.email)
-    
-    if (!authUser) {
-      throw new Error("User not found. User must sign up first.")
-    }
-    
-    // Check if user already has an admin profile
-    const existingAdmin = await ctx.db
-      .query("adminProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", authUser._id))
-      .first()
-
-    if (existingAdmin) {
-      throw new Error("User is already an admin")
-    }
-
-    // Check if user has other profile types and remove them
-    const existingStoreProfile = await ctx.db
-      .query("storeProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", authUser._id))
-      .first()
-    
-    const existingBrandProfile = await ctx.db
-      .query("brandProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", authUser._id))
-      .first()
-
-    // Delete existing profiles if they exist
-    if (existingStoreProfile) {
-      await ctx.db.delete(existingStoreProfile._id)
-    }
-    if (existingBrandProfile) {
-      await ctx.db.delete(existingBrandProfile._id)
-    }
-
-    // Create admin profile
-    await ctx.db.insert("adminProfiles", {
-      userId: authUser._id,
-      isActive: true,
-      adminRole: args.adminRole || "super_admin",
-      permissions: ["all"],
-      lastActiveAt: Date.now(),
-    })
-
-    return {
-      success: true,
-      message: `User ${args.email} has been promoted to admin with role: ${args.adminRole || "super_admin"}`,
-      email: args.email,
-      adminRole: args.adminRole || "super_admin",
-    }
-  },
-})
-
-// Create admin account - SIMPLIFIED APPROACH
-// Step 1: Sign up normally at /signup (as store or brand owner)
-// Step 2: Use promoteToAdmin mutation with the email
-export const createAdminAccount = mutation({
-  args: {
-    email: v.string(),
-    adminRole: v.optional(v.union(
-      v.literal("super_admin"),
-      v.literal("support"),
-      v.literal("finance"),
-      v.literal("operations")
-    )),
-  },
-  handler: async (ctx, args) => {
-    // This is just an alias for promoteToAdmin with clearer instructions
-    // Find the user by email in the users table
-    const allUsers = await ctx.db.query("users").collect()
-    const authUser = allUsers.find(user => user.email === args.email)
-    
-    if (!authUser) {
-      return {
-        success: false,
-        error: "User not found",
-        instructions: [
-          `No user found with email: ${args.email}`,
-          `Please follow these steps:`,
-          `1. Go to /signup and create an account with email: ${args.email}`,
-          `2. Choose any account type (it will be converted to admin)`,
-          `3. After signup, run this mutation again to promote to admin`,
-        ]
-      }
-    }
-    
-    // Check if user already has an admin profile
-    const existingAdmin = await ctx.db
-      .query("adminProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", authUser._id))
-      .first()
-
-    if (existingAdmin) {
-      return {
-        success: true,
-        message: "User is already an admin",
-        email: args.email,
-        adminRole: existingAdmin.adminRole,
-      }
-    }
-
-    // Get user's current profile to check if they have any
-    const userProfile = await getUserProfile(ctx, authUser._id)
-    
-    if (!userProfile) {
-      return {
-        success: false,
-        error: "User profile not found",
-        instructions: [
-          `User found with email: ${args.email} but no profile exists`,
-          `This is an unusual state. Please contact support.`,
-        ]
-      }
-    }
-
-    // Delete existing profile if it exists
-    if (userProfile.type === "store_owner") {
-      await ctx.db.delete(userProfile.profile._id)
-    } else if (userProfile.type === "brand_owner") {
-      await ctx.db.delete(userProfile.profile._id)
-    }
-
-    // Create admin profile
-    await ctx.db.insert("adminProfiles", {
-      userId: authUser._id,
-      isActive: true,
-      adminRole: args.adminRole || "super_admin",
-      permissions: ["all"],
-      lastActiveAt: Date.now(),
-    })
-
-    return {
-      success: true,
-      message: `User ${args.email} has been promoted to admin`,
-      email: args.email,
-      adminRole: args.adminRole || "super_admin",
-      instructions: [
-        `Admin account successfully created!`,
-        `Email: ${args.email}`,
-        `Role: ${args.adminRole || "super_admin"}`,
-        `The user can now sign in at /signin and will be redirected to /admin-dashboard`,
-      ]
-    }
-  },
-})
 
 
 // Get admin statistics (for admin dashboard)
@@ -312,7 +96,7 @@ export const getAdminChartData = query({
           name: brand.brandName || user?.name,
           revenue: brandRevenue, // Product sales revenue
           growth: parseFloat(growth.toFixed(1)),
-          avatar: user?.image || "/api/placeholder/32/32"
+          avatar: user?.image
         }
       })
     )
@@ -453,7 +237,7 @@ export const getAdminStats = query({
           name: brand.brandName || user?.name,
           revenue: brandRevenue, // Product sales revenue
           growth: parseFloat(growth.toFixed(1)),
-          avatar: user?.image || "/api/placeholder/32/32"
+          avatar: user?.image
         }
       })
     )
@@ -483,14 +267,24 @@ export const getAdminStats = query({
       })
     }
 
-    // Category distribution
-    const categoryData = [
-      { name: "Electronics", value: 35, color: "#8b5cf6" },
-      { name: "Fashion", value: 25, color: "#3b82f6" },
-      { name: "Beauty", value: 20, color: "#10b981" },
-      { name: "Food", value: 12, color: "#f59e0b" },
-      { name: "Others", value: 8, color: "#6b7280" },
-    ]
+    // Category distribution from real products
+    const allProducts = await ctx.db.query("products").collect()
+    const categoryCount: Record<string, number> = {}
+    
+    for (const product of allProducts) {
+      const category = product.category || "Others"
+      categoryCount[category] = (categoryCount[category] || 0) + 1
+    }
+    
+    const colors = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#6b7280", "#ef4444", "#06b6d4"]
+    const categoryData = Object.entries(categoryCount)
+      .map(([name, count], index) => ({
+        name,
+        value: count,
+        color: colors[index % colors.length]
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5) // Top 5 categories
 
     // Get recent activities
     const recentActivities = []
@@ -547,7 +341,9 @@ export const getAdminStats = query({
         id: rental._id,
         type: "new_rental",
         title: "New shelf rental",
-        description: rental.productType ? `Shelf rented for ${rental.productType}` : "Shelf rented",
+        description: rental.selectedProducts && rental.selectedProducts.length > 0 
+          ? `Shelf rented for ${rental.selectedProducts[0].category}` 
+          : "Shelf rented",
         time: timeString,
         icon: "Package",
         color: "text-green-600"
@@ -600,23 +396,28 @@ export const getAdminStats = query({
       })
       .reduce((sum, r) => sum + (r.totalAmount || 0), 0)
     
-    // Current period counts (already calculated above)
-    const currentPeriodUsers = filteredStoreOwners.length + filteredBrandOwners.length
-    const currentPeriodShelves = filteredShelves.length
-    const currentPeriodRentals = filteredActiveRentals.length
+    // Current period NEW additions (for calculating changes)
+    const currentPeriodNewUsers = filteredStoreOwners.length + filteredBrandOwners.length
+    const currentPeriodNewShelves = filteredShelves.length  
+    const currentPeriodNewRentals = filteredRentalRequests.length
     
-    // Calculate percentage changes - comparing period to period
+    // Total cumulative counts (all-time, not filtered by period)
+    const totalUsers = storeOwners.length + brandOwners.length
+    const totalShelves = allShelves.length
+    const totalRentalsCount = rentalRequests.length
+    
+    // Calculate percentage changes - comparing NEW additions period to period
     const usersChange = prevPeriodTotalUsers > 0 ? 
-      ((currentPeriodUsers - prevPeriodTotalUsers) / prevPeriodTotalUsers * 100) : 
-      (currentPeriodUsers > 0 ? 100 : 0)
+      ((currentPeriodNewUsers - prevPeriodTotalUsers) / prevPeriodTotalUsers * 100) : 
+      (currentPeriodNewUsers > 0 ? 100 : 0)
     
     const shelvesChange = prevPeriodShelves.length > 0 ? 
-      ((currentPeriodShelves - prevPeriodShelves.length) / prevPeriodShelves.length * 100) : 
-      (currentPeriodShelves > 0 ? 100 : 0)
+      ((currentPeriodNewShelves - prevPeriodShelves.length) / prevPeriodShelves.length * 100) : 
+      (currentPeriodNewShelves > 0 ? 100 : 0)
     
     const rentalsChange = prevPeriodRentals.length > 0 ? 
-      ((currentPeriodRentals - prevPeriodRentals.length) / prevPeriodRentals.length * 100) : 
-      (currentPeriodRentals > 0 ? 100 : 0)
+      ((currentPeriodNewRentals - prevPeriodRentals.length) / prevPeriodRentals.length * 100) : 
+      (currentPeriodNewRentals > 0 ? 100 : 0)
     
     // For revenue, compare period revenues
     const revenueChange = prevPeriodRevenue > 0 ? 
@@ -625,26 +426,26 @@ export const getAdminStats = query({
     
     return {
       users: {
-        totalUsers: currentPeriodUsers, // Show period-specific count
-        storeOwners: filteredStoreOwners.length, // Period-specific
-        brandOwners: filteredBrandOwners.length, // Period-specific
-        activeUsers: [...filteredStoreOwners, ...filteredBrandOwners].filter(u => u.isActive).length,
+        totalUsers: totalUsers, // Show cumulative total
+        storeOwners: storeOwners.length, // Cumulative
+        brandOwners: brandOwners.length, // Cumulative
+        activeUsers: [...storeOwners, ...brandOwners].filter(u => u.isActive).length,
         change: parseFloat(usersChange.toFixed(1)),
-        newInPeriod: currentPeriodUsers, // Same as totalUsers now
+        newInPeriod: currentPeriodNewUsers, // New additions in current period
       },
       shelves: {
-        total: currentPeriodShelves, // Show period-specific count
-        available: filteredAvailableShelves.length, // Period-specific
-        approved: filteredApprovedShelves.length, // Period-specific
+        total: totalShelves, // Show cumulative total
+        available: availableShelves.length, // Cumulative
+        approved: approvedShelves.length, // Cumulative
         change: parseFloat(shelvesChange.toFixed(1)),
-        newInPeriod: currentPeriodShelves, // Same as total now
+        newInPeriod: currentPeriodNewShelves, // New additions in current period
       },
       rentals: {
-        active: filteredActiveRentals.length, // Period-specific
-        pending: filteredPendingRequests.length, // Period-specific
-        total: filteredRentalRequests.length, // Period-specific
+        active: activeRentals.length, // Cumulative
+        pending: pendingRequests.length, // Cumulative
+        total: totalRentalsCount, // Show cumulative total
         change: parseFloat(rentalsChange.toFixed(1)),
-        newInPeriod: filteredRentalRequests.length, // Same as total now
+        newInPeriod: currentPeriodNewRentals, // New additions in current period
       },
       revenue: {
         totalRevenue: periodRevenue, // Revenue for selected period
@@ -664,48 +465,6 @@ export const getAdminStats = query({
   },
 })
 
-// Verify admin access (middleware-like function)
-export const verifyAdminAccess = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx)
-    
-    if (!userId) {
-      return { isAdmin: false, error: "Not authenticated" }
-    }
-    
-    const user = await ctx.db.get(userId)
-    if (!user) {
-      return { isAdmin: false, error: "User not found" }
-    }
-    
-    // Get the user profile to check account type
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile) {
-      return { isAdmin: false, error: "User profile not found" }
-    }
-    
-    if (userProfile.type !== "admin") {
-      return { isAdmin: false, error: "Access denied: Admin privileges required" }
-    }
-    
-    if (!userProfile.profile.isActive) {
-      return { isAdmin: false, error: "Account is not active" }
-    }
-    
-    // Get the user from users table for name
-    const authUser = await ctx.db.get(userId)
-    return { 
-      isAdmin: true, 
-      user: {
-        id: user._id,
-        email: user.email || "",
-        fullName: authUser?.name,
-      }
-    }
-  },
-})
 
 // Update platform settings (admin only)
 export const updatePlatformSettings = mutation({
@@ -860,7 +619,7 @@ export const getStores = query({
         const authUser = await ctx.db.get(profile.userId)
         return {
           ...profile,
-          email: authUser?.email || ""
+          email: authUser?.email
         }
       })
     )
@@ -869,9 +628,7 @@ export const getStores = query({
     const filteredStoreOwners = searchQuery
       ? allStoreOwners.filter(store =>
           store.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          store.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          // Get user name from users table
-          false
+          store.email?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : allStoreOwners;
 
@@ -927,7 +684,7 @@ export const getStores = query({
           profileImageUrl, // Include the profile image URL
           fullName: user?.name,
           storeName: store.storeName,
-          businessType: store.businessType,
+          businessCategory: store.businessCategory,
           // Location is now per shelf, not per store
         };
       })
@@ -1082,7 +839,7 @@ export const getBrands = query({
         const authUser = await ctx.db.get(profile.userId)
         return {
           ...profile,
-          email: authUser?.email || ""
+          email: authUser?.email
         }
       })
     )
@@ -1091,9 +848,7 @@ export const getBrands = query({
     const filteredBrandOwners = searchQuery
       ? allBrandOwners.filter(brand =>
           brand.brandName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          brand.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          // Get user name from users table
-          false
+          brand.email?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : allBrandOwners;
 
@@ -1138,8 +893,8 @@ export const getBrands = query({
         
         return {
           id: brand._id,
-          name: brand.brandName || "",  // Use brand name only
-          ownerName: user?.name || "",  // Add actual owner name from users table
+          name: brand.brandName,  // Use brand name only
+          ownerName: user?.name,  // Add actual owner name from users table
           email: brand.email,
           phoneNumber: user?.phone,
           products: totalProducts,
@@ -1147,7 +902,7 @@ export const getBrands = query({
           rentals: activeRentals,
           revenue: totalProductRevenue, // Only product sales revenue, not rental costs
           status: brand.isActive ? "active" : "suspended",
-          category: brand.businessType || "",
+          category: brand.businessCategory,
           website: brand.website,  // Now available in schema
           joinDate: brand._creationTime,
           businessRegistration: brand.commercialRegisterNumber || brand.freelanceLicenseNumber,
@@ -1292,7 +1047,7 @@ export const getPosts = query({
           status: shelf.status === "active" ? "published" : shelf.status,
           city: shelf.city,
           dimensions: `${shelf.shelfSize.width} × ${shelf.shelfSize.height} × ${shelf.shelfSize.depth} ${shelf.shelfSize.unit}`,
-          productTypes: shelf.productTypes?.join(", ") || "",
+          productTypes: shelf.productTypes?.join(", "),
           description: shelf.description,
           availableFrom: shelf.availableFrom,
           images: shelf.images?.map(img => img.storageId) || [],
@@ -1351,68 +1106,62 @@ export const getPayments = query({
     
     const { searchQuery = "", status = "all", page, limit } = args;
 
-    // Get all rental requests that have payment information
-    const rentalRequests = await ctx.db
-      .query("rentalRequests")
-      .take(500); // Reasonable limit
-
-    // Filter by payment status
-    const filteredByStatus = status === "all" 
-      ? rentalRequests
-      : status === "paid"
-      ? rentalRequests.filter(r => r.status === "active")
-      : rentalRequests.filter(r => r.status === "payment_pending" || r.status === "accepted");
-
-    // Get payment details with user information
+    // Get payments from the payments table
+    let payments = await ctx.db.query("payments").collect()
+    
+    // Filter by status if specified
+    if (status !== "all") {
+      payments = payments.filter(payment => {
+        if (status === "paid") {
+          return payment.status === "completed"
+        } else if (status === "unpaid") {
+          return payment.status === "pending"
+        }
+        return true
+      })
+    }
+    
+    // Get payment details with related information
     const paymentsWithDetails = await Promise.all(
-      filteredByStatus.map(async (rental, index) => {
-        if (!rental.brandProfileId || !rental.storeProfileId) return null;
+      payments.map(async (payment) => {
+        // Get rental request details
+        const rental = await ctx.db.get(payment.rentalRequestId)
+        if (!rental) return null
         
-        // Get the profiles first to get user IDs
-        const brandProfile = await ctx.db.get(rental.brandProfileId);
-        const storeProfile = await ctx.db.get(rental.storeProfileId);
+        // Get profiles
+        const brandProfile = rental.brandProfileId ? await ctx.db.get(rental.brandProfileId) : null
+        const storeProfile = rental.storeProfileId ? await ctx.db.get(rental.storeProfileId) : null
         
-        if (!brandProfile || !storeProfile) return null;
+        if (!brandProfile || !storeProfile) return null
         
-        const brandOwner = await ctx.db.get(brandProfile.userId);
-        const storeOwner = await ctx.db.get(storeProfile.userId);
-        const shelf = await ctx.db.get(rental.shelfId);
-
-        if (!brandOwner || !storeOwner || !shelf) return null;
+        // Get users
+        const brandUser = await ctx.db.get(brandProfile.userId)
+        const storeUser = await ctx.db.get(storeProfile.userId)
         
-        // Get emails from users table
-        const brandAuthUser = await ctx.db.get(brandProfile.userId)
-        const storeAuthUser = await ctx.db.get(storeProfile.userId)
-
-        // Calculate platform fee (8%)
-        const platformFeePercentage = 8;
-        const platformFeeAmount = ((rental.totalAmount || 0) * platformFeePercentage) / 100;
-
-        // Return payment record based on rental status
-        // For active/completed rentals, show as brand payment
-        // Later we can add store settlement records
-        // Use the users we already retrieved
-        const brandUser = brandOwner
-        const storeUser = storeOwner
+        // Get shelf
+        const shelf = await ctx.db.get(rental.shelfId)
+        if (!shelf) return null
         
         return {
-          id: rental._id,
-          invoiceNumber: `INV-2024-${String(index + 1).padStart(3, '0')}`,
-          type: "brand_payment" as const, // Payment from brand to platform
-          merchant: brandUser?.name || brandProfile.brandName || "",
-          merchantEmail: brandAuthUser?.email || "",
+          id: payment._id,
+          invoiceNumber: payment.invoiceNumber,
+          type: payment.type,
+          merchant: brandUser?.name || brandProfile.brandName,
+          merchantEmail: brandUser?.email,
           store: storeProfile.storeName || storeUser?.name || "",
-          storeEmail: storeAuthUser?.email || "",
+          storeEmail: storeUser?.email || "",
           shelfName: shelf.shelfName,
-          date: rental._creationTime,
-          amount: rental.totalAmount || 0,
-          platformFee: platformFeeAmount,
-          method: "bank_transfer", // Default for now
-          status: (rental.status === "active" || rental.status === "completed") ? "paid" : "unpaid",
+          date: payment.paymentDate,
+          amount: payment.amount,
+          platformFee: payment.platformFee || 0,
+          method: payment.paymentMethod || "bank_transfer",
+          status: payment.status === "completed" ? "paid" : "unpaid",
           startDate: rental.startDate,
           endDate: rental.endDate,
-          description: `Shelf rental payment from ${brandProfile.brandName || "Brand"} to Shibr Platform`,
-        };
+          description: payment.description || `Shelf rental payment from ${brandProfile.brandName} to Shibr Platform`,
+          transactionReference: payment.transactionReference,
+          dueDate: payment.dueDate,
+        }
       })
     );
 
@@ -1662,40 +1411,29 @@ export const getBrandProducts = query({
     const productsWithRentalQuantities = []
     
     for (const rental of activeRentals) {
-      if (rental.selectedProductIds && rental.selectedProductQuantities) {
-        for (let i = 0; i < rental.selectedProductIds.length; i++) {
-          const productId = rental.selectedProductIds[i]
-          const rentalQuantity = rental.selectedProductQuantities[i] || 1
+      if (rental.selectedProducts && rental.selectedProducts.length > 0) {
+        for (const selectedProduct of rental.selectedProducts) {
+          const productId = selectedProduct.productId
+          const rentalQuantity = selectedProduct.quantity || 1
           
           const product = await ctx.db.get(productId)
           if (product) {
             // Get product image URL - check both mainImage (storage) and imageUrl (external)
             let imageUrl = null
             
-            // First check if there's a storage ID to convert
-            if (product.mainImage) {
-              try {
-                imageUrl = await ctx.storage.getUrl(product.mainImage)
-              } catch (error) {
-                console.error("Error converting storage ID to URL:", error)
-                imageUrl = null
-              }
-            }
-            
-            // If no storage image, check for external URL
-            if (!imageUrl && product.imageUrl) {
+            // Products use imageUrl directly (not storage ID)
+            if (product && 'imageUrl' in product && product.imageUrl) {
               imageUrl = product.imageUrl
             }
             
             productsWithRentalQuantities.push({
               id: product._id,
-              name: product.name,
-              category: product.category,
-              price: product.price,
+              name: product && 'name' in product ? product.name : selectedProduct.name,
+              category: product && 'category' in product ? product.category : selectedProduct.category,
+              price: product && 'price' in product ? product.price : selectedProduct.price,
               quantity: rentalQuantity,  // Use rental request quantity, not total product quantity
-              isActive: product.isActive,
               imageUrl,
-              sku: product.code || product.sku,
+              sku: product && 'sku' in product ? product.sku : '',
               salesCount: 0,  // Sales count not tracked yet
               createdAt: product._creationTime,
               rentalId: rental._id,  // Track which rental this product belongs to
@@ -1787,7 +1525,7 @@ export const getBrandRentals = query({
           // Parse createdAt date and check if it's in the future or recent
           const rentalDate = new Date(rental.createdAt)
           const daysDiff = Math.floor((rentalDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-          return rental.status === "pending" || rental.status === "accepted" || daysDiff > 0
+          return rental.status === "pending" || rental.status === "payment_pending" || daysDiff > 0
         }
         return true
       })

@@ -1,36 +1,8 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
+import { getImageUrlsFromArray } from "./helpers"
 
-// Helper to extract image URLs from new image structure
-const getImageUrlsFromArray = async (ctx: any, images: any[] | undefined) => {
-  const result = {
-    shelfImageUrl: null as string | null,
-    exteriorImageUrl: null as string | null,
-    interiorImageUrl: null as string | null,
-  }
-  
-  if (!images || !Array.isArray(images)) return result
-  
-  for (const img of images) {
-    const url = await ctx.storage.getUrl(img.storageId)
-    if (!url) continue
-    
-    switch (img.type) {
-      case 'shelf':
-        result.shelfImageUrl = url
-        break
-      case 'exterior':
-        result.exteriorImageUrl = url
-        break
-      case 'interior':
-        result.interiorImageUrl = url
-        break
-    }
-  }
-  
-  return result
-}
 
 // Get all available stores for marketplace
 export const getMarketplaceStores = query({
@@ -53,14 +25,10 @@ export const getMarketplaceStores = query({
     let shelves = await shelvesQuery.collect()
 
     // Filter out shelves with active or accepted rental requests
-    const [activeRequests, acceptedRequests, paymentPendingRequests] = await Promise.all([
+    const [activeRequests, paymentPendingRequests] = await Promise.all([
       ctx.db
         .query("rentalRequests")
         .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect(),
-      ctx.db
-        .query("rentalRequests")
-        .withIndex("by_status", (q) => q.eq("status", "accepted"))
         .collect(),
       ctx.db
         .query("rentalRequests")
@@ -68,7 +36,7 @@ export const getMarketplaceStores = query({
         .collect(),
     ])
     
-    const unavailableRequests = [...activeRequests, ...acceptedRequests, ...paymentPendingRequests]
+    const unavailableRequests = [...activeRequests, ...paymentPendingRequests]
     const unavailableShelfIds = new Set(unavailableRequests.map(r => r.shelfId))
     shelves = shelves.filter(shelf => !unavailableShelfIds.has(shelf._id))
 
@@ -136,8 +104,8 @@ export const getMarketplaceStores = query({
           interiorImage: imageUrls.interiorImageUrl,
           ownerName: ownerProfile?.storeName,
           ownerEmail: owner?.email,
-          ownerImage: owner?.image || null,
-          businessType: ownerProfile?.businessType || "",
+          ownerImage: owner?.image,
+          businessCategory: ownerProfile?.businessCategory,
           // Add latitude and longitude from location for map compatibility
           latitude: shelf.location?.lat,
           longitude: shelf.location?.lng,
@@ -152,27 +120,6 @@ export const getMarketplaceStores = query({
   },
 })
 
-// Get single store details
-export const getStoreDetails = query({
-  args: { shelfId: v.id("shelves") },
-  handler: async (ctx, args) => {
-    const shelf = await ctx.db.get(args.shelfId)
-    
-    if (!shelf) {
-      return null
-    }
-
-    const ownerProfile = await ctx.db.get(shelf.storeProfileId)
-    const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
-    
-    return {
-      ...shelf,
-      ownerName: ownerProfile?.storeName,
-      ownerEmail: owner?.email,
-      businessType: ownerProfile?.businessType,
-    }
-  },
-})
 
 // Get a single store by ID
 export const getStoreById = query({
@@ -204,7 +151,7 @@ export const getStoreById = query({
       ownerName: ownerProfile?.storeName,
       ownerEmail: owner?.email,
       ownerImage: owner?.image || null,
-      businessType: ownerProfile?.businessType,
+      businessCategory: ownerProfile?.businessCategory,
       // Add latitude and longitude from location for map compatibility
       latitude: shelf.location?.lat,
       longitude: shelf.location?.lng,

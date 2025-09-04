@@ -4,39 +4,6 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 
-// Helper to extract image URLs from new image structure
-const getImageUrlsFromArray = async (ctx: any, images: any[] | undefined) => {
-  const result = {
-    shelfImage: null as string | null,
-    exteriorImage: null as string | null,
-    interiorImage: null as string | null,
-    additionalImages: [] as string[]
-  }
-  
-  if (!images || !Array.isArray(images)) return result
-  
-  for (const img of images) {
-    const url = await ctx.storage.getUrl(img.storageId)
-    if (!url) continue
-    
-    switch (img.type) {
-      case 'shelf':
-        result.shelfImage = url
-        break
-      case 'exterior':
-        result.exteriorImage = url
-        break
-      case 'interior':
-        result.interiorImage = url
-        break
-      case 'additional':
-        result.additionalImages.push(url)
-        break
-    }
-  }
-  
-  return result
-}
 
 // Add a new shelf
 export const addShelf = mutation({
@@ -50,15 +17,16 @@ export const addShelf = mutation({
     length: v.string(),
     width: v.string(),
     depth: v.string(),
-    productType: v.optional(v.string()), // Deprecated, for backward compatibility
-    productTypes: v.optional(v.array(v.string())), // New: array of categories
+    productTypes: v.array(v.string()), // Array of product categories
     description: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     address: v.optional(v.string()),
-    exteriorImage: v.optional(v.string()),
-    interiorImage: v.optional(v.string()),
-    shelfImage: v.optional(v.string()),
+    images: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      type: v.union(v.literal("shelf"), v.literal("exterior"), v.literal("interior"), v.literal("additional")),
+      order: v.number()
+    }))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -103,18 +71,13 @@ export const addShelf = mutation({
         depth: parseFloat(args.depth),
         unit: "cm"
       },
-      productTypes: args.productTypes || (args.productType ? [args.productType] : []),
+      productTypes: args.productTypes || [],
       description: args.description,
       monthlyPrice: args.monthlyPrice,
       storeCommission: args.storeCommission, // Add store commission
       isAvailable: true,
       availableFrom: new Date(args.availableFrom).getTime(),
-      // Image handling - convert old format to new consolidated array
-      images: [
-        args.shelfImage && { storageId: args.shelfImage as Id<"_storage">, type: "shelf" as const, order: 0 },
-        args.exteriorImage && { storageId: args.exteriorImage as Id<"_storage">, type: "exterior" as const, order: 1 },
-        args.interiorImage && { storageId: args.interiorImage as Id<"_storage">, type: "interior" as const, order: 2 },
-      ].filter(Boolean) as any,
+      images: args.images || [],
       status: "active" as const, // Directly active (no approval needed)
     })
     
@@ -139,22 +102,6 @@ export const getOwnerShelves = query({
       .order("desc")
       .collect()
     
-    // Helper function to get URL from storage ID or return existing URL
-    const getImageUrl = async (imageId: any) => {
-      if (!imageId) return null
-      // Check if it's already a URL (legacy data)
-      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
-        return imageId
-      }
-      // Otherwise, get URL from storage
-      try {
-        return await ctx.storage.getUrl(imageId)
-      } catch (error) {
-        console.error('Failed to get storage URL:', error)
-        return null
-      }
-    }
-    
     // Fetch renter names and calculate next collection dates for rented shelves
     const shelvesWithDetails = await Promise.all(
       shelves.map(async (shelf) => {
@@ -170,7 +117,7 @@ export const getOwnerShelves = query({
         
         if (activeRental) {
           const renterProfile = activeRental.brandProfileId ? await ctx.db.get(activeRental.brandProfileId) : null
-          renterName = renterProfile?.brandName || null
+          renterName = renterProfile?.brandName
         }
         
         // Calculate next collection date for rented shelves
@@ -179,12 +126,17 @@ export const getOwnerShelves = query({
           nextCollectionDate = activeRental.endDate
         }
         
-        // Convert image storage IDs to URLs using new structure
-        const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
+        // Convert image storage IDs to URLs
+        const imagesWithUrls = await Promise.all(
+          (shelf.images || []).map(async (img) => ({
+            ...img,
+            url: await ctx.storage.getUrl(img.storageId)
+          }))
+        )
         
         return {
           ...shelf,
-          ...imageUrls,
+          images: imagesWithUrls,
           renterName,
           nextCollectionDate
         }
@@ -209,23 +161,7 @@ export const getAvailableShelves = query({
     
     const shelves = await query.collect()
     
-    // Helper function to get URL from storage ID or return existing URL
-    const getImageUrl = async (imageId: any) => {
-      if (!imageId) return null
-      // Check if it's already a URL (legacy data)
-      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
-        return imageId
-      }
-      // Otherwise, get URL from storage
-      try {
-        return await ctx.storage.getUrl(imageId)
-      } catch (error) {
-        console.error('Failed to get storage URL:', error)
-        return null
-      }
-    }
-    
-    // Filter by additional criteria and convert images
+    // Filter by additional criteria
     const filteredShelves = shelves.filter((shelf) => {
       if (!shelf.isAvailable) return false
       if (args.city && shelf.city !== args.city) return false
@@ -237,11 +173,16 @@ export const getAvailableShelves = query({
     // Convert image storage IDs to URLs for filtered shelves
     return Promise.all(
       filteredShelves.map(async (shelf) => {
-        const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
+        const imagesWithUrls = await Promise.all(
+          (shelf.images || []).map(async (img) => ({
+            ...img,
+            url: await ctx.storage.getUrl(img.storageId)
+          }))
+        )
         
         return {
           ...shelf,
-          ...imageUrls,
+          images: imagesWithUrls
         }
       })
     )
@@ -262,18 +203,19 @@ export const updateShelf = mutation({
     length: v.optional(v.string()),
     width: v.optional(v.string()),
     depth: v.optional(v.string()),
-    productType: v.optional(v.string()),
     productTypes: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     address: v.optional(v.string()),
-    exteriorImage: v.optional(v.string()),
-    interiorImage: v.optional(v.string()),
-    shelfImage: v.optional(v.string()),
+    images: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      type: v.union(v.literal("shelf"), v.literal("exterior"), v.literal("interior"), v.literal("additional")),
+      order: v.number()
+    }))),
   },
   handler: async (ctx, args) => {
-    const { shelfId, length, width, depth, latitude, longitude, address, productType, ...otherData } = args
+    const { shelfId, length, width, depth, latitude, longitude, address, ...otherData } = args
     
     // Create a properly typed update object
     const patchData: any = {}
@@ -291,15 +233,6 @@ export const updateShelf = mutation({
     if (otherData.productTypes !== undefined) patchData.productTypes = otherData.productTypes
     if (otherData.description !== undefined) patchData.description = otherData.description
     
-    // Handle backward compatibility for productType
-    if (productType !== undefined) {
-      const shelf = await ctx.db.get(shelfId)
-      if (shelf) {
-        // Convert single productType to productTypes array
-        patchData.productTypes = [productType]
-      }
-    }
-    
     // Handle shelf size (convert string dimensions to shelfSize object)
     if (length !== undefined || width !== undefined || depth !== undefined) {
       const shelf = await ctx.db.get(shelfId)
@@ -313,24 +246,35 @@ export const updateShelf = mutation({
       }
     }
     
-    // Handle location
+    // Handle location - consistent with addShelf
     if (latitude !== undefined && longitude !== undefined && address) {
       patchData.location = {
         lat: latitude,
         lng: longitude,
         address: address
       }
+    } else if (latitude !== undefined || longitude !== undefined || address !== undefined) {
+      // If partial location data is provided, need to fetch existing shelf
+      const shelf = await ctx.db.get(shelfId)
+      if (shelf && shelf.location) {
+        patchData.location = {
+          lat: latitude !== undefined ? latitude : shelf.location.lat,
+          lng: longitude !== undefined ? longitude : shelf.location.lng,
+          address: address !== undefined ? address : shelf.location.address
+        }
+      } else if (latitude !== undefined && longitude !== undefined && address) {
+        // Only create new location if all fields are provided
+        patchData.location = {
+          lat: latitude,
+          lng: longitude,
+          address: address
+        }
+      }
     }
     
-    // Handle image IDs (they should be storage IDs, not strings)
-    if (otherData.exteriorImage !== undefined) {
-      patchData.exteriorImage = otherData.exteriorImage as any
-    }
-    if (otherData.interiorImage !== undefined) {
-      patchData.interiorImage = otherData.interiorImage as any
-    }
-    if (otherData.shelfImage !== undefined) {
-      patchData.shelfImage = otherData.shelfImage as any
+    // Handle images array
+    if (otherData.images !== undefined) {
+      patchData.images = otherData.images
     }
     
     await ctx.db.patch(shelfId, patchData)
@@ -339,20 +283,6 @@ export const updateShelf = mutation({
   },
 })
 
-// Delete shelf (soft delete by archiving)
-export const archiveShelf = mutation({
-  args: {
-    shelfId: v.id("shelves"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.shelfId, {
-      status: "suspended", // Use suspended status as closest to archived
-      isAvailable: false,
-    })
-    
-    return { success: true }
-  },
-})
 
 // Get single shelf details by ID
 export const getShelfById = query({
@@ -386,55 +316,22 @@ export const getShelfById = query({
       renter = renterProfile?.userId ? await ctx.db.get(renterProfile.userId) : null
     }
     
-    // Get shelf images URLs from storage
-    let exteriorImageUrl = null
-    let interiorImageUrl = null
-    let shelfImageUrl = null
-    
-    // Helper function to get URL from storage ID or return existing URL
-    const getImageUrl = async (imageId: any) => {
-      if (!imageId) return null
-      // Check if it's already a URL (legacy data)
-      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
-        return imageId
-      }
-      // Otherwise, get URL from storage
-      try {
-        return await ctx.storage.getUrl(imageId)
-      } catch (error) {
-        console.error('Failed to get storage URL:', error)
-        return null
-      }
-    }
-    
-    const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
-    exteriorImageUrl = imageUrls.exteriorImage
-    interiorImageUrl = imageUrls.interiorImage
-    shelfImageUrl = imageUrls.shelfImage
-    
-    // Format product types - use the productTypes array field
-    const productTypes = shelf.productTypes || []
+    // Get image URLs from the images array
+    const imagesWithUrls = await Promise.all(
+      (shelf.images || []).map(async (img) => ({
+        ...img,
+        url: await ctx.storage.getUrl(img.storageId)
+      }))
+    )
     
     return {
       ...shelf,
-      ownerName: ownerProfile?.storeName || "",
-      ownerEmail: owner?.email || "",
-      renterName: renterProfile?.brandName || null,
-      renterEmail: renter?.email || "",
-      renterRating: null, // Rating field not yet implemented in users table
-      // Return both the URL fields and the expected field names for compatibility
-      exteriorImageUrl,
-      interiorImageUrl,
-      shelfImageUrl,
-      exteriorImage: exteriorImageUrl,
-      interiorImage: interiorImageUrl,
-      shelfImage: shelfImageUrl,
-      productTypes,
-      images: [
-        exteriorImageUrl,
-        interiorImageUrl,
-        shelfImageUrl
-      ].filter(Boolean), // Filter out null values
+      ownerName: ownerProfile?.storeName,
+      ownerEmail: owner?.email,
+      renterName: renterProfile?.brandName,
+      renterEmail: renter?.email,
+      renterRating: null,
+      images: imagesWithUrls
     }
   },
 })
@@ -685,15 +582,28 @@ export const getShelfProducts = query({
       .filter((q) => q.eq(q.field("status"), "active"))
       .first()
     
-    if (!activeRental || !activeRental.selectedProductIds) {
+    if (!activeRental || !activeRental.selectedProducts) {
       return []
     }
     
     // Get the selected products
     const products = await Promise.all(
-      activeRental.selectedProductIds.map(async (productId) => {
-        const product = await ctx.db.get(productId)
-        return product
+      activeRental.selectedProducts.map(async (selectedProduct) => {
+        const product = await ctx.db.get(selectedProduct.productId)
+        if (product) {
+          return {
+            ...product,
+            requestedQuantity: selectedProduct.quantity
+          }
+        }
+        // Return stored product info if not found in database
+        return {
+          _id: selectedProduct.productId,
+          name: selectedProduct.name,
+          category: selectedProduct.category,
+          price: selectedProduct.price,
+          requestedQuantity: selectedProduct.quantity
+        }
       })
     )
     
@@ -701,43 +611,6 @@ export const getShelfProducts = query({
   },
 })
 
-// Get payment history for a shelf
-export const getShelfPayments = query({
-  args: {
-    shelfId: v.id("shelves"),
-  },
-  handler: async (ctx, args) => {
-    // Get all rental requests for this shelf
-    const rentalRequests = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
-      .collect()
-    
-    const rentalRequestIds = rentalRequests.map(r => r._id)
-    
-    if (rentalRequestIds.length === 0) {
-      return []
-    }
-    
-    // Get all payments for these rental requests
-    const payments = await ctx.db
-      .query("payments")
-      .withIndex("by_rental", (q) => q.eq("rentalRequestId", rentalRequestIds[0]))
-      .collect()
-    
-    // Get payments for other rental requests
-    const allPayments = await Promise.all(
-      rentalRequestIds.map(async (requestId) => {
-        return await ctx.db
-          .query("payments")
-          .withIndex("by_rental", (q) => q.eq("rentalRequestId", requestId))
-          .collect()
-      })
-    )
-    
-    return allPayments.flat()
-  },
-})
 
 // Delete a shelf
 export const deleteShelf = mutation({

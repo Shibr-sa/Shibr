@@ -59,7 +59,8 @@ export default function BrandProductsPage() {
   const filteredProducts = products?.filter(product => {
     const matchesSearch = !debouncedSearchQuery || 
       product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      product.code?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      product.sku?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      product.category?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     return matchesSearch
   }) || []
 
@@ -163,22 +164,25 @@ export default function BrandProductsPage() {
                         <TableHead className="text-start h-12 font-medium w-[20%]">
                           {t("brand.dashboard.product_name")}
                         </TableHead>
-                        <TableHead className="text-start h-12 font-medium w-[15%]">
-                          {t("brand.dashboard.product_code")}
-                        </TableHead>
                         <TableHead className="text-start h-12 font-medium w-[10%]">
+                          {t("brand.products.product_sku")}
+                        </TableHead>
+                        <TableHead className="text-start h-12 font-medium w-[15%]">
+                          {t("brand.products.category")}
+                        </TableHead>
+                        <TableHead className="text-start h-12 font-medium w-[8%]">
                           {t("brand.dashboard.price")}
                         </TableHead>
-                        <TableHead className="text-start h-12 font-medium w-[10%]">
+                        <TableHead className="text-start h-12 font-medium w-[8%]">
                           {t("brand.dashboard.quantity")}
                         </TableHead>
-                        <TableHead className="text-start h-12 font-medium w-[12.5%]">
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
                           {t("brand.dashboard.sales_count")}
                         </TableHead>
-                        <TableHead className="text-start h-12 font-medium w-[12.5%]">
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
                           {t("brand.dashboard.stores_count")}
                         </TableHead>
-                        <TableHead className="text-start h-12 font-medium w-[10%]">
+                        <TableHead className="text-start h-12 font-medium w-[9%]">
                           {t("brand.dashboard.actions")}
                         </TableHead>
                       </TableRow>
@@ -190,12 +194,13 @@ export default function BrandProductsPage() {
                           <TableRow key={`skeleton-${index}`} className="h-[72px]">
                             <TableCell className="py-3 w-[10%]"><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
                             <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                            <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                            <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                            <TableCell className="py-3 w-[8%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
+                            <TableCell className="py-3 w-[8%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
                             <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
                             <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell className="py-3 w-[12.5%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell className="py-3 w-[12.5%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell className="py-3 w-[10%]">
+                            <TableCell className="py-3 w-[9%]">
                               <div className="flex gap-2">
                                 <Skeleton className="h-8 w-8 rounded" />
                                 <Skeleton className="h-8 w-8 rounded" />
@@ -224,16 +229,19 @@ export default function BrandProductsPage() {
                               <TableCell className="font-medium py-3 w-[20%]">
                                 {product.name}
                               </TableCell>
-                              <TableCell className="text-muted-foreground py-3 w-[15%]">
-                                {product.code}
+                              <TableCell className="text-muted-foreground py-3 w-[10%]">
+                                {product.sku || '-'}
                               </TableCell>
-                              <TableCell className="py-3 w-[10%]">
+                              <TableCell className="text-muted-foreground py-3 w-[15%]">
+                                {product.category || '-'}
+                              </TableCell>
+                              <TableCell className="py-3 w-[8%]">
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>
                               </TableCell>
-                              <TableCell className="py-3 w-[10%]">{product.quantity}</TableCell>
-                              <TableCell className="py-3 w-[12.5%]">{(product as any).totalSales || 0}</TableCell>
-                              <TableCell className="py-3 w-[12.5%]">{(product as any).shelfCount || 0}</TableCell>
-                              <TableCell className="py-3 w-[10%]">
+                              <TableCell className="py-3 w-[8%]">{product.quantity}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{(product as any).totalSales || 0}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{(product as any).shelfCount || 0}</TableCell>
+                              <TableCell className="py-3 w-[9%]">
                                 <div className="flex gap-1">
                                   <Button 
                                     variant="ghost" 
@@ -265,14 +273,14 @@ export default function BrandProductsPage() {
                           {/* Fill remaining rows to always show 5 rows */}
                           {paginatedProducts.length < 5 && Array.from({ length: 5 - paginatedProducts.length }).map((_, index) => (
                             <TableRow key={`filler-${index}`} className="h-[72px]">
-                              <TableCell className="py-3" colSpan={8}></TableCell>
+                              <TableCell className="py-3" colSpan={9}></TableCell>
                             </TableRow>
                           ))}
                         </>
                       ) : (
                         // Empty state - centered view with fixed height
                         <TableRow>
-                          <TableCell colSpan={8} className="h-[360px] text-center">
+                          <TableCell colSpan={9} className="h-[360px] text-center">
                             <div className="flex h-full w-full items-center justify-center">
                               <div className="flex flex-col items-center gap-1 py-10">
                                 <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />

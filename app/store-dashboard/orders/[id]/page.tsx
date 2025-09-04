@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
   AlertTriangle, 
   MessageSquare, 
@@ -63,33 +64,13 @@ export default function RequestDetailsPage() {
   // Request mutations
   const acceptRequest = useMutation(api.rentalRequests.acceptRentalRequest)
   const rejectRequest = useMutation(api.rentalRequests.rejectRentalRequest)
-  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
-
-  // Mark notifications as read when viewing the rental request
-  useEffect(() => {
-    if (requestId && rentalRequest) {
-      markNotificationsAsRead({ rentalRequestId: requestId })
-        .catch(() => {
-          // Silently handle error - notification marking is not critical
-        })
-    }
-  }, [requestId, rentalRequest])
 
   // Data is ready for rendering
 
-  // Fetch conversations for the selected request
-  const conversations = useQuery(
-    api.chats.getUserConversations,
-    userId ? { userId } : "skip"
-  )
-
-  // Find conversation for this specific shelf and rental request
-  const currentConversation = conversations?.find(
-    c => rentalRequest && (
-      c.shelfId === rentalRequest.shelfId &&
-      (c.otherUserId === rentalRequest.otherUserId || 
-       c.otherUserId === rentalRequest.requesterId)
-    )
+  // Get conversation directly from rental request
+  const currentConversation = useQuery(
+    api.chats.getConversation,
+    rentalRequest?.conversationId ? { conversationId: rentalRequest.conversationId } : "skip"
   )
 
   // Messages are now handled by ChatInterface component
@@ -134,7 +115,6 @@ export default function RequestDetailsPage() {
             {t("status.pending")}
           </Badge>
         )
-      case "accepted":
       case "payment_pending":
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
@@ -181,12 +161,9 @@ export default function RequestDetailsPage() {
   }
 
   return (
-    <div className="h-full">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
-        {/* Main Content - Left Side */}
-        <div className="lg:col-span-2 space-y-6 overflow-y-auto">
-          {/* Brand Information Card - Enhanced Design */}
-          <Card className="overflow-hidden">
+    <div className="h-full space-y-6">
+      {/* Brand Information Card - Full Width */}
+      <Card className="overflow-hidden">
             <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
               <h3 className="text-base font-semibold">
                 {t("orders.brand_details")}
@@ -215,26 +192,6 @@ export default function RequestDetailsPage() {
                         ({rentalRequest.brandTotalRatings})
                       </span>
                     )}
-                  </div>
-                )}
-                {rentalRequest.status === "pending" && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={handleReject}
-                      disabled={isProcessing}
-                    >
-                      {t("orders.reject")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={handleAccept}
-                      disabled={isProcessing}
-                    >
-                      {t("orders.accept")}
-                    </Button>
                   </div>
                 )}
               </div>
@@ -277,10 +234,10 @@ export default function RequestDetailsPage() {
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("orders.activity_type")}
+                        {t("orders.business_category")}
                       </Label>
-                      <p className="text-sm font-medium truncate" title={rentalRequest.activityType || "-"}>
-                        {rentalRequest.activityType || "-"}
+                      <p className="text-sm font-medium truncate" title={rentalRequest.businessCategory || "-"}>
+                        {rentalRequest.businessCategory || "-"}
                       </p>
                     </div>
                   </div>
@@ -380,9 +337,9 @@ export default function RequestDetailsPage() {
                       <Label className="text-xs text-muted-foreground font-normal">
                         {t("orders.request_date")}
                       </Label>
-                      <p className="text-sm font-medium truncate" title={rentalRequest.createdAt ? formatDate(rentalRequest.createdAt, language, 'long') : "-"}>
-                        {rentalRequest.createdAt 
-                          ? formatDate(rentalRequest.createdAt, language, 'long')
+                      <p className="text-sm font-medium truncate" title={rentalRequest._creationTime ? formatDate(rentalRequest._creationTime, language, 'long') : "-"}>
+                        {rentalRequest._creationTime 
+                          ? formatDate(rentalRequest._creationTime, language, 'long')
                           : "-"}
                       </p>
                     </div>
@@ -410,152 +367,226 @@ export default function RequestDetailsPage() {
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("orders.price")}
+                        {t("marketplace.price_and_commission")}
                       </Label>
-                      <p className="text-sm font-medium truncate" title={rentalRequest.monthlyPrice ? `${t("common.currency")} ${rentalRequest.monthlyPrice}` : "-"}>
-                        {rentalRequest.monthlyPrice 
-                          ? `${t("common.currency")} ${rentalRequest.monthlyPrice}`
-                          : "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Store Notes - Full width single row */}
-                <div className="mt-4">
-                  <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("orders.store_notes")}
-                      </Label>
-                      <p className="text-sm font-medium">
-                        {rentalRequest.additionalNotes || t("common.no_notes")}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate" title={rentalRequest.monthlyPrice ? `${t("common.currency")} ${rentalRequest.monthlyPrice}` : "-"}>
+                          {rentalRequest.monthlyPrice 
+                            ? `${t("common.currency")} ${rentalRequest.monthlyPrice}`
+                            : "-"}
+                        </p>
+                        {rentalRequest.storeCommission && (
+                          <Badge variant="secondary" className="text-xs px-2 py-0">
+                            {`${rentalRequest.storeCommission}%`}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </CardContent>
-          </Card>
-          
-          {/* Alert Row */}
-          {rentalRequest.status === "pending" && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="font-medium">
-                {t("orders.cancel_warning")}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Products Section */}
-          {rentalRequest.products && rentalRequest.products.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
-                    {/* Temporary debug button */}
-                    {process.env.NODE_ENV === 'development' && (!allProducts || allProducts.length === 0) && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          // Debug: Sample products needed
-                        }}
-                      >
-                        Create Sample Products (Debug)
-                      </Button>
-                    )}
+      </Card>
+      
+      {/* Alert Row */}
+      {rentalRequest.status === "pending" && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="font-medium">
+            {t("orders.cancel_warning")}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left Side - Products Section */}
+        <div className="lg:col-span-2">
+          {/* Products Section - Enhanced Design like Brand Details */}
+          {((rentalRequest.products && rentalRequest.products.length > 0) || 
+            (rentalRequest.selectedProducts && rentalRequest.selectedProducts.length > 0)) && (
+            <Card className="overflow-hidden">
+              <div className="bg-muted/50 px-6 py-3 border-b">
+                <h3 className="text-base font-semibold">
+                  {t("orders.selected_products")}
+                </h3>
               </div>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-start">{t("table.image")}</TableHead>
-                      <TableHead className="text-start">{t("table.product_name")}</TableHead>
-                      <TableHead className="text-start">{t("table.sku")}</TableHead>
-                      <TableHead className="text-start">{t("table.quantity")}</TableHead>
-                      <TableHead className="text-start">{t("table.price")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rentalRequest.products.map((product: any, index: number) => (
-                      <TableRow key={product._id || index}>
-                        <TableCell>
-                          {product.imageUrl ? (
-                            <img 
-                              src={product.imageUrl} 
-                              alt={product.name}
-                              className="h-10 w-10 rounded object-cover border"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center border">
-                              <Package className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">{product.name || "-"}</TableCell>
-                        <TableCell className="text-muted-foreground">{product.sku || "-"}</TableCell>
-                        <TableCell>{product.requestedQuantity || "-"}</TableCell>
-                        <TableCell className="font-medium">
-                          {product.price ? `${t("common.currency")} ${product.price}` : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-          
-          {/* Show product info from description if no individual products */}
-          {(!rentalRequest.products || rentalRequest.products.length === 0) && rentalRequest.productDescription && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">{t("orders.selected_products")}</h3>
-              <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm">
-                      <span className="font-medium">{t("common.product_type")}:</span> {rentalRequest.productType || "-"}
-                    </p>
-                    <p className="text-sm mt-2">
-                      <span className="font-medium">{t("common.description")}:</span> {rentalRequest.productDescription}
-                    </p>
-                    {rentalRequest.productCount && (
-                      <p className="text-sm mt-2">
-                        <span className="font-medium">{t("common.total_quantity")}:</span> {rentalRequest.productCount}
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {/* Handle old structure */}
+                  {rentalRequest.products && rentalRequest.products.map((product: any, index: number) => (
+                    <div key={product._id || `old-${index}`} className="flex items-center px-6 py-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {product.imageUrl ? (
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name}
+                            className="h-12 w-12 rounded-lg object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                            <Package className="h-6 w-6 text-muted-foreground/70" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-foreground truncate">
+                            {product.name || "-"}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {product.category ? t(`product_categories.${product.category}` as any) || product.category : t("common.not_specified")}
+                          </p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {t("common.quantity")}: <span className="font-medium text-foreground">{product.requestedQuantity || 0}</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {t("common.unit_price")}: <span className="font-medium text-foreground">{product.price ? `${t("common.currency")} ${product.price.toLocaleString()}` : "-"}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {product.price && product.requestedQuantity 
+                            ? `${t("common.currency")} ${(product.price * product.requestedQuantity).toLocaleString()}`
+                            : "-"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("common.subtotal")}</p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Handle new structure */}
+                  {!rentalRequest.products && rentalRequest.selectedProducts && rentalRequest.selectedProducts.map((product: any, index: number) => (
+                    <div key={product.productId || `new-${index}`} className="flex items-center px-6 py-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                          <Package className="h-6 w-6 text-muted-foreground/70" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-foreground truncate">
+                            {product.name || "-"}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {product.category ? t(`product_categories.${product.category}` as any) || product.category : t("common.not_specified")}
+                          </p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {t("common.quantity")}: <span className="font-medium text-foreground">{product.quantity || 0}</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {t("common.unit_price")}: <span className="font-medium text-foreground">{product.price ? `${t("common.currency")} ${product.price.toLocaleString()}` : "-"}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {product.price && product.quantity 
+                            ? `${t("common.currency")} ${(product.price * product.quantity).toLocaleString()}`
+                            : "-"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("common.subtotal")}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Professional Summary Footer */}
+                <div className="bg-muted/30 px-6 py-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                        {t("common.order_summary")}
                       </p>
-                    )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar - Right Side */}
-        <div className="flex flex-col gap-6 h-full overflow-hidden">
-          {/* Communication Card */}
-          {currentConversation ? (
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <ChatInterface
-                conversationId={currentConversation._id}
-                currentUserId={userId!}
-                currentUserType="store-owner"
-                otherUserName={rentalRequest.otherUserName || rentalRequest.brandName || t("common.brand_owner")}
-                shelfName={rentalRequest.shelfName || ""}
-              />
-            </div>
-          ) : (
-            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <CardContent className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm text-muted-foreground">{t("orders.conversation_will_be_created")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {rentalRequest.products?.length || rentalRequest.selectedProducts?.length || 0} {t("common.products")} • {
+                          rentalRequest.products?.reduce((sum: number, p: any) => sum + (p.requestedQuantity || 0), 0) ||
+                          rentalRequest.selectedProducts?.reduce((sum: number, p: any) => sum + (p.quantity || 0), 0) || 0
+                        } {t("common.total_items")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">
+                        {t("common.total_amount")}
+                      </p>
+                      <p className="text-2xl font-bold text-primary">
+                        {t("common.currency")} {
+                          (rentalRequest.products?.reduce((sum: number, p: any) => 
+                            sum + ((p.price || 0) * (p.requestedQuantity || 0)), 0) ||
+                          rentalRequest.selectedProducts?.reduce((sum: number, p: any) => 
+                            sum + ((p.price || 0) * (p.quantity || 0)), 0) || 0
+                          ).toLocaleString()
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
-
+          
+          {/* Accept/Reject Buttons - Below Selected Products */}
+          {rentalRequest.status === "pending" && (
+            <div className="flex items-center gap-3 mt-6">
+              <Button
+                size="lg"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleAccept}
+                disabled={isProcessing}
+              >
+                {t("orders.accept")}
+              </Button>
+              <Button
+                size="lg"
+                variant="destructive"
+                className="flex-1"
+                onClick={handleReject}
+                disabled={isProcessing}
+              >
+                {t("orders.reject")}
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Right Side - Communication Card with Enhanced Design */}
+        <Card className="flex flex-col overflow-hidden h-[500px]">
+          <div className="bg-muted/50 px-6 py-3 border-b flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold truncate">
+                {rentalRequest.ownerName || rentalRequest.brandName || t("common.brand_owner")}
+              </h3>
+            </div>
+          </div>
+          <CardContent className="flex-1 flex flex-col p-0 h-[calc(100%-60px)]">
+            {/* Messages Area */}
+            <div className="flex-1 relative h-full">
+              {currentConversation ? (
+                <ChatInterface
+                  conversationId={currentConversation._id}
+                  currentUserId={userId!}
+                  currentUserType="store-owner"
+                  otherUserName={rentalRequest.otherUserName || rentalRequest.brandName || t("common.brand_owner")}
+                  shelfName={rentalRequest.shelfName || ""}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">
+                      {t("orders.conversation_will_be_created")}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

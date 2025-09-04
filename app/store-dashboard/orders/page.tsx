@@ -56,7 +56,6 @@ export default function StoreDashboardOrdersPage() {
   
   // Debounced search value for better performance
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
-  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
   // Get the userId as a Convex Id
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -68,25 +67,13 @@ export default function StoreDashboardOrdersPage() {
       userType: "store" as const
     } : "skip"
   )
-
-  // Get all rental request IDs for notification counts
-  const rentalRequestIds = useMemo(() => {
-    return rentalRequests?.map(r => r._id) || []
-  }, [rentalRequests])
-
-  // Fetch notification counts for all rental requests
-  const notificationCounts = useQuery(
-    api.notifications.getUnreadCountByRentalRequests,
-    userId && rentalRequestIds.length > 0 ? {
-      rentalRequestIds: rentalRequestIds
-    } : "skip"
+  
+  // Get unread message counts
+  const unreadCounts = useQuery(
+    api.chats.getUnreadMessageCounts,
+    userId ? { userId: userId } : "skip"
   )
 
-  // Calculate total unread notifications
-  const totalUnreadNotifications = useMemo(() => {
-    if (!notificationCounts) return 0
-    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
-  }, [notificationCounts])
 
   // Filter options for orders section
   const ordersFilterOptions = [
@@ -150,7 +137,6 @@ export default function StoreDashboardOrdersPage() {
             {t("status.pending")}
           </Badge>
         )
-      case "accepted":
       case "payment_pending":
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
@@ -293,28 +279,33 @@ export default function StoreDashboardOrdersPage() {
                       {getStatusBadge(request.status)}
                     </TableCell>
                     <TableCell className="py-3">
-                      {formatDate(request.createdAt, language, 'long')}
+                      {formatDate(request._creationTime, language, 'long')}
                     </TableCell>
                     <TableCell className="py-3">
                       <div className="flex items-center gap-2">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 relative"
-                                onClick={() => {
-                                  router.push(`/store-dashboard/orders/${request._id}`)
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                                {notificationCounts && notificationCounts[request._id] > 0 && (
-                                  <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                                    {notificationCounts[request._id]}
-                                  </span>
+                              <div className="relative inline-block">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    router.push(`/store-dashboard/orders/${request._id}`)
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                                  <Badge 
+                                    variant="destructive" 
+                                    className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                                  >
+                                    {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                                  </Badge>
                                 )}
-                              </Button>
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>{t("orders.view_details")}</p>

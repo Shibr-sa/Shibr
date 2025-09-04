@@ -9,16 +9,9 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
@@ -46,11 +39,18 @@ interface ShelfDetails {
     lat: number
     lng: number
   }
+  location?: {
+    lat: number
+    lng: number
+    address: string
+  }
   monthlyPrice: number
   storeCommission: number
   availableFrom: string
   productType?: string
   productTypes?: string[]
+  description?: string
+  storeBranch?: string
   shelfSize: {
     width: number
     height: number
@@ -61,8 +61,12 @@ interface ShelfDetails {
   shelfImage?: string | null
   exteriorImage?: string | null
   interiorImage?: string | null
-  profileId?: string
+  storeProfileId?: string
   ownerProfileId?: string
+  images?: Array<{
+    url: string
+    type: string
+  }>
 }
 
 export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -95,8 +99,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
-  const [productType, setProductType] = useState("")
-  const [productCount, setProductCount] = useState("")
+  // Product type is now derived from selected products
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
   
@@ -136,6 +139,14 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     } : "skip"
   )
   
+  // Determine if form should be disabled based on request status
+  const isFormDisabled = activeRequest?.status === 'accepted' || 
+                         activeRequest?.status === 'rejected' || 
+                         activeRequest?.status === 'active' ||
+                         activeRequest?.status === 'payment_pending' ||
+                         activeRequest?.status === 'completed' ||
+                         (shelfAvailability && !shelfAvailability.available)
+  
   // Check shelf availability periodically and show alert if it becomes unavailable
   useEffect(() => {
     if (shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther) {
@@ -164,14 +175,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           to: new Date(activeRequest.endDate)
         })
       }
-      if (activeRequest.productType) {
-        setProductType(activeRequest.productType)
-      }
-      if (activeRequest.selectedProductIds && activeRequest.selectedProductIds.length > 0) {
-        // Restore selected products with their actual quantities from the request
-        const restoredProducts = activeRequest.selectedProductIds.map((productId: string, index: number) => ({
-          id: productId,
-          quantity: activeRequest.selectedProductQuantities?.[index] || 1
+      // Restore selected products from existing request
+      if (activeRequest.selectedProducts && activeRequest.selectedProducts.length > 0) {
+        // Handle new format with selectedProducts array
+        const restoredProducts = activeRequest.selectedProducts.map((product: any) => ({
+          id: product.productId,
+          quantity: product.quantity || 1
         }))
         setSelectedProducts(restoredProducts)
       }
@@ -189,12 +198,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       return
     }
     
-    if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0 || !productType) {
+    if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0) {
       alert(t("form.fill_required_fields"))
       return
     }
     
-    if (!userId || !userProfileId || !shelfDetails?.profileId) {
+    if (!userId || !userProfileId || !shelfDetails?.storeProfileId) {
+      console.log("Auth check failed:", { userId, userProfileId, storeProfileId: shelfDetails?.storeProfileId })
       alert(t("form.login_first"))
       return
     }
@@ -205,29 +215,17 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       if (!convId) {
         convId = await getOrCreateConversation({
           brandProfileId: userProfileId,
-          storeProfileId: shelfDetails.profileId as Id<"userProfiles">,
+          storeProfileId: shelfDetails.storeProfileId as Id<"userProfiles">,
           shelfId: resolvedParams.id as Id<"shelves">,
         })
         setConversationId(convId)
       }
       
-      // Get selected product details for the request
-      const selectedProductDetails = selectedProducts.map(sp => {
-        const product = userProducts?.find(p => p._id === sp.id)
-        return product ? `${product.name} (${sp.quantity})` : ""
-      }).filter(Boolean).join(", ")
-      
-      const totalQuantity = selectedProducts.reduce((total, p) => total + p.quantity, 0)
-      
-      // Create or update rental request
+      // Create or update rental request with new schema
       const result = await createRentalRequest({
         shelfId: resolvedParams.id as Id<"shelves">,
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString(),
-        productType: productType,
-        productDescription: selectedProductDetails,
-        productCount: totalQuantity,
-        additionalNotes: "",
         conversationId: convId,
         selectedProductIds: selectedProducts.map(p => p.id) as Id<"products">[],
         selectedProductQuantities: selectedProducts.map(p => p.quantity),
@@ -242,7 +240,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         // Only reset form fields for new requests
         setDateRange(undefined)
         setSelectedProducts([])
-        setProductType("")
+        // Product type is derived from selected products
       }
       
       // Mark that request has been submitted
@@ -298,7 +296,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left side - Shelf Information */}
                 <div className="lg:col-span-2 space-y-4">
-                  {/* First Row - 3 items */}
+                  {/* First Row - Shelf Name, Branch, Address */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -330,6 +328,62 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
                   <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("common.address")}
+                      </Label>
+                      {shelfDetails.location ? (
+                        <a 
+                          href={`https://www.google.com/maps?q=${shelfDetails.location.lat},${shelfDetails.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline block truncate"
+                          title={shelfDetails.location.address || shelfDetails.city}
+                        >
+                          {shelfDetails.location.address || shelfDetails.city || t("marketplace.view_on_map")}
+                        </a>
+                      ) : shelfDetails.coordinates ? (
+                        <a 
+                          href={`https://www.google.com/maps?q=${shelfDetails.coordinates.lat},${shelfDetails.coordinates.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline block truncate"
+                          title={shelfDetails.address || shelfDetails.city}
+                        >
+                          {shelfDetails.address || shelfDetails.city || t("marketplace.view_on_map")}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium">-</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Second Row - Price & Commission, Dimensions, Available From */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <Label className="text-xs text-muted-foreground font-normal">
+                        {t("marketplace.price_and_commission")}
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate" title={formatCurrency(shelfDetails.monthlyPrice, language)}>
+                          {formatCurrency(shelfDetails.monthlyPrice, language)}
+                        </p>
+                        <Badge variant="secondary" className="text-xs px-2 py-0">
+                          {`${(shelfDetails.storeCommission || 0) + 8}%`}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Ruler className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
@@ -341,10 +395,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Second Row - 3 items */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                       <CalendarDays className="h-4 w-4 text-primary" />
@@ -355,65 +406,30 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </Label>
                       <p className="text-sm font-medium truncate">
                         {new Date(shelfDetails.availableFrom).toLocaleDateString(
-                          language === "ar" ? "ar-SA" : "en-US",
+                          "en-US",
                           { month: 'short', day: 'numeric', year: 'numeric' }
                         )}
                       </p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.sales_commission")}
-                      </Label>
-                      <p className="text-sm font-medium truncate">
-                        {platformSettings 
-                          ? `${shelfDetails.storeCommission + platformSettings.platformFeePercentage}%`
-                          : `${shelfDetails.storeCommission + 8}%`}
-                      </p>
-                    </div>
+                {/* Store Description Section */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
-
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.price_per_month")}
-                      </Label>
-                      <p className="text-sm font-medium truncate" title={formatCurrency(shelfDetails.monthlyPrice, language)}>
-                        {formatCurrency(shelfDetails.monthlyPrice, language)}
-                      </p>
-                    </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      {t("common.description")}
+                    </Label>
+                    <p className="text-sm leading-relaxed">
+                      {shelfDetails.description || "-"}
+                    </p>
                   </div>
                 </div>
 
-                {/* Address Section if exists */}
-                {shelfDetails.location?.address && (
-                  <>
-                    <Separator />
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.full_address")}
-                        </Label>
-                        <p className="text-sm leading-relaxed">
-                          {shelfDetails.location?.address}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Shelf Type Section - Full Width */}
+                {/* Product Types Section */}
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Package className="h-5 w-5 text-primary" />
@@ -425,17 +441,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     <div className="flex flex-wrap gap-2">
                       {shelfDetails.productTypes && shelfDetails.productTypes.length > 0 ? (
                         shelfDetails.productTypes.map((type, index) => {
-                          // Try product_categories translation first, then marketplace.category
+                          // Try product_categories translation first
                           let translationKey = `product_categories.${type}`;
-                          let translation = t(translationKey);
+                          let translation = t(translationKey as any);
                           
-                          // If not found, try marketplace.category format
-                          if (translation === translationKey) {
-                            translationKey = `marketplace.category_${type}`;
-                            translation = t(translationKey);
-                          }
-                          
-                          // If still not found, format the type name
+                          // If not found, format the type name
                           const displayText = translation === translationKey
                             ? type.split('_').map(word => 
                                 word.charAt(0).toUpperCase() + word.slice(1)
@@ -448,25 +458,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             </Badge>
                           );
                         })
-                      ) : shelfDetails.productType ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {(() => {
-                            let translationKey = `product_categories.${shelfDetails.productType}`;
-                            let translation = t(translationKey);
-                            
-                            if (translation === translationKey) {
-                              translationKey = `marketplace.category_${shelfDetails.productType}`;
-                              translation = t(translationKey);
-                            }
-                            
-                            if (translation === translationKey) {
-                              return shelfDetails.productType.split('_').map(word => 
-                                word.charAt(0).toUpperCase() + word.slice(1)
-                              ).join(' ');
-                            }
-                            return translation;
-                          })()}
-                        </Badge>
                       ) : (
                         <Badge variant="secondary" className="text-xs">
                           {t("product_categories.other")}
@@ -474,78 +465,47 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                   </div>
-                  </div>
+                </div>
                 </div>
 
                 {/* Right side - Shelf Images */}
                 <div className="lg:col-span-1">
-                  {(shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage) ? (
+                  {shelfDetails.images && shelfDetails.images.length > 0 ? (
                     <div className="space-y-4">
                   {/* Main Image */}
                   <div className="relative">
                     <img
-                      src={selectedImage || shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage || ""}
+                      src={selectedImage || (shelfDetails.images[0]?.url) || "/placeholder.svg?height=400&width=600"}
                       alt={shelfDetails.shelfName}
                       className="w-full h-64 object-cover rounded-lg"
                     />
-                    <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
-                      {selectedImage === shelfDetails.shelfImage || (!selectedImage && shelfDetails.shelfImage === (shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage)) ? t("marketplace.shelf_image") :
-                       selectedImage === shelfDetails.exteriorImage || (!selectedImage && !shelfDetails.shelfImage && shelfDetails.exteriorImage) ? t("marketplace.exterior_image") :
-                       t("marketplace.interior_image")}
-                    </Badge>
+                    {shelfDetails.images.length > 1 && (
+                      <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
+                        {shelfDetails.images.findIndex(img => img.url === (selectedImage || shelfDetails.images[0]?.url)) + 1} / {shelfDetails.images.length}
+                      </Badge>
+                    )}
                   </div>
                   
                   {/* Thumbnail Images - Only show if multiple images exist */}
-                  {[shelfDetails.shelfImage, shelfDetails.exteriorImage, shelfDetails.interiorImage].filter(Boolean).length > 1 && (
+                  {shelfDetails.images.length > 1 && (
                     <div className="grid grid-cols-3 gap-2">
-                      {shelfDetails.shelfImage && (
+                      {shelfDetails.images.slice(0, 3).map((image, index) => (
                         <div 
+                          key={index}
                           className="relative group cursor-pointer"
-                          onClick={() => setSelectedImage(shelfDetails.shelfImage || null)}
+                          onClick={() => setSelectedImage(image.url)}
                         >
                           <img
-                            src={shelfDetails.shelfImage}
-                            alt={`${shelfDetails.shelfName} - Shelf`}
+                            src={image.url}
+                            alt={`${shelfDetails.shelfName} - ${image.type}`}
                             className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${
-                              (selectedImage === shelfDetails.shelfImage || (!selectedImage && shelfDetails.shelfImage === (shelfDetails.shelfImage || shelfDetails.exteriorImage || shelfDetails.interiorImage)))
+                              (selectedImage === image.url || (!selectedImage && index === 0))
                                 ? 'border-primary' : 'border-transparent hover:border-primary/50'
                             }`}
                           />
                           <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                      )}
-                      {shelfDetails.exteriorImage && (
-                        <div 
-                          className="relative group cursor-pointer"
-                          onClick={() => setSelectedImage(shelfDetails.exteriorImage || null)}
-                        >
-                          <img
-                            src={shelfDetails.exteriorImage}
-                            alt={`${shelfDetails.shelfName} - Exterior`}
-                            className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${
-                              selectedImage === shelfDetails.exteriorImage 
-                                ? 'border-primary' : 'border-transparent hover:border-primary/50'
-                            }`}
-                          />
-                          <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      )}
-                      {shelfDetails.interiorImage && (
-                        <div 
-                          className="relative group cursor-pointer"
-                          onClick={() => setSelectedImage(shelfDetails.interiorImage || null)}
-                        >
-                          <img
-                            src={shelfDetails.interiorImage}
-                            alt={`${shelfDetails.shelfName} - Interior`}
-                            className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${
-                              selectedImage === shelfDetails.interiorImage 
-                                ? 'border-primary' : 'border-transparent hover:border-primary/50'
-                            }`}
-                          />
-                          <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      )}
+                      ))}
                     </div>
                   )}
                     </div>
@@ -559,6 +519,16 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
         </div>
+
+        {/* Note about approval - Between Shelf Details and Send your rental request */}
+        {(!shelfAvailability || shelfAvailability.available) && (
+          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+              {t("marketplace.details.approval_notice")}
+            </p>
+          </div>
+        )}
 
         {/* Bottom Row - Rental Request and Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -640,7 +610,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                               <Checkbox 
                                 id={product._id}
                                 checked={isSelected}
-                                disabled={shelfAvailability && !shelfAvailability.available}
+                                disabled={isFormDisabled}
                                 onCheckedChange={(checked) => {
                                   if (checked) {
                                     setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
@@ -668,7 +638,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 hover:bg-muted"
-                                        disabled={selectedProduct?.quantity === 1}
+                                        disabled={selectedProduct?.quantity === 1 || isFormDisabled}
                                         onClick={(e) => {
                                           e.preventDefault()
                                           e.stopPropagation()
@@ -692,7 +662,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 hover:bg-muted"
-                                        disabled={selectedProduct?.quantity === (product.quantity || 0)}
+                                        disabled={selectedProduct?.quantity === (product.quantity || 0) || isFormDisabled}
                                         onClick={(e) => {
                                           e.preventDefault()
                                           e.stopPropagation()
@@ -779,56 +749,40 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </Popover>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="product-type" className="text-sm">
-                        {t("marketplace.details.product_type")}*
-                      </Label>
-                      <Select 
-                        value={productType} 
-                        onValueChange={setProductType}
-                        required
-                        disabled={shelfAvailability && !shelfAvailability.available}
-                      >
-                        <SelectTrigger id="product-type">
-                          <SelectValue placeholder={t("marketplace.details.select_product_type")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="food_beverages">{t("product_categories.food_beverages")}</SelectItem>
-                          <SelectItem value="health_beauty">{t("product_categories.health_beauty")}</SelectItem>
-                          <SelectItem value="fashion">{t("product_categories.fashion")}</SelectItem>
-                          <SelectItem value="electronics">{t("product_categories.electronics")}</SelectItem>
-                          <SelectItem value="home_living">{t("product_categories.home_living")}</SelectItem>
-                          <SelectItem value="kids_baby">{t("product_categories.kids_baby")}</SelectItem>
-                          <SelectItem value="sports_fitness">{t("product_categories.sports_fitness")}</SelectItem>
-                          <SelectItem value="books_stationery">{t("product_categories.books_stationery")}</SelectItem>
-                          <SelectItem value="other">{t("product_categories.other")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
-
-                  {/* Note about approval */}
-                  {(!shelfAvailability || shelfAvailability.available) && (
-                    <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
-                      <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                        {t("marketplace.details.approval_notice")}
-                      </p>
-                    </div>
-                  )}
                   
                   <div className="space-y-2">
                     <Button 
                       type="submit" 
                       size="lg" 
                       className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      disabled={selectedProducts.length === 0 || !dateRange || !productType || (shelfAvailability && !shelfAvailability.available)}
+                      disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
                     >
                       {shelfAvailability && !shelfAvailability.available ? (
                         <span>
                           {language === "ar" ? "الرف غير متاح" : "Shelf Unavailable"}
                         </span>
-                      ) : activeRequest ? (
+                      ) : activeRequest?.status === 'accepted' ? (
+                        <span className="flex items-center gap-2">
+                          <Check className="h-5 w-5" />
+                          {language === "ar" ? "الطلب مقبول" : "Request Accepted"}
+                        </span>
+                      ) : activeRequest?.status === 'rejected' ? (
+                        <span className="flex items-center gap-2">
+                          <X className="h-5 w-5" />
+                          {language === "ar" ? "الطلب مرفوض" : "Request Rejected"}
+                        </span>
+                      ) : activeRequest?.status === 'active' ? (
+                        <span className="flex items-center gap-2">
+                          <Check className="h-5 w-5" />
+                          {language === "ar" ? "الإيجار نشط" : "Rental Active"}
+                        </span>
+                      ) : activeRequest?.status === 'payment_pending' ? (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-5 w-5" />
+                          {language === "ar" ? "في انتظار الدفع" : "Payment Pending"}
+                        </span>
+                      ) : activeRequest?.status === 'pending' ? (
                         <span className="flex items-center gap-2">
                           <RefreshCw className="h-5 w-5" />
                           {language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request"}
@@ -846,7 +800,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </Card>
 
           {/* Communication Card - Enhanced Design */}
-          <Card className="flex flex-col overflow-hidden" style={{minHeight: '400px'}}>
+          <Card className="flex flex-col overflow-hidden h-[500px]">
             <div className="bg-muted/50 px-6 py-3 border-b flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
@@ -859,9 +813,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 </h3>
               </div>
             </div>
-            <CardContent className="flex-1 flex flex-col p-0">
+            <CardContent className="flex-1 flex flex-col p-0 h-[calc(100%-60px)]">
               {/* Messages Area */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative h-full">
                 {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <div className="text-center p-6 space-y-3">

@@ -44,6 +44,7 @@ import {
   User,
   Building2,
   Hash,
+  Download,
 } from "lucide-react"
 
 // Transform store data for display
@@ -52,10 +53,10 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
   ownerEmail: store?.email || "-",
   ownerPhone: store?.phoneNumber || "-",
   location: store?.location?.city || store?.storeLocation?.city || (language === "ar" ? "غير محدد" : "Not specified"),
-  joinDate: store?.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
-  registrationDate: store?.joinDate ? new Date(store.joinDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-",
+  joinDate: store?.joinDate ? new Date(store.joinDate).toLocaleDateString("en-US") : "-",
+  registrationDate: store?.joinDate ? new Date(store.joinDate).toLocaleDateString("en-US") : "-",
   commercialRegistryNumber: store?.businessRegistration || "-",
-  commercialRegistry: store?.businessRegistrationUrl ? "PDF" : "-",
+  commercialRegistryUrl: store?.businessRegistrationUrl || null,
   branchesCount: store?.branches || 1,
   totalRevenue: store?.revenue || 0,
   monthlyRevenue: Math.round((store?.revenue || 0) / 12),
@@ -66,7 +67,7 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
     branch: shelf.branch,
     status: shelf.isAvailable ? "available" : "rented",
     monthlyPrice: shelf.monthlyPrice,
-    endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : null
+    endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString("en-US") : null
   })),
   recentRentals: (rentals || []).map((rental: any) => ({
     id: rental._id,
@@ -300,12 +301,18 @@ export default function StoreDetailsPage() {
                         {t("stores.commercial_registry")}
                       </Label>
                       <div className="flex items-center gap-2">
-                        {storeDetailsData.commercialRegistry === "PDF" ? (
-                          <span className="text-sm font-medium text-primary cursor-pointer hover:underline">
+                        {storeDetailsData.commercialRegistryUrl ? (
+                          <a
+                            href={storeDetailsData.commercialRegistryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-primary cursor-pointer hover:underline"
+                            download
+                          >
                             {t("common.download")}
-                          </span>
+                          </a>
                         ) : (
-                          <span className="text-sm text-muted-foreground">{storeDetailsData.commercialRegistry}</span>
+                          <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </div>
                     </div>
@@ -425,7 +432,7 @@ export default function StoreDetailsPage() {
                         branch: shelf.branch,
                         status: shelf.isAvailable ? "available" : "rented",
                         monthlyPrice: shelf.monthlyPrice,
-                        endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : null
+                        endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString("en-US") : null
                       }))
                       
                       // Check if there are no shelves

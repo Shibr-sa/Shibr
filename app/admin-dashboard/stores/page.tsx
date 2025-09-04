@@ -590,7 +590,7 @@ export default function StoresPage() {
                         <span className="font-medium">{post.percentage}%</span>
                       </TableCell>
                       <TableCell className="py-3 text-muted-foreground w-[15%]">
-                        {post.addedDate ? new Date(post.addedDate).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US") : "-"}
+                        {post.addedDate ? new Date(post.addedDate).toLocaleDateString("en-US") : "-"}
                       </TableCell>
                       <TableCell className="py-3 w-[12%]">
                         <Badge variant={post.status === "published" ? "default" : "secondary"} className="font-normal">

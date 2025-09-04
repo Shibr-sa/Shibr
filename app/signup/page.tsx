@@ -41,7 +41,8 @@ export default function SignUpPage() {
   const { toast } = useToast()
   const { signIn } = useAuthActions()
   const currentUser = useQuery(api.users.getCurrentUser)
-  const createUserProfile = useMutation(api.users.createOrUpdateUserProfile)
+  const createStoreProfile = useMutation(api.users.createStoreProfile)
+  const createBrandProfile = useMutation(api.users.createBrandProfile)
 
   const validateField = (fieldName: string, value: any) => {
     try {
@@ -110,21 +111,22 @@ export default function SignUpPage() {
       // Sign up the user first (name and phone stored in users table)
       await signIn("password", authFormData)
       
-      // Prepare profile data (email, name, phone are stored in users table)
-      const profileData = {
-        accountType: accountType === "store-owner" ? "store_owner" as const : "brand_owner" as const,
-        ...(accountType === "store-owner" ? {
-          storeName: formData.storeName.trim(),
-        } : {
-          brandName: formData.brandName.trim(),
-        })
-      }
-      
       // Wait a bit for auth to propagate
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Create the user profile and get the actual account type
-      const profileResult = await createUserProfile(profileData)
+      // Create the user profile based on account type
+      let profileResult
+      if (accountType === "store-owner") {
+        profileResult = await createStoreProfile({
+          storeName: formData.storeName.trim(),
+          businessCategory: "", // Will be updated in settings
+          commercialRegisterNumber: "", // Will be updated in settings
+        })
+      } else {
+        profileResult = await createBrandProfile({
+          brandName: formData.brandName.trim(),
+        })
+      }
       
       toast({
         title: t("auth.success"),

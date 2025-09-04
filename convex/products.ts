@@ -60,12 +60,12 @@ export const getUserProducts = query({
     return products.map(p => ({
       _id: p._id,
       name: p.name,
-      code: p.code,
+      sku: p.sku,
       category: p.category,
       price: p.price,
       quantity: p.stockQuantity,
       imageUrl: p.imageUrl,
-      isActive: p.isActive
+      description: p.description
     }))
   },
 })
@@ -76,100 +76,6 @@ export const getAllProducts = query({
   handler: async (ctx) => {
     const products = await ctx.db.query("products").collect()
     return products
-  },
-})
-
-// Seed sample products for a user
-export const seedSampleProducts = mutation({
-  args: {
-    ownerId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    // Get the brand profile for this user
-    const userProfile = await getUserProfile(ctx, args.ownerId)
-    
-    if (!userProfile || userProfile.type !== "brand_owner") {
-      throw new Error("User is not a brand owner")
-    }
-    
-    const brandProfileId = userProfile.profile._id
-    const sampleProducts = [
-      {
-        name: "قهوة عربية فاخرة",
-        code: "PRD-001",
-        description: "قهوة عربية مميزة بنكهة الهيل",
-        category: "مشروبات",
-        price: 45,
-        cost: 25,
-        stockQuantity: 100,
-        minQuantity: 20,
-        sku: "SKU-COFFEE-001",
-        imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200",
-      },
-      {
-        name: "شاي أخضر عضوي",
-        code: "PRD-002",
-        description: "شاي أخضر طبيعي 100%",
-        category: "مشروبات",
-        price: 35,
-        cost: 18,
-        stockQuantity: 150,
-        minQuantity: 30,
-        sku: "SKU-TEA-001",
-        imageUrl: "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=200",
-      },
-      {
-        name: "عسل طبيعي",
-        code: "PRD-003",
-        description: "عسل جبلي طبيعي",
-        category: "أغذية",
-        price: 120,
-        cost: 80,
-        stockQuantity: 50,
-        minQuantity: 10,
-        sku: "SKU-HONEY-001",
-        imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200",
-      },
-      {
-        name: "تمر سكري",
-        code: "PRD-004",
-        description: "تمر سكري فاخر من القصيم",
-        category: "أغذية",
-        price: 65,
-        cost: 40,
-        stockQuantity: 200,
-        minQuantity: 40,
-        sku: "SKU-DATES-001",
-        imageUrl: "https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200",
-      },
-      {
-        name: "زعفران إيراني",
-        code: "PRD-005",
-        description: "زعفران إيراني أصلي",
-        category: "توابل",
-        price: 250,
-        cost: 180,
-        stockQuantity: 30,
-        minQuantity: 5,
-        sku: "SKU-SAFFRON-001",
-        imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200",
-      },
-    ]
-    
-    const productIds = []
-    for (const product of sampleProducts) {
-      const productId = await ctx.db.insert("products", {
-        brandProfileId,
-        ...product,
-        totalSales: 0,
-        totalRevenue: 0,
-        shelfCount: 0,
-        isActive: true,
-      })
-      productIds.push(productId)
-    }
-    
-    return { success: true, productIds, count: productIds.length }
   },
 })
 
@@ -282,7 +188,7 @@ export const getProductStats = query({
     
     // Calculate current stats
     const totalProducts = products.length
-    const activeProducts = products.filter(p => p.isActive).length
+    const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
     const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
@@ -369,7 +275,7 @@ export const getUserProductStats = query({
     
     // Calculate current stats
     const totalProducts = products.length
-    const activeProducts = products.filter(p => p.isActive).length
+    const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
     const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
@@ -398,14 +304,11 @@ export const getUserProductStats = query({
 export const createProduct = mutation({
   args: {
     name: v.string(),
-    code: v.string(),
+    sku: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     price: v.number(),
-    cost: v.optional(v.number()),
     stockQuantity: v.number(),
-    minQuantity: v.optional(v.number()),
-    sku: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -437,19 +340,14 @@ export const createProduct = mutation({
     const productId = await ctx.db.insert("products", {
       brandProfileId: brandProfile._id,
       name: args.name,
-      code: args.code,
+      sku: args.sku,
       description: args.description || "",
       category: args.category || "",
       price: args.price,
-      cost: args.cost,
       stockQuantity: args.stockQuantity,
-      minQuantity: args.minQuantity,
-      sku: args.sku,
       imageUrl: args.imageUrl,
       totalSales: 0,
       totalRevenue: 0,
-      shelfCount: 0,
-      isActive: true,
     })
     
     return productId
@@ -461,16 +359,12 @@ export const updateProduct = mutation({
   args: {
     productId: v.id("products"),
     name: v.optional(v.string()),
-    code: v.optional(v.string()),
+    sku: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     price: v.optional(v.number()),
-    cost: v.optional(v.number()),
     stockQuantity: v.optional(v.number()),
-    minQuantity: v.optional(v.number()),
-    sku: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { productId, ...updates } = args
@@ -483,14 +377,15 @@ export const updateProduct = mutation({
   },
 })
 
-// Delete a product (soft delete)
+// Delete a product (mark as out of stock)
 export const deleteProduct = mutation({
   args: {
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
+    // Mark product as out of stock instead of using isActive
     await ctx.db.patch(args.productId, {
-      isActive: false,
+      stockQuantity: 0,
     })
     
     return { success: true }
@@ -531,47 +426,21 @@ export const getLatestSalesOperations = query({
     // Get store user information for each rental
     const rentalsWithStoreInfo = await Promise.all(
       rentalRequests.map(async (request) => {
-        if (!request.storeProfileId) return { ...request, storeName: "متجر", city: "الرياض" }
+        if (!request.storeProfileId) return request
         
         const storeProfile = await ctx.db.get(request.storeProfileId)
         const shelf = await ctx.db.get(request.shelfId)
         
         return {
           ...request,
-          storeName: storeProfile?.storeName || "متجر",
-          city: shelf?.city || "الرياض",
+          storeName: storeProfile?.storeName,
+          city: shelf?.city,
         }
       })
     )
     
-    // Create mock sales operations based on products with sales
-    const salesOperations = []
-    const productsWithSales = products.filter(p => (p.totalSales || 0) > 0)
-    
-    if (productsWithSales.length > 0) {
-      // Generate recent sales from products
-      for (let i = 0; i < Math.min(limit, productsWithSales.length); i++) {
-        const product = productsWithSales[i]
-        const rental = rentalsWithStoreInfo[i % rentalsWithStoreInfo.length] // Cycle through rentals
-        
-        // Generate a recent date (within last 7 days)
-        const daysAgo = Math.floor(Math.random() * 7)
-        const saleDate = new Date()
-        saleDate.setDate(saleDate.getDate() - daysAgo)
-        
-        salesOperations.push({
-          orderNumber: `ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
-          productName: product.name,
-          storeName: rental?.storeName || "متجر الرياض",
-          city: rental?.city || "الرياض",
-          price: product.price,
-          date: saleDate.toISOString(),
-        })
-      }
-    }
-    // If no sales or no products, return empty array
-    // The UI will show an appropriate empty state
-    
-    return salesOperations
+    // Return empty array for now as we don't have real sales tracking yet
+    // In the future, this should query actual sales/order records
+    return []
   },
 })

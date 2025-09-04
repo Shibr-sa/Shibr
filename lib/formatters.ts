@@ -52,17 +52,18 @@ export const formatPercentage = (value: number, showSign = true): string => {
 /**
  * Format date using Gregorian calendar only
  * Uses date-fns for consistent formatting
- * @param date - Date to format (Date object or ISO string)
+ * @param date - Date to format (Date object, ISO string, or timestamp)
  * @param language - Language for month names
  * @param formatType - Format type (short, long, or custom)
  * @returns Formatted date string with English numerals
  */
 export const formatDate = (
-  date: Date | string,
+  date: Date | string | number,
   language: 'ar' | 'en' = 'en',
   formatType: 'short' | 'long' | 'full' = 'short'
 ): string => {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'number' ? new Date(date) :
+            typeof date === 'string' ? new Date(date) : date
   
   // Define format patterns (always showing English numerals)
   let pattern: string
@@ -172,12 +173,14 @@ export const formatRelativeTime = (date: Date | string, language: 'ar' | 'en' = 
  * @returns Duration string with English numerals
  */
 export const formatDuration = (
-  startDate: Date | string,
-  endDate: Date | string,
+  startDate: Date | string | number,
+  endDate: Date | string | number,
   language: 'ar' | 'en' = 'en'
 ): string => {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  const start = typeof startDate === 'number' ? new Date(startDate) :
+                typeof startDate === 'string' ? new Date(startDate) : startDate
+  const end = typeof endDate === 'number' ? new Date(endDate) :
+              typeof endDate === 'string' ? new Date(endDate) : endDate
   
   const diffInDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   

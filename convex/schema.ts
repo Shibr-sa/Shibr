@@ -14,7 +14,7 @@ const schema = defineSchema({
     
     // Store information
     storeName: v.string(),
-    businessType: v.string(), // grocery, pharmacy, etc.
+    businessCategory: v.string(), // grocery, pharmacy, etc.
     commercialRegisterNumber: v.string(),
     commercialRegisterDocument: v.optional(v.id("_storage")),
     
@@ -69,10 +69,6 @@ const schema = defineSchema({
       v.literal("operations")
     ),
     permissions: v.array(v.string()),
-    
-    // Contact information
-    phoneNumber: v.optional(v.string()),
-    email: v.optional(v.string()),
     
     // Admin metadata
     department: v.optional(v.string()),
@@ -156,55 +152,35 @@ const schema = defineSchema({
     endDate: v.number(), // Unix timestamp
     monthlyPrice: v.number(),
     totalAmount: v.number(),
+    storeCommission: v.optional(v.number()), // Temporarily optional for migration
     
-    // Product details
-    productType: v.string(),
-    productDescription: v.string(),
-    productCount: v.optional(v.number()),
-    brandName: v.optional(v.string()),
-    selectedProductIds: v.optional(v.array(v.id("products"))),
-    selectedProductQuantities: v.optional(v.array(v.number())),
+    // Product details - REQUIRED (empty array if no products)
+    selectedProducts: v.array(v.object({
+      productId: v.id("products"),
+      quantity: v.number(),
+      name: v.string(),
+      price: v.number(),
+      category: v.string()
+    })),
     
-    // Status
+    // Simplified status (no "accepted")
     status: v.union(
       v.literal("pending"),
-      v.literal("accepted"),
-      v.literal("rejected"),
-      v.literal("payment_pending"),
+      v.literal("payment_pending"), // Replaces old "accepted"
       v.literal("active"),
       v.literal("completed"),
       v.literal("cancelled"),
+      v.literal("rejected"),
       v.literal("expired")
     ),
     
-    // Payment info
-    paymentStatus: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("processing"),
-      v.literal("completed"),
-      v.literal("failed"),
-      v.literal("refunded")
-    )),
-    paymentMethod: v.optional(v.string()),
-    paymentReference: v.optional(v.string()),
-    
     // Communication
-    message: v.optional(v.string()),
-    additionalNotes: v.optional(v.string()),
-    storeOwnerResponse: v.optional(v.string()),
-    conversationId: v.optional(v.id("conversations")),
-    
-    // Timestamps
-    acceptedAt: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
-    expiresAt: v.optional(v.number()),
-    respondedAt: v.optional(v.number()),
+    conversationId: v.optional(v.id("conversations"))
   })
     .index("by_shelf", ["shelfId"])
     .index("by_brand", ["brandProfileId"])
     .index("by_store", ["storeProfileId"])
     .index("by_status", ["status"])
-    .index("by_payment_status", ["paymentStatus"])
     .index("by_store_status", ["storeProfileId", "status"])
     .index("by_date_range", ["startDate", "endDate"]),
   
@@ -213,64 +189,42 @@ const schema = defineSchema({
     brandProfileId: v.id("brandProfiles"),
     
     name: v.string(),
-    code: v.optional(v.string()),
+    sku: v.optional(v.string()),
     description: v.string(),
     category: v.string(),
     price: v.number(),
-    cost: v.optional(v.number()),
     
     // Images
-    mainImage: v.optional(v.id("_storage")),
-    images: v.optional(v.array(v.id("_storage"))),
     imageUrl: v.optional(v.string()), // URL for external images
     
     // Stock info
-    sku: v.optional(v.string()),
-    barcode: v.optional(v.string()),
     stockQuantity: v.optional(v.number()),
-    minQuantity: v.optional(v.number()),
     
     // Sales tracking
     totalSales: v.optional(v.number()),
     totalRevenue: v.optional(v.number()),
-    shelfCount: v.optional(v.number()),
-    
-    // Status
-    isActive: v.boolean(),
   })
     .index("by_brand_profile", ["brandProfileId"])
     .index("by_category", ["category"])
-    .index("by_active", ["isActive"])
-    .index("by_brand_active_category", ["brandProfileId", "isActive", "category"]),
+    .index("by_brand_category", ["brandProfileId", "category"]),
   
   // Conversations (chat system)
   conversations: defineTable({
     brandProfileId: v.id("brandProfiles"),
     storeProfileId: v.id("storeProfiles"),
     shelfId: v.id("shelves"),
-    rentalRequestId: v.optional(v.id("rentalRequests")),
     
     status: v.union(
       v.literal("active"),
-      v.literal("archived"),
-      v.literal("rejected")
+      v.literal("archived")
     ),
     
     brandUnreadCount: v.number(),
     storeUnreadCount: v.number(),
-    
-    lastMessageText: v.optional(v.string()),
-    lastMessageTime: v.optional(v.number()), // Unix timestamp
-    lastMessageSenderType: v.optional(v.union(
-      v.literal("brand"),
-      v.literal("store"),
-      v.literal("system")
-    )),
   })
     .index("by_brand_profile", ["brandProfileId"])
     .index("by_store_profile", ["storeProfileId"])
-    .index("by_shelf", ["shelfId"])
-    .index("by_rental_request", ["rentalRequestId"]),
+    .index("by_shelf", ["shelfId"]),
   
   messages: defineTable({
     conversationId: v.id("conversations"),
@@ -279,71 +233,23 @@ const schema = defineSchema({
       v.literal("store"),
       v.literal("system")
     ),
-    senderId: v.optional(v.union(
+    senderId: v.union(
       v.id("brandProfiles"),
       v.id("storeProfiles")
-    )),
+    ),
     
     text: v.string(),
-    messageType: v.optional(v.union(
+    messageType: v.union(
       v.literal("text"),
-      v.literal("image"),
       v.literal("rental_request"),
       v.literal("rental_accepted"),
-      v.literal("rental_rejected"),
-      v.literal("system")
-    )),
-    attachment: v.optional(v.id("_storage")),
+      v.literal("rental_rejected")
+    ),
     
     isRead: v.boolean(),
-    readAt: v.optional(v.number()), // Unix timestamp
   })
     .index("by_conversation", ["conversationId"])
     .index("by_conversation_read", ["conversationId", "isRead"]),
-  
-  // Notifications
-  notifications: defineTable({
-    userId: v.id("users"), // Keep for quick user lookup
-    profileId: v.optional(v.union(
-      v.id("storeProfiles"),
-      v.id("brandProfiles"),
-      v.id("adminProfiles")
-    )),
-    profileType: v.union(
-      v.literal("store"),
-      v.literal("brand"),
-      v.literal("admin")
-    ),
-    
-    title: v.string(),
-    message: v.string(),
-    type: v.union(
-      v.literal("rental_request"),
-      v.literal("rental_accepted"),
-      v.literal("rental_rejected"),
-      v.literal("rental_completed"),
-      v.literal("rental_expired"),
-      v.literal("payment_received"),
-      v.literal("payment_confirmation"),
-      v.literal("message"),
-      v.literal("new_message"),
-      v.literal("system")
-    ),
-    
-    conversationId: v.optional(v.id("conversations")),
-    rentalRequestId: v.optional(v.id("rentalRequests")),
-    relatedId: v.optional(v.string()), // ID of related entity
-    relatedType: v.optional(v.string()), // Type of related entity
-    actionUrl: v.optional(v.string()), // URL to navigate to
-    actionLabel: v.optional(v.string()), // Label for action button
-    
-    isRead: v.boolean(),
-    readAt: v.optional(v.number()), // Unix timestamp
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_unread", ["userId", "isRead"])
-    .index("by_profile", ["profileId"])
-    .index("by_type", ["type"]),
   
   // Payment methods (bank accounts for receiving payments)
   paymentMethods: defineTable({
@@ -435,34 +341,6 @@ const schema = defineSchema({
   })
     .index("by_key", ["key"]),
   
-  // Files/Documents storage reference
-  files: defineTable({
-    storageId: v.id("_storage"),
-    uploadedByUserId: v.id("users"), // Who uploaded the file
-    
-    fileName: v.string(),
-    fileType: v.string(),
-    fileSize: v.number(),
-    mimeType: v.string(),
-    
-    purpose: v.union(
-      v.literal("commercial_register"),
-      v.literal("freelance_license"),
-      v.literal("vat_certificate"),
-      v.literal("shelf_image"),
-      v.literal("product_image"),
-      v.literal("chat_attachment"),
-      v.literal("other")
-    ),
-    
-    relatedId: v.optional(v.string()),
-    relatedType: v.optional(v.string()),
-    
-    uploadedAt: v.number(), // Unix timestamp
-  })
-    .index("by_user", ["uploadedByUserId"])
-    .index("by_purpose", ["purpose"])
-    .index("by_storage", ["storageId"]),
 })
 
 export default schema
