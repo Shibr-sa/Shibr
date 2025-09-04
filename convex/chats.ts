@@ -142,7 +142,10 @@ export const getMessages = query({
 export const sendSystemMessage = mutation({
   args: {
     conversationId: v.id("conversations"),
-    senderId: v.any(), // Profile ID of the sender (for context)
+    senderId: v.union(
+      v.id("brandProfiles"),
+      v.id("storeProfiles")
+    ), // Profile ID of the sender (for context)
     text: v.string(),
     messageType: v.union(
       v.literal("text"),

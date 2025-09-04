@@ -106,7 +106,7 @@ const schema = defineSchema({
     
     // Pricing
     monthlyPrice: v.number(),
-    storeCommission: v.optional(v.number()), // Store commission percentage on sales
+    storeCommission: v.number(), // Store commission percentage on sales
     
     // Availability
     isAvailable: v.boolean(),
@@ -152,7 +152,7 @@ const schema = defineSchema({
     endDate: v.number(), // Unix timestamp
     monthlyPrice: v.number(),
     totalAmount: v.number(),
-    storeCommission: v.optional(v.number()), // Temporarily optional for migration
+    storeCommission: v.number(), // Store commission percentage on sales
     
     // Product details - REQUIRED (empty array if no products)
     selectedProducts: v.array(v.object({
@@ -182,6 +182,8 @@ const schema = defineSchema({
     .index("by_store", ["storeProfileId"])
     .index("by_status", ["status"])
     .index("by_store_status", ["storeProfileId", "status"])
+    .index("by_brand_status", ["brandProfileId", "status"])
+    .index("by_shelf_status", ["shelfId", "status"])
     .index("by_date_range", ["startDate", "endDate"]),
   
   // Products managed by brand owners
@@ -329,7 +331,9 @@ const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_invoice", ["invoiceNumber"])
     .index("by_payment_date", ["paymentDate"])
-    .index("by_type_status", ["type", "status"]),
+    .index("by_type_status", ["type", "status"])
+    .index("by_from_profile", ["fromProfileId"])
+    .index("by_to_profile", ["toProfileId"]),
   
   // Platform settings (for admins)
   platformSettings: defineTable({

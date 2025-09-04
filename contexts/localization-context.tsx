@@ -66,6 +66,8 @@ const translations = {
     "common.clear_search": "مسح البحث",
     "common.view_all": "عرض الكل",
     "common.unknown": "غير معروف",
+    "common.not_specified": "غير محدد",
+    "common.logo_alt": "شعار شبر",
     "common.currency": "ريال",
     "common.completed": "مكتمل",
     "common.pending": "معلق",
@@ -119,7 +121,8 @@ const translations = {
     "nav.marketplace": "السوق",
     "nav.dashboard": "لوحة التحكم",
     "nav.navigation": "التنقل",
-    "nav.questions": "المسائل والأجوبة",
+    "nav.questions": "المستأجر والمتجر",
+    "nav.services": "المحلات",
     "nav.why_us": "لماذا نحن",
 
     // Dashboard Navigation
@@ -1994,6 +1997,8 @@ const translations = {
     "common.clear_search": "Clear search",
     "common.view_all": "View All",
     "common.unknown": "Unknown",
+    "common.not_specified": "Not specified",
+    "common.logo_alt": "Shibr Logo",
     "common.currency": "SAR",
     "common.completed": "Completed",
     "common.pending": "Pending",
@@ -2047,7 +2052,8 @@ const translations = {
     "nav.marketplace": "Marketplace",
     "nav.dashboard": "Dashboard",
     "nav.navigation": "Navigation",
-    "nav.questions": "Questions & Answers",
+    "nav.questions": "Renter & Store",
+    "nav.services": "Stores",
     "nav.why_us": "Why Us",
 
     // Dashboard Navigation

@@ -161,7 +161,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Image
                       src="/logo.svg"
-                      alt="Shibr Logo"
+                      alt={t("common.logo_alt")}
                       width={20}
                       height={20}
                       className="size-5 brightness-0 invert"

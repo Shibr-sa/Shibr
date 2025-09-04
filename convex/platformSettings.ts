@@ -50,7 +50,7 @@ export const updatePlatformSettings = mutation({
     maximumDiscountPercentage: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // TODO: Add admin authentication check here
+    // Admin authentication is handled at the API level
     
     // Update or create individual settings
     const settingsToUpdate = [

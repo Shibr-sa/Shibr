@@ -5,7 +5,18 @@ import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { getImageUrlsFromArray, getDateRange } from "./helpers"
 
-
+// Helper function to verify admin access without throwing errors
+async function verifyAdminAccess(ctx: any) {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) {
+    return { isAuthenticated: false, isAdmin: false, userId: null }
+  }
+  
+  const userProfile = await getUserProfile(ctx, userId)
+  const isAdmin = userProfile?.type === "admin"
+  
+  return { isAuthenticated: true, isAdmin, userId }
+}
 
 
 // Get admin statistics (for admin dashboard)
@@ -16,13 +27,23 @@ export const getAdminChartData = query({
     // Verify admin access
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
+      // Return empty chart data when not authenticated
+      return {
+        usersData: [],
+        rentalsData: [],
+        revenueData: []
+      }
     }
     
     const userProfile = await getUserProfile(ctx, userId)
     
     if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+      // Return empty chart data for non-admin users
+      return {
+        usersData: [],
+        rentalsData: [],
+        revenueData: []
+      }
     }
     
     const now = new Date()
@@ -118,15 +139,22 @@ export const getAdminStats = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty stats when not authenticated or not admin
+      return {
+        totalUsers: 0,
+        totalShelves: 0,
+        totalRentals: 0,
+        totalRevenue: 0,
+        changePercentages: {
+          users: 0,
+          shelves: 0,
+          rentals: 0,
+          revenue: 0
+        },
+        recentActivities: []
+      }
     }
     
     const timePeriod = args.timePeriod || "monthly"
@@ -595,15 +623,15 @@ export const getStores = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty results when not authenticated or not admin
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page
+      }
     }
     
     const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
@@ -817,13 +845,25 @@ export const getBrands = query({
     // Verify admin access
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
+      // Return empty results when not authenticated
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page
+      }
     }
     
     const userProfile = await getUserProfile(ctx, userId)
     
     if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+      // Return empty results for non-admin users
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page
+      }
     }
     
     const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
@@ -991,15 +1031,15 @@ export const getPosts = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty results when not authenticated or not admin
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page
+      }
     }
     
     const { searchQuery = "", status = "all", page, limit } = args;
@@ -1093,15 +1133,15 @@ export const getPayments = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty results when not authenticated or not admin
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page
+      }
     }
     
     const { searchQuery = "", status = "all", page, limit } = args;
@@ -1313,15 +1353,15 @@ export const getStoreShelves = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty results when not authenticated or not admin
+      return {
+        items: [],
+        total: 0,
+        pages: 0,
+        currentPage: args.page || 1
+      }
     }
     
     const page = args.page || 1
@@ -1387,15 +1427,10 @@ export const getBrandProducts = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty array when not authenticated or not admin
+      return []
     }
     
     // Get active rental requests for this brand
@@ -1468,15 +1503,10 @@ export const getBrandRentals = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty array when not authenticated or not admin
+      return []
     }
     
     const rentals = await ctx.db
@@ -1542,15 +1572,10 @@ export const getStoreRentals = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty array when not authenticated or not admin
+      return []
     }
     
     const rentals = await ctx.db
@@ -1585,15 +1610,10 @@ export const getStorePayments = query({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const userProfile = await getUserProfile(ctx, userId)
-    
-    if (!userProfile || userProfile.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      // Return empty array when not authenticated or not admin
+      return []
     }
     
     const rentals = await ctx.db

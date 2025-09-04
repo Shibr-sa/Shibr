@@ -188,7 +188,7 @@ export default function SignUpPage() {
           <div className="inline-flex items-center gap-3 mb-2">
             <Image
               src="/logo.svg"
-              alt="Shibr Logo"
+              alt={t("common.logo_alt")}
               width={48}
               height={48}
               className="h-12 w-12"

@@ -204,7 +204,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     }
     
     if (!userId || !userProfileId || !shelfDetails?.storeProfileId) {
-      console.log("Auth check failed:", { userId, userProfileId, storeProfileId: shelfDetails?.storeProfileId })
+      // Auth check failed - missing required data
       alert(t("form.login_first"))
       return
     }

@@ -161,19 +161,29 @@ export default function BrandShelvesPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="h-8 w-8 p-0 relative"
-                    onClick={async () => {
-                      // Navigate to the shelf details page with conversation
-                      if (request.conversationId && request.shelfId) {
-                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                      }
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="relative inline-block">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={async () => {
+                        // Navigate to the shelf details page with conversation
+                        if (request.conversationId && request.shelfId) {
+                          router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                        }
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                      >
+                        {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                      </Badge>
+                    )}
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t("action.view_details")}</p>
@@ -282,16 +292,26 @@ export default function BrandShelvesPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="h-8 w-8 p-0 relative"
-                    onClick={async () => {
-                      router.push(`/brand-dashboard/shelves/${request._id}`)
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="relative inline-block">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={async () => {
+                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                      >
+                        {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                      </Badge>
+                    )}
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t("action.view")}</p>

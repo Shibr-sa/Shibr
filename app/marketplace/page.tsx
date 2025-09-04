@@ -5,8 +5,10 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { MarketplaceContent } from "@/components/marketplace/marketplace-content"
+import { Menu } from "lucide-react"
 
 export default function MarketplacePage() {
   const { t, direction } = useLanguage()
@@ -14,42 +16,46 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-50 w-full border-b bg-background">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center gap-2">
             <Image
               src="/logo.svg"
-              alt="Shibr Logo"
-              width={40}
-              height={40}
-              className="h-10 w-10"
+              alt={t("common.logo_alt")}
+              width={32}
+              height={32}
+              className="h-8 w-8"
             />
-            <span className="text-xl font-bold text-foreground">{t("common.shibr")}</span>
+            <span className="font-medium">{t("common.shibr")}</span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.home")}
             </Link>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {t("nav.questions")}
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              {t("nav.renter_store")}
             </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {t("nav.services")}
+            <Link href="/marketplace" className="text-sm text-muted-foreground hover:text-foreground">
+              {t("nav.stores")}
+            </Link>
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              {t("nav.why_us_nav")}
             </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {t("nav.why_us")}
-            </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.contact")}
             </a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <LanguageSwitcher />
-            <Link href="/signin">
-              <Button size="sm">{t("nav.signin")}</Button>
-            </Link>
+            <Button size="sm" asChild>
+              <Link href="/signin">{t("nav.signin")}</Link>
+            </Button>
+            <Button variant="ghost" size="sm" className="md:hidden">
+              <Menu className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -106,7 +112,7 @@ export default function MarketplacePage() {
               <div className="flex items-center gap-3 mb-4">
                 <Image
                   src="/logo.svg"
-                  alt="Shibr Logo"
+                  alt={t("common.logo_alt")}
                   width={40}
                   height={40}
                   className="h-10 w-10"
