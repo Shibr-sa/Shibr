@@ -1,16 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { Card, CardContent } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Pagination,
   PaginationContent,
@@ -19,88 +23,106 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Search, Eye, Store, CheckCircle, XCircle } from "lucide-react"
+import { Search, Eye, Store, DollarSign, Package } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { StoreDetailsDialog } from "@/components/dialogs/store-details-dialog"
-
-const storesData = [
-  {
-    id: 1,
-    name: "Store X",
-    shelves: 12,
-    rentals: 45,
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Glow Cosmetics",
-    shelves: 8,
-    rentals: 32,
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Nova Perfumes",
-    shelves: 15,
-    rentals: 58,
-    status: "suspended",
-  },
-  {
-    id: 4,
-    name: "FitZone",
-    shelves: 6,
-    rentals: 23,
-    status: "active",
-  },
-  {
-    id: 5,
-    name: "Coffee Box",
-    shelves: 4,
-    rentals: 12,
-    status: "under_review",
-  },
-  {
-    id: 6,
-    name: "Tech Hub",
-    shelves: 10,
-    rentals: 38,
-    status: "active",
-  },
-  {
-    id: 7,
-    name: "Fashion Plus",
-    shelves: 7,
-    rentals: 28,
-    status: "active",
-  },
-  {
-    id: 8,
-    name: "Home Essentials",
-    shelves: 9,
-    rentals: 35,
-    status: "active",
-  },
-]
 
 export default function StoresPage() {
   const { t, language } = useLanguage()
-  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedStore, setSelectedStore] = useState<any>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString()} ${t("common.currency")}`
+  }
+  
+  // Initialize state from URL params for persistence
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">(
+    (searchParams.get("period") as "daily" | "weekly" | "monthly" | "yearly") || "monthly"
+  )
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "stores")
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
+  
+  // Posts section state
+  const [filterStatus, setFilterStatus] = useState(searchParams.get("postStatus") || "all")
+  const [postsSearchQuery, setPostsSearchQuery] = useState(searchParams.get("postSearch") || "")
+  const [postsCurrentPage, setPostsCurrentPage] = useState(Number(searchParams.get("postPage")) || 1)
+  
+  // Track if we've loaded initial data
+  const [hasInitialStoresData, setHasInitialStoresData] = useState(false)
+  const [hasInitialPostsData, setHasInitialPostsData] = useState(false)
+  
+  // Debounced search values for better performance
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  const debouncedPostsSearchQuery = useDebouncedValue(postsSearchQuery, 300)
+  
   const itemsPerPage = 5
   
-  // Fetch real data from Convex
-  const storesResult = useQuery(api.admin.getStores, {
-    searchQuery,
-    page: currentPage,
-    limit: itemsPerPage,
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeTab !== "stores") params.set("tab", activeTab)
+    if (searchQuery) params.set("search", searchQuery)
+    if (timePeriod !== "monthly") params.set("period", timePeriod)
+    if (currentPage > 1) params.set("page", String(currentPage))
+    if (postsSearchQuery) params.set("postSearch", postsSearchQuery)
+    if (filterStatus !== "all") params.set("postStatus", filterStatus)
+    if (postsCurrentPage > 1) params.set("postPage", String(postsCurrentPage))
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [activeTab, searchQuery, timePeriod, currentPage, postsSearchQuery, filterStatus, postsCurrentPage, pathname, router])
+  
+  // Fetch stats data with time period
+  const statsResult = useQuery(api.admin.getStores, {
+    searchQuery: "",
+    page: 1,
+    limit: 1, // We only need stats, not items
     timePeriod,
   })
   
-  const storesData = storesResult?.stores || []
+  // Fetch stores table data with debounced search
+  const storesResult = useQuery(api.admin.getStores, {
+    searchQuery: debouncedSearchQuery, // Use debounced value for API call
+    page: currentPage,
+    limit: itemsPerPage,
+    // Don't pass timePeriod for table data
+  })
+  
+  const stores = storesResult?.items || []
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+  
+  // Track when we have initial data
+  useEffect(() => {
+    if (storesResult !== undefined && !hasInitialStoresData) {
+      setHasInitialStoresData(true)
+    }
+  }, [storesResult, hasInitialStoresData])
+  
+  // Fetch posts data with debounced search
+  const postsResult = useQuery(api.admin.getPosts, {
+    searchQuery: debouncedPostsSearchQuery, // Use debounced value for API call
+    status: filterStatus,
+    page: postsCurrentPage,
+    limit: itemsPerPage,
+  })
+  
+  // Check if posts search is in progress
+  const isPostsSearching = postsSearchQuery !== debouncedPostsSearchQuery
+  
+  const postsData = postsResult?.items || []
+  const postsTotalPages = postsResult?.totalPages || 1
+  
+  // Track when we have initial posts data
+  useEffect(() => {
+    if (postsResult !== undefined && !hasInitialPostsData) {
+      setHasInitialPostsData(true)
+    }
+  }, [postsResult, hasInitialPostsData])
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -115,96 +137,138 @@ export default function StoresPage() {
     }
   }
 
-  // Use data from Convex query
-  const filteredStores = storesData
   const totalPages = storesResult?.totalPages || 1
-  const paginatedStores = storesData
 
   return (
     <div className="space-y-6">
-      {/* Header Card with Stats */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold">{t("stores.title")}</CardTitle>
-              <p className="text-muted-foreground mt-1">{t("stores.description")}</p>
-            </div>
-            <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
-              <TabsList className="grid grid-cols-4 w-auto bg-muted">
-                <TabsTrigger value="daily" className="px-4">
-                  {t("dashboard.daily")}
-                </TabsTrigger>
-                <TabsTrigger value="weekly" className="px-4">
-                  {t("dashboard.weekly")}
-                </TabsTrigger>
-                <TabsTrigger value="monthly" className="px-4">
-                  {t("dashboard.monthly")}
-                </TabsTrigger>
-                <TabsTrigger value="yearly" className="px-4">
-                  {t("dashboard.yearly")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.total_stores")}</p>
-                  <p className="text-2xl font-bold">{storesResult?.stats?.totalStores || storesResult?.total || 0}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {(storesResult?.stats?.totalChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.totalChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Store className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">{t("stores.title")}</h2>
+          <p className="text-muted-foreground mt-1">{t("stores.description")}</p>
+        </div>
+        <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as "daily" | "weekly" | "monthly" | "yearly")} className="w-auto">
+          <TabsList className="grid grid-cols-4 w-auto bg-muted">
+            <TabsTrigger value="daily" className="px-4">
+              {t("dashboard.daily")}
+            </TabsTrigger>
+            <TabsTrigger value="weekly" className="px-4">
+              {t("dashboard.weekly")}
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="px-4">
+              {t("dashboard.monthly")}
+            </TabsTrigger>
+            <TabsTrigger value="yearly" className="px-4">
+              {t("dashboard.yearly")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.active_stores")}</p>
-                  <p className="text-2xl font-bold">{storesResult?.stats?.activeStores || storesData.filter(s => s.status === "active").length || 0}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {(storesResult?.stats?.activeChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.activeChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
-                  </p>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {statsResult === undefined ? (
+          <>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("stores.total_stores")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Store className="h-5 w-5 text-primary" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-primary" />
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("stores.total_shelves")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/50 border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">{t("dashboard.total_revenue")}</p>
+                    <Skeleton className="h-[30px] w-24 mt-1" />
+                    <Skeleton className="h-[16px] w-32 mt-1" />
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <StatCard
+              title={t("stores.total_stores")}
+              value={statsResult.stats?.totalStores || 0}
+              trend={{
+                value: statsResult.stats?.totalChange || 0,
+                label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
+                       timePeriod === "weekly" ? t("dashboard.from_last_week") :
+                       timePeriod === "yearly" ? t("dashboard.from_last_year") :
+                       t("dashboard.from_last_month")
+              }}
+              icon={<Store className="h-5 w-5 text-primary" />}
+            />
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("stores.suspended")}</p>
-                  <p className="text-2xl font-bold">{storesResult?.stats?.suspendedStores || storesData.filter(s => s.status === "suspended").length || 0}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {(storesResult?.stats?.suspendedChange || 0) > 0 ? "+" : ""}{storesResult?.stats?.suspendedChange || 0}% {timePeriod === "daily" ? t("dashboard.from_yesterday") : timePeriod === "weekly" ? t("dashboard.from_last_week") : timePeriod === "yearly" ? t("dashboard.from_last_year") : t("dashboard.from_last_month")}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <XCircle className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            <StatCard
+              title={t("stores.total_shelves")}
+              value={statsResult.stats?.totalShelves || 0}
+              trend={{
+                value: statsResult.stats?.shelvesChange || 0,
+                label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
+                       timePeriod === "weekly" ? t("dashboard.from_last_week") :
+                       timePeriod === "yearly" ? t("dashboard.from_last_year") :
+                       t("dashboard.from_last_month")
+              }}
+              icon={<Package className="h-5 w-5 text-primary" />}
+            />
 
-      {/* Stores Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">{t("stores.all_stores")}</CardTitle>
+            <StatCard
+              title={t("dashboard.total_revenue")}
+              value={formatCurrency(statsResult.stats?.totalRevenue || 0)}
+              trend={{
+                value: statsResult.stats?.revenueChange || 0,
+                label: timePeriod === "daily" ? t("dashboard.from_yesterday") : 
+                       timePeriod === "weekly" ? t("dashboard.from_last_week") :
+                       timePeriod === "yearly" ? t("dashboard.from_last_year") :
+                       t("dashboard.from_last_month")
+              }}
+              icon={<DollarSign className="h-5 w-5 text-primary" />}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Tables Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Tab Header with Search */}
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-auto grid-cols-2">
+            <TabsTrigger value="stores">{t("stores.stores_tab")}</TabsTrigger>
+            <TabsTrigger value="posts">{t("posts.shelves_tab")}</TabsTrigger>
+          </TabsList>
+          
+          {/* Dynamic Search Bar based on active tab */}
+          {activeTab === "stores" ? (
             <div className="relative w-80">
-              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input 
                 placeholder={t("stores.search_placeholder")} 
                 className="pe-10"
@@ -215,118 +279,172 @@ export default function StoresPage() {
                 }}
               />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border">
-            <div className="min-h-[420px]"> {/* Fixed height for 5 rows */}
-              <Table>
+          ) : (
+            <div className="flex items-center gap-4">
+              {/* Filter Pills */}
+              <ToggleGroup 
+                type="single" 
+                value={filterStatus}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFilterStatus(value)
+                    setPostsCurrentPage(1)
+                  }
+                }}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="all" aria-label="Show all posts">
+                  {t("posts.filter_all")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="rented" aria-label="Show rented posts">
+                  {t("posts.status.rented")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="published" aria-label="Show published posts">
+                  {t("posts.status.published")}
+                </ToggleGroupItem>
+              </ToggleGroup>
+              
+              {/* Search Bar */}
+              <div className="relative w-80">
+                <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input 
+                  placeholder={t("posts.search_placeholder")} 
+                  className="pe-10"
+                  value={postsSearchQuery}
+                  onChange={(e) => {
+                    setPostsSearchQuery(e.target.value)
+                    setPostsCurrentPage(1) // Reset to first page on search
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Stores Tab Content */}
+        <TabsContent value="stores" className="space-y-6">
+
+          {/* Stores Table */}
+        <div className="rounded-md border">
+        <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[35%]">
                       {t("stores.table.store")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("stores.table.shelves")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("stores.table.rentals")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[20%]">
                       {t("stores.table.status")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium">
+                    <TableHead className="h-12 text-start font-medium w-[15%]">
                       {t("dashboard.options")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedStores.length > 0 ? (
+                  {!hasInitialStoresData || storesResult === undefined || isSearching ? (
+                    // Loading state - show skeletons
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={`loading-${index}`} className="h-[72px]">
+                        <TableCell className="py-3 w-[35%]">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="w-10 h-10 rounded-full" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 w-[20%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : stores.length > 0 ? (
+                    // Data state - show actual stores with fillers
                     <>
-                      {paginatedStores.map((store, index) => (
+                      {stores.map((store) => (
                         <TableRow 
                           key={store.id}
-                          className={`h-[72px] ${index < paginatedStores.length - 1 ? 'border-b' : ''}`}
+                          className="h-[72px]"
                         >
-                          <TableCell className="py-3">
+                          <TableCell className="py-3 w-[35%]">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-10 h-10">
-                                <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${store.name.charAt(0)}`} />
-                                <AvatarFallback>{store.name.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={store.profileImageUrl || undefined} alt={store.name} />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {store.name ? store.name.charAt(0).toUpperCase() : "S"}
+                                </AvatarFallback>
                               </Avatar>
                               <div className="font-medium">{store.name}</div>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3 text-muted-foreground">{store.shelves}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground">{store.rentals}</TableCell>
-                          <TableCell className="py-3">
+                          <TableCell className="py-3 text-muted-foreground w-[15%]">{store.shelves}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground w-[15%]">{store.rentals}</TableCell>
+                          <TableCell className="py-3 w-[20%]">
                             <Badge variant={getStatusVariant(store.status)} className="font-normal">
                               {t(`stores.status.${store.status}`)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3">
+                          <TableCell className="py-3 w-[15%]">
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8"
-                              onClick={() => {
-                                setSelectedStore(store)
-                                setDialogOpen(true)
-                              }}
+                              onClick={() => router.push(`/admin-dashboard/stores/${store.id}`)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
                       ))}
-                      {/* Fill remaining rows with skeletons if less than 5 items */}
-                      {paginatedStores.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedStores.length }).map((_, index) => (
-                        <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedStores.length - 1 ? 'border-b' : ''}`}>
-                          <TableCell className="py-3">
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="w-10 h-10 rounded-full" />
-                              <Skeleton className="h-4 w-32" />
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                      {/* Fill remaining rows to always show 5 rows */}
+                      {stores.length < 5 && Array.from({ length: 5 - stores.length }).map((_, index) => (
+                        <TableRow key={`filler-${index}`} className="h-[72px]">
+                          <TableCell className="py-3" colSpan={5}></TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : (
-                    // Empty state - show message with skeleton rows
-                    Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
-                        {index === 2 ? (
-                          <TableCell colSpan={5} className="text-center text-muted-foreground">
-                            {t("stores.no_results")}
-                          </TableCell>
-                        ) : (
-                          <>
-                            <TableCell className="py-3">
-                              <div className="flex items-center gap-3">
-                                <Skeleton className="w-10 h-10 rounded-full" />
-                                <Skeleton className="h-4 w-32" />
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-4 w-8" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                            <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    ))
+                    // Empty state - centered view with fixed height
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-[360px] text-center">
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex flex-col items-center gap-1 py-10">
+                            <Store className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <h3 className="font-medium">
+                              {searchQuery ? t("stores.no_results") : t("stores.no_stores")}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {searchQuery ? t("stores.try_different_search") : t("stores.stores_will_appear_here")}
+                            </p>
+                            {searchQuery && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => {
+                                  setSearchQuery("")
+                                  setCurrentPage(1)
+                                }}
+                              >
+                                {t("common.clear_search")}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
-              </Table>
-            </div>
-          </div>
+        </Table>
+        </div>
 
-          {/* Pagination Controls - Always visible */}
-          <Pagination>
+        {/* Pagination Controls */}
+        <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
@@ -387,17 +505,224 @@ export default function StoresPage() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Store Details Dialog */}
-      {selectedStore && (
-        <StoreDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          store={selectedStore}
-        />
-      )}
+        {/* Posts Tab Content */}
+        <TabsContent value="posts" className="space-y-6">
+          {/* Posts Table */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="h-12 text-start font-medium w-[20%]">
+                  {t("dashboard.store_name")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("dashboard.branch")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[20%]">
+                  {t("dashboard.shelf_name")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[10%]">
+                  {t("posts.table.percentage")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("dashboard.date_added")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[12%]">
+                  {t("dashboard.status")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[8%]">
+                  {t("dashboard.options")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!hasInitialPostsData || postsResult === undefined || isPostsSearching ? (
+                // Loading state - show skeletons
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={`loading-${index}`} className="h-[72px]">
+                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell className="py-3 w-[8%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                  </TableRow>
+                ))
+              ) : postsData.length > 0 ? (
+                // Data state - show actual posts with fillers
+                <>
+                  {postsData.map((post) => (
+                    <TableRow 
+                      key={post.id} 
+                      className="h-[72px]"
+                    >
+                      <TableCell className="py-3 font-medium w-[20%]">
+                        {post.storeName}
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                        {language === "ar" ? 
+                          (post.branch === "Riyadh" ? "الرياض" :
+                           post.branch === "Jeddah" ? "جدة" :
+                           post.branch === "Dammam" ? "الدمام" :
+                           post.branch === "Mecca" ? "مكة" :
+                           post.branch)
+                          : post.branch
+                        }
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[20%]">
+                        {language === "ar" ? 
+                          (post.shelfName === "Front Display" ? "العرض الأمامي" :
+                           post.shelfName === "Premium Shelf" ? "الرف المميز" :
+                           post.shelfName === "Corner Unit" ? "وحدة الزاوية" :
+                           post.shelfName === "Main Aisle" ? "الممر الرئيسي" :
+                           post.shelfName === "Sports Section" ? "قسم الرياضة" :
+                           post.shelfName === "Electronics Corner" ? "ركن الإلكترونيات" :
+                           post.shelfName === "Entrance Display" ? "عرض المدخل" :
+                           post.shelfName === "Central Aisle" ? "الممر المركزي" :
+                           post.shelfName)
+                          : post.shelfName
+                        }
+                      </TableCell>
+                      <TableCell className="py-3 w-[10%]">
+                        <span className="font-medium">{post.percentage}%</span>
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                        {post.addedDate ? new Date(post.addedDate).toLocaleDateString("en-US") : "-"}
+                      </TableCell>
+                      <TableCell className="py-3 w-[12%]">
+                        <Badge variant={post.status === "published" ? "default" : "secondary"} className="font-normal">
+                          {t(`posts.status.${post.status}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 w-[8%]">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => {
+                            // Navigate to shelf details page under the store
+                            router.push(`/admin-dashboard/stores/${post.storeId}/${post.id}`)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {/* Fill remaining rows to always show 5 rows */}
+                  {postsData.length < 5 && Array.from({ length: 5 - postsData.length }).map((_, index) => (
+                    <TableRow key={`filler-${index}`} className="h-[72px]">
+                      <TableCell className="py-3" colSpan={7}></TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ) : (
+                // Empty state - centered view with fixed height
+                <TableRow>
+                  <TableCell colSpan={7} className="h-[360px] text-center">
+                    <div className="flex h-full w-full items-center justify-center">
+                      <div className="flex flex-col items-center gap-1 py-10">
+                        <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                        <h3 className="font-medium">
+                          {postsSearchQuery || filterStatus !== "all" 
+                            ? t("posts.no_results")
+                            : t("posts.no_posts")}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {postsSearchQuery || filterStatus !== "all"
+                            ? t("posts.try_different_filter")
+                            : t("posts.posts_will_appear_here")}
+                        </p>
+                        {(postsSearchQuery || filterStatus !== "all") && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => {
+                              setPostsSearchQuery("")
+                              setFilterStatus("all")
+                            }}
+                          >
+                            {t("posts.clear_filters")}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Posts Pagination Controls */}
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setPostsCurrentPage(prev => Math.max(1, prev - 1))}
+                className={cn(
+                  "cursor-pointer",
+                  (postsCurrentPage === 1 || postsTotalPages === 0) && "pointer-events-none opacity-50"
+                )}
+                aria-disabled={postsCurrentPage === 1 || postsTotalPages === 0}
+              >
+                {t("common.previous")}
+              </PaginationPrevious>
+            </PaginationItem>
+            
+            {postsTotalPages > 0 ? (
+              Array.from({ length: Math.min(5, postsTotalPages) }, (_, i) => {
+                let page;
+                if (postsTotalPages <= 5) {
+                  page = i + 1;
+                } else if (postsCurrentPage <= 3) {
+                  page = i + 1;
+                } else if (postsCurrentPage >= postsTotalPages - 2) {
+                  page = postsTotalPages - 4 + i;
+                } else {
+                  page = postsCurrentPage - 2 + i;
+                }
+                return page;
+              }).map(page => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    onClick={() => setPostsCurrentPage(page)}
+                    isActive={postsCurrentPage === page}
+                    className="cursor-pointer"
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))
+            ) : (
+              <PaginationItem>
+                <PaginationLink isActive className="pointer-events-none">
+                  1
+                </PaginationLink>
+              </PaginationItem>
+            )}
+            
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setPostsCurrentPage(prev => Math.min(postsTotalPages, prev + 1))}
+                className={cn(
+                  "cursor-pointer",
+                  (postsCurrentPage === postsTotalPages || postsTotalPages <= 1) && "pointer-events-none opacity-50"
+                )}
+                aria-disabled={postsCurrentPage === postsTotalPages || postsTotalPages <= 1}
+              >
+                {t("common.next")}
+              </PaginationNext>
+            </PaginationItem>
+          </PaginationContent>
+          </Pagination>
+        </TabsContent>
+      </Tabs>
+
     </div>
   )
 }

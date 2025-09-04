@@ -1,13 +1,14 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Upload, MapPin, Info, CalendarIcon, Loader2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { Upload, MapPin, Info, CalendarIcon, Loader2, X, Coffee, ShoppingBag, Heart, Home, Baby, Dumbbell, BookOpen, Gift, Package, Check, Ruler, Box, ArrowRight, ArrowUp, ArrowLeft } from "lucide-react"
 import { MapPicker } from "@/components/ui/map-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -28,6 +29,64 @@ interface ShelfFormProps {
   shelfId?: Id<"shelves">
   initialData?: any
 }
+
+// Simplified product category groups with icons
+const PRODUCT_CATEGORY_GROUPS = [
+  {
+    icon: Coffee,
+    titleKey: "product_categories.food_beverages",
+    value: "food_beverages",
+    color: "bg-orange-50 text-orange-600 border-orange-200"
+  },
+  {
+    icon: Heart,
+    titleKey: "product_categories.health_beauty",
+    value: "health_beauty",
+    color: "bg-pink-50 text-pink-600 border-pink-200"
+  },
+  {
+    icon: ShoppingBag,
+    titleKey: "product_categories.fashion",
+    value: "fashion",
+    color: "bg-purple-50 text-purple-600 border-purple-200"
+  },
+  {
+    icon: Package,
+    titleKey: "product_categories.electronics",
+    value: "electronics",
+    color: "bg-blue-50 text-blue-600 border-blue-200"
+  },
+  {
+    icon: Home,
+    titleKey: "product_categories.home_living",
+    value: "home_living",
+    color: "bg-green-50 text-green-600 border-green-200"
+  },
+  {
+    icon: Baby,
+    titleKey: "product_categories.kids_baby",
+    value: "kids_baby",
+    color: "bg-yellow-50 text-yellow-600 border-yellow-200"
+  },
+  {
+    icon: Dumbbell,
+    titleKey: "product_categories.sports_fitness",
+    value: "sports_fitness",
+    color: "bg-red-50 text-red-600 border-red-200"
+  },
+  {
+    icon: BookOpen,
+    titleKey: "product_categories.books_stationery",
+    value: "books_stationery",
+    color: "bg-indigo-50 text-indigo-600 border-indigo-200"
+  },
+  {
+    icon: Gift,
+    titleKey: "product_categories.other",
+    value: "other",
+    color: "bg-gray-50 text-gray-600 border-gray-200"
+  }
+]
 
 export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const { t, direction, language } = useLanguage()
@@ -50,18 +109,11 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const getFileUrl = useMutation(api.files.getFileUrl)
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
   
-  // Debug: Log initial data
-  console.log("ShelfForm mode:", mode)
-  console.log("ShelfForm initialData:", initialData)
-  if (initialData) {
-    console.log("storeCommission:", initialData.storeCommission)
-    console.log("discountPercentage:", initialData.discountPercentage)
-  }
   
   // Form states - Initialize with data if in edit mode
   const [shelfName, setShelfName] = useState(mode === "edit" ? (initialData?.shelfName || "") : "")
   const [city, setCity] = useState(mode === "edit" ? (initialData?.city || "") : "")
-  const [branch, setBranch] = useState(mode === "edit" ? (initialData?.branch || "") : "")
+  const [storeBranch, setStoreBranch] = useState(mode === "edit" ? (initialData?.storeBranch || "") : "")
   const [storeCommission, setStoreCommission] = useState(
     mode === "edit" ? 
     (initialData?.storeCommission?.toString() || initialData?.discountPercentage?.toString() || "") : 
@@ -74,14 +126,18 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const [length, setLength] = useState(mode === "edit" ? (initialData?.shelfSize?.height?.toString() || "") : "")
   const [width, setWidth] = useState(mode === "edit" ? (initialData?.shelfSize?.width?.toString() || "") : "")
   const [depth, setDepth] = useState(mode === "edit" ? (initialData?.shelfSize?.depth?.toString() || "") : "")
-  const [productType, setProductType] = useState(mode === "edit" ? (initialData?.productType || "") : "")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    mode === "edit" && initialData?.productTypes ? 
+    (Array.isArray(initialData.productTypes) ? initialData.productTypes : [initialData.productType || ""]) : 
+    []
+  )
   const [description, setDescription] = useState(mode === "edit" ? (initialData?.description || "") : "")
   
   // Location states - initialize with data if in edit mode
   const [selectedLocation, setSelectedLocation] = useState({
-    address: mode === "edit" && initialData?.address || "",
-    latitude: mode === "edit" && (initialData?.coordinates?.lat || initialData?.latitude) || 24.7136,
-    longitude: mode === "edit" && (initialData?.coordinates?.lng || initialData?.longitude) || 46.6753
+    address: mode === "edit" && initialData?.location?.address || "",
+    latitude: mode === "edit" && (initialData?.location?.lat || initialData?.latitude) || 24.7136,
+    longitude: mode === "edit" && (initialData?.location?.lng || initialData?.longitude) || 46.6753
   })
   
   // City coordinates in Saudi Arabia
@@ -115,24 +171,23 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   // Load existing images when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      // Load existing images
-      const loadImages = async () => {
-        if (initialData.exteriorImage) {
-          const url = await getFileUrl({ storageId: initialData.exteriorImage })
-          if (url) setExteriorPreview(url)
+      // Load existing images from the images array with url property
+      const loadImages = () => {
+        const previews: any = {}
+        
+        if (initialData.images && Array.isArray(initialData.images)) {
+          for (const img of initialData.images) {
+            if (img.url && img.type) {
+              previews[img.type] = img.url
+            }
+          }
         }
-        if (initialData.interiorImage) {
-          const url = await getFileUrl({ storageId: initialData.interiorImage })
-          if (url) setInteriorPreview(url)
-        }
-        if (initialData.shelfImage) {
-          const url = await getFileUrl({ storageId: initialData.shelfImage })
-          if (url) setShelfPreview(url)
-        }
+        
+        setImagePreviews(previews)
       }
       loadImages()
     }
-  }, [mode, initialData, getFileUrl])
+  }, [mode, initialData])
   
   // Update location when city changes (only in create mode)
   useEffect(() => {
@@ -145,13 +200,17 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
   }, [city, mode])
   
-  // File states
-  const [exteriorImage, setExteriorImage] = useState<File | null>(null)
-  const [interiorImage, setInteriorImage] = useState<File | null>(null)
-  const [shelfImage, setShelfImage] = useState<File | null>(null)
-  const [exteriorPreview, setExteriorPreview] = useState<string | null>(null)
-  const [interiorPreview, setInteriorPreview] = useState<string | null>(null)
-  const [shelfPreview, setShelfPreview] = useState<string | null>(null)
+  // File states - using new images array format
+  const [images, setImages] = useState<{
+    shelf?: File | null,
+    exterior?: File | null,
+    interior?: File | null
+  }>({})
+  const [imagePreviews, setImagePreviews] = useState<{
+    shelf?: string | null,
+    exterior?: string | null,
+    interior?: string | null
+  }>({})
   const [uploadingImages, setUploadingImages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
@@ -191,7 +250,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
     
     // Validate required fields
-    if (!shelfName || !city || !branch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
+    if (!shelfName || !city || !storeBranch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
       toast({
         title: t("common.error"),
         description: t("add_shelf.required_fields_error"),
@@ -215,41 +274,80 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     setSubmitting(true)
     
     try {
-      // Upload images if they exist
-      let exteriorImageId = mode === "edit" ? initialData?.exteriorImage : null
-      let interiorImageId = mode === "edit" ? initialData?.interiorImage : null
-      let shelfImageId = mode === "edit" ? initialData?.shelfImage : null
+      // Upload images and create images array
+      const uploadedImages: any[] = []
+      
+      // Keep existing images if in edit mode
+      if (mode === "edit" && initialData?.images) {
+        // Keep images that have the correct structure from backend
+        const validImages = initialData.images
+          .filter(img => img && typeof img === 'object' && 'storageId' in img && 'type' in img && 'order' in img)
+          .map(img => ({
+            storageId: img.storageId,
+            type: img.type,
+            order: img.order
+          }))
+        uploadedImages.push(...validImages)
+      }
       
       setUploadingImages(true)
-      if (exteriorImage) {
-        exteriorImageId = await uploadFile(exteriorImage)
+      
+      // Upload new images
+      if (images.shelf) {
+        const shelfImageId = await uploadFile(images.shelf)
+        if (shelfImageId) {
+          // Remove existing shelf image if any
+          const filtered = uploadedImages.filter(img => img.type !== "shelf")
+          filtered.push({ storageId: shelfImageId, type: "shelf", order: 0 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
-      if (interiorImage) {
-        interiorImageId = await uploadFile(interiorImage)
+      
+      if (images.exterior) {
+        const exteriorImageId = await uploadFile(images.exterior)
+        if (exteriorImageId) {
+          // Remove existing exterior image if any
+          const filtered = uploadedImages.filter(img => img.type !== "exterior")
+          filtered.push({ storageId: exteriorImageId, type: "exterior", order: 1 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
-      if (shelfImage) {
-        shelfImageId = await uploadFile(shelfImage)
+      
+      if (images.interior) {
+        const interiorImageId = await uploadFile(images.interior)
+        if (interiorImageId) {
+          // Remove existing interior image if any
+          const filtered = uploadedImages.filter(img => img.type !== "interior")
+          filtered.push({ storageId: interiorImageId, type: "interior", order: 2 })
+          uploadedImages.length = 0
+          uploadedImages.push(...filtered)
+        }
       }
+      
       setUploadingImages(false)
       
-      const shelfData = {
+      const shelfData: any = {
         shelfName,
         city,
-        branch,
+        storeBranch,
+        address: selectedLocation.address,
         monthlyPrice: parseFloat(monthlyPrice),
         storeCommission: parseFloat(storeCommission),
         availableFrom: format(availableFrom, "yyyy-MM-dd"),
         length,
         width,
         depth,
-        productType,
+        productTypes: selectedCategories,
         description,
-        address: selectedLocation.address,
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
-        exteriorImage: exteriorImageId,
-        interiorImage: interiorImageId,
-        shelfImage: shelfImageId,
+      }
+      
+      // Include images array if we have any images
+      if (uploadedImages.length > 0) {
+        shelfData.images = uploadedImages
       }
       
       if (mode === "create") {
@@ -261,6 +359,8 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           title: t("common.success"),
           description: t("add_shelf.success_message"),
         })
+        
+        router.push("/store-dashboard/shelves")
       } else {
         await updateShelf({
           shelfId: shelfId!,
@@ -271,9 +371,10 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           title: t("common.success"),
           description: t("add_shelf.update_success_message"),
         })
+        
+        // Redirect back to the shelf details page after updating
+        router.push(`/store-dashboard/shelves/${shelfId}`)
       }
-      
-      router.push("/store-dashboard/shelves")
     } catch (error) {
       console.error("Error submitting shelf:", error)
       toast({
@@ -298,56 +399,35 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       return
     }
     
+    // Update images state
+    setImages(prev => ({
+      ...prev,
+      [type]: file
+    }))
+    
     // Create preview URL for images
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onloadend = () => {
         const previewUrl = reader.result as string
-        switch (type) {
-          case 'exterior':
-            setExteriorPreview(previewUrl)
-            break
-          case 'interior':
-            setInteriorPreview(previewUrl)
-            break
-          case 'shelf':
-            setShelfPreview(previewUrl)
-            break
-        }
+        setImagePreviews(prev => ({
+          ...prev,
+          [type]: previewUrl
+        }))
       }
       reader.readAsDataURL(file)
     } else {
       // Clear preview if not an image
-      switch (type) {
-        case 'exterior':
-          setExteriorPreview(null)
-          break
-        case 'interior':
-          setInteriorPreview(null)
-          break
-        case 'shelf':
-          setShelfPreview(null)
-          break
-      }
-    }
-    
-    switch (type) {
-      case 'exterior':
-        setExteriorImage(file)
-        break
-      case 'interior':
-        setInteriorImage(file)
-        break
-      case 'shelf':
-        setShelfImage(file)
-        break
+      setImagePreviews(prev => ({
+        ...prev,
+        [type]: null
+      }))
     }
   }
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="grid gap-6">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="grid gap-6">
           {/* First Row - Shelf Name, City, Branch */}
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
@@ -402,13 +482,13 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="branch" className="text-start block">
+              <Label htmlFor="storeBranch" className="text-start block">
                 {t("add_shelf.branch")} *
               </Label>
               <Input
-                id="branch"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
+                id="storeBranch"
+                value={storeBranch}
+                onChange={(e) => setStoreBranch(e.target.value)}
                 placeholder={t("add_shelf.branch_placeholder")}
                 className="text-start"
                 required
@@ -537,92 +617,209 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </AlertDescription>
           </Alert>
 
-          {/* Third Row - Shelf Dimensions */}
-          <div className="space-y-2">
+          {/* Shelf Dimensions - Visual */}
+          <div className="space-y-4">
             <Label className="text-start block">
               {t("add_shelf.shelf_dimensions")} *
             </Label>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="length" className="text-sm text-muted-foreground">
-                  {t("add_shelf.length")}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="length"
-                    type="number"
-                    value={length}
-                    onChange={(e) => setLength(e.target.value)}
-                    placeholder={t("add_shelf.dimension_placeholder")}
-                    className="text-start pe-12"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {t("add_shelf.cm")}
-                  </span>
+            
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Visual Representation */}
+              <div className="flex items-center justify-center p-6 bg-muted/30 rounded-lg">
+                <div className="relative w-full max-w-[280px] h-[200px]">
+                  {/* 3D Rectangular Box - Isometric View */}
+                  <svg viewBox="0 0 240 180" className="w-full h-full">
+                    {/* Define the 3D box paths for a rectangular shelf */}
+                    
+                    {/* Top face (the shelf surface) */}
+                    <path 
+                      d="M 60 60 L 140 60 L 180 40 L 100 40 Z" 
+                      className="fill-primary/25 stroke-primary/50"
+                      strokeWidth="1.5"
+                    />
+                    
+                    {/* Front face */}
+                    <path 
+                      d="M 60 60 L 140 60 L 140 120 L 60 120 Z" 
+                      className="fill-primary/20 stroke-primary/50"
+                      strokeWidth="1.5"
+                    />
+                    
+                    {/* Right side face */}
+                    <path 
+                      d="M 140 60 L 180 40 L 180 100 L 140 120 Z" 
+                      className="fill-primary/15 stroke-primary/50"
+                      strokeWidth="1.5"
+                    />
+                    
+                    {/* Dimension lines and labels */}
+                    
+                    {/* Width (bottom) */}
+                    <line x1="60" y1="130" x2="140" y2="130" className="stroke-primary/60" strokeWidth="1" />
+                    <line x1="60" y1="127" x2="60" y2="133" className="stroke-primary/60" strokeWidth="1" />
+                    <line x1="140" y1="127" x2="140" y2="133" className="stroke-primary/60" strokeWidth="1" />
+                    <text x="100" y="145" textAnchor="middle" className="fill-primary text-[11px] font-medium">
+                      {width || '?'} {t("add_shelf.cm")}
+                    </text>
+                    
+                    {/* Height (left side) */}
+                    <line x1="50" y1="60" x2="50" y2="120" className="stroke-primary/60" strokeWidth="1" />
+                    <line x1="47" y1="60" x2="53" y2="60" className="stroke-primary/60" strokeWidth="1" />
+                    <line x1="47" y1="120" x2="53" y2="120" className="stroke-primary/60" strokeWidth="1" />
+                    <text x="35" y="93" textAnchor="middle" className="fill-primary text-[11px] font-medium">
+                      {length || '?'}
+                    </text>
+                    
+                    {/* Depth (diagonal) - moved above the box */}
+                    <line x1="145" y1="55" x2="175" y2="40" className="stroke-primary/60" strokeWidth="1" strokeDasharray="2,2" />
+                    <text x="140" y="25" textAnchor="middle" className="fill-primary text-[11px] font-medium">
+                      {depth || '?'} {t("add_shelf.cm")}
+                    </text>
+                    
+                    {/* Labels for dimensions */}
+                    <text x="100" y="155" textAnchor="middle" className="fill-muted-foreground text-[9px]">
+                      {t("add_shelf.width")}
+                    </text>
+                    <text x="35" y="105" textAnchor="middle" className="fill-muted-foreground text-[9px]">
+                      {t("add_shelf.length")}  
+                    </text>
+                    <text x="140" y="15" textAnchor="middle" className="fill-muted-foreground text-[9px]">
+                      {t("add_shelf.depth")}
+                    </text>
+                  </svg>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="width" className="text-sm text-muted-foreground">
-                  {t("add_shelf.width")}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="width"
-                    type="number"
-                    value={width}
-                    onChange={(e) => setWidth(e.target.value)}
-                    placeholder={t("add_shelf.dimension_placeholder")}
-                    className="text-start pe-12"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {t("add_shelf.cm")}
-                  </span>
+              {/* Input Fields */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ArrowUp className="h-4 w-4 text-primary" />
+                    </div>
+                    <Label htmlFor="length" className="text-sm font-medium">
+                      {t("add_shelf.length")}
+                    </Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="length"
+                      type="number"
+                      value={length}
+                      onChange={(e) => setLength(e.target.value)}
+                      placeholder={t("add_shelf.dimension_placeholder")}
+                      className="text-start pe-12 h-10"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      {t("add_shelf.cm")}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="depth" className="text-sm text-muted-foreground">
-                  {t("add_shelf.depth")}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="depth"
-                    type="number"
-                    value={depth}
-                    onChange={(e) => setDepth(e.target.value)}
-                    placeholder={t("add_shelf.dimension_placeholder")}
-                    className="text-start pe-12"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {t("add_shelf.cm")}
-                  </span>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ArrowRight className="h-4 w-4 text-primary" />
+                    </div>
+                    <Label htmlFor="width" className="text-sm font-medium">
+                      {t("add_shelf.width")}
+                    </Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="width"
+                      type="number"
+                      value={width}
+                      onChange={(e) => setWidth(e.target.value)}
+                      placeholder={t("add_shelf.dimension_placeholder")}
+                      className="text-start pe-12 h-10"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      {t("add_shelf.cm")}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ArrowLeft className="h-4 w-4 text-primary" />
+                    </div>
+                    <Label htmlFor="depth" className="text-sm font-medium">
+                      {t("add_shelf.depth")}
+                    </Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="depth"
+                      type="number"
+                      value={depth}
+                      onChange={(e) => setDepth(e.target.value)}
+                      placeholder={t("add_shelf.dimension_placeholder")}
+                      className="text-start pe-12 h-10"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      {t("add_shelf.cm")}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Product Type */}
-          <div className="space-y-2">
-            <Label htmlFor="productType" className="text-start block">
-              {t("add_shelf.product_type")}
+          {/* Product Categories */}
+          <div className="space-y-3">
+            <Label className="text-start block">
+              {t("add_shelf.suitable_product_types")}
             </Label>
-            <Input
-              id="productType"
-              value={productType}
-              onChange={(e) => setProductType(e.target.value)}
-              placeholder={t("add_shelf.product_type_placeholder")}
-              className="text-start"
-            />
+            
+            {/* Category selection cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {PRODUCT_CATEGORY_GROUPS.map(category => {
+                const Icon = category.icon
+                const isSelected = selectedCategories.includes(category.value)
+                
+                return (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCategories(prev => prev.filter(c => c !== category.value))
+                      } else {
+                        setSelectedCategories(prev => [...prev, category.value])
+                      }
+                    }}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all hover:scale-105",
+                      isSelected
+                        ? category.color
+                        : "bg-background border-border hover:bg-muted/50"
+                    )}
+                  >
+                    <Icon className="h-6 w-6" />
+                    <span className="text-xs font-medium text-center">
+                      {t(category.titleKey as any)}
+                    </span>
+                    {isSelected && (
+                      <div className="absolute top-2 end-2">
+                        <div className="h-5 w-5 rounded-full bg-current opacity-20" />
+                        <Check className="h-3 w-3 absolute top-1 start-1" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Location Section */}
@@ -644,7 +841,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             {/* Map */}
             <div className="space-y-2">
               <Label className="text-start block">
-                {t("add_shelf.address")} *
+                {t("add_shelf.location")} *
               </Label>
               <div className="space-y-3">
                 {/* Interactive Map Container */}
@@ -696,26 +893,26 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   className="hidden"
                   onChange={(e) => handleFileSelect('exterior', e.target.files?.[0] || null)}
                 />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4">
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    {exteriorImage || exteriorPreview ? (
+                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
+                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
+                    {images.exterior || imagePreviews.exterior ? (
                       <>
-                        {exteriorPreview ? (
+                        {imagePreviews.exterior ? (
                           <img 
-                            src={exteriorPreview} 
+                            src={imagePreviews.exterior} 
                             alt="Exterior preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{exteriorImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.exterior?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setExteriorImage(null)
-                            setExteriorPreview(null)
+                            setImages(prev => ({ ...prev, exterior: null }))
+                            setImagePreviews(prev => ({ ...prev, exterior: null }))
                             if (exteriorInputRef.current) exteriorInputRef.current.value = ''
                           }}
                         >
@@ -752,26 +949,26 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   className="hidden"
                   onChange={(e) => handleFileSelect('interior', e.target.files?.[0] || null)}
                 />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4">
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    {interiorImage || interiorPreview ? (
+                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
+                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
+                    {images.interior || imagePreviews.interior ? (
                       <>
-                        {interiorPreview ? (
+                        {imagePreviews.interior ? (
                           <img 
-                            src={interiorPreview} 
+                            src={imagePreviews.interior} 
                             alt="Interior preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{interiorImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.interior?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setInteriorImage(null)
-                            setInteriorPreview(null)
+                            setImages(prev => ({ ...prev, interior: null }))
+                            setImagePreviews(prev => ({ ...prev, interior: null }))
                             if (interiorInputRef.current) interiorInputRef.current.value = ''
                           }}
                         >
@@ -808,26 +1005,26 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   className="hidden"
                   onChange={(e) => handleFileSelect('shelf', e.target.files?.[0] || null)}
                 />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4">
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    {shelfImage || shelfPreview ? (
+                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
+                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
+                    {images.shelf || imagePreviews.shelf ? (
                       <>
-                        {shelfPreview ? (
+                        {imagePreviews.shelf ? (
                           <img 
-                            src={shelfPreview} 
+                            src={imagePreviews.shelf} 
                             alt="Shelf preview" 
                             className="w-full h-32 object-cover rounded-md mb-2"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{shelfImage?.name}</p>
+                          <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>
                         )}
                         <Button 
                           type="button"
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            setShelfImage(null)
-                            setShelfPreview(null)
+                            setImages(prev => ({ ...prev, shelf: null }))
+                            setImagePreviews(prev => ({ ...prev, shelf: null }))
                             if (shelfInputRef.current) shelfInputRef.current.value = ''
                           }}
                         >
@@ -886,8 +1083,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
               )}
             </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+      </form>
+    </div>
   )
 }

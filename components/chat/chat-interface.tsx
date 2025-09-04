@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Paperclip, Send } from "lucide-react"
+import { Send } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
@@ -35,6 +35,7 @@ export function ChatInterface({
   const [isTyping, setIsTyping] = useState(false)
   const [isArchived, setIsArchived] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   
   // Fetch conversation details
   const conversation = useQuery(api.chats.getConversation, { conversationId })
@@ -44,19 +45,39 @@ export function ChatInterface({
   const sendMessage = useMutation(api.chats.sendMessage)
   const markAsRead = useMutation(api.chats.markMessagesAsRead)
   
-  // Check if conversation is archived or rejected
+  // Check if conversation is archived
   useEffect(() => {
-    if (conversation?.status === "archived" || conversation?.status === "rejected") {
+    if (conversation?.status === "archived") {
       setIsArchived(true)
     }
   }, [conversation])
   
-  // Mark messages as read when viewing
+  // Mark messages as read immediately when component mounts
   useEffect(() => {
     if (conversationId && currentUserId) {
       markAsRead({ conversationId })
     }
-  }, [conversationId, currentUserId, markAsRead])
+  }, [conversationId, currentUserId])
+  
+  // Mark messages as read when new messages arrive
+  useEffect(() => {
+    if (conversationId && currentUserId && messages && messages.length > 0) {
+      // Mark as read immediately when messages change
+      markAsRead({ conversationId })
+    }
+  }, [conversationId, currentUserId, messages?.length])
+  
+  // Set up interval to mark messages as read while dialog is open
+  useEffect(() => {
+    if (!conversationId || !currentUserId) return
+    
+    // Mark as read every 2 seconds while the chat is open
+    const interval = setInterval(() => {
+      markAsRead({ conversationId })
+    }, 2000)
+    
+    return () => clearInterval(interval)
+  }, [conversationId, currentUserId])
   
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,6 +100,10 @@ export function ChatInterface({
         text: message,
       })
       setMessage("")
+      // Keep focus on input field after sending
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
     } catch (error) {
       console.error("Failed to send message:", error)
     } finally {
@@ -94,24 +119,7 @@ export function ChatInterface({
   }
   
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="border-b">
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src="/placeholder.svg" alt={otherUserName} />
-            <AvatarFallback >
-              {otherUserName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className={`font-semibold `}>
-              {otherUserName}
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
           <div className="space-y-4" ref={scrollAreaRef}>
             {messages?.length === 0 ? (
@@ -124,32 +132,45 @@ export function ChatInterface({
               </div>
             ) : (
               messages?.map((msg) => {
-                const isCurrentUser = msg.senderId === currentUserId
-                const isSystem = msg.messageType !== "text"
+                // Check if message is from current user by comparing profile IDs
+                const conversation = messages[0]?.conversationId ? 
+                  messages.find(m => m.conversationId === conversationId) : null
+                
+                const isCurrentUser = currentUserType === "brand-owner" 
+                  ? msg.senderType === "brand" 
+                  : msg.senderType === "store"
+                  
+                const isSystem = msg.senderType === "system"
                 
                 return (
                   <div
                     key={msg._id}
                     className={cn(
                       "flex",
-                      isCurrentUser ? "justify-end" : "justify-start"
+                      isSystem ? "justify-center" : isCurrentUser ? "justify-start" : "justify-end"
                     )}
                   >
                     <div
                       className={cn(
-                        "max-w-xs rounded-lg p-3",
+                        "rounded-lg p-3",
                         isSystem
-                          ? "bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 w-full max-w-sm"
+                          ? "bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 max-w-md text-center"
                           : isCurrentUser
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background shadow-sm"
+                          ? "bg-primary text-primary-foreground max-w-xs"
+                          : "bg-muted max-w-xs"
                       )}
                     >
-                      <p className={`text-sm  whitespace-pre-wrap`}>
+                      <p className={cn(
+                        "text-sm whitespace-pre-wrap",
+                        isSystem && "font-medium text-amber-900 dark:text-amber-100"
+                      )}>
                         {msg.text}
                       </p>
-                      <p className={`text-xs mt-1 opacity-70 `}>
-                        {format(new Date(msg.createdAt), "p", {
+                      <p className={cn(
+                        "text-xs mt-1 opacity-70",
+                        isSystem && "text-amber-700 dark:text-amber-300"
+                      )}>
+                        {format(new Date(msg._creationTime), "p", {
                           locale: language === "ar" ? ar : enUS,
                         })}
                       </p>
@@ -173,6 +194,7 @@ export function ChatInterface({
           <div className="p-4 border-t">
             <div className="relative">
               <Input
+                ref={inputRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -180,15 +202,7 @@ export function ChatInterface({
                 className={`pe-20 `}
                 disabled={isTyping || isArchived}
               />
-              <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  disabled
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
+              <div className="absolute end-2 top-1/2 -translate-y-1/2">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -202,7 +216,6 @@ export function ChatInterface({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   )
 }

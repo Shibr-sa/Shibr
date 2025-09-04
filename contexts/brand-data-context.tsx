@@ -33,7 +33,7 @@ export function BrandDataProvider({ children }: { children: ReactNode }) {
   
   // Determine loading state - both queries should be loaded
   const isLoading = userData === undefined || brandDataCompleteQuery === undefined
-  const isBrandDataComplete = brandDataCompleteQuery ?? false
+  const isBrandDataComplete = brandDataCompleteQuery?.isComplete ?? false
   
   return (
     <BrandDataContext.Provider

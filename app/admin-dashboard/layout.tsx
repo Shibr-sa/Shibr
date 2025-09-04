@@ -3,10 +3,9 @@
 import React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, FileText, Store, CreditCard, Settings, ChevronUp, LogOut, Users, Package, TrendingUp } from "lucide-react"
+import { Home, Store, CreditCard, Settings, ChevronUp, LogOut, Package } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -37,9 +36,8 @@ import {
 
 const sidebarItems = [
   { title: "dashboard.home", href: "/admin-dashboard", icon: Home, pageTitle: "dashboard.control_panel" },
-  { title: "dashboard.posts", href: "/admin-dashboard/posts", icon: FileText, pageTitle: "dashboard.posts" },
   { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store, pageTitle: "dashboard.stores" },
-  { title: "dashboard.shelves", href: "/admin-dashboard/brands", icon: Package, pageTitle: "dashboard.shelves" },
+  { title: "dashboard.brands", href: "/admin-dashboard/brands", icon: Package, pageTitle: "dashboard.brands" },
   { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard, pageTitle: "dashboard.payments" },
   { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
 ]
@@ -89,6 +87,9 @@ export default function AdminDashboardLayout({
           title = t(sidebarItem.title)
         } else {
           // Handle sub-pages
+          const prevSegment = pathSegments[i - 1]
+          const prevPrevSegment = i >= 2 ? pathSegments[i - 2] : null
+          
           switch(segment) {
             case 'add':
               title = t("common.add")
@@ -100,11 +101,24 @@ export default function AdminDashboardLayout({
               title = t("common.details")
               break
             default:
-              // For dynamic IDs, show "Details"
-              if (segment.match(/^[a-zA-Z0-9]+$/)) {
-                title = t("common.details")
+              // For dynamic IDs, check the context
+              if (segment.match(/^[a-zA-Z0-9-]+$/)) {
+                // Check if this is a nested ID (shelf under store)
+                if (prevSegment && prevSegment.match(/^[a-zA-Z0-9-]+$/) && prevPrevSegment === 'stores') {
+                  // This is a shelf ID: /stores/[storeId]/[shelfId]
+                  title = t("stores.shelf_details")
+                } else if (prevSegment === 'stores') {
+                  // This is a store ID: /stores/[storeId]
+                  title = t("stores.store_details")
+                } else if (prevSegment === 'brands') {
+                  // This is a brand ID: /brands/[brandId]
+                  title = t("brands.brand_details")
+                } else {
+                  title = t("common.details")
+                }
               } else {
-                title = segment.charAt(0).toUpperCase() + segment.slice(1)
+                // Capitalize the segment name
+                title = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
               }
           }
         }
@@ -132,7 +146,7 @@ export default function AdminDashboardLayout({
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                       <Image
                         src="/logo.svg"
-                        alt="Shibr Logo"
+                        alt={t("common.logo_alt")}
                         width={20}
                         height={20}
                         className="size-5 brightness-0 invert"
@@ -186,7 +200,7 @@ export default function AdminDashboardLayout({
                           {user?.fullName || t("dashboard.user.name")}
                         </span>
                         <span className="text-xs">
-                          {user?.email || "admin@example.com"}
+                          {user?.email || ""}
                         </span>
                       </div>
                       <ChevronUp className="ms-auto size-4" />

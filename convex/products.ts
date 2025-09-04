@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
+import { getUserProfile } from "./profileHelpers"
 
 // Get products for a brand owner
 export const getOwnerProducts = query({
@@ -9,12 +10,30 @@ export const getOwnerProducts = query({
     ownerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Get the user first
+    const user = await ctx.db.get(args.ownerId)
+    if (!user) {
+      return []
+    }
+    
+    // Try to get existing brand profile
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.ownerId))
+      .first()
+    
+    // If no profile exists, return empty array
+    // The profile will be created when they first try to add a product
+    if (!brandProfile) {
+      return []
+    }
+    
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfile._id))
       .collect()
     
-    return products.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return products.sort((a, b) => b._creationTime - a._creationTime)
   },
 })
 
@@ -27,20 +46,26 @@ export const getUserProducts = query({
       return [];
     }
     
+    // Get user profile first
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
     
     return products.map(p => ({
       _id: p._id,
       name: p.name,
-      code: p.code,
+      sku: p.sku,
       category: p.category,
       price: p.price,
-      quantity: p.quantity,
+      quantity: p.stockQuantity,
       imageUrl: p.imageUrl,
-      isActive: p.isActive
+      description: p.description
     }))
   },
 })
@@ -54,109 +79,25 @@ export const getAllProducts = query({
   },
 })
 
-// Seed sample products for a user
-export const seedSampleProducts = mutation({
-  args: {
-    ownerId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const sampleProducts = [
-      {
-        name: "قهوة عربية فاخرة",
-        code: "PRD-001",
-        description: "قهوة عربية مميزة بنكهة الهيل",
-        category: "مشروبات",
-        price: 45,
-        cost: 25,
-        currency: "SAR",
-        quantity: 100,
-        minQuantity: 20,
-        sku: "SKU-COFFEE-001",
-        imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200",
-      },
-      {
-        name: "شاي أخضر عضوي",
-        code: "PRD-002",
-        description: "شاي أخضر طبيعي 100%",
-        category: "مشروبات",
-        price: 35,
-        cost: 18,
-        currency: "SAR",
-        quantity: 150,
-        minQuantity: 30,
-        sku: "SKU-TEA-001",
-        imageUrl: "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=200",
-      },
-      {
-        name: "عسل طبيعي",
-        code: "PRD-003",
-        description: "عسل جبلي طبيعي",
-        category: "أغذية",
-        price: 120,
-        cost: 80,
-        currency: "SAR",
-        quantity: 50,
-        minQuantity: 10,
-        sku: "SKU-HONEY-001",
-        imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200",
-      },
-      {
-        name: "تمر سكري",
-        code: "PRD-004",
-        description: "تمر سكري فاخر من القصيم",
-        category: "أغذية",
-        price: 65,
-        cost: 40,
-        currency: "SAR",
-        quantity: 200,
-        minQuantity: 40,
-        sku: "SKU-DATES-001",
-        imageUrl: "https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200",
-      },
-      {
-        name: "زعفران إيراني",
-        code: "PRD-005",
-        description: "زعفران إيراني أصلي",
-        category: "توابل",
-        price: 250,
-        cost: 180,
-        currency: "SAR",
-        quantity: 30,
-        minQuantity: 5,
-        sku: "SKU-SAFFRON-001",
-        imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200",
-      },
-    ]
-    
-    const productIds = []
-    for (const product of sampleProducts) {
-      const productId = await ctx.db.insert("products", {
-        ownerId: args.ownerId,
-        ...product,
-        totalSales: 0,
-        totalRevenue: 0,
-        shelfCount: 0,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-      productIds.push(productId)
-    }
-    
-    return { success: true, productIds, count: productIds.length }
-  },
-})
-
 // Get sales chart data for dashboard
 export const getSalesChartData = query({
   args: {
     ownerId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
+    const brandProfileId = userProfile.profile._id
+    
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Sort by revenue and take top products
@@ -164,12 +105,12 @@ export const getSalesChartData = query({
       .filter(p => (p.totalRevenue || 0) > 0)
       .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
     
-    // Create array for 6 items
+    // Create array for 10 items
     const chartData = []
     
     // If we have products with sales, add them
     if (topProducts.length > 0) {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 10; i++) {
         if (i < topProducts.length) {
           chartData.push({
             name: topProducts[i].name,
@@ -190,37 +131,9 @@ export const getSalesChartData = query({
       return chartData
     }
     
-    // Otherwise return products sorted by price potential
-    const estimatedProducts = products
-      .map(product => ({
-        name: product.name,
-        revenue: product.price * Math.min(product.quantity || 0, 10), // Estimate based on price
-        sales: 0,
-        percentage: 0,
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-    
-    // Create array with exactly 6 items
-    const result = []
-    for (let i = 0; i < 6; i++) {
-      if (i < estimatedProducts.length) {
-        const product = estimatedProducts[i]
-        if (estimatedProducts[0].revenue > 0) {
-          product.percentage = Math.round((product.revenue / estimatedProducts[0].revenue) * 100)
-        }
-        result.push(product)
-      } else {
-        // Add empty bar placeholder
-        result.push({
-          name: "",
-          revenue: 0,
-          sales: 0,
-          percentage: 0,
-        })
-      }
-    }
-    
-    return result
+    // If no products have actual sales, return empty array to show "no data" state
+    // Don't show estimated/fake data
+    return []
   },
 })
 
@@ -231,6 +144,23 @@ export const getProductStats = query({
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return {
+        totalProducts: 0,
+        activeProducts: 0,
+        outOfStock: 0,
+        inventoryHealth: 0,
+        productsChange: 0,
+        activeChange: 0,
+        outOfStockChange: 0,
+        inventoryHealthChange: 0,
+      }
+    }
+    
+    const brandProfileId = userProfile.profile._id
     const now = new Date()
     let compareDate = new Date()
     
@@ -253,15 +183,15 @@ export const getProductStats = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Calculate current stats
     const totalProducts = products.length
-    const activeProducts = products.filter(p => p.isActive).length
+    const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
     
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
@@ -303,6 +233,21 @@ export const getUserProductStats = query({
       };
     }
     
+    // Get user profile first
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return {
+        totalProducts: 0,
+        activeProducts: 0,
+        totalSales: 0,
+        totalRevenue: 0,
+        totalInventory: 0,
+        salesChange: 0,
+        revenueChange: 0,
+        productsChange: 0,
+      }
+    }
+    
     const now = new Date()
     let compareDate = new Date()
     
@@ -325,15 +270,15 @@ export const getUserProductStats = query({
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
     
     // Calculate current stats
     const totalProducts = products.length
-    const activeProducts = products.filter(p => p.isActive).length
+    const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
     const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-    const totalInventory = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
+    const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
     
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
@@ -358,39 +303,51 @@ export const getUserProductStats = query({
 // Create a new product
 export const createProduct = mutation({
   args: {
-    ownerId: v.id("users"),
     name: v.string(),
-    code: v.string(),
+    sku: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     price: v.number(),
-    cost: v.optional(v.number()),
-    currency: v.string(),
-    quantity: v.number(),
-    minQuantity: v.optional(v.number()),
-    sku: v.optional(v.string()),
+    stockQuantity: v.number(),
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
+    
+    // Get or create brand profile
+    let brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first()
+    
+    if (!brandProfile) {
+      const user = await ctx.db.get(userId)
+      const brandProfileId = await ctx.db.insert("brandProfiles", {
+        userId,
+        isActive: true,
+        brandName: user?.name || "My Brand",
+      })
+      brandProfile = await ctx.db.get(brandProfileId)
+    }
+    
+    if (!brandProfile) {
+      throw new Error("Could not create brand profile")
+    }
+    
     const productId = await ctx.db.insert("products", {
-      ownerId: args.ownerId,
+      brandProfileId: brandProfile._id,
       name: args.name,
-      code: args.code,
+      sku: args.sku,
       description: args.description || "",
       category: args.category || "",
       price: args.price,
-      cost: args.cost,
-      currency: args.currency || "SAR",
-      quantity: args.quantity,
-      minQuantity: args.minQuantity,
-      sku: args.sku,
+      stockQuantity: args.stockQuantity,
       imageUrl: args.imageUrl,
       totalSales: 0,
       totalRevenue: 0,
-      shelfCount: 0,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     })
     
     return productId
@@ -402,38 +359,33 @@ export const updateProduct = mutation({
   args: {
     productId: v.id("products"),
     name: v.optional(v.string()),
-    code: v.optional(v.string()),
+    sku: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     price: v.optional(v.number()),
-    cost: v.optional(v.number()),
-    quantity: v.optional(v.number()),
-    minQuantity: v.optional(v.number()),
-    sku: v.optional(v.string()),
+    stockQuantity: v.optional(v.number()),
     imageUrl: v.optional(v.string()),
-    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { productId, ...updates } = args
     
     await ctx.db.patch(productId, {
       ...updates,
-      updatedAt: new Date().toISOString(),
     })
     
     return { success: true }
   },
 })
 
-// Delete a product (soft delete)
+// Delete a product (mark as out of stock)
 export const deleteProduct = mutation({
   args: {
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
+    // Mark product as out of stock instead of using isActive
     await ctx.db.patch(args.productId, {
-      isActive: false,
-      updatedAt: new Date().toISOString(),
+      stockQuantity: 0,
     })
     
     return { success: true }
@@ -449,70 +401,46 @@ export const getLatestSalesOperations = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 3
     
+    // Get the brand profile for this user
+    const userProfile = await getUserProfile(ctx, args.ownerId)
+    
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      return []
+    }
+    
+    const brandProfileId = userProfile.profile._id
+    
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
     
     // Get rental requests with full information
     const rentalRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_requester")
-      .filter((q) => q.and(
-        q.eq(q.field("requesterId"), args.ownerId),
-        q.eq(q.field("status"), "active")
-      ))
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", brandProfileId))
+      .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     
     // Get store user information for each rental
     const rentalsWithStoreInfo = await Promise.all(
       rentalRequests.map(async (request) => {
-        if (!request.ownerId) return { ...request, storeName: "متجر", city: "الرياض" }
+        if (!request.storeProfileId) return request
         
-        const storeUser = await ctx.db.get(request.ownerId)
-        const storeProfile = storeUser ? await ctx.db
-          .query("userProfiles")
-          .withIndex("by_user", (q) => q.eq("userId", request.ownerId!))
-          .first() : null
+        const storeProfile = await ctx.db.get(request.storeProfileId)
         const shelf = await ctx.db.get(request.shelfId)
         
         return {
           ...request,
-          storeName: storeProfile?.storeName || storeProfile?.fullName || "متجر",
-          city: shelf?.city || "الرياض",
+          storeName: storeProfile?.storeName,
+          city: shelf?.city,
         }
       })
     )
     
-    // Create mock sales operations based on products with sales
-    const salesOperations = []
-    const productsWithSales = products.filter(p => (p.totalSales || 0) > 0)
-    
-    if (productsWithSales.length > 0) {
-      // Generate recent sales from products
-      for (let i = 0; i < Math.min(limit, productsWithSales.length); i++) {
-        const product = productsWithSales[i]
-        const rental = rentalsWithStoreInfo[i % rentalsWithStoreInfo.length] // Cycle through rentals
-        
-        // Generate a recent date (within last 7 days)
-        const daysAgo = Math.floor(Math.random() * 7)
-        const saleDate = new Date()
-        saleDate.setDate(saleDate.getDate() - daysAgo)
-        
-        salesOperations.push({
-          orderNumber: `ORD-${Math.floor(Math.random() * 90000 + 10000)}`,
-          productName: product.name,
-          storeName: rental?.storeName || "متجر الرياض",
-          city: rental?.city || "الرياض",
-          price: product.price,
-          date: saleDate.toISOString(),
-        })
-      }
-    }
-    // If no sales or no products, return empty array
-    // The UI will show an appropriate empty state
-    
-    return salesOperations
+    // Return empty array for now as we don't have real sales tracking yet
+    // In the future, this should query actual sales/order records
+    return []
   },
 })

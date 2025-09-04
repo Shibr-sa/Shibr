@@ -27,10 +27,19 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { ImageIcon, Upload, X } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { PRODUCT_CATEGORIES } from "@/lib/constants"
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  code: z.string().min(1, "Product code is required"),
+  sku: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
   price: z.number().min(0.01, "Price must be greater than 0"),
   quantity: z.number().min(0, "Quantity cannot be negative"),
   description: z.string().optional(),
@@ -66,7 +75,8 @@ export function ProductDialog({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name || "",
-      code: product?.code || "",
+      sku: product?.sku || "",
+      category: product?.category || "",
       price: product?.price || 0,
       quantity: product?.quantity || 0,
       description: product?.description || "",
@@ -80,7 +90,8 @@ export function ProductDialog({
       if (product && mode === "edit") {
         form.reset({
           name: product.name || "",
-          code: product.code || "",
+          sku: product.sku || "",
+          category: product.category || "",
           price: product.price || 0,
           quantity: product.quantity || 0,
           description: product.description || "",
@@ -90,7 +101,8 @@ export function ProductDialog({
         // Create mode - reset to empty
         form.reset({
           name: "",
-          code: "",
+          sku: "",
+          category: "",
           price: 0,
           quantity: 0,
           description: "",
@@ -101,7 +113,8 @@ export function ProductDialog({
       // When dialog closes, reset everything
       form.reset({
         name: "",
-        code: "",
+        sku: "",
+        category: "",
         price: 0,
         quantity: 0,
         description: "",
@@ -151,23 +164,23 @@ export function ProductDialog({
         await updateProduct({
           productId: product._id,
           name: data.name,
-          code: data.code,
+          sku: data.sku,
+          category: data.category,
           price: data.price,
-          quantity: data.quantity,
+          stockQuantity: data.quantity,
           description: data.description,
           imageUrl: imagePreview || undefined,
         })
         toast.success("تم تحديث المنتج بنجاح")
       } else {
         await createProduct({
-          ownerId,
           name: data.name,
-          code: data.code,
+          sku: data.sku,
+          category: data.category,
           price: data.price,
-          quantity: data.quantity,
+          stockQuantity: data.quantity,
           description: data.description,
           imageUrl: imagePreview || undefined,
-          currency: "SAR",
         })
         toast.success("تم إضافة المنتج بنجاح")
       }
@@ -264,72 +277,101 @@ export function ProductDialog({
               )}
             />
 
-            {/* Product Code */}
+            {/* Category */}
             <FormField
               control={form.control}
-              name="code"
+              name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("brand.products.product_code")} *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="#14821"
-                      dir="ltr"
-                    />
-                  </FormControl>
+                  <FormLabel>{t("brand.products.category")} *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("brand.products.select_category")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PRODUCT_CATEGORIES.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {language === "ar" ? category.nameAr : category.nameEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Price */}
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("brand.products.price")} *</FormLabel>
-                  <FormControl>
-                    <div className="relative">
+            {/* SKU, Price, and Quantity in a row */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Product SKU */}
+              <FormField
+                control={form.control}
+                name="sku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("brand.products.product_sku")}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="#14821"
+                        dir="ltr"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Price */}
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("brand.products.price")} *</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.01"
+                          placeholder="0"
+                          className="pe-12"
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                        <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          {t("common.currency")}
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Quantity */}
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("brand.products.quantity")} *</FormLabel>
+                    <FormControl>
                       <Input
                         {...field}
                         type="number"
-                        step="0.01"
+                        step="1"
                         placeholder="0"
-                        className="pe-12"
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
-                      <span className="absolute end-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        {t("common.currency")}
-                      </span>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Quantity */}
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("brand.products.quantity")} *</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="number"
-                      step="1"
-                      placeholder="0"
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Description */}
             <FormField

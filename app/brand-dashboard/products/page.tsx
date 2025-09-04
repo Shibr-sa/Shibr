@@ -9,6 +9,7 @@ import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import {
   Pagination,
   PaginationContent,
@@ -24,11 +25,13 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { cn } from "@/lib/utils"
+import BrandProductsLoading from "./loading"
 
 export default function BrandProductsPage() {
   const { t, language } = useLanguage()
-  const { user } = useCurrentUser()
+  const { user, isLoading: userLoading } = useCurrentUser()
   const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [currentPage, setCurrentPage] = useState(1)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
@@ -52,11 +55,12 @@ export default function BrandProductsPage() {
   // Delete product mutation
   const deleteProduct = useMutation(api.products.deleteProduct)
 
-  // Filter products based on search
+  // Filter products based on debounced search
   const filteredProducts = products?.filter(product => {
-    const matchesSearch = !searchQuery || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.code?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = !debouncedSearchQuery || 
+      product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      product.category?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     return matchesSearch
   }) || []
 
@@ -66,17 +70,25 @@ export default function BrandProductsPage() {
   const endIndex = startIndex + itemsPerPage
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex)
 
-  // Loading state
-  const isLoading = userId && !products
+  // Loading state - true if we're waiting for products after userId is available
+  const isLoading = !products && userId !== null
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+
+  // Show full page skeleton while user is loading or products haven't been fetched yet
+  if (userLoading || !products) {
+    return <BrandProductsLoading />
+  }
 
   return (
-    <div className="w-full space-y-6 overflow-hidden">
+    <div className="w-full space-y-6">
       {/* Statistics Section */}
-      <Card>
-        <CardHeader>
+      <div>
+        <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="text-xl font-semibold">{t("brand.dashboard.your_products_on_shelves")}</CardTitle>
+              <h2 className="text-xl font-semibold">{t("brand.dashboard.your_products_on_shelves")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {t("brand.dashboard.manage_products_description")}
               </p>
@@ -98,8 +110,8 @@ export default function BrandProductsPage() {
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Total Products Card */}
             <StatCard
@@ -122,15 +134,15 @@ export default function BrandProductsPage() {
               icon={<Banknote className="h-5 w-5 text-primary" />}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Products Table Section */}
-      <Card className="w-full overflow-hidden">
-        <CardHeader className="pb-4">
+      <div className="w-full">
+        <div className="mb-4">
           {/* Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
+            <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full overflow-visible">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t("brand.dashboard.search_products")}
@@ -140,55 +152,55 @@ export default function BrandProductsPage() {
               />
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          {/* Table */}
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <div className="min-h-[420px]"> {/* Fixed height for 5 rows */}
-                  <Table>
+        </div>
+        {/* Table */}
+        <div className="rounded-md border">
+            <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 border-b">
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
                           {t("brand.dashboard.product_image")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[20%]">
                           {t("brand.dashboard.product_name")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
-                          {t("brand.dashboard.product_code")}
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
+                          {t("brand.products.product_sku")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[15%]">
+                          {t("brand.products.category")}
+                        </TableHead>
+                        <TableHead className="text-start h-12 font-medium w-[8%]">
                           {t("brand.dashboard.price")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[8%]">
                           {t("brand.dashboard.quantity")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
                           {t("brand.dashboard.sales_count")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[10%]">
                           {t("brand.dashboard.stores_count")}
                         </TableHead>
-                        <TableHead className="text-start h-12">
+                        <TableHead className="text-start h-12 font-medium w-[9%]">
                           {t("brand.dashboard.actions")}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isLoading ? (
+                      {isLoading || isSearching ? (
                         // Loading state - show 5 skeleton rows
                         Array.from({ length: itemsPerPage }).map((_, index) => (
                           <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                            <TableCell><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 w-[10%]"><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
+                            <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                            <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                            <TableCell className="py-3 w-[8%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
+                            <TableCell className="py-3 w-[8%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
+                            <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                            <TableCell className="py-3 w-[9%]">
                               <div className="flex gap-2">
                                 <Skeleton className="h-8 w-8 rounded" />
                                 <Skeleton className="h-8 w-8 rounded" />
@@ -201,7 +213,7 @@ export default function BrandProductsPage() {
                         <>
                           {paginatedProducts.map((product, index) => (
                             <TableRow key={product._id} className={`h-[72px] ${index < paginatedProducts.length - 1 ? 'border-b' : ''}`}>
-                              <TableCell className="py-3">
+                              <TableCell className="py-3 w-[10%]">
                                 <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
                                   {product.imageUrl ? (
                                     <img 
@@ -214,19 +226,22 @@ export default function BrandProductsPage() {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium py-3">
+                              <TableCell className="font-medium py-3 w-[20%]">
                                 {product.name}
                               </TableCell>
-                              <TableCell className="text-muted-foreground py-3">
-                                {product.code}
+                              <TableCell className="text-muted-foreground py-3 w-[10%]">
+                                {product.sku || '-'}
                               </TableCell>
-                              <TableCell className="py-3">
+                              <TableCell className="text-muted-foreground py-3 w-[15%]">
+                                {product.category || '-'}
+                              </TableCell>
+                              <TableCell className="py-3 w-[8%]">
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>
                               </TableCell>
-                              <TableCell className="py-3">{product.quantity}</TableCell>
-                              <TableCell className="py-3">{(product as any).totalSales || 0}</TableCell>
-                              <TableCell className="py-3">{(product as any).shelfCount || 0}</TableCell>
-                              <TableCell className="py-3">
+                              <TableCell className="py-3 w-[8%]">{product.quantity}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{(product as any).totalSales || 0}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{(product as any).shelfCount || 0}</TableCell>
+                              <TableCell className="py-3 w-[9%]">
                                 <div className="flex gap-1">
                                   <Button 
                                     variant="ghost" 
@@ -255,52 +270,61 @@ export default function BrandProductsPage() {
                               </TableCell>
                             </TableRow>
                           ))}
-                          {/* Fill remaining rows with skeletons if less than 5 items */}
-                          {paginatedProducts.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedProducts.length }).map((_, index) => (
-                            <TableRow key={`filler-${index}`} className={`h-[72px] ${index < itemsPerPage - paginatedProducts.length - 1 ? 'border-b' : ''}`}>
-                              <TableCell><Skeleton className="h-10 w-10 rounded-lg" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                              <TableCell>
-                                <div className="flex gap-2">
-                                  <Skeleton className="h-8 w-8 rounded" />
-                                  <Skeleton className="h-8 w-8 rounded" />
-                                </div>
-                              </TableCell>
+                          {/* Fill remaining rows to always show 5 rows */}
+                          {paginatedProducts.length < 5 && Array.from({ length: 5 - paginatedProducts.length }).map((_, index) => (
+                            <TableRow key={`filler-${index}`} className="h-[72px]">
+                              <TableCell className="py-3" colSpan={9}></TableCell>
                             </TableRow>
                           ))}
                         </>
                       ) : (
-                        // Empty state - show 5 empty rows with message in middle
-                        Array.from({ length: 5 }).map((_, index) => (
-                          <TableRow key={`empty-${index}`} className="h-[72px]">
-                            {index === 2 ? (
-                              <TableCell colSpan={8} className="text-center text-muted-foreground">
-                                <div className="flex items-center justify-center gap-2 h-full">
-                                  <Package className="h-5 w-5 text-muted-foreground" />
-                                  <span className="text-sm">
-                                    {searchQuery 
-                                      ? t("brand.no_matching_products")
-                                      : t("brand.no_products_yet")
-                                    }
-                                  </span>
-                                </div>
-                              </TableCell>
-                            ) : (
-                              <TableCell colSpan={8}>&nbsp;</TableCell>
-                            )}
-                          </TableRow>
-                        ))
+                        // Empty state - centered view with fixed height
+                        <TableRow>
+                          <TableCell colSpan={9} className="h-[360px] text-center">
+                            <div className="flex h-full w-full items-center justify-center">
+                              <div className="flex flex-col items-center gap-1 py-10">
+                                <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                                <h3 className="font-medium">
+                                  {debouncedSearchQuery ? t("brand.no_matching_products") : t("brand.no_products_yet")}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {debouncedSearchQuery 
+                                    ? t("brand.try_different_search")
+                                    : t("brand.start_adding_products_description")}
+                                </p>
+                                {debouncedSearchQuery ? (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="mt-4"
+                                    onClick={() => {
+                                      setSearchQuery("")
+                                      setCurrentPage(1)
+                                    }}
+                                  >
+                                    {t("common.clear_search")}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    className="mt-4"
+                                    onClick={() => {
+                                      setSelectedProduct(null)
+                                      setProductDialogOpen(true)
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 me-2" />
+                                    {t("brand.dashboard.add_new_product")}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
-                </div>
-              </div>
-            </div>
+          </div>
             
             {/* Pagination Controls - Always visible */}
             <div className="mt-4">
@@ -366,9 +390,7 @@ export default function BrandProductsPage() {
                 </PaginationContent>
               </Pagination>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+      </div>
       
       {/* Product Dialog */}
       {userId && (

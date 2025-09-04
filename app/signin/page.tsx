@@ -34,8 +34,8 @@ export default function SignInPage() {
   
   // Handle redirect after successful signin
   useEffect(() => {
-    if (justSignedIn && currentUserWithProfile?.profile) {
-      const accountType = currentUserWithProfile.profile.accountType
+    if (justSignedIn && currentUserWithProfile?.accountType) {
+      const accountType = currentUserWithProfile.accountType
       if (accountType === "store_owner") {
         router.push("/store-dashboard")
       } else if (accountType === "brand_owner") {
@@ -117,7 +117,7 @@ export default function SignInPage() {
           <div className="inline-flex items-center gap-3 mb-2">
             <Image
               src="/logo.svg"
-              alt="Shibr Logo"
+              alt={t("common.logo_alt")}
               width={48}
               height={48}
               className="h-12 w-12"

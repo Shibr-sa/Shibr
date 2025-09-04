@@ -1,70 +1,136 @@
 "use client"
 
 import { useLanguage } from "@/contexts/localization-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Settings, Users, Search, Trash2, UserPlus } from "lucide-react"
+import { Camera, Save, Search, UserPlus, Trash2 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useAuthActions } from "@convex-dev/auth/react"
 
 export default function SettingsPage() {
   const { t, language } = useLanguage()
-  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const { signIn } = useAuthActions()
+  
+  // Initialize state from URL params
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general")
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
   const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false)
+  
+  // Track if we've loaded initial data and previous data
+  const [hasInitialData, setHasInitialData] = useState(false)
+  const [previousAdminUsers, setPreviousAdminUsers] = useState<any[]>([])
+  
+  // Debounced search value
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  
+  // Update URL when state changes
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeTab !== "general") params.set("tab", activeTab)
+    if (searchQuery) params.set("search", searchQuery)
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [activeTab, searchQuery, pathname, router])
+  
+  // Fetch data from Convex - let Convex handle auth errors
+  const adminProfile = useQuery(api.adminSettings.getCurrentAdminProfile)
+  const platformSettings = useQuery(api.adminSettings.getPlatformSettings)
+  const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery: debouncedSearchQuery })
+  const updatePlatformSettings = useMutation(api.admin.updatePlatformSettings)
+  const updateAdminProfile = useMutation(api.adminSettings.updateAdminProfile)
+  const toggleAdminStatus = useMutation(api.adminSettings.toggleAdminUserStatus)
+  const addAdminUser = useMutation(api.adminSettings.addAdminUser)
+  const createAdminProfile = useMutation(api.adminSettings.createAdminProfile)
   const [newAdminData, setNewAdminData] = useState({
     username: "",
     email: "",
     password: "",
     permission: "admin"
   })
-
-  // Mock admin users data
-  const adminUsers = [
-    {
-      id: 1,
-      username: "admin",
-      email: "admin@shibr.com",
-      permission: "super_admin",
-      status: "active"
-    },
-    {
-      id: 2,
-      username: "محمد أحمد",
-      email: "mohammed@shibr.com",
-      permission: "admin",
-      status: "active"
-    },
-    {
-      id: 3,
-      username: "سارة عبدالله",
-      email: "sara@shibr.com",
-      permission: "admin",
-      status: "active"
-    },
-    {
-      id: 4,
-      username: "خالد محمد",
-      email: "khalid@shibr.com",
-      permission: "admin",
-      status: "inactive"
+  
+  // Form state for admin profile
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    currentPassword: "",
+    newPassword: "",
+  })
+  
+  // Initialize form when profile data loads
+  useEffect(() => {
+    if (adminProfile) {
+      setProfileForm({
+        fullName: adminProfile.fullName || "",
+        email: adminProfile.email || "",
+        phoneNumber: adminProfile.phoneNumber || "",
+        currentPassword: "",
+        newPassword: "",
+      })
     }
-  ]
+  }, [adminProfile])
 
-  const filteredUsers = adminUsers.filter(user => 
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Use previous data while loading new search results
+  const adminUsers = adminUsersData ?? previousAdminUsers
+  
+  // Track when we have initial data and update previous data
+  useEffect(() => {
+    if (adminUsersData !== undefined) {
+      if (!hasInitialData) {
+        setHasInitialData(true)
+      }
+      if (adminUsersData) {
+        setPreviousAdminUsers(adminUsersData)
+      }
+    }
+  }, [adminUsersData, hasInitialData])
+  
+  // Handle save profile
+  const handleSaveProfile = async () => {
+    try {
+      const result = await updateAdminProfile({
+        fullName: profileForm.fullName,
+        email: profileForm.email,
+        phoneNumber: profileForm.phoneNumber,
+        currentPassword: profileForm.currentPassword || undefined,
+        newPassword: profileForm.newPassword || undefined,
+      })
+      
+      if (result.success) {
+        toast({
+          title: language === "ar" ? "تم الحفظ" : "Saved",
+          description: language === "ar" ? "تم تحديث الملف الشخصي بنجاح" : "Profile updated successfully",
+        })
+        // Clear password fields
+        setProfileForm(prev => ({ ...prev, currentPassword: "", newPassword: "" }))
+      }
+    } catch (error: any) {
+      toast({
+        title: language === "ar" ? "خطأ" : "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -74,8 +140,8 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">{t("admin.settings.description")}</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
           <TabsTrigger value="general">{t("admin.settings.general")}</TabsTrigger>
           <TabsTrigger value="users">{t("admin.settings.users")}</TabsTrigger>
         </TabsList>
@@ -134,7 +200,8 @@ export default function SettingsPage() {
                     </Label>
                     <Input 
                       id="adminName" 
-                      defaultValue="محمد أحمد"
+                      value={profileForm.fullName}
+                      onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
                       className="text-start" 
                     />
                   </div>
@@ -145,7 +212,8 @@ export default function SettingsPage() {
                     <Input 
                       id="phoneNumber" 
                       type="tel" 
-                      defaultValue="+966 50 123 4567"
+                      value={profileForm.phoneNumber}
+                      onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
                       placeholder="+966 5X XXX XXXX" 
                       className="text-start" 
                     />
@@ -157,17 +225,20 @@ export default function SettingsPage() {
                     <Input 
                       id="email" 
                       type="email" 
-                      defaultValue="admin@shibr.com"
+                      value={profileForm.email}
+                      onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                       className="text-start" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-start block">
-                      {language === "ar" ? "كلمة المرور" : "Password"}
+                    <Label htmlFor="newPassword" className="text-start block">
+                      {language === "ar" ? "كلمة المرور الجديدة" : "New Password"}
                     </Label>
                     <Input 
-                      id="password" 
+                      id="newPassword" 
                       type="password" 
+                      value={profileForm.newPassword}
+                      onChange={(e) => setProfileForm({ ...profileForm, newPassword: e.target.value })}
                       placeholder="••••••••" 
                       className="text-start" 
                     />
@@ -177,7 +248,7 @@ export default function SettingsPage() {
 
 
               <div className="flex justify-end">
-                <Button className="gap-2">
+                <Button className="gap-2" onClick={handleSaveProfile}>
                   <Save className="h-4 w-4" />
                   {language === "ar" ? "حفظ التغييرات" : "Save Changes"}
                 </Button>
@@ -187,29 +258,30 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">
-                {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
-                    className="w-[300px] ps-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Button className="gap-2" onClick={() => setIsAddAdminDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4" />
-                  {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
-                </Button>
+          {/* Header */}
+          <div className="flex flex-row items-center justify-between">
+            <h2 className="text-xl font-semibold">
+              {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
+            </h2>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
+                  className="w-[300px] ps-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+              <Button className="gap-2" onClick={() => setIsAddAdminDialogOpen(true)}>
+                <UserPlus className="h-4 w-4" />
+                {language === "ar" ? "إضافة مسؤول" : "Add Admin"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -231,13 +303,13 @@ export default function SettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {adminUsers.map((user) => (
                       <TableRow key={user.id} className="h-[72px]">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {user.username.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                {user.username.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="font-medium">{user.username}</div>
@@ -278,9 +350,7 @@ export default function SettingsPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -385,11 +455,73 @@ export default function SettingsPage() {
               {language === "ar" ? "إلغاء" : "Cancel"}
             </Button>
             <Button 
-              onClick={() => {
-                // Here you would handle the admin creation
-                console.log("Creating admin:", newAdminData)
-                setIsAddAdminDialogOpen(false)
-                setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+              onClick={async () => {
+                try {
+                  // First create the auth account with password
+                  const authFormData = new FormData()
+                  authFormData.append("email", newAdminData.email.toLowerCase().trim())
+                  authFormData.append("password", newAdminData.password)
+                  authFormData.append("flow", "signUp")
+                  authFormData.append("name", newAdminData.username.trim())
+                  
+                  // Sign up the user
+                  await signIn("password", authFormData)
+                  
+                  // Wait a bit for auth to propagate
+                  await new Promise(resolve => setTimeout(resolve, 1000))
+                  
+                  // Create admin profile
+                  const profileResult = await createAdminProfile({
+                    email: newAdminData.email,
+                    adminRole: newAdminData.permission === "super_admin" ? "super_admin" : "support"
+                  })
+                  
+                  toast({
+                    title: language === "ar" ? "تم الإضافة" : "Added",
+                    description: language === "ar" 
+                      ? `تم إنشاء حساب المسؤول ${newAdminData.email} بنجاح`
+                      : `Admin account created successfully for ${newAdminData.email}`,
+                  })
+                  
+                  setIsAddAdminDialogOpen(false)
+                  setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+                  
+                } catch (error: any) {
+                  // Check if user already exists and try to upgrade them
+                  if (error.message?.includes("already exists") || error.code === "USER_ALREADY_EXISTS") {
+                    try {
+                      // Try the old method of upgrading existing user
+                      const result = await addAdminUser({
+                        email: newAdminData.email,
+                        fullName: newAdminData.username,
+                        adminRole: newAdminData.permission === "super_admin" ? "super_admin" : "support"
+                      })
+                      
+                      toast({
+                        title: language === "ar" ? "تم الإضافة" : "Added",
+                        description: result.message,
+                        variant: result.success ? "default" : "destructive"
+                      })
+                      
+                      if (result.success) {
+                        setIsAddAdminDialogOpen(false)
+                        setNewAdminData({ username: "", email: "", password: "", permission: "admin" })
+                      }
+                    } catch (innerError: any) {
+                      toast({
+                        title: language === "ar" ? "خطأ" : "Error",
+                        description: innerError.message,
+                        variant: "destructive"
+                      })
+                    }
+                  } else {
+                    toast({
+                      title: language === "ar" ? "خطأ" : "Error",
+                      description: error.message || "Failed to create admin account",
+                      variant: "destructive"
+                    })
+                  }
+                }
               }}
               disabled={!newAdminData.username || !newAdminData.email || !newAdminData.password || newAdminData.password.length < 8}
             >

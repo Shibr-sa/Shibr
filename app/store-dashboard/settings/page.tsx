@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Eye } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -30,7 +30,7 @@ export default function StoreDashboardSettingsPage() {
   const { userData: storeUserData } = useStoreData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [isVirtual, setIsVirtual] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -38,6 +38,8 @@ export default function StoreDashboardSettingsPage() {
   const [showCropper, setShowCropper] = useState(false)
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for General tab
@@ -48,16 +50,16 @@ export default function StoreDashboardSettingsPage() {
   
   // Form states for Store Data tab
   const [storeName, setStoreName] = useState("")
-  const [storeType, setStoreType] = useState("")
+  const [businessCategory, setBusinessCategory] = useState("")
   const [website, setWebsite] = useState("")
-  const [businessReg, setBusinessReg] = useState("")
+  const [commercialRegisterNumber, setCommercialRegisterNumber] = useState("")
   const [city, setCity] = useState("")
   const [area, setArea] = useState("")
   const [address, setAddress] = useState("")
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
-  const [accountName, setAccountName] = useState("")
+  const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
   
@@ -67,35 +69,65 @@ export default function StoreDashboardSettingsPage() {
   const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
   const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
+  const getFileUrl = useMutation(api.files.getFileUrl)
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
   
-  // Convex queries - only payment methods since userData comes from context
+  // Convex queries - payment methods only (payment records query needs to be created for store owners)
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
+  // TODO: Create a query for store owners to fetch their payment records
+  const paymentRecords = null // Temporarily disabled until proper query is created
   
-  // Load user data when available from context
+  // Load user data when available from context - only initialize once
   useEffect(() => {
-    if (storeUserData) {
+    if (storeUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = storeUserData.profile
+      
+      // Load basic user data (always available)
       setOwnerName(profile?.fullName || storeUserData.name || "")
       setPhoneNumber(profile?.phoneNumber || storeUserData.phone || "")
       setEmail(profile?.email || storeUserData.email || "")
+      
+      // Load store-specific data (only if profile exists)
       setStoreName(profile?.storeName || "")
-      setStoreType(profile?.storeType || "")
+      setBusinessCategory(profile?.businessCategory || "")
       setWebsite(profile?.website || "")
-      setBusinessReg(profile?.commercialRegisterNumber || "")
+      setCommercialRegisterNumber(profile?.commercialRegisterNumber || "")
       setCity(profile?.storeLocation?.city || "")
       setArea(profile?.storeLocation?.area || "")
       setAddress(profile?.storeLocation?.address || "")
       setProfileImageUrl(storeUserData.image || null)
-      // Check if there's a commercial register document
-      if (profile?.commercialRegisterDocument) {
-        // You might want to fetch the document URL here
-        setDocumentUrl(profile.commercialRegisterDocument)
+      
+      // Handle initial document URL loading
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
+      if (backendDocumentUrl) {
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_store_document_url')
+      } else {
+        const tempUrl = sessionStorage.getItem('temp_store_document_url')
+        if (tempUrl) {
+          setDocumentUrl(tempUrl)
+        }
+      }
+      
+      setHasInitialized(true)
+    }
+  }, [storeUserData, hasInitialized])
+  
+  // Separate effect for handling document URL updates after initialization
+  useEffect(() => {
+    if (storeUserData && hasInitialized) {
+      const profile = storeUserData.profile
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
+      
+      if (backendDocumentUrl && !pendingDocumentFile) {
+        // Update document URL if backend has a new one and we're not in the middle of selecting a new file
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_store_document_url')
       }
     }
-  }, [storeUserData])
+  }, [storeUserData, hasInitialized, pendingDocumentFile])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,7 +205,7 @@ export default function StoreDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
@@ -205,7 +237,7 @@ export default function StoreDashboardSettingsPage() {
                     </svg>
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-3 text-start flex-1">
+                <div className="space-y-3 flex-1">
                   <h3 className="text-lg font-semibold">{t("settings.general.upload_logo")}</h3>
                   <p className="text-sm text-muted-foreground">{t("settings.general.logo_hint")}</p>
                   <input
@@ -232,49 +264,49 @@ export default function StoreDashboardSettingsPage() {
 
               {/* Contact Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-start">{t("settings.general.contact_info")}</h3>
+                <h3 className="text-lg font-semibold">{t("settings.general.contact_info")}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
+                    <Label htmlFor="ownerName" className="block">{t("settings.general.owner_name")}</Label>
                     <Input 
                       id="ownerName" 
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
-                      className="text-start" 
+                      className="" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-start block">{t("settings.general.phone_number")}</Label>
+                    <Label htmlFor="phoneNumber" className="block">{t("settings.general.phone_number")}</Label>
                     <Input 
                       id="phoneNumber" 
                       type="tel" 
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="+966 5X XXX XXXX" 
-                      className="text-start" 
+                      className="" 
                        
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-start block">{t("settings.general.email")}</Label>
+                    <Label htmlFor="email" className="block">{t("settings.general.email")}</Label>
                     <Input 
                       id="email" 
                       type="email" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="text-start" 
+                      className="" 
                        
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-start block">{t("settings.general.password")}</Label>
+                    <Label htmlFor="password" className="block">{t("settings.general.password")}</Label>
                     <Input 
                       id="password" 
                       type="password" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••" 
-                      className="text-start" 
+                      className="" 
                     />
                   </div>
                 </div>
@@ -290,8 +322,8 @@ export default function StoreDashboardSettingsPage() {
                     setIsLoading(true)
                     try {
                       const updateData: any = {}
-                      if (ownerName) updateData.ownerName = ownerName
-                      if (phoneNumber) updateData.phoneNumber = phoneNumber
+                      if (ownerName) updateData.name = ownerName
+                      if (phoneNumber) updateData.phone = phoneNumber
                       if (email) updateData.email = email
                       if (password) updateData.password = password
                       
@@ -328,7 +360,7 @@ export default function StoreDashboardSettingsPage() {
                 {/* Store Name and Type */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="storeName" className="text-start block">
+                    <Label htmlFor="storeName" className="block">
                       {t("settings.store_data.store_name")} *
                     </Label>
                     <Input 
@@ -336,20 +368,18 @@ export default function StoreDashboardSettingsPage() {
                       value={storeName}
                       onChange={(e) => setStoreName(e.target.value)}
                       placeholder={t("settings.store_data.store_name_placeholder")}
-                      className="text-start" 
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="storeType" className="text-start block">
+                    <Label htmlFor="businessCategory" className="block">
                       {t("settings.store_data.store_type")} *
                     </Label>
                     <Input 
-                      id="storeType" 
-                      value={storeType}
-                      onChange={(e) => setStoreType(e.target.value)}
+                      id="businessCategory" 
+                      value={businessCategory}
+                      onChange={(e) => setBusinessCategory(e.target.value)}
                       placeholder={t("settings.store_data.store_type_placeholder")}
-                      className="text-start" 
                       required
                     />
                   </div>
@@ -357,7 +387,7 @@ export default function StoreDashboardSettingsPage() {
 
                 {/* Website */}
                 <div className="space-y-2">
-                  <Label htmlFor="website" className="text-start block">
+                  <Label htmlFor="website" className="block">
                     {t("settings.store_data.website")}
                   </Label>
                   <Input 
@@ -365,29 +395,27 @@ export default function StoreDashboardSettingsPage() {
                     type="url" 
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    placeholder={t("settings.store_data.website_placeholder")}
-                    className="text-start" 
+                    placeholder={t("settings.store_data.website_placeholder")} 
                                      />
                 </div>
 
                 {/* Commercial Registration Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="businessReg" className="text-start block">
+                  <Label htmlFor="commercialRegisterNumber" className="block">
                     {t("settings.store_data.commercial_reg")} *
                   </Label>
                   <Input 
-                    id="businessReg" 
-                    value={businessReg}
-                    onChange={(e) => setBusinessReg(e.target.value)}
-                    placeholder={t("settings.store_data.commercial_reg_placeholder")}
-                    className="text-start" 
+                    id="commercialRegisterNumber" 
+                    value={commercialRegisterNumber}
+                    onChange={(e) => setCommercialRegisterNumber(e.target.value)}
+                    placeholder={t("settings.store_data.commercial_reg_placeholder")} 
                     required
                   />
                 </div>
 
                 {/* Commercial Register Document Upload Section */}
                 <div className="space-y-2">
-                  <Label className="text-start block">
+                  <Label className="block">
                     {t("settings.store_data.commercial_register_document")} *
                   </Label>
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
@@ -399,24 +427,41 @@ export default function StoreDashboardSettingsPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                             </svg>
                           </div>
-                          <div className="text-start">
+                          <div>
                             <p className="text-sm font-medium">{t("settings.store_data.document_uploaded")}</p>
                             <p className="text-xs text-muted-foreground">{t("settings.store_data.document_ready")}</p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDocumentUrl(null)
-                            if (documentInputRef.current) {
-                              documentInputRef.current.value = ''
-                            }
-                          }}
-                        >
-                          {t("settings.store_data.remove_document")}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (documentUrl) {
+                                window.open(documentUrl, '_blank')
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {t("settings.store_data.preview_document")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDocumentUrl(null)
+                              setPendingDocumentFile(null)
+                              if (documentInputRef.current) {
+                                documentInputRef.current.value = ''
+                              }
+                            }}
+                          >
+                            {t("settings.store_data.remove_document")}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center space-y-3">
@@ -425,7 +470,7 @@ export default function StoreDashboardSettingsPage() {
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
                             
@@ -438,41 +483,16 @@ export default function StoreDashboardSettingsPage() {
                               return
                             }
                             
-                            setIsLoading(true)
-                            try {
-                              // Get upload URL from Convex
-                              const uploadUrl = await generateUploadUrl()
-                              
-                              // Upload file to Convex storage
-                              const result = await fetch(uploadUrl, {
-                                method: "POST",
-                                headers: { "Content-Type": file.type },
-                                body: file,
-                              })
-                              
-                              const { storageId } = await result.json()
-                              
-                              // Update the document in the database
-                              await updateBusinessRegistrationDocument({
-                                documentId: storageId,
-                              })
-                              
-                              setDocumentUrl(storageId)
-                              
-                              toast({
-                                title: t("settings.general.success"),
-                                description: t("settings.store_data.document_uploaded_success"),
-                              })
-                            } catch (error) {
-                              console.error("Error uploading document:", error)
-                              toast({
-                                title: t("settings.general.error"),
-                                description: t("settings.store_data.document_upload_error"),
-                                variant: "destructive",
-                              })
-                            } finally {
-                              setIsLoading(false)
-                            }
+                            // Just store the file locally, don't upload yet
+                            setPendingDocumentFile(file)
+                            // Create a local URL for preview
+                            const localUrl = URL.createObjectURL(file)
+                            setDocumentUrl(localUrl)
+                            
+                            toast({
+                              title: t("settings.general.info"),
+                              description: t("settings.store_data.document_ready_to_save"),
+                            })
                           }}
                         />
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -519,7 +539,7 @@ export default function StoreDashboardSettingsPage() {
                       return
                     }
                     
-                    if (!storeName || !storeType || !businessReg) {
+                    if (!storeName || !businessCategory || !commercialRegisterNumber) {
                       toast({
                         title: t("settings.store_data.validation_error"),
                         description: t("settings.store_data.fill_required_fields"),
@@ -540,21 +560,49 @@ export default function StoreDashboardSettingsPage() {
                     
                     setIsLoading(true)
                     try {
+                      // First, upload the document if there's a pending one
+                      let documentStorageId = null
+                      if (pendingDocumentFile) {
+                        // Get upload URL from Convex
+                        const uploadUrl = await generateUploadUrl()
+                        
+                        // Upload file to Convex storage
+                        const result = await fetch(uploadUrl, {
+                          method: "POST",
+                          headers: { "Content-Type": pendingDocumentFile.type },
+                          body: pendingDocumentFile,
+                        })
+                        
+                        const { storageId } = await result.json()
+                        documentStorageId = storageId
+                        
+                        // Update the document in the database
+                        await updateBusinessRegistrationDocument({
+                          storageId: storageId,
+                        })
+                        
+                        // Get the actual URL for the uploaded file
+                        const fileUrl = await getFileUrl({ storageId })
+                        setDocumentUrl(fileUrl)
+                        setPendingDocumentFile(null) // Clear pending file after successful upload
+                        
+                        // Store the URL temporarily to prevent it from being cleared
+                        sessionStorage.setItem('temp_store_document_url', fileUrl || '')
+                      }
+                      
                       // First update general settings with basic info
                       await updateGeneralSettings({
-                        ownerName,
+                        name: ownerName,
                         email,
-                        phoneNumber,
+                        phone: phoneNumber,
                       })
                       
                       // Then update store-specific data
                       await updateStoreData({
                         storeName,
-                        storeType,
-                        businessRegistration: businessReg,
-                        isFreelance: false,
+                        businessCategory,
+                        commercialRegisterNumber,
                         website: website || undefined,
-                        phoneNumber,
                       })
                       
                       toast({
@@ -567,8 +615,8 @@ export default function StoreDashboardSettingsPage() {
                       sessionStorage.setItem('currentUser', JSON.stringify({
                         ...currentUser,
                         storeName,
-                        storeType,
-                        businessReg: businessReg,
+                        businessCategory,
+                        commercialRegisterNumber,
                         phoneNumber,
                       }))
                     } catch (error) {
@@ -592,25 +640,24 @@ export default function StoreDashboardSettingsPage() {
 
         {/* Payment Settings Tab */}
         <TabsContent value="payment" className="space-y-6">
-          {/* Payment Methods Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</CardTitle>
+          {/* Payment Methods Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</h3>
               <Button className="gap-2" onClick={() => setIsPaymentDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 {t("settings.payment.add_payment_method")}
               </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
-                <Table>
+            </div>
+            <div className="rounded-md border">
+              <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.details")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.actions")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.method")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.details")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.status")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.type")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.table.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -618,7 +665,7 @@ export default function StoreDashboardSettingsPage() {
                       <TableRow key={method._id}>
                         <TableCell className="font-medium">{method.bankName}</TableCell>
                         <TableCell>
-                          {method.accountNumber || 'N/A'} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || 'N/A'}
+                          {method.accountNumber || ''} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || ''}
                         </TableCell>
                         <TableCell>
                           <Badge variant={method.isActive ? "default" : "secondary"}>
@@ -666,73 +713,79 @@ export default function StoreDashboardSettingsPage() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Payment Records Table */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
-                <Table>
+          {/* Payment Records Section */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
+            <div className="rounded-md border">
+              <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.date")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.actions")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.date")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.type")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.status")}</TableHead>
+                      <TableHead className="font-medium">{t("settings.payment.summary.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")}</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.payment_from_riyadh_shelf")}</TableCell>
-                      <TableCell>{t("settings.payment.completed")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            {t("settings.payment.download_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")} ({t("common.new")})</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.shelf_renewal_fees")}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {t("settings.payment.pending_confirmation")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <Calendar className="w-4 h-4" />
-                            {t("settings.payment.pay_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    {paymentRecords?.payments && paymentRecords.payments.length > 0 ? (
+                      paymentRecords.payments.map((payment) => (
+                        <TableRow key={payment._id}>
+                          <TableCell className="font-medium">
+                            {new Date(payment.paymentDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {payment.type === "brand_payment" ? t("settings.payment.brand_payment") :
+                             payment.type === "store_settlement" ? t("settings.payment.store_settlement") :
+                             payment.type === "refund" ? t("settings.payment.refund") :
+                             t("settings.payment.platform_fee")}
+                          </TableCell>
+                          <TableCell>{payment.paymentMethod || t("settings.payment.bank_transfer")}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              payment.status === "completed" ? "default" :
+                              payment.status === "pending" ? "secondary" :
+                              payment.status === "failed" ? "destructive" :
+                              "outline"
+                            }>
+                              {payment.status === "completed" ? t("settings.payment.completed") :
+                               payment.status === "pending" ? t("settings.payment.pending") :
+                               payment.status === "failed" ? t("settings.payment.failed") :
+                               payment.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {payment.invoiceNumber && (
+                                <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
+                                  <Eye className="w-4 h-4" />
+                                  {t("settings.payment.view_invoice")}
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          {t("settings.payment.no_payment_records")}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
       {/* Add Payment Method Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" >
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
               {t("settings.payment.dialog.title")}
@@ -742,7 +795,7 @@ export default function StoreDashboardSettingsPage() {
           <div className="space-y-4 py-4">
             {/* Bank Selection */}
             <div className="space-y-2">
-              <Label htmlFor="bank" className="text-start block">
+              <Label htmlFor="bank" className="block">
                 {t("settings.payment.dialog.select_bank")}
               </Label>
               <Select value={bankName} onValueChange={setBankName}>
@@ -761,13 +814,13 @@ export default function StoreDashboardSettingsPage() {
 
             {/* Account Holder Name */}
             <div className="space-y-2">
-              <Label htmlFor="accountName" className="text-start block">
+              <Label htmlFor="accountName" className="block">
                 {t("settings.payment.dialog.account_name")}
               </Label>
               <Input
                 id="accountName"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
+                value={accountHolderName}
+                onChange={(e) => setAccountHolderName(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_name_placeholder")}
                 className="w-full"
               />
@@ -775,7 +828,7 @@ export default function StoreDashboardSettingsPage() {
 
             {/* Bank Card/Account Number */}
             <div className="space-y-2">
-              <Label htmlFor="accountNumber" className="text-start block">
+              <Label htmlFor="accountNumber" className="block">
                 {t("settings.payment.dialog.account_number")}
               </Label>
               <Input
@@ -789,7 +842,7 @@ export default function StoreDashboardSettingsPage() {
 
             {/* IBAN */}
             <div className="space-y-2">
-              <Label htmlFor="iban" className="text-start block">
+              <Label htmlFor="iban" className="block">
                 {t("settings.payment.dialog.iban")}
               </Label>
               <Input
@@ -805,8 +858,8 @@ export default function StoreDashboardSettingsPage() {
             <div className="flex items-center gap-2">
               <Checkbox 
                 id="virtual" 
-                checked={isVirtual}
-                onCheckedChange={(checked) => setIsVirtual(checked as boolean)}
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
               <Label 
                 htmlFor="virtual" 
@@ -830,7 +883,7 @@ export default function StoreDashboardSettingsPage() {
                 if (!user?.id) return
                 
                 // Validate required fields
-                if (!bankName || !accountName || !accountNumber || !iban) {
+                if (!bankName || !accountHolderName || !accountNumber || !iban) {
                   toast({
                     title: t("settings.payment.validation_error"),
                     description: t("settings.payment.fill_all_fields"),
@@ -843,10 +896,10 @@ export default function StoreDashboardSettingsPage() {
                 try {
                   await addPaymentMethod({
                     bankName,
-                    accountName,
+                    accountHolderName,
                     accountNumber,
                     iban,
-                    isVirtual,
+                    isDefault,
                   })
                   
                   toast({
@@ -856,10 +909,10 @@ export default function StoreDashboardSettingsPage() {
                   
                   // Reset form
                   setBankName("")
-                  setAccountName("")
+                  setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIsVirtual(false)
+                  setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {
                   toast({

@@ -194,15 +194,14 @@ export const STORE_TYPES = [
 // ============================================
 
 export const PRODUCT_CATEGORIES = [
-  { value: 'food', nameEn: 'Food & Beverages', nameAr: 'أطعمة ومشروبات' },
-  { value: 'health', nameEn: 'Health & Beauty', nameAr: 'صحة وجمال' },
+  { value: 'food_beverages', nameEn: 'Food & Beverages', nameAr: 'أطعمة ومشروبات' },
+  { value: 'health_beauty', nameEn: 'Health & Beauty', nameAr: 'صحة وجمال' },
+  { value: 'fashion', nameEn: 'Fashion', nameAr: 'أزياء' },
   { value: 'electronics', nameEn: 'Electronics', nameAr: 'إلكترونيات' },
-  { value: 'clothing', nameEn: 'Clothing & Fashion', nameAr: 'ملابس وأزياء' },
-  { value: 'home', nameEn: 'Home & Garden', nameAr: 'منزل وحديقة' },
-  { value: 'sports', nameEn: 'Sports & Outdoors', nameAr: 'رياضة' },
-  { value: 'toys', nameEn: 'Toys & Games', nameAr: 'ألعاب' },
-  { value: 'books', nameEn: 'Books & Stationery', nameAr: 'كتب وقرطاسية' },
-  { value: 'automotive', nameEn: 'Automotive', nameAr: 'سيارات' },
+  { value: 'home_living', nameEn: 'Home & Living', nameAr: 'منزل ومعيشة' },
+  { value: 'kids_baby', nameEn: 'Kids & Baby', nameAr: 'أطفال ورضع' },
+  { value: 'sports_fitness', nameEn: 'Sports & Fitness', nameAr: 'رياضة ولياقة' },
+  { value: 'books_stationery', nameEn: 'Books & Stationery', nameAr: 'كتب وقرطاسية' },
   { value: 'other', nameEn: 'Other', nameAr: 'أخرى' },
 ] as const
 
@@ -302,7 +301,6 @@ export const CURRENCY = {
 export const LOCALE = {
   // Always use en-US for number formatting to ensure English numerals
   NUMBERS: 'en-US',
-  // Use appropriate locale for date month names only
-  DATE_AR: 'ar-SA',
-  DATE_EN: 'en-US',
+  // Always use Gregorian calendar with English numerals for dates
+  DATE: 'en-US',
 } as const

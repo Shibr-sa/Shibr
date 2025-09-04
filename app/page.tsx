@@ -35,7 +35,7 @@ export default function ShibrLandingPage() {
           <div className="flex items-center gap-2">
             <Image
               src="/logo.svg"
-              alt="Shibr Logo"
+              alt={t("common.logo_alt")}
               width={32}
               height={32}
               className="h-8 w-8"
@@ -392,7 +392,7 @@ export default function ShibrLandingPage() {
               <div className="flex items-center gap-3">
                 <Image
                   src="/logo.svg"
-                  alt="Shibr Logo"
+                  alt={t("common.logo_alt")}
                   width={40}
                   height={40}
                   className="h-10 w-10 brightness-0 invert"

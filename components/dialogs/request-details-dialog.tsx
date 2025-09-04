@@ -398,7 +398,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                                 "text-xs mt-1",
                                 isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
                               )}>
-                                {messageDate.toLocaleTimeString(language === "ar" ? "ar-SA" : "en-US", {
+                                {messageDate.toLocaleTimeString("en-US", {
                                   hour: "2-digit",
                                   minute: "2-digit"
                                 })}

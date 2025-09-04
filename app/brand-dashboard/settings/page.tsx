@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -30,7 +30,7 @@ export default function BrandDashboardSettingsPage() {
   const { userData: brandUserData } = useBrandData() // Get userData from context
   const [activeTab, setActiveTab] = useState("general")
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [isVirtual, setIsVirtual] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -48,16 +48,19 @@ export default function BrandDashboardSettingsPage() {
   
   // Form states for Brand Data tab
   const [brandName, setBrandName] = useState("")
-  const [brandType, setBrandType] = useState("")
+  const [businessCategory, setBusinessCategory] = useState("")
   const [website, setWebsite] = useState("")
-  const [businessReg, setBusinessReg] = useState("")
+  const [commercialRegisterNumber, setCommercialRegisterNumber] = useState("")
+  const [freelanceLicenseNumber, setFreelanceLicenseNumber] = useState("")
   const [isFreelance, setIsFreelance] = useState(false)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for Payment dialog
   const [bankName, setBankName] = useState("")
-  const [accountName, setAccountName] = useState("")
+  const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
   
@@ -75,23 +78,51 @@ export default function BrandDashboardSettingsPage() {
   // Convex queries - only payment methods since userData comes from context
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
   
-  // Load user data when available from context
+  // Load user data when available from context - only initialize form fields once
   useEffect(() => {
-    if (brandUserData) {
+    if (brandUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = brandUserData.profile
       setOwnerName(profile?.fullName || brandUserData.name || "")
       setPhoneNumber(profile?.phoneNumber || brandUserData.phone || "")
       setEmail(profile?.email || brandUserData.email || "")
       setBrandName(profile?.brandName || "")
-      setBrandType(profile?.brandType || "") // Load brandType, not businessType
+      setBusinessCategory(profile?.businessCategory || "")
       setWebsite(profile?.website || "")
-      setBusinessReg(profile?.brandCommercialRegisterNumber || profile?.freelanceLicenseNumber || "")
+      setCommercialRegisterNumber(profile?.commercialRegisterNumber || "")
+      setFreelanceLicenseNumber(profile?.freelanceLicenseNumber || "")
       setIsFreelance(profile?.businessType === "freelancer" || false)
       setProfileImageUrl(brandUserData.image || null)
-      setDocumentUrl(profile?.brandCommercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null)
+      
+      // Handle initial document URL loading
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      if (backendDocumentUrl) {
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_document_url')
+      } else {
+        const tempUrl = sessionStorage.getItem('temp_document_url')
+        if (tempUrl) {
+          setDocumentUrl(tempUrl)
+        }
+      }
+      
+      setHasInitialized(true)
     }
-  }, [brandUserData])
+  }, [brandUserData, hasInitialized])
+  
+  // Separate effect for handling document URL updates after initialization
+  useEffect(() => {
+    if (brandUserData && hasInitialized) {
+      const profile = brandUserData.profile
+      const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
+      
+      if (backendDocumentUrl && !pendingDocumentFile) {
+        // Update document URL if backend has a new one and we're not in the middle of selecting a new file
+        setDocumentUrl(backendDocumentUrl)
+        sessionStorage.removeItem('temp_document_url')
+      }
+    }
+  }, [brandUserData, hasInitialized, pendingDocumentFile])
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,7 +245,7 @@ export default function BrandDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="brand-data">{t("settings.tabs.brand_data")}</TabsTrigger>
@@ -331,8 +362,8 @@ export default function BrandDashboardSettingsPage() {
                     setIsLoading(true)
                     try {
                       const updateData: any = {}
-                      if (ownerName) updateData.ownerName = ownerName
-                      if (phoneNumber) updateData.phoneNumber = phoneNumber
+                      if (ownerName) updateData.name = ownerName
+                      if (phoneNumber) updateData.phone = phoneNumber
                       if (email) updateData.email = email
                       if (password) updateData.password = password
                       
@@ -384,14 +415,14 @@ export default function BrandDashboardSettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="brandType" className="text-start block">
-                      {t("settings.brand_data.brand_type")} *
+                    <Label htmlFor="businessCategory" className="text-start block">
+                      {t("settings.brand_data.business_category")} *
                     </Label>
                     <Input 
-                      id="brandType" 
-                      value={brandType}
-                      onChange={(e) => setBrandType(e.target.value)}
-                      placeholder={t("settings.brand_data.brand_type_placeholder")}
+                      id="businessCategory" 
+                      value={businessCategory}
+                      onChange={(e) => setBusinessCategory(e.target.value)}
+                      placeholder={t("settings.brand_data.business_category_placeholder")}
                       className="text-start" 
                       required
                     />
@@ -415,16 +446,16 @@ export default function BrandDashboardSettingsPage() {
 
                 {/* Commercial Registration Number / Freelance Document */}
                 <div className="space-y-2">
-                  <Label htmlFor="businessReg" className="text-start block">
+                  <Label htmlFor="registration" className="text-start block">
                     {isFreelance ? t("settings.brand_data.freelance_document_number") : t("settings.brand_data.commercial_reg")} *
                   </Label>
                   <Input 
-                    id="businessReg" 
-                    value={businessReg}
-                    onChange={(e) => setBusinessReg(e.target.value)}
+                    id="registration" 
+                    value={isFreelance ? freelanceLicenseNumber : commercialRegisterNumber}
+                    onChange={(e) => isFreelance ? setFreelanceLicenseNumber(e.target.value) : setCommercialRegisterNumber(e.target.value)}
                     placeholder={isFreelance ? t("settings.brand_data.freelance_document_placeholder") : t("settings.brand_data.commercial_reg_placeholder")}
                     className="text-start" 
-                                       required
+                    required
                   />
                 </div>
 
@@ -464,19 +495,36 @@ export default function BrandDashboardSettingsPage() {
                             <p className="text-xs text-muted-foreground">{t("settings.brand_data.document_ready")}</p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDocumentUrl(null)
-                            if (documentInputRef.current) {
-                              documentInputRef.current.value = ''
-                            }
-                          }}
-                        >
-                          {t("settings.brand_data.remove_document")}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (documentUrl) {
+                                window.open(documentUrl, '_blank')
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {t("settings.brand_data.preview_document")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDocumentUrl(null)
+                              setPendingDocumentFile(null)
+                              if (documentInputRef.current) {
+                                documentInputRef.current.value = ''
+                              }
+                            }}
+                          >
+                            {t("settings.brand_data.remove_document")}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center space-y-3">
@@ -485,7 +533,7 @@ export default function BrandDashboardSettingsPage() {
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
                             
@@ -498,49 +546,16 @@ export default function BrandDashboardSettingsPage() {
                               return
                             }
                             
-                            setIsLoading(true)
-                            try {
-                              // Get upload URL from Convex
-                              const uploadUrl = await generateUploadUrl()
-                              
-                              // Upload file to Convex storage
-                              const result = await fetch(uploadUrl, {
-                                method: "POST",
-                                headers: { "Content-Type": file.type },
-                                body: file,
-                              })
-                              
-                              const { storageId } = await result.json()
-                              
-                              // Update brand with the document storage ID
-                              if (isFreelance) {
-                                await updateFreelanceDocument({
-                                  documentId: storageId,
-                                })
-                              } else {
-                                await updateBusinessRegistrationDocument({
-                                  documentId: storageId,
-                                })
-                              }
-                              
-                              // Get the actual URL for the uploaded file
-                              const fileUrl = await getFileUrl({ storageId })
-                              setDocumentUrl(fileUrl)
-                              
-                              toast({
-                                title: t("settings.general.success"),
-                                description: t("settings.brand_data.document_uploaded_success"),
-                              })
-                            } catch (error) {
-                              console.error("Error uploading document:", error)
-                              toast({
-                                title: t("settings.general.error"),
-                                description: t("settings.brand_data.document_upload_error"),
-                                variant: "destructive",
-                              })
-                            } finally {
-                              setIsLoading(false)
-                            }
+                            // Just store the file locally, don't upload yet
+                            setPendingDocumentFile(file)
+                            // Create a local URL for preview
+                            const localUrl = URL.createObjectURL(file)
+                            setDocumentUrl(localUrl)
+                            
+                            toast({
+                              title: t("settings.general.info"),
+                              description: t("settings.brand_data.document_ready_to_save"),
+                            })
                           }}
                         />
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -582,7 +597,8 @@ export default function BrandDashboardSettingsPage() {
                     if (!user?.id) return
                     
                     // Validate required fields
-                    if (!brandName || !brandType || !businessReg || !phoneNumber) {
+                    const registrationNumber = isFreelance ? freelanceLicenseNumber : commercialRegisterNumber;
+                    if (!brandName || !businessCategory || !registrationNumber || !phoneNumber) {
                       toast({
                         title: t("settings.brand_data.validation_error"),
                         description: t("settings.brand_data.fill_required_fields"),
@@ -603,13 +619,50 @@ export default function BrandDashboardSettingsPage() {
                     
                     setIsLoading(true)
                     try {
+                      // First, upload the document if there's a pending one
+                      let documentStorageId = null
+                      if (pendingDocumentFile) {
+                        // Get upload URL from Convex
+                        const uploadUrl = await generateUploadUrl()
+                        
+                        // Upload file to Convex storage
+                        const result = await fetch(uploadUrl, {
+                          method: "POST",
+                          headers: { "Content-Type": pendingDocumentFile.type },
+                          body: pendingDocumentFile,
+                        })
+                        
+                        const { storageId } = await result.json()
+                        documentStorageId = storageId
+                        
+                        // Update brand with the document storage ID
+                        if (isFreelance) {
+                          await updateFreelanceDocument({
+                            storageId: storageId,
+                          })
+                        } else {
+                          await updateBusinessRegistrationDocument({
+                            storageId: storageId,
+                          })
+                        }
+                        
+                        // Get the actual URL for the uploaded file
+                        const fileUrl = await getFileUrl({ storageId })
+                        setDocumentUrl(fileUrl)
+                        setPendingDocumentFile(null) // Clear pending file after successful upload
+                        
+                        // Store the URL to prevent it from being cleared
+                        sessionStorage.setItem('temp_document_url', fileUrl || '')
+                      }
+                      
+                      // Then update the brand data
                       await updateBrandData({
                         brandName,
-                        brandType,
-                        isFreelance,
-                        businessRegistration: businessReg,
+                        businessCategory,
+                        businessType: isFreelance ? "freelancer" : "registered_company",
+                        commercialRegisterNumber: !isFreelance ? commercialRegisterNumber : undefined,
+                        freelanceLicenseNumber: isFreelance ? freelanceLicenseNumber : undefined,
                         website: website || undefined,
-                        phoneNumber: phoneNumber || undefined,
                       })
                       
                       toast({
@@ -622,8 +675,9 @@ export default function BrandDashboardSettingsPage() {
                       sessionStorage.setItem('currentUser', JSON.stringify({
                         ...currentUser,
                         brandName,
-                        brandType,
-                        businessReg: businessReg || (isFreelance ? 'freelance' : ''),
+                        businessCategory,
+                        commercialRegisterNumber: !isFreelance ? commercialRegisterNumber : '',
+                        freelanceLicenseNumber: isFreelance ? freelanceLicenseNumber : '',
                         isFreelance,
                         phoneNumber,
                       }))
@@ -649,16 +703,15 @@ export default function BrandDashboardSettingsPage() {
         {/* Payment Settings Tab */}
         <TabsContent value="payment" className="space-y-6">
           {/* Payment Methods Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</CardTitle>
+          <div className="space-y-4">
+            <div className="flex flex-row items-center justify-between">
+              <h3 className="text-xl font-semibold">{t("settings.payment.payment_methods_title")}</h3>
               <Button className="gap-2" onClick={() => setIsPaymentDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 {t("settings.payment.add_payment_method")}
               </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+            </div>
+            <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -674,7 +727,7 @@ export default function BrandDashboardSettingsPage() {
                       <TableRow key={method._id}>
                         <TableCell className="font-medium">{method.bankName}</TableCell>
                         <TableCell>
-                          {method.accountNumber || 'N/A'} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || 'N/A'}
+                          {method.accountNumber || ''} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || ''}
                         </TableCell>
                         <TableCell>
                           <Badge variant={method.isActive ? "default" : "secondary"}>
@@ -722,17 +775,13 @@ export default function BrandDashboardSettingsPage() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Payment Records Table */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border rounded-lg">
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
+            <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -745,44 +794,14 @@ export default function BrandDashboardSettingsPage() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")}</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.payment_from_shelf_rental")}</TableCell>
-                      <TableCell>{t("settings.payment.completed")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            {t("settings.payment.download_invoice")}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">1 {t("common.june")} ({t("common.new")})</TableCell>
-                      <TableCell>{t("settings.payment.bank_transfer")}</TableCell>
-                      <TableCell>{t("settings.payment.shelf_rental_payment")}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {t("settings.payment.pending_confirmation")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                            <Calendar className="w-4 h-4" />
-                            {t("settings.payment.pay_invoice")}
-                          </Button>
-                        </div>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        {t("settings.payment.no_payment_records")}
                       </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -822,8 +841,8 @@ export default function BrandDashboardSettingsPage() {
               </Label>
               <Input
                 id="accountName"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
+                value={accountHolderName}
+                onChange={(e) => setAccountHolderName(e.target.value)}
                 placeholder={t("settings.payment.dialog.account_name_placeholder")}
                 className="w-full"
               />
@@ -861,8 +880,8 @@ export default function BrandDashboardSettingsPage() {
             <div className="flex items-center gap-2">
               <Checkbox 
                 id="virtual" 
-                checked={isVirtual}
-                onCheckedChange={(checked) => setIsVirtual(checked as boolean)}
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
               <Label 
                 htmlFor="virtual" 
@@ -899,10 +918,10 @@ export default function BrandDashboardSettingsPage() {
                 try {
                   await addPaymentMethod({
                     bankName,
-                    accountName,
+                    accountHolderName,
                     accountNumber,
                     iban,
-                    isVirtual,
+                    isDefault,
                   })
                   
                   toast({
@@ -912,10 +931,10 @@ export default function BrandDashboardSettingsPage() {
                   
                   // Reset form
                   setBankName("")
-                  setAccountName("")
+                  setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIsVirtual(false)
+                  setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {
                   toast({

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { StatCard } from "@/components/ui/stat-card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
@@ -32,19 +31,21 @@ import { cn } from "@/lib/utils"
 import { PaymentTransferDialog } from "@/components/dialogs/payment-transfer-dialog"
 import { useMutation } from "convex/react"
 import React, { useMemo } from "react"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import BrandShelvesLoading from "./loading"
 
 export default function BrandShelvesPage() {
   const { t, direction, language } = useLanguage()
   const { isBrandDataComplete } = useBrandData()
   const router = useRouter()
-  const { user } = useCurrentUser()
+  const { user, isLoading: userLoading } = useCurrentUser()
   const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<any>(null)
   const itemsPerPage = 5
-  const markNotificationsAsRead = useMutation(api.notifications.markRentalRequestNotificationsAsRead)
 
   // Get user ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -57,24 +58,12 @@ export default function BrandShelvesPage() {
     } : "skip"
   )
   
-  // Get all rental request IDs for notification counts
-  const rentalRequestIds = useMemo(() => {
-    return rentalRequests?.map(r => r._id) || []
-  }, [rentalRequests])
-
-  // Fetch notification counts for all rental requests
-  const notificationCounts = useQuery(
-    api.notifications.getUnreadCountByRentalRequests,
-    userId && rentalRequestIds.length > 0 ? {
-      rentalRequestIds: rentalRequestIds
-    } : "skip"
+  // Get unread message counts
+  const unreadCounts = useQuery(
+    api.chats.getUnreadMessageCounts,
+    userId ? { userId: userId } : "skip"
   )
-
-  // Calculate total unread notifications
-  const totalUnreadNotifications = useMemo(() => {
-    if (!notificationCounts) return 0
-    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
-  }, [notificationCounts])
+  
 
   // Fetch rental statistics with percentage changes based on selected period
   const rentalStats = useQuery(
@@ -85,11 +74,11 @@ export default function BrandShelvesPage() {
     } : "skip"
   )
 
-  // Filter rental requests based on search
+  // Filter rental requests based on debounced search
   const filteredRequests = rentalRequests?.filter(request => {
-    const matchesSearch = !searchQuery || 
-      request.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.shelfName?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = !debouncedSearchQuery || 
+      request.otherUserName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      request.shelfName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     return matchesSearch
   }) || []
 
@@ -103,11 +92,14 @@ export default function BrandShelvesPage() {
   const allRequests = rentalRequests || []
   const activeRentals = allRequests.filter(r => r.status === "active").length
   const pendingRentals = allRequests.filter(r => r.status === "pending").length
-  const acceptedRentals = allRequests.filter(r => r.status === "accepted" || r.status === "payment_pending").length
+  const acceptedRentals = allRequests.filter(r => r.status === "payment_pending").length
   const totalRentals = allRequests.length
   
   // Loading state
   const isLoading = userId && !rentalRequests
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,7 +115,6 @@ export default function BrandShelvesPage() {
             {t("status.pending")}
           </Badge>
         )
-      case "accepted":
       case "payment_pending":
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
@@ -164,37 +155,35 @@ export default function BrandShelvesPage() {
   
   const getActionButton = (request: any) => {
     switch (request.status) {
-      case "accepted":
       case "payment_pending":
         return (
           <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="h-8 w-8 p-0 relative"
-                    onClick={async () => {
-                      // Navigate to the shelf details page with conversation
-                      if (request.conversationId && request.shelfId) {
-                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                      }
-                      // Mark notifications as read when viewing details
-                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                        await markNotificationsAsRead({
-                          rentalRequestId: request._id
-                        })
-                      }
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                    {notificationCounts && notificationCounts[request._id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                        {notificationCounts[request._id]}
-                      </span>
+                  <div className="relative inline-block">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={async () => {
+                        // Navigate to the shelf details page with conversation
+                        if (request.conversationId && request.shelfId) {
+                          router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                        }
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                      >
+                        {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                      </Badge>
                     )}
-                  </Button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t("action.view_details")}</p>
@@ -226,32 +215,31 @@ export default function BrandShelvesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  className="h-8 w-8 p-0 relative"
-                  onClick={async () => {
-                    // Navigate to the shelf details page with conversation
-                    if (request.conversationId) {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                    } else {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
-                    }
-                    // Mark notifications as read when viewing details
-                    if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                      await markNotificationsAsRead({
-                        rentalRequestId: request._id
-                      })
-                    }
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  {notificationCounts && notificationCounts[request._id] > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                      {notificationCounts[request._id]}
-                    </span>
+                <div className="relative inline-block">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // Navigate to the shelf details page with conversation
+                      if (request.conversationId) {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                      } else {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                    >
+                      {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                    </Badge>
                   )}
-                </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t("action.view")}</p>
@@ -265,32 +253,31 @@ export default function BrandShelvesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  className="h-8 w-8 p-0 relative"
-                  onClick={async () => {
-                    // Navigate to the shelf details page with conversation
-                    if (request.conversationId) {
-                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                    } else {
-                      router.push(`/brand-dashboard/shelves/${request._id}`)
-                    }
-                    // Mark notifications as read when viewing details
-                    if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                      await markNotificationsAsRead({
-                        rentalRequestId: request._id
-                      })
-                    }
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  {notificationCounts && notificationCounts[request._id] > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                      {notificationCounts[request._id]}
-                    </span>
+                <div className="relative inline-block">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // Navigate to the shelf details page with conversation
+                      if (request.conversationId) {
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                      } else {
+                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                    >
+                      {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                    </Badge>
                   )}
-                </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t("action.view_details")}</p>
@@ -305,27 +292,26 @@ export default function BrandShelvesPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="h-8 w-8 p-0 relative"
-                    onClick={async () => {
-                      router.push(`/brand-dashboard/shelves/${request._id}`)
-                      // Mark notifications as read when viewing details
-                      if (userId && notificationCounts?.[request._id] && notificationCounts[request._id] > 0) {
-                        await markNotificationsAsRead({
-                          rentalRequestId: request._id
-                        })
-                      }
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                    {notificationCounts && notificationCounts[request._id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                        {notificationCounts[request._id]}
-                      </span>
+                  <div className="relative inline-block">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={async () => {
+                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                      >
+                        {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                      </Badge>
                     )}
-                  </Button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t("action.view")}</p>
@@ -341,7 +327,6 @@ export default function BrandShelvesPage() {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       // TODO: Implement rating dialog
-                      console.log("Rate store:", request.otherUserName)
                     }}
                   >
                     <Star className="h-4 w-4" />
@@ -368,30 +353,32 @@ export default function BrandShelvesPage() {
     }
   }
 
+  // Show full page skeleton while user is loading
+  if (userLoading) {
+    return <BrandShelvesLoading />
+  }
+
   return (
-    <div className="w-full space-y-6 overflow-hidden">
+    <div className="w-full space-y-6">
       {/* Statistics Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-xl font-semibold">{t("brand.shelves.stats_overview")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("brand.shelves.stats_description")}
-              </p>
-            </div>
-            <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as "daily" | "weekly" | "monthly" | "yearly")}>
-              <TabsList>
-                <TabsTrigger value="daily">{t("time.daily")}</TabsTrigger>
-                <TabsTrigger value="weekly">{t("time.weekly")}</TabsTrigger>
-                <TabsTrigger value="monthly">{t("time.monthly")}</TabsTrigger>
-                <TabsTrigger value="yearly">{t("time.yearly")}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">{t("brand.shelves.stats_overview")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("brand.shelves.stats_description")}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as "daily" | "weekly" | "monthly" | "yearly")}>
+            <TabsList>
+              <TabsTrigger value="daily">{t("time.daily")}</TabsTrigger>
+              <TabsTrigger value="weekly">{t("time.weekly")}</TabsTrigger>
+              <TabsTrigger value="monthly">{t("time.monthly")}</TabsTrigger>
+              <TabsTrigger value="yearly">{t("time.yearly")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Rented Shelves Count Card */}
             <StatCard
               title={t("brand.shelves.rented_count")}
@@ -424,23 +411,21 @@ export default function BrandShelvesPage() {
               }}
               icon={<Banknote className="h-5 w-5 text-primary" />}
             />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Current Shelves Section */}
-      <Card className="w-full overflow-hidden">
-        <CardHeader className="pb-4">
-          <div className="space-y-4">
-            <div>
-              <CardTitle className="text-xl font-semibold">{t("brand.current_shelves")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("brand.current_shelves_description")}
-              </p>
-            </div>
-            {/* Search and Add Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full">
+      <div className="space-y-4 w-full">
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">{t("brand.current_shelves")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("brand.current_shelves_description")}
+            </p>
+          </div>
+          {/* Search and Add Button */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
+              <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full overflow-visible">
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t("ui.search_placeholder")}
@@ -476,134 +461,159 @@ export default function BrandShelvesPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          {/* Table */}
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <div className="min-h-[432px]"> {/* Fixed height for 5 rows + header */}
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-start">
-                          {t("table.store_name")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.city")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.sales_count")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.rental_start_date")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.rental_end_date")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.status")}
-                        </TableHead>
-                        <TableHead className="text-start">
-                          {t("table.action")}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        // Loading state - show 5 skeleton rows
-                        Array.from({ length: itemsPerPage }).map((_, index) => (
-                          <TableRow key={`skeleton-${index}`} className="h-[72px]">
-                            <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                            <TableCell><Skeleton className="h-6 w-[60px] rounded-full" /></TableCell>
-                            <TableCell><Skeleton className="h-8 w-[60px] rounded" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : paginatedRequests.length > 0 ? (
-                        // Show paginated requests
-                        <>
-                          {paginatedRequests.map((request) => (
-                      <TableRow key={request._id} className="h-[72px]">
-                        <TableCell className="font-medium">
-                          {request.otherUserName || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {request.city || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {(request as any).salesCount !== undefined ? (request as any).salesCount : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {request.startDate 
-                            ? format(new Date(request.startDate), "d MMM yyyy", {
-                                locale: language === "ar" ? ar : enUS
-                              })
-                            : "-"
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {request.endDate
-                            ? format(new Date(request.endDate), "d MMM yyyy", {
-                                locale: language === "ar" ? ar : enUS
-                              })
-                            : "-"
-                          }
-                        </TableCell>
-                        <TableCell>{request.status ? getStatusBadge(request.status) : "-"}</TableCell>
-                        <TableCell>{getActionButton(request)}</TableCell>
-                      </TableRow>
-                ))}
-                          {/* Fill remaining rows if less than 5 items */}
-                          {paginatedRequests.length < itemsPerPage && Array.from({ length: itemsPerPage - paginatedRequests.length }).map((_, index) => (
-                            <TableRow key={`filler-${index}`} className="h-[72px]">
-                              <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                              <TableCell><Skeleton className="h-6 w-[60px] rounded-full" /></TableCell>
-                              <TableCell><Skeleton className="h-8 w-[60px] rounded" /></TableCell>
-                            </TableRow>
-                          ))}
-                        </>
-                      ) : (
-                    // Empty state - show 5 empty rows with message in middle
-                    Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
-                        {index === 2 ? (
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
-                            <div className="flex items-center justify-center gap-2">
-                              <Package className="h-5 w-5 text-muted-foreground" />
-                              <span className="text-sm">
-                                {searchQuery 
-                                  ? t("brand.no_matching_shelves")
-                                  : t("brand.no_shelves_yet")
-                                }
-                              </span>
-                            </div>
-                          </TableCell>
+        </div>
+        {/* Table */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="h-12 text-start font-medium w-[20%]">
+                  {t("table.store_name")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("table.city")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[10%]">
+                  {t("table.sales_count")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("table.rental_start_date")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("table.rental_end_date")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[15%]">
+                  {t("table.status")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[10%]">
+                  {t("table.action")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading || isSearching ? (
+                // Loading state - show 5 skeleton rows
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={`loading-${index}`} className="h-[72px]">
+                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                  </TableRow>
+                ))
+              ) : paginatedRequests.length > 0 ? (
+                // Data state - show actual requests with fillers
+                <>
+                  {paginatedRequests.map((request) => (
+                    <TableRow key={request._id} className="h-[72px]">
+                      <TableCell className="py-3 font-medium w-[20%]">
+                        {request.otherUserName || "-"}
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                        {request.city || "-"}
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[10%]">
+                        {(request as any).salesCount !== undefined ? (request as any).salesCount : "0"}
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                        {request.startDate 
+                          ? format(new Date(request.startDate), "d MMM yyyy", {
+                              locale: language === "ar" ? ar : enUS
+                            })
+                          : "-"
+                        }
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                        {request.endDate
+                          ? format(new Date(request.endDate), "d MMM yyyy", {
+                              locale: language === "ar" ? ar : enUS
+                            })
+                          : "-"
+                        }
+                      </TableCell>
+                      <TableCell className="py-3 w-[15%]">{request.status ? getStatusBadge(request.status) : "-"}</TableCell>
+                      <TableCell className="py-3 w-[10%]">{getActionButton(request)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {/* Fill remaining rows to always show 5 rows */}
+                  {paginatedRequests.length < 5 && Array.from({ length: 5 - paginatedRequests.length }).map((_, index) => (
+                    <TableRow key={`filler-${index}`} className="h-[72px]">
+                      <TableCell className="py-3" colSpan={7}></TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ) : (
+                // Empty state - centered view with fixed height
+                <TableRow>
+                  <TableCell colSpan={7} className="h-[360px] text-center">
+                    <div className="flex h-full w-full items-center justify-center">
+                      <div className="flex flex-col items-center gap-1 py-10">
+                        <Store className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                        <h3 className="font-medium">
+                          {debouncedSearchQuery ? t("brand.no_search_results") : t("brand.no_shelves_yet")}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {debouncedSearchQuery 
+                            ? t("brand.try_different_search")
+                            : t("brand.start_renting_shelves_description")}
+                        </p>
+                        {debouncedSearchQuery ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => {
+                              setSearchQuery("")
+                              setCurrentPage(1)
+                            }}
+                          >
+                            {t("common.clear_search")}
+                          </Button>
                         ) : (
-                          <TableCell colSpan={7}>&nbsp;</TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  className="mt-4"
+                                  onClick={() => {
+                                    if (isBrandDataComplete) {
+                                      router.push("/brand-dashboard/shelves/marketplace")
+                                    }
+                                  }}
+                                  disabled={!isBrandDataComplete}
+                                >
+                                  <Plus className="h-4 w-4 me-2" />
+                                  {t("brand.rent_your_first_shelf")}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {!isBrandDataComplete && (
+                                  <div className="flex items-center gap-2">
+                                    <Lock className="h-4 w-4" />
+                                    <span>{t("ui.complete_data_first")}</span>
+                                  </div>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div> {/* end overflow-x-auto */}
-          </div> {/* end min-h-[432px] */}
-        </div> {/* end border rounded-lg */}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
         
-        {/* Pagination Controls - Always visible */}
-        <div className="mt-4">
-          <Pagination>
+        {/* Pagination Controls */}
+        <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
@@ -664,10 +674,7 @@ export default function BrandShelvesPage() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
-      </div> {/* end space-y-4 */}
-        </CardContent>
-      </Card>
+      </div>
       
       {/* Payment Transfer Dialog */}
       <PaymentTransferDialog

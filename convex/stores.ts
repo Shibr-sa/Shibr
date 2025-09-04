@@ -1,12 +1,13 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
+import { getImageUrlsFromArray } from "./helpers"
+
 
 // Get all available stores for marketplace
 export const getMarketplaceStores = query({
   args: {
     city: v.optional(v.string()),
-    area: v.optional(v.string()),
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
     productType: v.optional(v.string()),
@@ -17,33 +18,25 @@ export const getMarketplaceStores = query({
     // Start with all approved and available shelves
     let shelvesQuery = ctx.db
       .query("shelves")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "approved"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.eq(q.field("isAvailable"), true))
 
     // Get all shelves first
     let shelves = await shelvesQuery.collect()
 
     // Filter out shelves with active or accepted rental requests
-    const [activeRequests, acceptedRequests, paymentPendingRequests] = await Promise.all([
+    const [activeRequests, paymentPendingRequests] = await Promise.all([
       ctx.db
         .query("rentalRequests")
-        .withIndex("by_status")
-        .filter((q) => q.eq(q.field("status"), "active"))
+        .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect(),
       ctx.db
         .query("rentalRequests")
-        .withIndex("by_status")
-        .filter((q) => q.eq(q.field("status"), "accepted"))
-        .collect(),
-      ctx.db
-        .query("rentalRequests")
-        .withIndex("by_status")
-        .filter((q) => q.eq(q.field("status"), "payment_pending"))
+        .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
         .collect(),
     ])
     
-    const unavailableRequests = [...activeRequests, ...acceptedRequests, ...paymentPendingRequests]
+    const unavailableRequests = [...activeRequests, ...paymentPendingRequests]
     const unavailableShelfIds = new Set(unavailableRequests.map(r => r.shelfId))
     shelves = shelves.filter(shelf => !unavailableShelfIds.has(shelf._id))
 
@@ -52,20 +45,6 @@ export const getMarketplaceStores = query({
       shelves = shelves.filter(shelf => shelf.city === args.city)
     }
 
-    // Area filter - for demo purposes, we'll filter by branch containing area keywords
-    if (args.area && args.area !== "all") {
-      const areaKeywords: Record<string, string[]> = {
-        north: ["الشمال", "النزهة", "العليا", "السليمانية"],
-        south: ["الجنوب", "العزيزية", "البديعة"],
-        east: ["الشرق", "الروضة", "النسيم"],
-        west: ["الغرب", "الحمراء", "السلام"],
-        center: ["الوسط", "الملز", "الديرة"]
-      }
-      const keywords = areaKeywords[args.area] || []
-      shelves = shelves.filter(shelf => 
-        keywords.some(keyword => shelf.branch.includes(keyword))
-      )
-    }
 
     if (args.minPrice !== undefined) {
       const minPrice = args.minPrice
@@ -78,7 +57,9 @@ export const getMarketplaceStores = query({
     }
 
     if (args.productType && args.productType !== "all") {
-      shelves = shelves.filter(shelf => shelf.productType === args.productType)
+      shelves = shelves.filter(shelf => 
+        shelf.productTypes && shelf.productTypes.includes(args.productType!)
+      )
     }
 
     // Month filter - filter by availableFrom date
@@ -102,8 +83,7 @@ export const getMarketplaceStores = query({
       shelves = shelves.filter(shelf => 
         shelf.shelfName.toLowerCase().includes(query) ||
         shelf.city.toLowerCase().includes(query) ||
-        shelf.branch.toLowerCase().includes(query) ||
-        shelf.address?.toLowerCase().includes(query) ||
+        shelf.storeBranch?.toLowerCase().includes(query) ||
         shelf.description?.toLowerCase().includes(query)
       )
     }
@@ -111,69 +91,35 @@ export const getMarketplaceStores = query({
     // Get owner information and image URLs for each shelf
     const shelvesWithOwners = await Promise.all(
       shelves.map(async (shelf) => {
-        const ownerProfile = await ctx.db.get(shelf.profileId)
+        const ownerProfile = await ctx.db.get(shelf.storeProfileId)
         const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
         
-        // Convert storage IDs to URLs
-        let shelfImageUrl = null
-        let exteriorImageUrl = null
-        let interiorImageUrl = null
-        
-        if (shelf.shelfImage) {
-          shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage as Id<"_storage">)
-        }
-        if (shelf.exteriorImage) {
-          exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage as Id<"_storage">)
-        }
-        if (shelf.interiorImage) {
-          interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage as Id<"_storage">)
-        }
+        // Convert storage IDs to URLs using new structure
+        const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
         
         return {
           ...shelf,
-          shelfImage: shelfImageUrl,
-          exteriorImage: exteriorImageUrl,
-          interiorImage: interiorImageUrl,
-          ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
-          ownerEmail: ownerProfile?.email || owner?.email,
-          ownerImage: owner?.image || null, // Add owner's profile image
-          storeType: ownerProfile?.storeType,
-          // Add latitude and longitude from coordinates for map compatibility
-          latitude: shelf.coordinates?.lat,
-          longitude: shelf.coordinates?.lng,
+          shelfImage: imageUrls.shelfImageUrl,
+          exteriorImage: imageUrls.exteriorImageUrl,
+          interiorImage: imageUrls.interiorImageUrl,
+          ownerName: ownerProfile?.storeName,
+          ownerEmail: owner?.email,
+          ownerImage: owner?.image,
+          businessCategory: ownerProfile?.businessCategory,
+          // Add latitude and longitude from location for map compatibility
+          latitude: shelf.location?.lat,
+          longitude: shelf.location?.lng,
         }
       })
     )
 
     // Sort by creation date (newest first)
     return shelvesWithOwners.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      new Date(b._creationTime).getTime() - new Date(a._creationTime).getTime()
     )
   },
 })
 
-// Get single store details
-export const getStoreDetails = query({
-  args: { shelfId: v.id("shelves") },
-  handler: async (ctx, args) => {
-    const shelf = await ctx.db.get(args.shelfId)
-    
-    if (!shelf) {
-      return null
-    }
-
-    const ownerProfile = await ctx.db.get(shelf.profileId)
-    const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
-    
-    return {
-      ...shelf,
-      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Unknown",
-      ownerEmail: ownerProfile?.email || owner?.email,
-      storeType: ownerProfile?.storeType,
-      ownerPhone: ownerProfile?.phoneNumber,
-    }
-  },
-})
 
 // Get a single store by ID
 export const getStoreById = query({
@@ -188,40 +134,27 @@ export const getStoreById = query({
     }
     
     // Get owner information from profile
-    const ownerProfile = shelf.profileId 
-      ? await ctx.db.get(shelf.profileId as Id<"userProfiles">)
+    const ownerProfile = shelf.storeProfileId 
+      ? await ctx.db.get(shelf.storeProfileId)
       : null
     const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
     
-    // Convert storage IDs to URLs
-    let shelfImageUrl = null
-    let exteriorImageUrl = null
-    let interiorImageUrl = null
-    
-    if (shelf.shelfImage) {
-      shelfImageUrl = await ctx.storage.getUrl(shelf.shelfImage as Id<"_storage">)
-    }
-    if (shelf.exteriorImage) {
-      exteriorImageUrl = await ctx.storage.getUrl(shelf.exteriorImage as Id<"_storage">)
-    }
-    if (shelf.interiorImage) {
-      interiorImageUrl = await ctx.storage.getUrl(shelf.interiorImage as Id<"_storage">)
-    }
+    // Convert storage IDs to URLs using new structure
+    const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
     
     // Return the shelf with owner information and image URLs
     return {
       ...shelf,
-      shelfImage: shelfImageUrl,
-      exteriorImage: exteriorImageUrl,
-      interiorImage: interiorImageUrl,
-      ownerName: ownerProfile?.storeName || ownerProfile?.fullName || "Store Owner",
-      ownerEmail: ownerProfile?.email || owner?.email,
-      ownerImage: owner?.image || null, // Add owner's profile image
-      storeType: ownerProfile?.storeType,
-      ownerPhone: ownerProfile?.phoneNumber,
-      // Add latitude and longitude from coordinates for map compatibility
-      latitude: shelf.coordinates?.lat,
-      longitude: shelf.coordinates?.lng,
+      shelfImage: imageUrls.shelfImageUrl,
+      exteriorImage: imageUrls.exteriorImageUrl,
+      interiorImage: imageUrls.interiorImageUrl,
+      ownerName: ownerProfile?.storeName,
+      ownerEmail: owner?.email,
+      ownerImage: owner?.image || null,
+      businessCategory: ownerProfile?.businessCategory,
+      // Add latitude and longitude from location for map compatibility
+      latitude: shelf.location?.lat,
+      longitude: shelf.location?.lng,
     }
   },
 })
@@ -232,8 +165,7 @@ export const getAvailableCities = query({
   handler: async (ctx) => {
     const shelves = await ctx.db
       .query("shelves")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "approved"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
@@ -248,12 +180,16 @@ export const getAvailableProductTypes = query({
   handler: async (ctx) => {
     const shelves = await ctx.db
       .query("shelves")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "approved"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
-    const types = [...new Set(shelves.filter(s => s.productType).map(shelf => shelf.productType!))]
+    // Extract all product types from the productTypes arrays
+    const types = [...new Set(
+      shelves
+        .filter(s => s.productTypes && s.productTypes.length > 0)
+        .flatMap(shelf => shelf.productTypes!)
+    )]
     return types.sort()
   },
 })
@@ -262,7 +198,6 @@ export const getAvailableProductTypes = query({
 export const getPriceRange = query({
   args: {
     city: v.optional(v.string()),
-    area: v.optional(v.string()),
     productType: v.optional(v.string()),
     searchQuery: v.optional(v.string()),
     month: v.optional(v.string()),
@@ -271,8 +206,7 @@ export const getPriceRange = query({
     // Start with all approved and available shelves
     let shelves = await ctx.db
       .query("shelves")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "approved"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
@@ -281,23 +215,11 @@ export const getPriceRange = query({
       shelves = shelves.filter(shelf => shelf.city === args.city)
     }
 
-    // Area filter
-    if (args.area && args.area !== "all") {
-      const areaKeywords: Record<string, string[]> = {
-        north: ["الشمال", "النزهة", "العليا", "السليمانية"],
-        south: ["الجنوب", "العزيزية", "البديعة"],
-        east: ["الشرق", "الروضة", "النسيم"],
-        west: ["الغرب", "الحمراء", "السلام"],
-        center: ["الوسط", "الملز", "الديرة"]
-      }
-      const keywords = areaKeywords[args.area] || []
-      shelves = shelves.filter(shelf => 
-        keywords.some(keyword => shelf.branch.includes(keyword))
-      )
-    }
 
     if (args.productType && args.productType !== "all") {
-      shelves = shelves.filter(shelf => shelf.productType === args.productType)
+      shelves = shelves.filter(shelf => 
+        shelf.productTypes && shelf.productTypes.includes(args.productType!)
+      )
     }
 
     // Month filter
@@ -321,8 +243,7 @@ export const getPriceRange = query({
       shelves = shelves.filter(shelf => 
         shelf.shelfName.toLowerCase().includes(query) ||
         shelf.city.toLowerCase().includes(query) ||
-        shelf.branch.toLowerCase().includes(query) ||
-        shelf.address?.toLowerCase().includes(query) ||
+        shelf.storeBranch?.toLowerCase().includes(query) ||
         shelf.description?.toLowerCase().includes(query)
       )
     }

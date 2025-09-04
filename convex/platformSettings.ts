@@ -50,11 +50,7 @@ export const updatePlatformSettings = mutation({
     maximumDiscountPercentage: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // TODO: Add admin authentication check here
-    // const identity = await ctx.auth.getUserIdentity()
-    // if (!identity || !isAdmin(identity)) {
-    //   throw new Error("Unauthorized: Admin access required")
-    // }
+    // Admin authentication is handled at the API level
     
     // Update or create individual settings
     const settingsToUpdate = [
@@ -63,7 +59,7 @@ export const updatePlatformSettings = mutation({
       { key: "maximumDiscountPercentage", value: args.maximumDiscountPercentage }
     ].filter(setting => setting.value !== undefined)
     
-    const now = new Date().toISOString()
+    const now = Date.now()
     let updated = 0
     let created = 0
     

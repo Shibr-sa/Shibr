@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Inbox } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCurrency } from "@/lib/formatters"
@@ -32,15 +31,16 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Id } from "@/convex/_generated/dataModel"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 
 // Helper function to get badge variant based on shelf status
 function getShelfBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  // Check if shelf has active rental (instead of checking status === "rented")
+  // Check if shelf has active rental
   if (shelf.isAvailable === false) {
     return "default"
-  } else if (shelf.status === "approved" && shelf.isAvailable) {
+  } else if (shelf.status === "active" && shelf.isAvailable) {
     return "secondary"
-  } else if (shelf.status === "pending") {
+  } else if (shelf.status === "suspended") {
     return "outline"
   }
   return "secondary"
@@ -53,10 +53,14 @@ export default function StoreDashboardShelvesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statsPeriod, setStatsPeriod] = useState("monthly")
   const [currentPage, setCurrentPage] = useState(1)
+  const [hasInitialData, setHasInitialData] = useState(false)
   const router = useRouter()
   const { user } = useCurrentUser()
   
   const itemsPerPage = 5
+  
+  // Debounced search value for better performance
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   
   // Fetch real shelves data from Convex
   const shelves = useQuery(api.shelves.getOwnerShelves, 
@@ -89,20 +93,20 @@ export default function StoreDashboardShelvesPage() {
       // Check for shelves that are not available (meaning they're rented)
       filtered = filtered.filter(shelf => shelf.isAvailable === false)
     } else if (filter === "available") {
-      filtered = filtered.filter(shelf => shelf.status === "approved" && shelf.isAvailable)
+      filtered = filtered.filter(shelf => shelf.status === "active" && shelf.isAvailable)
     }
     
-    // Apply search filter
-    if (searchQuery) {
+    // Apply search filter with debounced value
+    if (debouncedSearchQuery) {
       filtered = filtered.filter(shelf => 
-        shelf.shelfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        shelf.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        shelf.branch.toLowerCase().includes(searchQuery.toLowerCase())
+        shelf.shelfName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        shelf.city.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        shelf.storeBranch.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       )
     }
     
     return filtered
-  }, [shelves, filter, searchQuery])
+  }, [shelves, filter, debouncedSearchQuery])
   
   // Calculate pagination
   const totalPages = Math.ceil(filteredShelves.length / itemsPerPage)
@@ -118,10 +122,20 @@ export default function StoreDashboardShelvesPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [filter, searchQuery])
+  }, [filter, debouncedSearchQuery])
   
-  // Loading state
-  const isLoading = storeLoading || !shelves || !shelfStats
+  // Track when we have received initial data
+  useEffect(() => {
+    if (shelves !== undefined && shelfStats !== undefined && !hasInitialData) {
+      setHasInitialData(true)
+    }
+  }, [shelves, shelfStats, hasInitialData])
+  
+  // Check if search is in progress (user typed but debounce hasn't fired yet)
+  const isSearching = searchQuery !== debouncedSearchQuery
+  
+  // Loading state - only show skeleton on initial load
+  const isLoading = !hasInitialData && (storeLoading || shelves === undefined || shelfStats === undefined)
 
   // Get percentage changes from real data
   const getPercentageChange = (metric: string) => {
@@ -177,39 +191,36 @@ export default function StoreDashboardShelvesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Statistics Section with Time Period Selector */}
-      <Card>
-        <CardContent className="p-6">
-          {/* Header with Time Period Selector */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold">
-                {t("store.your_statistics")}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("shelves.manage_description")}
-              </p>
-            </div>
+      {/* Header with Time Period Selector */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {t("shelves.statistics_title")}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {t("shelves.statistics_description")}
+          </p>
+        </div>
             <Tabs value={statsPeriod} onValueChange={setStatsPeriod}>
-              <TabsList className="flex w-[400px]">
-                <TabsTrigger value="daily" className="flex-1">
+              <TabsList>
+                <TabsTrigger value="daily">
                   {periodLabels.daily}
                 </TabsTrigger>
-                <TabsTrigger value="weekly" className="flex-1">
+                <TabsTrigger value="weekly">
                   {periodLabels.weekly}
                 </TabsTrigger>
-                <TabsTrigger value="monthly" className="flex-1">
+                <TabsTrigger value="monthly">
                   {periodLabels.monthly}
                 </TabsTrigger>
-                <TabsTrigger value="yearly" className="flex-1">
+                <TabsTrigger value="yearly">
                   {periodLabels.yearly}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
+      </div>
 
-          {/* Statistics Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-3">
+      {/* Statistics Cards Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
             {/* Rented Shelves Card */}
             <StatCard
               title={t("shelves.total_rented_shelves")}
@@ -257,18 +268,15 @@ export default function StoreDashboardShelvesPage() {
               }}
               icon={<DollarSign className="h-5 w-5 text-primary" />}
             />
-          </div>
-        </CardContent>
-      </Card>
+      </div>
 
-      {/* Main Content Card */}
-      <Card>
-        <CardContent className="p-6">
-          {/* Title and Description Section */}
-          <div className="flex items-start justify-between mb-6">
+      {/* Shelves Section */}
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-semibold">{t("shelves.your_shelves")}</h2>
-              <p className="text-muted-foreground">
+              <h2 className="text-lg font-semibold">{t("shelves.your_shelves")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">
                 {t("shelves.manage_description")}
               </p>
             </div>
@@ -293,9 +301,10 @@ export default function StoreDashboardShelvesPage() {
                 )}
               </Tooltip>
             </TooltipProvider>
-          </div>
-          {/* Search and Filter */}
-          <div className="flex items-center justify-between mb-6">
+        </div>
+        
+        {/* Search and Filter */}
+        <div className="flex items-center justify-between mb-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -322,11 +331,10 @@ export default function StoreDashboardShelvesPage() {
                 </div>
               ))}
             </RadioGroup>
-          </div>
+        </div>
 
-          {/* Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
+        {/* Table */}
+        <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -340,7 +348,7 @@ export default function StoreDashboardShelvesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {isLoading || isSearching ? (
                     // Show 5 skeleton rows while loading
                     Array.from({ length: itemsPerPage }).map((_, index) => (
                       <TableRow key={`skeleton-${index}`} className="h-[72px]">
@@ -353,19 +361,23 @@ export default function StoreDashboardShelvesPage() {
                         <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
-                  ) : paginatedShelves.length === 0 && currentPage === 1 ? (
-                    // Show empty state only on first page with no data
-                    Array.from({ length: itemsPerPage }).map((_, index) => (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
-                        {index === 2 ? (
-                          <TableCell colSpan={7} className="text-center">
-                            {t("shelves.no_shelves_found")}
-                          </TableCell>
-                        ) : (
-                          <TableCell colSpan={7}>&nbsp;</TableCell>
-                        )}
-                      </TableRow>
-                    ))
+                  ) : paginatedShelves.length === 0 ? (
+                    // Empty state
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-[360px] text-center">
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex flex-col items-center gap-1 py-10">
+                            <Inbox className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <h3 className="font-medium">
+                              {debouncedSearchQuery || filter !== "all" ? t("common.no_results") : t("shelves.no_shelves_found")}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {debouncedSearchQuery || filter !== "all" ? t("common.try_different_search") : t("shelves.shelves_will_appear_here")}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     <>
                       {paginatedShelves.map((shelf) => (
@@ -374,7 +386,7 @@ export default function StoreDashboardShelvesPage() {
                           className="h-[72px]"
                         >
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                          <TableCell>{shelf.branch}</TableCell>
+                          <TableCell>{shelf.storeBranch}</TableCell>
                           <TableCell>
                             {!shelf.isAvailable && shelf.renterName ? 
                               shelf.renterName : 
@@ -388,10 +400,10 @@ export default function StoreDashboardShelvesPage() {
                             <Badge variant={getShelfBadgeVariant(shelf)}>
                               {!shelf.isAvailable 
                                 ? t("shelves.status.rented")
-                                : shelf.status === "approved" && shelf.isAvailable
+                                : shelf.status === "active" && shelf.isAvailable
                                 ? t("shelves.status.available")
-                                : shelf.status === "pending_approval"
-                                ? t("shelves.status.pending")
+                                : shelf.status === "suspended"
+                                ? t("shelves.status.suspended")
                                 : t("shelves.status.unavailable")
                               }
                             </Badge>
@@ -426,25 +438,18 @@ export default function StoreDashboardShelvesPage() {
                       ))}
                       {/* Add empty rows to maintain fixed height */}
                       {emptyRows > 0 && Array.from({ length: emptyRows }).map((_, index) => (
-                        <TableRow key={`empty-${index}`} className="h-[72px]">
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                        <TableRow key={`empty-${index}`} className="h-[72px] border-0">
+                          <TableCell colSpan={7}>&nbsp;</TableCell>
                         </TableRow>
                       ))}
                     </>
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </div>
+        </div>
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-end mt-4">
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-end">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -514,8 +519,7 @@ export default function StoreDashboardShelvesPage() {
               </PaginationContent>
             </Pagination>
           </div>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }

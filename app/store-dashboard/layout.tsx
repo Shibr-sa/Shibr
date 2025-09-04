@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
@@ -18,6 +17,7 @@ import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
 import { Id } from "@/convex/_generated/dataModel"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { Badge } from "@/components/ui/badge"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -58,11 +58,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Get userId as a Convex Id
   const userId = user?.id ? (user.id as Id<"users">) : null
   
-  // Get total order-related notifications (including messages)
-  const totalOrderNotifications = useQuery(
-    api.notifications.getTotalOrderNotifications,
-    userId ? {} : "skip"
-  ) || 0
+  // Get unread message counts
+  const unreadCounts = useQuery(
+    api.chats.getUnreadMessageCounts,
+    userId ? { userId: userId } : "skip"
+  )
 
   // Use userData from context if available, fallback to user from session
   const displayUser = userData || user
@@ -161,7 +161,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Image
                       src="/logo.svg"
-                      alt="Shibr Logo"
+                      alt={t("common.logo_alt")}
                       width={20}
                       height={20}
                       className="size-5 brightness-0 invert"
@@ -187,15 +187,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       isActive={pathname === item.href}
                       tooltip={t(item.title)}
                     >
-                      <Link href={item.href}>
+                      <Link href={item.href} className="relative">
                         <item.icon className="size-4" />
                         <span className="flex-1">{t(item.title)}</span>
-                        {item.href === "/store-dashboard/orders" && totalOrderNotifications > 0 && (
-                          <Badge 
-                            variant="destructive" 
-                            className="h-5 min-w-[20px] rounded-full px-1.5 text-[10px] animate-pulse"
-                          >
-                            {totalOrderNotifications}
+                        {item.href === "/store-dashboard/orders" && unreadCounts && unreadCounts.total > 0 && (
+                          <Badge variant="destructive" className="ms-auto h-5 px-1.5 text-xs">
+                            {unreadCounts.total > 99 ? "99+" : unreadCounts.total}
                           </Badge>
                         )}
                       </Link>
@@ -220,7 +217,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     </Avatar>
                     <div className="flex flex-col gap-0.5 text-start leading-none">
                       <span className="text-sm font-medium">
-                        {displayUser?.profile?.fullName || displayUser?.name || displayUser?.profile?.storeName || t("dashboard.user.name")}
+                        {displayUser?.profile?.storeName || displayUser?.profile?.fullName || displayUser?.name || t("dashboard.user.name")}
                       </span>
                       <span className="text-xs">
                         {displayUser?.email || "store@example.com"}

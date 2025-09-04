@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -14,9 +14,10 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { BrandDataProvider, useBrandData } from "@/contexts/brand-data-context"
-import { Id } from "@/convex/_generated/dataModel"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { Badge } from "@/components/ui/badge"
+import { Id } from "@/convex/_generated/dataModel"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -60,8 +61,11 @@ export default function BrandDashboardLayout({
   // Use userData from context if available, fallback to user from session
   const displayUser = userData || user
   
-  // Get user ID from current user
-  const userId = user?.id ? (user.id as Id<"users">) : null
+  // Get unread message counts
+  const unreadCounts = useQuery(
+    api.chats.getUnreadMessageCounts,
+    user?.id ? { userId: user.id as Id<"users"> } : "skip"
+  )
   
   const getInitials = () => {
     if (userData) {
@@ -76,32 +80,6 @@ export default function BrandDashboardLayout({
     return getSessionInitials()
   }
   
-  // Fetch rental requests for the brand owner to get notification counts
-  const rentalRequests = useQuery(
-    api.rentalRequests.getUserRentalRequests,
-    userId ? {
-      userType: "brand" as const
-    } : "skip"
-  )
-  
-  // Get all rental request IDs for notification counts
-  const rentalRequestIds = useMemo(() => {
-    return rentalRequests?.map(r => r._id) || []
-  }, [rentalRequests])
-
-  // Fetch notification counts for all rental requests
-  const notificationCounts = useQuery(
-    api.notifications.getUnreadCountByRentalRequests,
-    userId && rentalRequestIds.length > 0 ? {
-      rentalRequestIds: rentalRequestIds
-    } : "skip"
-  )
-
-  // Calculate total unread notifications for shelves
-  const totalShelfNotifications = useMemo(() => {
-    if (!notificationCounts) return 0
-    return Object.values(notificationCounts).reduce((sum, count) => sum + count, 0)
-  }, [notificationCounts])
 
   const handleLogout = useSignOut()
 
@@ -185,7 +163,7 @@ export default function BrandDashboardLayout({
                       <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                         <Image
                           src="/logo.svg"
-                          alt="Shibr Logo"
+                          alt={t("common.logo_alt")}
                           width={20}
                           height={20}
                           className="size-5 brightness-0 invert"
@@ -214,10 +192,10 @@ export default function BrandDashboardLayout({
                           <Link href={item.href} className="relative">
                             <item.icon className="size-4" />
                             <span>{t(item.title)}</span>
-                            {item.href === "/brand-dashboard/shelves" && totalShelfNotifications > 0 && (
-                              <span className="absolute top-1/2 -translate-y-1/2 end-2 h-5 min-w-[20px] rounded-full bg-destructive px-1.5 text-[11px] font-medium text-destructive-foreground animate-pulse flex items-center justify-center">
-                                {totalShelfNotifications > 99 ? "99+" : totalShelfNotifications}
-                              </span>
+                            {item.href === "/brand-dashboard/shelves" && unreadCounts && unreadCounts.total > 0 && (
+                              <Badge variant="destructive" className="ms-auto h-5 px-1.5 text-xs">
+                                {unreadCounts.total > 99 ? "99+" : unreadCounts.total}
+                              </Badge>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -241,7 +219,7 @@ export default function BrandDashboardLayout({
                         </Avatar>
                         <div className="flex flex-col gap-0.5 text-start leading-none">
                           <span className="text-sm font-medium">
-                            {displayUser?.profile?.fullName || displayUser?.name || displayUser?.profile?.brandName || t("dashboard.user.name")}
+                            {displayUser?.profile?.brandName || displayUser?.profile?.fullName || displayUser?.name || t("dashboard.user.name")}
                           </span>
                           <span className="text-xs">
                             {displayUser?.email || "brand@example.com"}

@@ -42,7 +42,7 @@ export function RenewalDialog({
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(direction === "rtl" ? "ar-SA" : "en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"

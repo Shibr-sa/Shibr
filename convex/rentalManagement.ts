@@ -1,18 +1,45 @@
 import { v } from "convex/values"
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
 import { Doc, Id } from "./_generated/dataModel"
+import { getUserProfile } from "./profileHelpers"
+import { api, internal } from "./_generated/api"
 
 // Internal function to check and update rental statuses
 export const checkRentalStatuses = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const now = new Date().toISOString()
+    const now = Date.now()
     
-    // Get all active rentals
+    // 1. Check for payment_pending requests that need to be activated (when start date arrives)
+    const paymentPendingRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .collect()
+    
+    for (const rental of paymentPendingRentals) {
+      // If the start date has arrived, activate the rental
+      if (rental.startDate <= now) {
+        // Mark rental as active
+        await ctx.db.patch(rental._id, {
+          status: "active"
+        })
+        
+        // Send system message about rental activation
+        if (rental.conversationId) {
+          await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+            conversationId: rental.conversationId,
+            text: "تم تفعيل الإيجار بنجاح. فترة الإيجار النشطة بدأت الآن.\nThe rental has been activated successfully. The active rental period has now begun.",
+            messageType: "rental_accepted",
+            senderId: rental.storeProfileId as any
+          })
+        }
+      }
+    }
+    
+    // 2. Check for active rentals that need to be completed (when end date passes)
     const activeRentals = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
     
     for (const rental of activeRentals) {
@@ -20,91 +47,49 @@ export const checkRentalStatuses = internalMutation({
       if (rental.endDate <= now) {
         // Mark rental as completed
         await ctx.db.patch(rental._id, {
-          status: "completed",
-          updatedAt: now,
+          status: "completed"
         })
         
-        // Release the shelf - remove invalid fields that don't exist in shelf schema
+        // Release the shelf
         await ctx.db.patch(rental.shelfId, {
           isAvailable: true,
-          status: "approved",
-          updatedAt: now,
+          status: "active" as const,
         })
         
-        // Update conversation status if conversation exists
+        // Send system message about rental completion
         if (rental.conversationId) {
-          await ctx.db.patch(rental.conversationId, {
-            status: "archived",
-            updatedAt: now,
-          })
-        }
-        
-        // Send completion notifications
-        if (rental.requesterId) {
-          await ctx.db.insert("notifications", {
-            userId: rental.requesterId,
-            title: "Rental Completed",
-            message: `Your rental period has ended. Please rate your experience.`,
-            type: "rental_completed",
-            rentalRequestId: rental._id,
+          await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
             conversationId: rental.conversationId,
-            isRead: false,
-            createdAt: now,
-          })
-        }
-        
-        if (rental.ownerId) {
-          await ctx.db.insert("notifications", {
-            userId: rental.ownerId,
-            title: "Rental Completed",
-            message: `The rental period has ended. The shelf is now available. Please rate your experience.`,
-            type: "rental_completed",
-            rentalRequestId: rental._id,
-            conversationId: rental.conversationId,
-            isRead: false,
-            createdAt: now,
-          })
-        }
-        
-        // Add system message to conversation if conversation exists
-        if (rental.conversationId && rental.ownerId) {
-          await ctx.db.insert("messages", {
-            conversationId: rental.conversationId,
-            senderId: rental.ownerId, // System message from store owner perspective
-            text: "The rental period has been completed successfully. Thank you for using our platform!",
-            messageType: "system",
-            isRead: false,
-            createdAt: now,
+            text: "تم إكمال فترة الإيجار بنجاح. شكراً لاستخدامك منصتنا!\nThe rental period has been completed successfully. Thank you for using our platform!",
+            messageType: "text",
+            senderId: rental.storeProfileId as any
           })
         }
       }
     }
     
-    // Check for expired pending requests (48 hours)
+    // 3. Check for expired pending requests (not responded to within 48 hours)
     const pendingRequests = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect()
     
     for (const request of pendingRequests) {
-      if (request.expiresAt && request.expiresAt <= now) {
+      // Check if request is older than 48 hours
+      const expiryTime = request._creationTime + (48 * 60 * 60 * 1000)
+      if (expiryTime <= now) {
+        // Mark request as expired
         await ctx.db.patch(request._id, {
           status: "expired",
-          updatedAt: now,
         })
         
-        // Send expiration notification
-        if (request.requesterId) {
-          await ctx.db.insert("notifications", {
-            userId: request.requesterId,
-            title: "Rental Request Expired",
-            message: "Your rental request has expired after 48 hours without response.",
-            type: "rental_expired",
-            rentalRequestId: request._id,
+        // Send system message about request expiration
+        if (request.conversationId) {
+          await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
             conversationId: request.conversationId,
-            isRead: false,
-            createdAt: now,
+            text: "انتهت صلاحية طلب الإيجار بسبب عدم الرد خلال 48 ساعة.\nThe rental request has expired due to no response within 48 hours.",
+            messageType: "rental_rejected",
+            senderId: request.storeProfileId as any
           })
         }
       }
@@ -116,72 +101,103 @@ export const checkRentalStatuses = internalMutation({
 export const sendRentalReminders = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const now = new Date()
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const nowStr = now.toISOString()
-    const sevenDaysStr = sevenDaysFromNow.toISOString()
+    const now = Date.now()
+    const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000
+    const threeDaysFromNow = now + 3 * 24 * 60 * 60 * 1000
+    const oneDayFromNow = now + 24 * 60 * 60 * 1000
     
-    // Get rentals ending in 7 days
-    const expiringRentals = await ctx.db
+    // 1. Get active rentals ending soon
+    const activeRentals = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
     
-    for (const rental of expiringRentals) {
-      // Check if rental ends within 7 days
-      if (rental.endDate > nowStr && rental.endDate <= sevenDaysStr) {
-        // Calculate days remaining
-        const endDate = new Date(rental.endDate)
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        
-        // Check if we haven't already sent a reminder for this day
-        const existingReminder = await ctx.db
-          .query("notifications")
-          .withIndex("by_user", (q) => q.eq("userId", rental.requesterId!))
-          .filter((q) => 
-            q.and(
-              q.eq(q.field("rentalRequestId"), rental._id),
-              q.eq(q.field("type"), "system")
-            )
-          )
-          .first()
-        
-        if (!existingReminder || !existingReminder.message.includes(`${daysRemaining} day`)) {
-          // Send reminder to brand owner
-          if (rental.requesterId) {
-            await ctx.db.insert("notifications", {
-              userId: rental.requesterId,
-              title: "Rental Ending Soon",
-              message: `Your rental will end in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}. Consider renewing if you'd like to continue.`,
-              type: "system",
-              rentalRequestId: rental._id,
-              conversationId: rental.conversationId,
-              actionUrl: `/brand-dashboard/shelves`,
-              actionLabel: "View Rental",
-              isRead: false,
-              createdAt: nowStr,
-            })
-          }
-          
-          // Send reminder to store owner
-          if (rental.ownerId) {
-            await ctx.db.insert("notifications", {
-              userId: rental.ownerId,
-              title: "Rental Ending Soon",
-              message: `A rental on your shelf will end in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}.`,
-              type: "system",
-              rentalRequestId: rental._id,
-              conversationId: rental.conversationId,
-              actionUrl: `/store-dashboard/orders`,
-              actionLabel: "View Order",
-              isRead: false,
-              createdAt: nowStr,
-            })
-          }
-        }
+    for (const rental of activeRentals) {
+      // Skip if no conversation
+      if (!rental.conversationId) continue
+      
+      const daysUntilEnd = Math.ceil((rental.endDate - now) / (24 * 60 * 60 * 1000))
+      let reminderMessage: string | null = null
+      
+      // Send reminders at 7 days, 3 days, and 1 day before expiry
+      if (daysUntilEnd === 7) {
+        reminderMessage = `تذكير: سينتهي إيجار الرف خلال 7 أيام (${new Date(rental.endDate).toLocaleDateString()}). يرجى التخطيط للتجديد إذا لزم الأمر.\nReminder: The shelf rental will expire in 7 days (${new Date(rental.endDate).toLocaleDateString()}). Please plan for renewal if needed.`
+      } else if (daysUntilEnd === 3) {
+        reminderMessage = `تذكير عاجل: سينتهي إيجار الرف خلال 3 أيام (${new Date(rental.endDate).toLocaleDateString()}).\nUrgent reminder: The shelf rental will expire in 3 days (${new Date(rental.endDate).toLocaleDateString()}).`
+      } else if (daysUntilEnd === 1) {
+        reminderMessage = `تذكير نهائي: سينتهي إيجار الرف غداً (${new Date(rental.endDate).toLocaleDateString()}). يرجى إزالة منتجاتك أو تجديد الإيجار.\nFinal reminder: The shelf rental will expire tomorrow (${new Date(rental.endDate).toLocaleDateString()}). Please remove your products or renew the rental.`
+      }
+      
+      if (reminderMessage) {
+        await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+          conversationId: rental.conversationId,
+          text: reminderMessage,
+          messageType: "text",
+          senderId: rental.storeProfileId as any
+        })
       }
     }
+    
+    // 2. Get payment_pending rentals (remind about payment)
+    const paymentPendingRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .collect()
+    
+    for (const rental of paymentPendingRentals) {
+      // Skip if no conversation
+      if (!rental.conversationId) continue
+      
+      const daysSinceAccepted = Math.floor((now - rental._creationTime) / (24 * 60 * 60 * 1000))
+      
+      // Send payment reminder after 1 day of acceptance
+      if (daysSinceAccepted === 1) {
+        await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+          conversationId: rental.conversationId,
+          text: "تذكير: يرجى إكمال الدفع لتفعيل إيجار الرف. سيتم إلغاء الطلب إذا لم يتم الدفع خلال 48 ساعة من الموافقة.\nReminder: Please complete the payment to activate the shelf rental. The request will be cancelled if payment is not made within 48 hours of acceptance.",
+          messageType: "text",
+          senderId: rental.brandProfileId as any
+        })
+      }
+    }
+  },
+})
+
+// Internal helper to send rental system messages
+export const sendRentalSystemMessage = internalMutation({
+  args: {
+    conversationId: v.id("conversations"),
+    text: v.string(),
+    messageType: v.union(
+      v.literal("text"),
+      v.literal("rental_request"),
+      v.literal("rental_accepted"),
+      v.literal("rental_rejected")
+    ),
+    senderId: v.union(
+      v.id("brandProfiles"),
+      v.id("storeProfiles")
+    ), // Profile ID for context
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId)
+    if (!conversation) return
+    
+    // Create system message
+    await ctx.db.insert("messages", {
+      conversationId: args.conversationId,
+      senderType: "system",
+      senderId: args.senderId,
+      text: args.text,
+      messageType: args.messageType,
+      isRead: false,
+    })
+    
+    // Increment unread counts for both parties
+    await ctx.db.patch(args.conversationId, {
+      brandUnreadCount: conversation.brandUnreadCount + 1,
+      storeUnreadCount: conversation.storeUnreadCount + 1,
+    })
   },
 })
 
@@ -205,63 +221,51 @@ export const renewRental = mutation({
       .filter((q) => q.eq(q.field("email"), identity.email!))
       .first()
     
-    if (!user || user._id !== rental.requesterId) {
+    if (!user) {
+      throw new Error("User not found")
+    }
+    
+    // Get user profile and verify they own this rental
+    const profileData = await getUserProfile(ctx, user._id)
+    if (!profileData || profileData.type !== "brand_owner" || profileData.profile._id !== rental.brandProfileId) {
       throw new Error("Unauthorized")
     }
     
     // Calculate new total price
     const newTotalPrice = rental.monthlyPrice * args.additionalMonths
-    const now = new Date().toISOString()
+    const now = Date.now()
+    
+    // Get the shelf to get current commission rate
+    const shelf = await ctx.db.get(rental.shelfId)
+    
+    // Calculate total commission (store + platform)
+    const platformFee = 8 // 8% platform fee
+    const shelfStoreCommission = shelf?.storeCommission || 0
+    // If shelf has commission, use shelf + platform. Otherwise use the original rental's total commission
+    const totalCommission = shelf ? (shelfStoreCommission + platformFee) : (rental.storeCommission || 0)
     
     // Create a new rental request for renewal
     const renewalRequest = await ctx.db.insert("rentalRequests", {
       shelfId: rental.shelfId,
-      requesterId: rental.requesterId,
-      requesterProfileId: rental.requesterProfileId,
-      ownerId: rental.ownerId,
-      ownerProfileId: rental.ownerProfileId,
+      brandProfileId: rental.brandProfileId,
+      storeProfileId: rental.storeProfileId,
       startDate: rental.endDate, // Start from current end date
-      endDate: args.newEndDate,
-      productType: rental.productType,
-      productDescription: rental.productDescription,
-      productCount: rental.productCount,
-      additionalNotes: `Renewal of rental #${rental._id}`,
-      selectedProductIds: rental.selectedProductIds,
-      selectedProductQuantities: rental.selectedProductQuantities,
+      endDate: new Date(args.newEndDate).getTime(),
+      selectedProducts: rental.selectedProducts,
       monthlyPrice: rental.monthlyPrice,
       totalAmount: newTotalPrice,
+      storeCommission: totalCommission, // Store + Shibr platform commission
       status: "pending",
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
       conversationId: rental.conversationId,
     })
     
-    // Send notification to store owner
-    if (rental.ownerId) {
-      await ctx.db.insert("notifications", {
-        userId: rental.ownerId,
-        title: "Renewal Request",
-        message: `The brand owner wants to renew their rental for ${args.additionalMonths} more month${args.additionalMonths > 1 ? 's' : ''}.`,
-        type: "rental_request",
-        rentalRequestId: renewalRequest,
-        conversationId: rental.conversationId,
-        actionUrl: `/store-dashboard/orders/${renewalRequest}`,
-        actionLabel: "Review Request",
-        isRead: false,
-        createdAt: now,
-      })
-    }
-    
     // Add message to conversation if it exists
-    if (rental.conversationId && rental.requesterId) {
-      await ctx.db.insert("messages", {
+    if (rental.conversationId && profileData) {
+      await ctx.runMutation(api.chats.sendSystemMessage, {
         conversationId: rental.conversationId,
-        senderId: rental.requesterId,
+        senderId: profileData.profile._id as any,
         text: `I would like to renew the rental for ${args.additionalMonths} more month${args.additionalMonths > 1 ? 's' : ''}.`,
         messageType: "rental_request",
-        isRead: false,
-        createdAt: now,
       })
     }
     

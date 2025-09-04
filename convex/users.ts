@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
+import { getUserProfile as getUserProfileHelper } from "./profileHelpers"
 
 export const getCurrentUser = query({
   args: {},
@@ -27,435 +28,233 @@ export const getCurrentUserWithProfile = query({
       return null;
     }
     
-    // Get user profile
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
+    // Get user profile based on their role
+    const profileData = await getUserProfileHelper(ctx, userId);
     
-    // Convert document storage IDs to URLs if they exist
-    if (profile) {
-      const brandCommercialRegisterDocumentUrl = profile.brandCommercialRegisterDocument
-        ? await ctx.storage.getUrl(profile.brandCommercialRegisterDocument)
-        : null;
-      const freelanceLicenseDocumentUrl = profile.freelanceLicenseDocument
-        ? await ctx.storage.getUrl(profile.freelanceLicenseDocument)
-        : null;
-      const commercialRegisterDocumentUrl = profile.commercialRegisterDocument
-        ? await ctx.storage.getUrl(profile.commercialRegisterDocument)
-        : null;
-      
+    if (!profileData) {
       return {
         ...user,
-        profile: {
-          ...profile,
-          brandCommercialRegisterDocumentUrl,
-          freelanceLicenseDocumentUrl,
-          commercialRegisterDocumentUrl,
-        },
+        profile: null,
+        accountType: null
       };
+    }
+    
+    // Convert document storage IDs to URLs if they exist
+    let documentUrls: any = {};
+    
+    if (profileData.type === "store_owner") {
+      const profile = profileData.profile as any;
+      if (profile.commercialRegisterDocument) {
+        documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
+      }
+      if (profile.vatCertificate) {
+        documentUrls.vatCertificateUrl = await ctx.storage.getUrl(profile.vatCertificate);
+      }
+    } else if (profileData.type === "brand_owner") {
+      const profile = profileData.profile as any;
+      if (profile.commercialRegisterDocument) {
+        documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
+      }
+      if (profile.freelanceLicenseDocument) {
+        documentUrls.freelanceLicenseDocumentUrl = await ctx.storage.getUrl(profile.freelanceLicenseDocument);
+      }
+      if (profile.vatCertificate) {
+        documentUrls.vatCertificateUrl = await ctx.storage.getUrl(profile.vatCertificate);
+      }
     }
     
     return {
       ...user,
-      profile,
+      accountType: profileData.type,
+      profile: {
+        ...profileData.profile,
+        ...documentUrls,
+      },
     };
   },
 })
 
-export const createOrUpdateUserProfile = mutation({
-  args: {
-    accountType: v.union(
-      v.literal("store_owner"),
-      v.literal("brand_owner"),
-      v.literal("admin")
-    ),
-    fullName: v.string(),
-    phoneNumber: v.string(),
-    email: v.string(),
-    
-    // Store owner fields
-    storeName: v.optional(v.string()),
-    storeType: v.optional(v.string()),
-    commercialRegisterNumber: v.optional(v.string()),
-    storeLocation: v.optional(v.object({
-      city: v.string(),
-      area: v.string(),
-      address: v.string(),
-    })),
-    
-    // Brand owner fields
-    brandName: v.optional(v.string()),
-    businessType: v.optional(v.union(
-      v.literal("registered_company"),
-      v.literal("freelancer")
-    )),
-    brandCommercialRegisterNumber: v.optional(v.string()),
-    freelanceLicenseNumber: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
-    // First check if profile exists by userId
-    let existingProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    // If no profile found by userId, check by email (for pre-created admin profiles)
-    if (!existingProfile) {
-      existingProfile = await ctx.db
-        .query("userProfiles")
-        .withIndex("by_email", (q) => q.eq("email", args.email))
-        .first();
-      
-      // If found by email, update the userId to link it to the authenticated user
-      if (existingProfile) {
-        await ctx.db.patch(existingProfile._id, {
-          userId,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    }
-    
-    const now = new Date().toISOString();
-    
-    if (existingProfile) {
-      // Don't override admin account type if it's already set
-      const updateData = { ...args };
-      if (existingProfile.accountType === "admin") {
-        // Preserve admin account type and related fields
-        updateData.accountType = "admin";
-        // Preserve admin-specific fields
-        if (existingProfile.adminRole) {
-          (updateData as any).adminRole = existingProfile.adminRole;
-        }
-        if (existingProfile.permissions) {
-          (updateData as any).permissions = existingProfile.permissions;
-        }
-        delete updateData.storeName;
-        delete updateData.brandName;
-        delete updateData.storeType;
-        delete updateData.storeLocation;
-        delete updateData.commercialRegisterNumber;
-        delete updateData.brandCommercialRegisterNumber;
-        delete updateData.businessType;
-        delete updateData.freelanceLicenseNumber;
-      }
-      
-      // Update existing profile
-      await ctx.db.patch(existingProfile._id, {
-        ...updateData,
-        updatedAt: now,
-      });
-      
-      // Return the profile ID and actual account type
-      return {
-        profileId: existingProfile._id,
-        accountType: updateData.accountType
-      };
-    } else {
-      // Create new profile
-      const profileId = await ctx.db.insert("userProfiles", {
-        userId,
-        ...args,
-        isVerified: false,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-      
-      // Return the profile ID and account type
-      return {
-        profileId,
-        accountType: args.accountType
-      };
-    }
-  },
-})
-
-export const getUserProfile = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    
-    return profile;
-  },
-})
-
-export const getUserById = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      return null;
-    }
-    
-    // Get user profile
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    
-    return {
-      ...user,
-      profile,
-    };
-  },
-})
-
+// Check if store data is complete
 export const checkStoreDataComplete = query({
   args: {
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
+    const storeProfile = await ctx.db
+      .query("storeProfiles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
-    
-    if (!profile || profile.accountType !== "store_owner") {
+
+    if (!storeProfile) {
       return false;
     }
-    
-    // Check all required store owner fields (similar to brand owner)
-    // 1. Basic Information
-    const hasBasicInfo = !!(
-      profile.fullName && 
-      profile.phoneNumber && 
-      profile.email
-    );
-    
-    // 2. Store Information
-    const hasStoreInfo = !!(
-      profile.storeName && 
-      profile.storeType
-    );
-    
-    // 3. Business Registration & Document
-    const hasBusinessRegistration = !!(
-      profile.commercialRegisterNumber && 
-      profile.commercialRegisterDocument
-    );
-    
-    // All requirements must be met
-    return hasBasicInfo && hasStoreInfo && hasBusinessRegistration;
-  },
-})
 
+    // Check required fields
+    const isComplete = !!(
+      storeProfile.storeName &&
+      storeProfile.businessCategory &&
+      storeProfile.commercialRegisterNumber &&
+      storeProfile.commercialRegisterDocument
+    );
+
+    return isComplete;
+  },
+});
+
+// Check if brand data is complete
 export const checkBrandDataComplete = query({
   args: {
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
-    
-    if (!profile || profile.accountType !== "brand_owner") {
-      return false;
-    }
-    
-    // Check all required brand owner fields
-    // 1. Basic Information
-    const hasBasicInfo = !!(
-      profile.fullName && 
-      profile.phoneNumber && 
-      profile.email
-    );
-    
-    // 2. Brand Information
-    const hasBrandInfo = !!(
-      profile.brandName && 
-      profile.businessType
-    );
-    
-    // 3. Business Registration & Document
-    let hasBusinessRegistration = false;
-    if (profile.businessType === "registered_company") {
-      hasBusinessRegistration = !!(
-        profile.brandCommercialRegisterNumber && 
-        profile.brandCommercialRegisterDocument
-      );
-    } else if (profile.businessType === "freelancer") {
-      hasBusinessRegistration = !!(
-        profile.freelanceLicenseNumber && 
-        profile.freelanceLicenseDocument
-      );
-    }
-    
-    // All requirements must be met
-    return hasBasicInfo && hasBrandInfo && hasBusinessRegistration;
-  },
-})
 
-export const updateProfileImage = mutation({
-  args: {
-    profileImageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
+    if (!brandProfile) {
+      return { isComplete: false, missingFields: ["profile"] };
     }
-    
-    // Get the storage URL for the image
-    const imageUrl = await ctx.storage.getUrl(args.profileImageId);
-    if (!imageUrl) {
-      throw new Error("Failed to get image URL");
-    }
-    
-    // Update the user's image field
-    await ctx.db.patch(userId, {
-      image: imageUrl,
-    });
-    
-    // Also update the profile if it exists
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        updatedAt: new Date().toISOString(),
-      });
-    }
-    
-    return { success: true, imageUrl };
-  },
-})
 
-export const getAllUsers = query({
-  args: {},
-  handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    const profiles = await ctx.db.query("userProfiles").collect();
-    
-    return users.map(user => {
-      const profile = profiles.find(p => p.userId === user._id);
-      return { ...user, profile };
-    });
-  },
-})
+    const missingFields = [];
 
-export const updateGeneralSettings = mutation({
-  args: {
-    ownerName: v.optional(v.string()),
-    email: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    password: v.optional(v.string()),
-    preferredLanguage: v.optional(v.union(v.literal("ar"), v.literal("en"))),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    // Check required fields
+    if (!brandProfile.brandName) missingFields.push("brandName");
+    if (!brandProfile.businessType) missingFields.push("businessType");
     
-    // Update user fields if provided
-    const userUpdates: any = {};
-    if (args.ownerName) {
-      userUpdates.name = args.ownerName;
-    }
-    if (args.email) {
-      userUpdates.email = args.email;
-    }
-    
-    if (Object.keys(userUpdates).length > 0) {
-      await ctx.db.patch(userId, userUpdates);
-    }
-    
-    // Update profile
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (profile) {
-      const profileUpdates: any = {
-        updatedAt: new Date().toISOString(),
-      };
-      
-      if (args.ownerName) {
-        profileUpdates.fullName = args.ownerName;
+    // Check business type specific requirements
+    if (brandProfile.businessType === "registered_company") {
+      if (!brandProfile.commercialRegisterNumber) {
+        missingFields.push("commercialRegisterNumber");
       }
-      if (args.phoneNumber) {
-        profileUpdates.phoneNumber = args.phoneNumber;
+      if (!brandProfile.commercialRegisterDocument) {
+        missingFields.push("commercialRegisterDocument");
       }
-      if (args.email) {
-        profileUpdates.email = args.email;
+    } else if (brandProfile.businessType === "freelancer") {
+      if (!brandProfile.freelanceLicenseNumber) {
+        missingFields.push("freelanceLicenseNumber");
       }
-      
-      await ctx.db.patch(profile._id, profileUpdates);
+      if (!brandProfile.freelanceLicenseDocument) {
+        missingFields.push("freelanceLicenseDocument");
+      }
+    } else {
+      // If businessType is set but not one of the expected values, 
+      // still require one of the document sets
+      if (!brandProfile.commercialRegisterNumber && !brandProfile.freelanceLicenseNumber) {
+        missingFields.push("commercialRegisterNumber or freelanceLicenseNumber");
+      }
+      if (!brandProfile.commercialRegisterDocument && !brandProfile.freelanceLicenseDocument) {
+        missingFields.push("commercialRegisterDocument or freelanceLicenseDocument");
+      }
     }
     
-    return { success: true };
+    // Don't require phone/email for profile completion - they're in the user table
+    // This follows the same pattern as checkStoreDataComplete
+    
+    return {
+      isComplete: missingFields.length === 0,
+      missingFields,
+    };
   },
-})
+});
 
-export const updateBrandData = mutation({
-  args: {
-    brandName: v.string(),
-    brandType: v.optional(v.string()), // The type of products/business (e.g., "Electronics")
-    isFreelance: v.boolean(),
-    businessRegistration: v.optional(v.string()),
-    website: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
-    const profile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (!profile) {
-      throw new Error("Profile not found");
-    }
-    
-    await ctx.db.patch(profile._id, {
-      brandName: args.brandName,
-      brandType: args.brandType, // Store the actual brand/product type
-      businessType: args.isFreelance ? "freelancer" : "registered_company",
-      brandCommercialRegisterNumber: !args.isFreelance ? args.businessRegistration : undefined,
-      freelanceLicenseNumber: args.isFreelance ? args.businessRegistration : undefined,
-      phoneNumber: args.phoneNumber || profile.phoneNumber,
-      updatedAt: new Date().toISOString(),
-    });
-    
-    return { success: true };
-  },
-})
-
-export const updateStoreData = mutation({
+export const createStoreProfile = mutation({
   args: {
     storeName: v.string(),
-    storeType: v.string(),
-    businessRegistration: v.optional(v.string()),
-    isFreelance: v.boolean(),
+    businessCategory: v.string(),
+    commercialRegisterNumber: v.string(),
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
+    vatCertificate: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
+    // Check if profile already exists
+    const existing = await ctx.db
+      .query("storeProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (existing) {
+      throw new Error("Store profile already exists");
+    }
+    
+    // Create store profile
+    const profileId = await ctx.db.insert("storeProfiles", {
+      userId,
+      isActive: true,
+      storeName: args.storeName,
+      businessCategory: args.businessCategory,
+      commercialRegisterNumber: args.commercialRegisterNumber,
+      commercialRegisterDocument: args.commercialRegisterDocument,
+    });
+    
+    return profileId;
+  },
+})
+
+export const createBrandProfile = mutation({
+  args: {
+    brandName: v.string(),
+    businessType: v.optional(v.union(
+      v.literal("registered_company"),
+      v.literal("freelancer")
+    )),
+    commercialRegisterNumber: v.optional(v.string()),
+    freelanceLicenseNumber: v.optional(v.string()),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
+    freelanceLicenseDocument: v.optional(v.id("_storage")),
     website: v.optional(v.string()),
-    phoneNumber: v.string(),
-    storeLocation: v.optional(v.object({
-      city: v.string(),
-      area: v.string(),
-      address: v.string(),
-    })),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
+    // Check if profile already exists
+    const existing = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (existing) {
+      throw new Error("Brand profile already exists");
+    }
+    
+    // Create brand profile
+    const profileId = await ctx.db.insert("brandProfiles", {
+      userId,
+      isActive: true,
+      brandName: args.brandName,
+      businessType: args.businessType,
+      commercialRegisterNumber: args.commercialRegisterNumber,
+      freelanceLicenseNumber: args.freelanceLicenseNumber,
+      commercialRegisterDocument: args.commercialRegisterDocument,
+      freelanceLicenseDocument: args.freelanceLicenseDocument,
+      website: args.website,
+    });
+    
+    return profileId;
+  },
+})
+
+export const updateStoreProfile = mutation({
+  args: {
+    storeName: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
+    vatCertificate: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -464,102 +263,312 @@ export const updateStoreData = mutation({
     }
     
     const profile = await ctx.db
-      .query("userProfiles")
+      .query("storeProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     
     if (!profile) {
-      throw new Error("Profile not found");
+      throw new Error("Store profile not found");
     }
     
-    const updateData: any = {
-      storeName: args.storeName,
-      storeType: args.storeType,
-      phoneNumber: args.phoneNumber,
-      updatedAt: new Date().toISOString(),
+    await ctx.db.patch(profile._id, args);
+    
+    return profile._id;
+  },
+})
+
+export const updateBrandProfile = mutation({
+  args: {
+    brandName: v.optional(v.string()),
+    businessType: v.optional(v.union(
+      v.literal("registered_company"),
+      v.literal("freelancer")
+    )),
+    commercialRegisterNumber: v.optional(v.string()),
+    freelanceLicenseNumber: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    commercialRegisterDocument: v.optional(v.id("_storage")),
+    freelanceLicenseDocument: v.optional(v.id("_storage")),
+    vatCertificate: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
+    const profile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (!profile) {
+      throw new Error("Brand profile not found");
+    }
+    
+    await ctx.db.patch(profile._id, args);
+    
+    return profile._id;
+  },
+})
+
+export const getUserProfile = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const profileData = await getUserProfileHelper(ctx, args.userId);
+    
+    if (!profileData) {
+      return null;
+    }
+    
+    const user = await ctx.db.get(args.userId);
+    
+    return {
+      user,
+      accountType: profileData.type,
+      profile: profileData.profile,
     };
-    
-    // Add commercial registration or set business type to freelancer
-    if (args.isFreelance) {
-      updateData.businessType = "freelancer";
-    } else if (args.businessRegistration) {
-      updateData.commercialRegisterNumber = args.businessRegistration;
+  },
+})
+
+
+
+// Get user's dashboard based on their account type
+export const getUserDashboard = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
     }
     
-    // Add optional fields
-    if (args.website) {
-      updateData.website = args.website;
+    const profileData = await getUserProfileHelper(ctx, userId);
+    
+    if (!profileData) {
+      return { dashboard: "/signup-complete" }; // Redirect to complete profile
     }
     
-    if (args.storeLocation) {
-      updateData.storeLocation = args.storeLocation;
+    switch (profileData.type) {
+      case "store_owner":
+        return { dashboard: "/store-dashboard" };
+      case "brand_owner":
+        return { dashboard: "/brand-dashboard" };
+      case "admin":
+        return { dashboard: "/admin-dashboard" };
+      default:
+        return { dashboard: "/" };
     }
+  },
+})
+
+// Update general settings (name, email, phone)
+export const updateGeneralSettings = mutation({
+  args: {
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    password: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+    if (args.name !== undefined) updateData.name = args.name;
+    if (args.email !== undefined) updateData.email = args.email;
+    if (args.phone !== undefined) updateData.phone = args.phone;
     
-    await ctx.db.patch(profile._id, updateData);
+    // Note: Password update would need special handling through auth system
+    // For now, we'll just update the other fields
     
+    // Update the auth user record
+    await ctx.db.patch(userId, updateData);
+
+    // Phone and email are stored in the user table, not in profiles
+    // This follows the same pattern as store profiles
+
     return { success: true };
   },
 })
 
+// Update store-specific data
+export const updateStoreData = mutation({
+  args: {
+    storeName: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
+    commercialRegisterNumber: v.optional(v.string()),
+    website: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const storeProfile = await ctx.db
+      .query("storeProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!storeProfile) {
+      // Create new store profile if it doesn't exist
+      if (!args.storeName || !args.businessCategory || !args.commercialRegisterNumber) {
+        throw new Error("Store name, business category, and commercial register number are required");
+      }
+      const newProfileId = await ctx.db.insert("storeProfiles", {
+        userId,
+        isActive: true,
+        storeName: args.storeName,
+        businessCategory: args.businessCategory,
+        commercialRegisterNumber: args.commercialRegisterNumber,
+        website: args.website,
+      });
+      return { success: true, profileId: newProfileId };
+    }
+
+    // Update existing profile
+    const updates: any = {};
+    if (args.storeName !== undefined) updates.storeName = args.storeName;
+    if (args.businessCategory !== undefined) updates.businessCategory = args.businessCategory;
+    if (args.commercialRegisterNumber !== undefined) updates.commercialRegisterNumber = args.commercialRegisterNumber;
+    if (args.website !== undefined) updates.website = args.website;
+    
+    // Location is now stored per shelf, not in profile
+
+    await ctx.db.patch(storeProfile._id, updates);
+    return { success: true };
+  },
+})
+
+// Update brand-specific data
+export const updateBrandData = mutation({
+  args: {
+    brandName: v.optional(v.string()),
+    businessCategory: v.optional(v.string()),
+    businessType: v.optional(v.union(
+      v.literal("registered_company"),
+      v.literal("freelancer")
+    )),
+    commercialRegisterNumber: v.optional(v.string()),
+    freelanceLicenseNumber: v.optional(v.string()),
+    website: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!brandProfile) {
+      throw new Error("Brand profile not found");
+    }
+
+    const updates: any = {};
+    if (args.brandName !== undefined) updates.brandName = args.brandName;
+    if (args.businessCategory !== undefined) updates.businessCategory = args.businessCategory;
+    if (args.businessType !== undefined) updates.businessType = args.businessType;
+    if (args.commercialRegisterNumber !== undefined) updates.commercialRegisterNumber = args.commercialRegisterNumber;
+    if (args.freelanceLicenseNumber !== undefined) updates.freelanceLicenseNumber = args.freelanceLicenseNumber;
+    if (args.website !== undefined) updates.website = args.website;
+
+    await ctx.db.patch(brandProfile._id, updates);
+    return { success: true };
+  },
+})
+
+// Update profile image
+export const updateProfileImage = mutation({
+  args: {
+    imageUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Update the auth user's image field
+    await ctx.db.patch(userId, {
+      image: args.imageUrl,
+    });
+
+    return { success: true };
+  },
+})
+
+// Update business registration document (for stores)
 export const updateBusinessRegistrationDocument = mutation({
   args: {
-    documentId: v.id("_storage"),
+    storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
-    const profile = await ctx.db
-      .query("userProfiles")
+
+    const storeProfile = await ctx.db
+      .query("storeProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    
-    if (!profile) {
-      throw new Error("Profile not found");
+
+    if (storeProfile) {
+      await ctx.db.patch(storeProfile._id, {
+        commercialRegisterDocument: args.storageId,
+      });
+      return { success: true };
     }
-    
-    await ctx.db.patch(profile._id, {
-      // Map to correct field name based on business type
-      ...(profile.accountType === "brand_owner" && profile.businessType === "registered_company" 
-        ? { brandCommercialRegisterDocument: args.documentId } 
-        : profile.businessType === "freelancer" 
-        ? { freelanceLicenseDocument: args.documentId }
-        : profile.accountType === "store_owner"
-        ? { commercialRegisterDocument: args.documentId }
-        : {}),
-      updatedAt: new Date().toISOString(),
-    });
-    
-    return { success: true };
+
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (brandProfile) {
+      await ctx.db.patch(brandProfile._id, {
+        commercialRegisterDocument: args.storageId,
+      });
+      return { success: true };
+    }
+
+    throw new Error("Profile not found");
   },
 })
 
+// Update freelance document (for brands)
 export const updateFreelanceDocument = mutation({
   args: {
-    documentId: v.id("_storage"),
+    storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
-    const profile = await ctx.db
-      .query("userProfiles")
+
+    const brandProfile = await ctx.db
+      .query("brandProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    
-    if (!profile) {
-      throw new Error("Profile not found");
+
+    if (!brandProfile) {
+      throw new Error("Brand profile not found");
     }
-    
-    await ctx.db.patch(profile._id, {
-      freelanceLicenseDocument: args.documentId,
-      updatedAt: new Date().toISOString(),
+
+    await ctx.db.patch(brandProfile._id, {
+      freelanceLicenseDocument: args.storageId,
     });
-    
+
     return { success: true };
   },
 })
