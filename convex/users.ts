@@ -202,10 +202,10 @@ export const createStoreProfile = mutation({
 export const createBrandProfile = mutation({
   args: {
     brandName: v.string(),
-    businessType: v.union(
+    businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
-    ),
+    )),
     commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
     commercialRegisterDocument: v.optional(v.id("_storage")),
