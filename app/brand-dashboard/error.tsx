@@ -7,7 +7,7 @@ import { RefreshCw, LayoutDashboard } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useRouter } from "next/navigation"
 
-export default function AdminDashboardError({
+export default function BrandDashboardError({
   error,
   reset,
 }: {
@@ -18,7 +18,7 @@ export default function AdminDashboardError({
   const router = useRouter()
 
   useEffect(() => {
-    console.error("Admin Dashboard Error:", error)
+    console.error("Brand Dashboard Error:", error)
   }, [error])
 
   return (
@@ -28,10 +28,10 @@ export default function AdminDashboardError({
           {/* Error Title and Description */}
           <div className="text-center space-y-3">
             <h2 className={`text-2xl font-bold ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-              {t("error.admin_dashboard_title")}
+              {t("error.brand_dashboard_title")}
             </h2>
             <p className={`text-muted-foreground leading-relaxed ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-              {t("error.admin_dashboard_description")}
+              {t("error.brand_dashboard_description")}
             </p>
           </div>
 
@@ -46,7 +46,7 @@ export default function AdminDashboardError({
               {t("error.try_again")}
             </Button>
             <Button 
-              onClick={() => router.push("/admin-dashboard")} 
+              onClick={() => router.push("/brand-dashboard")} 
               variant="outline"
               className="w-full h-12 gap-2 shadow-sm hover:shadow-md transition-all"
               size="lg"
