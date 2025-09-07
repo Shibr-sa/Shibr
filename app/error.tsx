@@ -3,11 +3,10 @@
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { RefreshCw, LayoutDashboard } from "lucide-react"
+import { RefreshCw, Home } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
-import { useRouter } from "next/navigation"
 
-export default function AdminDashboardError({
+export default function Error({
   error,
   reset,
 }: {
@@ -15,30 +14,33 @@ export default function AdminDashboardError({
   reset: () => void
 }) {
   const { t, direction } = useLanguage()
-  const router = useRouter()
 
   useEffect(() => {
-    console.error("Admin Dashboard Error:", error)
+    console.error(error)
   }, [error])
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-4" dir={direction}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20" dir={direction}>
       <Card className="max-w-lg w-full border-0 shadow-2xl bg-card/95 backdrop-blur">
         <div className="p-8 space-y-6">
           {/* Error Title and Description */}
           <div className="text-center space-y-3">
-            <h2 className={`text-2xl font-bold ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-              {t("error.admin_dashboard_title")}
-            </h2>
-            <p className={`text-muted-foreground leading-relaxed ${direction === "rtl" ? "font-cairo" : "font-inter"}`}>
-              {t("error.admin_dashboard_description")}
+            <h1 className={`text-3xl font-bold ${
+              direction === "rtl" ? "font-cairo" : "font-inter"
+            }`}>
+              {t("error.title")}
+            </h1>
+            <p className={`text-muted-foreground leading-relaxed ${
+              direction === "rtl" ? "font-cairo" : "font-inter"
+            }`}>
+              {t("error.description")}
             </p>
           </div>
 
           {/* Action Buttons */}
           <div className="space-y-3">
             <Button 
-              onClick={reset}
+              onClick={reset} 
               className="w-full h-12 gap-2 shadow-sm hover:shadow-md transition-all"
               size="lg"
             >
@@ -46,13 +48,13 @@ export default function AdminDashboardError({
               {t("error.try_again")}
             </Button>
             <Button 
-              onClick={() => router.push("/admin-dashboard")} 
+              onClick={() => window.location.href = "/"} 
               variant="outline"
               className="w-full h-12 gap-2 shadow-sm hover:shadow-md transition-all"
               size="lg"
             >
-              <LayoutDashboard className="h-4 w-4" />
-              {t("error.go_dashboard")}
+              <Home className="h-4 w-4" />
+              {t("error.go_home")}
             </Button>
           </div>
 

@@ -3,6 +3,15 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { getUserProfile as getUserProfileHelper } from "./profileHelpers"
 
+// Helper query to verify auth is ready
+export const verifyAuthReady = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    return { isAuthenticated: !!userId, userId };
+  },
+})
+
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -175,14 +184,24 @@ export const createStoreProfile = mutation({
       throw new Error("Not authenticated");
     }
     
-    // Check if profile already exists
-    const existing = await ctx.db
+    // Check if any profile already exists for this user
+    const existingStore = await ctx.db
       .query("storeProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     
-    if (existing) {
+    if (existingStore) {
       throw new Error("Store profile already exists");
+    }
+    
+    // Check if user has a brand profile (prevent multiple account types)
+    const existingBrand = await ctx.db
+      .query("brandProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (existingBrand) {
+      throw new Error("User already has a brand profile. Cannot create multiple profile types");
     }
     
     // Create store profile
@@ -195,7 +214,13 @@ export const createStoreProfile = mutation({
       commercialRegisterDocument: args.commercialRegisterDocument,
     });
     
-    return profileId;
+    // Return complete profile data with account type
+    const profile = await ctx.db.get(profileId);
+    return {
+      profileId,
+      accountType: "store_owner" as const,
+      profile
+    };
   },
 })
 
@@ -218,14 +243,24 @@ export const createBrandProfile = mutation({
       throw new Error("Not authenticated");
     }
     
-    // Check if profile already exists
-    const existing = await ctx.db
+    // Check if any profile already exists for this user
+    const existingBrand = await ctx.db
       .query("brandProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     
-    if (existing) {
+    if (existingBrand) {
       throw new Error("Brand profile already exists");
+    }
+    
+    // Check if user has a store profile (prevent multiple account types)
+    const existingStore = await ctx.db
+      .query("storeProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    
+    if (existingStore) {
+      throw new Error("User already has a store profile. Cannot create multiple profile types");
     }
     
     // Create brand profile
@@ -241,7 +276,13 @@ export const createBrandProfile = mutation({
       website: args.website,
     });
     
-    return profileId;
+    // Return complete profile data with account type
+    const profile = await ctx.db.get(profileId);
+    return {
+      profileId,
+      accountType: "brand_owner" as const,
+      profile
+    };
   },
 })
 

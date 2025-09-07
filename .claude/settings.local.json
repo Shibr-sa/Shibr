@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "WebSearch",
+      "WebFetch(domain:labs.convex.dev)",
+      "WebFetch(domain:docs.convex.dev)",
+      "WebFetch(domain:www.franciscomoretti.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
