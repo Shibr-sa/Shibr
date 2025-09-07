@@ -21,32 +21,29 @@ export default function SignInPage() {
   const { t } = useLanguage()
   const { toast } = useToast()
   const { signIn } = useAuthActions()
-  const currentUserWithProfile = useQuery(api.users.getCurrentUserWithProfile)
+  const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [justSignedIn, setJustSignedIn] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   
+
   // Handle redirect after successful signin
   useEffect(() => {
-    if (justSignedIn && currentUserWithProfile?.accountType) {
-      const accountType = currentUserWithProfile.accountType
-      if (accountType === "store_owner") {
-        router.push("/store-dashboard")
-      } else if (accountType === "brand_owner") {
-        router.push("/brand-dashboard")
-      } else if (accountType === "admin") {
-        router.push("/admin-dashboard")
-      }
-      setJustSignedIn(false)
+    if (isCheckingAuth && userWithProfile) {
+      const redirectPath = 
+        userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
+        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/"
+      
+      router.push(redirectPath)
     }
-  }, [justSignedIn, currentUserWithProfile, router])
-  
+  }, [isCheckingAuth, userWithProfile, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -87,19 +84,30 @@ export default function SignInPage() {
       authFormData.append("flow", "signIn")
       
       await signIn("password", authFormData)
-
+      
       toast({
         title: t("auth.success"),
         description: t("auth.signin_success"),
       })
       
-      // Set flag to trigger redirect in useEffect once profile loads
-      setJustSignedIn(true)
-    } catch (error) {
-      // Authentication errors are expected - just show user-friendly message
+      // Set flag to check auth and redirect
+      // The useEffect hook will handle the redirect once userWithProfile is loaded
+      setIsCheckingAuth(true)
+    } catch (error: any) {
+      // More specific error handling
+      let errorMessage = t("auth.invalid_credentials")
+      
+      if (error?.message?.includes("User not found")) {
+        errorMessage = t("auth.user_not_found")
+      } else if (error?.message?.includes("Invalid password")) {
+        errorMessage = t("auth.invalid_password")
+      } else if (error?.message?.includes("network")) {
+        errorMessage = t("auth.network_error")
+      }
+      
       toast({
         title: t("auth.error"),
-        description: t("auth.invalid_credentials"),
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

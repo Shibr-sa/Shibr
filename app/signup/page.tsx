@@ -22,6 +22,7 @@ import { signUpSchema, formatSaudiPhoneNumber } from "@/lib/validations/auth"
 import { z } from "zod"
 
 export default function SignUpPage() {
+  
   const [accountType, setAccountType] = useState<"store-owner" | "brand-owner">("store-owner")
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -111,21 +112,64 @@ export default function SignUpPage() {
       // Sign up the user first (name and phone stored in users table)
       await signIn("password", authFormData)
       
-      // Wait a bit for auth to propagate
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Use exponential backoff for profile creation
+      let profileResult = null
+      let retryCount = 0
+      const maxRetries = 8
+      const baseDelay = 1000 // Start with 1 second
       
-      // Create the user profile based on account type
-      let profileResult
-      if (accountType === "store-owner") {
-        profileResult = await createStoreProfile({
-          storeName: formData.storeName.trim(),
-          businessCategory: "", // Will be updated in settings
-          commercialRegisterNumber: "", // Will be updated in settings
-        })
-      } else {
-        profileResult = await createBrandProfile({
-          brandName: formData.brandName.trim(),
-        })
+      while (!profileResult && retryCount < maxRetries) {
+        try {
+          // Calculate delay with exponential backoff (1s, 2s, 4s, 8s, etc.)
+          const delay = Math.min(baseDelay * Math.pow(2, retryCount), 10000) // Cap at 10 seconds
+          
+          // Wait before attempting profile creation
+          if (retryCount > 0) {
+            console.log(`Retry attempt ${retryCount + 1} after ${delay}ms delay`)
+          }
+          await new Promise(resolve => setTimeout(resolve, delay))
+          
+          if (accountType === "store-owner") {
+            profileResult = await createStoreProfile({
+              storeName: formData.storeName.trim(),
+              businessCategory: "", // Will be updated in settings
+              commercialRegisterNumber: "", // Will be updated in settings
+            })
+          } else {
+            profileResult = await createBrandProfile({
+              brandName: formData.brandName.trim(),
+            })
+          }
+          
+          // If we get here, profile creation succeeded
+          console.log("Profile created successfully")
+          break
+        } catch (error: any) {
+          console.error(`Profile creation attempt ${retryCount + 1} failed:`, error?.message)
+          
+          // If profile already exists, that's actually fine - it means it was created
+          if (error?.message?.includes("already exists")) {
+            // Fetch the user profile since it exists
+            const accountTypeName = accountType === "store-owner" ? "store_owner" : "brand_owner"
+            profileResult = { accountType: accountTypeName }
+            break
+          }
+          
+          // If auth not ready, continue retrying with backoff
+          if (error?.message?.includes("Not authenticated")) {
+            retryCount++
+            if (retryCount >= maxRetries) {
+              throw new Error(t("auth.profile_creation_timeout"))
+            }
+          } else {
+            // Other errors, throw immediately
+            throw error
+          }
+        }
+      }
+      
+      if (!profileResult) {
+        throw new Error(t("auth.profile_creation_timeout"))
       }
       
       toast({
@@ -133,29 +177,31 @@ export default function SignUpPage() {
         description: t("auth.account_created"),
       })
       
-      // Wait a bit for everything to settle
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Redirect based on the account type returned from the database
+      const redirectPath = 
+        profileResult.accountType === "store_owner" ? "/store-dashboard" :
+        profileResult.accountType === "brand_owner" ? "/brand-dashboard" :
+        profileResult.accountType === "admin" ? "/admin-dashboard" :
+        accountType === "store-owner" ? "/store-dashboard" : "/brand-dashboard"
       
-      // Redirect based on the ACTUAL account type returned from the database
-      if (profileResult.accountType === "admin") {
-        router.push("/admin-dashboard")
-      } else if (profileResult.accountType === "store_owner") {
-        router.push("/store-dashboard")
-      } else if (profileResult.accountType === "brand_owner") {
-        router.push("/brand-dashboard")
-      } else {
-        // Fallback based on UI selection
-        if (accountType === "store-owner") {
-          router.push("/store-dashboard")
-        } else {
-          router.push("/brand-dashboard")
-        }
+      router.push(redirectPath)
+    } catch (error: any) {
+      // More specific error handling
+      let errorMessage = t("auth.signup_failed")
+      
+      if (error?.message?.includes("already exists")) {
+        errorMessage = t("auth.account_already_exists")
+      } else if (error?.message?.includes("Invalid email")) {
+        errorMessage = t("auth.invalid_email")
+      } else if (error?.message?.includes("password")) {
+        errorMessage = t("auth.weak_password")
+      } else if (error?.message?.includes("timeout")) {
+        errorMessage = t("auth.signup_timeout")
       }
-    } catch (error) {
-      // Authentication errors are expected - just show user-friendly message
+      
       toast({
         title: t("auth.error"),
-        description: t("auth.signup_failed"),
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

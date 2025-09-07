@@ -1397,6 +1397,14 @@ const translations = {
     "auth.signup_failed": "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى",
     "auth.signin_success": "تم تسجيل الدخول بنجاح",
     "auth.invalid_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "auth.account_already_exists": "الحساب موجود بالفعل. يرجى تسجيل الدخول",
+    "auth.invalid_email": "البريد الإلكتروني غير صالح",
+    "auth.weak_password": "كلمة المرور ضعيفة جداً",
+    "auth.signup_timeout": "انتهت مهلة إنشاء الحساب. يرجى المحاولة مرة أخرى",
+    "auth.profile_creation_timeout": "انتهت مهلة إنشاء الملف الشخصي",
+    "auth.user_not_found": "المستخدم غير موجود",
+    "auth.invalid_password": "كلمة المرور غير صحيحة",
+    "auth.network_error": "خطأ في الشبكة. يرجى التحقق من اتصالك",
 
     // Orders
     "orders.title": "الطلبات",
@@ -3354,6 +3362,14 @@ const translations = {
     "auth.signup_failed": "Failed to create account. Please try again",
     "auth.signin_success": "Signed in successfully",
     "auth.invalid_credentials": "Invalid email or password",
+    "auth.account_already_exists": "Account already exists. Please sign in",
+    "auth.invalid_email": "Invalid email address",
+    "auth.weak_password": "Password is too weak",
+    "auth.signup_timeout": "Account creation timed out. Please try again",
+    "auth.profile_creation_timeout": "Profile creation timed out",
+    "auth.user_not_found": "User not found",
+    "auth.invalid_password": "Invalid password",
+    "auth.network_error": "Network error. Please check your connection",
 
     // Orders
     "orders.title": "Orders",

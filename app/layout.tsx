@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import "./globals.css"
 import { LanguageProvider } from "@/contexts/localization-context"
 import { ConvexClientProvider } from "@/components/convex-provider"
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -75,19 +76,21 @@ export default async function RootLayout({
   return (
     <html lang={language} dir={direction} suppressHydrationWarning>
       <body className={`${cairo.variable} ${inter.variable} ${language === 'ar' ? 'font-cairo' : 'font-inter'} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ConvexClientProvider>
-            <LanguageProvider initialLanguage={language as 'ar' | 'en'}>
-              {children}
-              <Toaster />
-            </LanguageProvider>
-          </ConvexClientProvider>
-        </ThemeProvider>
+        <ConvexAuthNextjsServerProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <ConvexClientProvider>
+              <LanguageProvider initialLanguage={language as 'ar' | 'en'}>
+                {children}
+                <Toaster />
+              </LanguageProvider>
+            </ConvexClientProvider>
+          </ThemeProvider>
+        </ConvexAuthNextjsServerProvider>
       </body>
     </html>
   )
