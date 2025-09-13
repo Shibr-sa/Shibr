@@ -144,22 +144,19 @@ export default function BrandDashboardPage() {
     <div className="space-y-6">
       {/* Data Completion Warning - Only show if data is incomplete */}
       {isBrandDataComplete === false && (
-        <Alert className="border-destructive/50 bg-destructive/10">
+        <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
-          <AlertDescription className="mt-2">
-            <div className="flex items-center justify-between">
-              <span>{t("brand.dashboard.complete_data_description")}</span>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => router.push("/brand-dashboard/settings")}
-                className="gap-2 ms-4 flex-shrink-0"
-              >
-                {t("dashboard.complete_profile_now")}
-                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </div>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/brand-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
           </AlertDescription>
         </Alert>
       )}

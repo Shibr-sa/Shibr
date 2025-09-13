@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,9 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Calendar, Eye, Upload, CheckCircle, AlertCircle, Lock, Info } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import { validateSaudiIBAN, SAUDI_BANKS, formatIBAN } from "@/lib/saudi-iban-validator"
+import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -22,13 +26,18 @@ import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { ImageCropper } from "@/components/image-cropper"
 import { useBrandData } from "@/contexts/brand-data-context"
+import { ProfileCompletionProgress } from "@/components/profile-completion-progress"
 
 export default function BrandDashboardSettingsPage() {
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
   const { user } = useCurrentUser()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const { userData: brandUserData } = useBrandData() // Get userData from context
-  const [activeTab, setActiveTab] = useState("general")
+
+  // Get initial tab from URL or default to "general"
+  const initialTab = searchParams.get("tab") || "general"
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -56,13 +65,18 @@ export default function BrandDashboardSettingsPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
+  const [isBrandDataLocked, setIsBrandDataLocked] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Form states for Payment dialog
-  const [bankName, setBankName] = useState("")
+  const [bankCode, setBankCode] = useState("")
   const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
+  const [ibanValidation, setIbanValidation] = useState<{isValid: boolean; error?: string; bankName?: string}>({isValid: false})
+  const [ibanCertificateFile, setIbanCertificateFile] = useState<File | null>(null)
+  const [ibanCertificateUrl, setIbanCertificateUrl] = useState<string | null>(null)
+  const certificateInputRef = useRef<HTMLInputElement>(null)
   
   // Convex mutations
   const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
@@ -77,7 +91,15 @@ export default function BrandDashboardSettingsPage() {
   
   // Convex queries - only payment methods since userData comes from context
   const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
-  
+
+  // Update tab when URL parameter changes
+  useEffect(() => {
+    const tabParam = searchParams.get("tab")
+    if (tabParam && ["general", "brand-data", "payment", "security"].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
+
   // Load user data when available from context - only initialize form fields once
   useEffect(() => {
     if (brandUserData && !hasInitialized) {
@@ -93,7 +115,12 @@ export default function BrandDashboardSettingsPage() {
       setFreelanceLicenseNumber(profile?.freelanceLicenseNumber || "")
       setIsFreelance(profile?.businessType === "freelancer" || false)
       setProfileImageUrl(brandUserData.image || null)
-      
+
+      // Check if brand data should be locked (when critical fields are filled)
+      if (profile?.brandName && profile?.businessCategory && (profile?.commercialRegisterNumber || profile?.freelanceLicenseNumber)) {
+        setIsBrandDataLocked(true)
+      }
+
       // Handle initial document URL loading
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
       if (backendDocumentUrl) {
@@ -245,11 +272,15 @@ export default function BrandDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Profile Completion Progress */}
+      <ProfileCompletionProgress showDetails={true} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="brand-data">{t("settings.tabs.brand_data")}</TabsTrigger>
           <TabsTrigger value="payment">{t("settings.tabs.payment")}</TabsTrigger>
+          <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
@@ -818,18 +849,18 @@ export default function BrandDashboardSettingsPage() {
             {/* Bank Selection */}
             <div className="space-y-2">
               <Label htmlFor="bank" className="text-start block">
-                {t("settings.payment.dialog.select_bank")}
+                {t("settings.payment.dialog.select_bank")} *
               </Label>
-              <Select value={bankName} onValueChange={setBankName}>
+              <Select value={bankCode} onValueChange={setBankCode}>
                 <SelectTrigger id="bank" className="w-full">
                   <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Al-Rajhi Bank">{t("settings.payment.banks.alrajhi")}</SelectItem>
-                  <SelectItem value="National Commercial Bank">{t("settings.payment.banks.ncb")}</SelectItem>
-                  <SelectItem value="SABB">{t("settings.payment.banks.sabb")}</SelectItem>
-                  <SelectItem value="Riyad Bank">{t("settings.payment.banks.riyad")}</SelectItem>
-                  <SelectItem value="Alinma Bank">{t("settings.payment.banks.alinma")}</SelectItem>
+                  {SAUDI_BANKS.map((bank) => (
+                    <SelectItem key={bank.code} value={bank.code}>
+                      {language === 'ar' ? bank.nameAr : bank.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -856,38 +887,166 @@ export default function BrandDashboardSettingsPage() {
               <Input
                 id="accountNumber"
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '')
+                  setAccountNumber(value)
+                }}
                 placeholder={t("settings.payment.dialog.account_number_placeholder")}
                 className="w-full"
-                             />
+                pattern="[0-9]*"
+                inputMode="numeric"
+              />
             </div>
 
             {/* IBAN */}
             <div className="space-y-2">
               <Label htmlFor="iban" className="text-start block">
-                {t("settings.payment.dialog.iban")}
+                {t("settings.payment.dialog.iban")} *
               </Label>
-              <Input
-                id="iban"
-                value={iban}
-                onChange={(e) => setIban(e.target.value)}
-                placeholder={t("settings.payment.dialog.iban_placeholder")}
-                className="w-full"
-                             />
+              <div className="relative">
+                <Input
+                  id="iban"
+                  value={iban}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase()
+                    setIban(value)
+                    // Validate IBAN as user types
+                    if (value.length >= 2) {
+                      const validation = validateSaudiIBAN(value)
+                      setIbanValidation(validation)
+                      // Auto-select bank if IBAN is valid
+                      if (validation.isValid && validation.bankCode) {
+                        setBankCode(validation.bankCode)
+                      }
+                    } else {
+                      setIbanValidation({isValid: false})
+                    }
+                  }}
+                  placeholder="SA00 0000 0000 0000 0000 0000"
+                  className={cn(
+                    "w-full pe-10",
+                    iban.length > 10 && (ibanValidation.isValid ? "border-green-500" : "border-red-500")
+                  )}
+                  maxLength={29} // SA + 22 digits + 6 spaces
+                />
+                {iban.length > 10 && (
+                  <div className="absolute end-2 top-1/2 -translate-y-1/2">
+                    {ibanValidation.isValid ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {iban.length > 2 && !ibanValidation.isValid && ibanValidation.error && (
+                <p className="text-xs text-red-500">
+                  {(() => {
+                    switch(ibanValidation.error) {
+                      case 'IBAN must start with SA for Saudi Arabia':
+                        return language === 'ar' ? 'يجب أن يبدأ رقم الآيبان بـ SA للمملكة العربية السعودية' : 'IBAN must start with SA for Saudi Arabia'
+                      case 'Saudi IBAN must be exactly 24 characters':
+                        return language === 'ar' ? 'يجب أن يكون رقم الآيبان السعودي 24 حرفًا بالضبط' : 'Saudi IBAN must be exactly 24 characters'
+                      case 'IBAN must contain only digits after SA':
+                        return language === 'ar' ? 'يجب أن يحتوي رقم الآيبان على أرقام فقط بعد SA' : 'IBAN must contain only digits after SA'
+                      case 'Invalid bank code in IBAN':
+                        return language === 'ar' ? 'رمز البنك غير صحيح في رقم الآيبان' : 'Invalid bank code in IBAN'
+                      case 'Invalid IBAN checksum':
+                        return language === 'ar' ? 'رقم الآيبان غير صحيح' : 'Invalid IBAN checksum'
+                      default:
+                        return ibanValidation.error
+                    }
+                  })()}
+                </p>
+              )}
+              {ibanValidation.isValid && ibanValidation.bankName && (
+                <p className="text-xs text-green-600">
+                  {t("settings.payment.dialog.detected_bank")}: {ibanValidation.bankName}
+                </p>
+              )}
             </div>
 
-            {/* Virtual Checkbox */}
+            {/* IBAN Certificate Upload */}
+            <div className="space-y-2">
+              <Label className="block">
+                {t("settings.payment.dialog.iban_certificate")} *
+              </Label>
+              <div className="border-2 border-dashed rounded-lg p-4">
+                {ibanCertificateUrl || ibanCertificateFile ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {ibanCertificateFile?.name || t("settings.payment.dialog.certificate_uploaded")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {ibanCertificateFile ?
+                            `${(ibanCertificateFile.size / 1024).toFixed(1)} KB` :
+                            t("settings.payment.dialog.certificate_ready")}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIbanCertificateFile(null)
+                        setIbanCertificateUrl(null)
+                        if (certificateInputRef.current) {
+                          certificateInputRef.current.value = ''
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("settings.payment.dialog.upload_certificate_hint")}
+                    </p>
+                    <input
+                      ref={certificateInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setIbanCertificateFile(file)
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => certificateInputRef.current?.click()}
+                    >
+                      {t("settings.payment.dialog.choose_file")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Default Checkbox */}
             <div className="flex items-center gap-2">
-              <Checkbox 
-                id="virtual" 
+              <Checkbox
+                id="default"
                 checked={isDefault}
                 onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
-              <Label 
-                htmlFor="virtual" 
+              <Label
+                htmlFor="default"
                 className="text-sm font-normal cursor-pointer"
               >
-                {t("settings.payment.dialog.virtual")}
+                {t("settings.payment.dialog.set_as_default")}
               </Label>
             </div>
           </div>
@@ -903,9 +1062,9 @@ export default function BrandDashboardSettingsPage() {
               disabled={isLoading || !user?.id}
               onClick={async () => {
                 if (!user?.id) return
-                
+
                 // Validate required fields
-                if (!bankName || !accountName || !accountNumber || !iban) {
+                if (!bankCode || !accountHolderName || !iban) {
                   toast({
                     title: t("settings.payment.validation_error"),
                     description: t("settings.payment.fill_all_fields"),
@@ -913,27 +1072,74 @@ export default function BrandDashboardSettingsPage() {
                   })
                   return
                 }
-                
+
+                // Validate IBAN
+                if (!ibanValidation.isValid) {
+                  toast({
+                    title: t("settings.payment.validation_error"),
+                    description: t("settings.payment.invalid_iban"),
+                    variant: "destructive",
+                  })
+                  return
+                }
+
+                // Check if certificate is uploaded
+                if (!ibanCertificateFile && !ibanCertificateUrl) {
+                  toast({
+                    title: t("settings.payment.validation_error"),
+                    description: t("settings.payment.certificate_required"),
+                    variant: "destructive",
+                  })
+                  return
+                }
+
                 setIsLoading(true)
                 try {
+                  let certificateUrl = ibanCertificateUrl
+
+                  // Upload certificate if new file selected
+                  if (ibanCertificateFile) {
+                    const uploadUrl = await generateUploadUrl()
+                    const uploadResult = await fetch(uploadUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": ibanCertificateFile.type },
+                      body: ibanCertificateFile,
+                    })
+
+                    if (!uploadResult.ok) {
+                      throw new Error("Failed to upload certificate")
+                    }
+
+                    const { storageId } = await uploadResult.json()
+                    certificateUrl = await getFileUrl({ storageId })
+                  }
+
+                  // Get bank name from code
+                  const selectedBank = SAUDI_BANKS.find(b => b.code === bankCode)
+                  const bankName = language === 'ar' ? selectedBank?.nameAr : selectedBank?.name
+
                   await addPaymentMethod({
-                    bankName,
+                    bankName: bankName || bankCode,
                     accountHolderName,
                     accountNumber,
-                    iban,
+                    iban: ibanValidation.formattedIBAN || iban,
                     isDefault,
+                    certificateUrl,
                   })
-                  
+
                   toast({
                     title: t("settings.payment.success"),
                     description: t("settings.payment.added_message"),
                   })
-                  
+
                   // Reset form
-                  setBankName("")
+                  setBankCode("")
                   setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
+                  setIbanValidation({isValid: false})
+                  setIbanCertificateFile(null)
+                  setIbanCertificateUrl(null)
                   setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {

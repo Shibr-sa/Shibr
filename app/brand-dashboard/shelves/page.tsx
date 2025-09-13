@@ -5,6 +5,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock, Star } from "lucide-react"
+import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock, Star, AlertCircle } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -360,6 +361,25 @@ export default function BrandShelvesPage() {
 
   return (
     <div className="w-full space-y-6">
+      {/* Profile Completion Warning */}
+      {!isLoading && !isBrandDataComplete && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/brand-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Statistics Section */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

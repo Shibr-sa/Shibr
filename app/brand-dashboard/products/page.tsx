@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/ui/stat-card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { formatCurrency } from "@/lib/formatters"
 import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,18 +19,22 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, TrendingUp, TrendingDown, Banknote, ImageIcon } from "lucide-react"
+import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, TrendingUp, TrendingDown, Banknote, ImageIcon, AlertCircle } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
+import { useBrandData } from "@/contexts/brand-data-context"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 import BrandProductsLoading from "./loading"
 
 export default function BrandProductsPage() {
   const { t, language } = useLanguage()
   const { user, isLoading: userLoading } = useCurrentUser()
+  const { isBrandDataComplete, isLoading: brandLoading } = useBrandData()
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [currentPage, setCurrentPage] = useState(1)
@@ -83,6 +88,25 @@ export default function BrandProductsPage() {
 
   return (
     <div className="w-full space-y-6">
+      {/* Profile Completion Warning */}
+      {!brandLoading && !isBrandDataComplete && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/brand-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Statistics Section */}
       <div>
         <div className="mb-6">
