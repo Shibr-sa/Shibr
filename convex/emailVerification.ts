@@ -222,14 +222,6 @@ export const verifyOTP = mutation({
       verifiedAt: Date.now(),
     })
 
-    // Update user's email verification status
-    const user = await ctx.db.get(args.userId)
-    if (user) {
-      await ctx.db.patch(args.userId, {
-        emailVerificationTime: Date.now(),
-      })
-    }
-
     return {
       success: true,
       message: "Email verified successfully"
@@ -251,11 +243,17 @@ export const checkVerificationStatus = query({
       }
     }
 
-    // Check if email is already verified
-    if (user.emailVerificationTime) {
+    // Check if email is verified by looking for a verified OTP record
+    const verifiedOTP = await ctx.db
+      .query("emailVerificationOTP")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("verified"), true))
+      .first()
+
+    if (verifiedOTP) {
       return {
         verified: true,
-        verifiedAt: user.emailVerificationTime
+        verifiedAt: verifiedOTP.verifiedAt
       }
     }
 
@@ -293,7 +291,14 @@ export const resendOTP = mutation({
       }
     }
 
-    if (user.emailVerificationTime) {
+    // Check if email is already verified
+    const verifiedOTP = await ctx.db
+      .query("emailVerificationOTP")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("verified"), true))
+      .first()
+
+    if (verifiedOTP) {
       return {
         success: false,
         error: "Email is already verified"
