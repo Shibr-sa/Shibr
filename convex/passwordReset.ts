@@ -88,7 +88,7 @@ export const sendResetEmail = internalAction({
 
     // Determine user's preferred language (default to 'en' for now)
     const language: 'en' | 'ar' = 'en' // or 'ar' based on user preference
-    const isArabic = language === 'ar'
+    const isArabic = (language as string) === 'ar'
 
     const greeting = args.userName
       ? (isArabic ? `مرحباً ${args.userName}` : `Hello ${args.userName}`)

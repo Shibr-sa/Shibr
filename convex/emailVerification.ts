@@ -13,6 +13,65 @@ function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+// Internal helper function for sending verification OTP
+async function sendVerificationOTPInternal(
+  ctx: any,
+  args: { userId: any; email: string; userName?: string }
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  // Check for rate limiting - max 3 OTP requests per hour
+  const oneHourAgo = Date.now() - (60 * 60 * 1000)
+  const recentOTPs = await ctx.db
+    .query("emailVerificationOTP")
+    .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
+    .filter((q: any) => q.gt(q.field("createdAt"), oneHourAgo))
+    .collect()
+
+  if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
+    return {
+      success: false,
+      error: "Too many verification attempts. Please try again later."
+    }
+  }
+
+  // Invalidate any existing unused OTPs for this user
+  const existingOTPs = await ctx.db
+    .query("emailVerificationOTP")
+    .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
+    .filter((q: any) => q.eq(q.field("verified"), false))
+    .collect()
+
+  for (const otp of existingOTPs) {
+    await ctx.db.patch(otp._id, { verified: true })
+  }
+
+  // Generate new OTP
+  const otp = generateOTP()
+  const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
+
+  // Store the OTP
+  await ctx.db.insert("emailVerificationOTP", {
+    userId: args.userId,
+    email: args.email,
+    otp,
+    expiresAt,
+    verified: false,
+    attempts: 0,
+    createdAt: Date.now(),
+  })
+
+  // Schedule the email to be sent
+  await ctx.scheduler.runAfter(0, internal.emailVerification.sendOTPEmail, {
+    email: args.email,
+    otp,
+    userName: args.userName,
+  })
+
+  return {
+    success: true,
+    message: "Verification code has been sent to your email."
+  }
+}
+
 export const sendVerificationOTP = mutation({
   args: {
     userId: v.id("users"),
@@ -20,58 +79,7 @@ export const sendVerificationOTP = mutation({
     userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check for rate limiting - max 3 OTP requests per hour
-    const oneHourAgo = Date.now() - (60 * 60 * 1000)
-    const recentOTPs = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.gt(q.field("createdAt"), oneHourAgo))
-      .collect()
-
-    if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
-      return {
-        success: false,
-        error: "Too many verification attempts. Please try again later."
-      }
-    }
-
-    // Invalidate any existing unused OTPs for this user
-    const existingOTPs = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("verified"), false))
-      .collect()
-
-    for (const otp of existingOTPs) {
-      await ctx.db.patch(otp._id, { verified: true })
-    }
-
-    // Generate new OTP
-    const otp = generateOTP()
-    const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
-
-    // Store the OTP
-    await ctx.db.insert("emailVerificationOTP", {
-      userId: args.userId,
-      email: args.email,
-      otp,
-      expiresAt,
-      verified: false,
-      attempts: 0,
-      createdAt: Date.now(),
-    })
-
-    // Schedule the email to be sent
-    await ctx.scheduler.runAfter(0, internal.emailVerification.sendOTPEmail, {
-      email: args.email,
-      otp,
-      userName: args.userName,
-    })
-
-    return {
-      success: true,
-      message: "Verification code has been sent to your email."
-    }
+    return await sendVerificationOTPInternal(ctx, args)
   },
 })
 
@@ -87,7 +95,7 @@ export const sendOTPEmail = internalAction({
     // Determine user's preferred language (default to 'en' for now)
     // In production, you'd get this from user preferences
     const language: 'en' | 'ar' = 'en'
-    const isArabic = language === 'ar'
+    const isArabic = (language as string) === 'ar'
 
     const greeting = args.userName
       ? (isArabic ? `مرحباً ${args.userName}` : `Hello ${args.userName}`)
@@ -209,8 +217,7 @@ export const verifyOTP = mutation({
     const user = await ctx.db.get(args.userId)
     if (user) {
       await ctx.db.patch(args.userId, {
-        emailVerified: true,
-        emailVerifiedAt: Date.now(),
+        emailVerificationTime: Date.now(),
       })
     }
 
@@ -236,10 +243,10 @@ export const checkVerificationStatus = query({
     }
 
     // Check if email is already verified
-    if (user.emailVerified) {
+    if (user.emailVerificationTime) {
       return {
         verified: true,
-        verifiedAt: user.emailVerifiedAt
+        verifiedAt: user.emailVerificationTime
       }
     }
 
@@ -277,15 +284,15 @@ export const resendOTP = mutation({
       }
     }
 
-    if (user.emailVerified) {
+    if (user.emailVerificationTime) {
       return {
         success: false,
         error: "Email is already verified"
       }
     }
 
-    // Use the sendVerificationOTP mutation
-    return await sendVerificationOTP(ctx, {
+    // Use the internal helper function
+    return await sendVerificationOTPInternal(ctx, {
       userId: args.userId,
       email: user.email!,
       userName: user.name || undefined,
