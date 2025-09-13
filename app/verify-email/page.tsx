@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -12,7 +12,7 @@ import { Loader2, Mail, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const { t, language, direction } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -254,5 +254,17 @@ export default function VerifyEmailPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }
