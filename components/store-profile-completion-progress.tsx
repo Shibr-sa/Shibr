@@ -18,7 +18,7 @@ interface ProfileField {
   section: "general" | "store-data" | "payment"
 }
 
-export function ProfileCompletionProgress({ showDetails = true }: { showDetails?: boolean }) {
+export function StoreProfileCompletionProgress({ showDetails = true }: { showDetails?: boolean }) {
   const { t } = useLanguage()
   const { userData } = useStoreData()
   const [completionPercentage, setCompletionPercentage] = useState(0)
@@ -250,7 +250,7 @@ export function ProfileCompletionProgress({ showDetails = true }: { showDetails?
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-xs text-red-600 hover:text-red-700"
+                      className="text-xs text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
                       asChild
                     >
                       <Link href={`/store-dashboard/settings?tab=${getSectionFromField(field)}`}>

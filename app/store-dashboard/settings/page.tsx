@@ -26,7 +26,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { useStoreData } from "@/contexts/store-data-context"
 import { ImageCropper } from "@/components/image-cropper"
-import { ProfileCompletionProgress } from "@/components/profile-completion-progress"
+import { StoreProfileCompletionProgress } from "@/components/store-profile-completion-progress"
 
 export default function StoreDashboardSettingsPage() {
   const { t, direction, language } = useLanguage()
@@ -233,7 +233,7 @@ export default function StoreDashboardSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Profile Completion Progress */}
-      <ProfileCompletionProgress showDetails={true} />
+      <StoreProfileCompletionProgress showDetails={true} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 max-w-3xl">

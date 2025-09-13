@@ -90,6 +90,15 @@ export const sendOTPEmail = internalAction({
     userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Skip email sending in development environment
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_EMAIL_VERIFICATION === 'true'
+
+    if (isDevelopment) {
+      console.log('📧 Development Mode - Email Verification OTP:', args.otp)
+      console.log('📧 Would send to:', args.email)
+      return { success: true, data: { id: 'dev-mode', message: 'Email skipped in development' } }
+    }
+
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     // Determine user's preferred language (default to 'en' for now)
@@ -135,7 +144,7 @@ export const sendOTPEmail = internalAction({
 
     try {
       const result = await resend.emails.send({
-        from: 'Shibr <no-reply@shibr.sa>',
+        from: 'Shibr <noreply@shibr.io>',
         to: args.email,
         subject: emailData.subject,
         html: emailData.html,

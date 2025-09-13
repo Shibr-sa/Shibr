@@ -128,7 +128,7 @@ export const sendResetEmail = internalAction({
 
     try {
       const result = await resend.emails.send({
-        from: 'Shibr <no-reply@shibr.sa>',
+        from: 'Shibr <noreply@shibr.io>',
         to: args.email,
         subject: emailData.subject,
         html: emailData.html,

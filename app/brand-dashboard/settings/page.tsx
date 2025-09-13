@@ -26,7 +26,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { ImageCropper } from "@/components/image-cropper"
 import { useBrandData } from "@/contexts/brand-data-context"
-import { ProfileCompletionProgress } from "@/components/profile-completion-progress"
+import { BrandProfileCompletionProgress } from "@/components/brand-profile-completion-progress"
 
 export default function BrandDashboardSettingsPage() {
   const { t, direction, language } = useLanguage()
@@ -273,7 +273,7 @@ export default function BrandDashboardSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Profile Completion Progress */}
-      <ProfileCompletionProgress showDetails={true} />
+      <BrandProfileCompletionProgress showDetails={true} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 max-w-3xl">

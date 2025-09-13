@@ -20,7 +20,7 @@ export interface EmailOptions {
 export class EmailService {
   private static instance: EmailService
   private resend: Resend
-  private defaultFrom = 'Shibr <no-reply@shibr.sa>'
+  private defaultFrom = 'Shibr <noreply@shibr.io>'
 
   private constructor() {
     this.resend = new Resend(process.env.RESEND_API_KEY)

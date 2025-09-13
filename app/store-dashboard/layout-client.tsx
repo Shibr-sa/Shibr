@@ -11,6 +11,7 @@ import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { EmailVerificationCheck } from "@/components/email-verification-check"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { StoreDataProvider, useStoreData } from "@/contexts/store-data-context"
@@ -274,7 +275,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 bg-background">{children}</main>
+        <main className="flex-1 p-6 bg-background">
+          <EmailVerificationCheck showBanner={true} enforceVerification={false} />
+          {children}
+        </main>
       </div>
     </div>
     </SidebarProvider>

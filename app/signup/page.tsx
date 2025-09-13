@@ -183,20 +183,15 @@ export default function SignUpPage() {
       if (!profileResult) {
         throw new Error(t("auth.profile_creation_timeout"))
       }
-      
+
+      // Email verification is now handled in the profile creation functions
       toast({
         title: t("auth.success"),
-        description: t("auth.account_created"),
+        description: t("auth.account_created_verify_email") || "Account created! Please check your email to verify your account.",
       })
-      
-      // Redirect based on the account type returned from the database
-      const redirectPath = 
-        profileResult.accountType === "store_owner" ? "/store-dashboard" :
-        profileResult.accountType === "brand_owner" ? "/brand-dashboard" :
-        profileResult.accountType === "admin" ? "/admin-dashboard" :
-        accountType === "store-owner" ? "/store-dashboard" : "/brand-dashboard"
-      
-      router.push(redirectPath)
+
+      // Redirect to email verification page instead of dashboard
+      router.push("/verify-email")
     } catch (error: any) {
       // More specific error handling
       let errorMessage = t("auth.signup_failed")

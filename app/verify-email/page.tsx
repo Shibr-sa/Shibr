@@ -25,10 +25,12 @@ export default function VerifyEmailPage() {
   const [verified, setVerified] = useState(false)
   const [countdown, setCountdown] = useState(0)
 
+  const currentUser = useQuery(api.users.getCurrentUser)
+  const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
   const verifyOTP = useMutation(api.emailVerification.verifyOTP)
   const resendOTP = useMutation(api.emailVerification.resendOTP)
   const checkVerificationStatus = useQuery(api.emailVerification.checkVerificationStatus,
-    isAuthenticated ? { userId: searchParams.get("userId") as any } : "skip"
+    currentUser?._id ? { userId: currentUser._id } : "skip"
   )
 
   useEffect(() => {
@@ -40,11 +42,18 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (checkVerificationStatus?.verified) {
       setVerified(true)
+      // Determine the correct dashboard based on account type
+      const dashboardPath =
+        userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
+        userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
+        userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
+        "/dashboard" // fallback
+
       setTimeout(() => {
-        router.push("/dashboard")
+        router.push(dashboardPath)
       }, 3000)
     }
-  }, [checkVerificationStatus, router])
+  }, [checkVerificationStatus, userWithProfile, router])
 
   useEffect(() => {
     if (countdown > 0) {
@@ -59,18 +68,31 @@ export default function VerifyEmailPage() {
       return
     }
 
+    if (!currentUser?._id) {
+      toast.error(t("verification.user_not_found"))
+      return
+    }
+
     setIsVerifying(true)
     try {
       const result = await verifyOTP({
-        userId: searchParams.get("userId") as any,
+        userId: currentUser._id,
         otp
       })
 
       if (result.success) {
         setVerified(true)
         toast.success(t("verification.success"))
+
+        // Determine the correct dashboard based on account type
+        const dashboardPath =
+          userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
+          userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
+          userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
+          "/dashboard" // fallback
+
         setTimeout(() => {
-          router.push("/dashboard")
+          router.push(dashboardPath)
         }, 2000)
       } else {
         toast.error(result.error || t("verification.invalid_code"))
@@ -85,10 +107,15 @@ export default function VerifyEmailPage() {
   }
 
   const handleResend = async () => {
+    if (!currentUser?._id) {
+      toast.error(t("verification.user_not_found"))
+      return
+    }
+
     setIsResending(true)
     try {
       const result = await resendOTP({
-        userId: searchParams.get("userId") as any
+        userId: currentUser._id
       })
 
       if (result.success) {

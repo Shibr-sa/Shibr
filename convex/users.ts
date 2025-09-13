@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import { getUserProfile as getUserProfileHelper } from "./profileHelpers"
 
 // Helper query to verify auth is ready
@@ -213,7 +214,39 @@ export const createStoreProfile = mutation({
       commercialRegisterNumber: args.commercialRegisterNumber,
       commercialRegisterDocument: args.commercialRegisterDocument,
     });
-    
+
+    // Get user data for email verification
+    const user = await ctx.db.get(userId);
+    if (user && user.email) {
+      try {
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+
+        // Store the OTP
+        await ctx.db.insert("emailVerificationOTP", {
+          userId,
+          email: user.email,
+          otp,
+          expiresAt,
+          verified: false,
+          attempts: 0,
+          createdAt: Date.now(),
+        });
+
+        // Schedule the email to be sent
+        await ctx.scheduler.runAfter(0, internal.emailVerification.sendOTPEmail, {
+          email: user.email,
+          otp,
+          userName: user.name || args.storeName,
+        });
+        console.log("Verification email scheduled for:", user.email);
+      } catch (error) {
+        console.error("Failed to schedule verification email:", error);
+        // Don't fail profile creation if email fails
+      }
+    }
+
     // Return complete profile data with account type
     const profile = await ctx.db.get(profileId);
     return {
@@ -275,7 +308,39 @@ export const createBrandProfile = mutation({
       freelanceLicenseDocument: args.freelanceLicenseDocument,
       website: args.website,
     });
-    
+
+    // Get user data for email verification
+    const user = await ctx.db.get(userId);
+    if (user && user.email) {
+      try {
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+
+        // Store the OTP
+        await ctx.db.insert("emailVerificationOTP", {
+          userId,
+          email: user.email,
+          otp,
+          expiresAt,
+          verified: false,
+          attempts: 0,
+          createdAt: Date.now(),
+        });
+
+        // Schedule the email to be sent
+        await ctx.scheduler.runAfter(0, internal.emailVerification.sendOTPEmail, {
+          email: user.email,
+          otp,
+          userName: user.name || args.brandName,
+        });
+        console.log("Verification email scheduled for:", user.email);
+      } catch (error) {
+        console.error("Failed to schedule verification email:", error);
+        // Don't fail profile creation if email fails
+      }
+    }
+
     // Return complete profile data with account type
     const profile = await ctx.db.get(profileId);
     return {
