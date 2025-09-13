@@ -1,16 +1,16 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Loader2, Mail, CheckCircle2 } from "lucide-react"
-import Link from "next/link"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
+import { Loader2, Mail, CheckCircle2, ShieldCheck } from "lucide-react"
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp"
+import { REGEXP_ONLY_DIGITS } from "input-otp"
 
 function VerifyEmailContent() {
   const { t, language, direction } = useLanguage()
@@ -56,12 +56,12 @@ function VerifyEmailContent() {
           userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
           "/dashboard" // fallback
 
-        setTimeout(() => {
-          router.push(dashboardPath)
-        }, 3000)
+        // Immediately redirect if already verified
+        toast.success(t("verification.email_verified"))
+        router.push(dashboardPath)
       }
     }
-  }, [checkVerificationStatus, userWithProfile, router])
+  }, [checkVerificationStatus, userWithProfile, router, t])
 
   useEffect(() => {
     if (countdown > 0) {
@@ -69,6 +69,13 @@ function VerifyEmailContent() {
       return () => clearTimeout(timer)
     }
   }, [countdown])
+
+  // Redirect to signin if user not found
+  useEffect(() => {
+    if (!authLoading && !currentUser && currentUser !== undefined) {
+      router.push("/signin")
+    }
+  }, [authLoading, currentUser, router])
 
   const handleVerify = async () => {
     if (otp.length !== 6) {
@@ -131,7 +138,24 @@ function VerifyEmailContent() {
         setCountdown(60) // 60 second cooldown
         setOtp("")
       } else {
-        toast.error(result.error || t("verification.resend_error"))
+        // Check if email is already verified
+        if (result.error === "Email is already verified") {
+          toast.success(t("verification.email_verified"))
+          setVerified(true)
+
+          // Redirect to appropriate dashboard
+          const dashboardPath =
+            userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
+            userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
+            userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
+            "/dashboard"
+
+          setTimeout(() => {
+            router.push(dashboardPath)
+          }, 1500)
+        } else {
+          toast.error(result.error || t("verification.resend_error"))
+        }
       }
     } catch (error) {
       toast.error(t("verification.resend_error"))
@@ -150,24 +174,37 @@ function VerifyEmailContent() {
     )
   }
 
-  // If user is not found after loading, redirect to signin
+  // If user is not found after loading, show nothing while redirecting
   if (!currentUser) {
-    router.push("/signin")
     return null
+  }
+
+  // If email is already verified and we have user profile, show redirect message
+  if (checkVerificationStatus?.verified && userWithProfile) {
+    // Use effect will handle the redirect
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+          <p className="text-lg font-medium">{t("verification.email_verified")}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t("verification.redirecting")}</p>
+        </div>
+      </div>
+    )
   }
 
   if (verified) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-pink-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
+          <CardHeader className="text-center pb-8">
+            <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-green-100 flex items-center justify-center animate-in fade-in zoom-in duration-500">
               <CheckCircle2 className="h-12 w-12 text-green-600" />
             </div>
-            <CardTitle className={`text-2xl ${fontClass}`}>
+            <CardTitle className={`text-3xl font-bold ${fontClass}`}>
               {t("verification.email_verified")}
             </CardTitle>
-            <CardDescription className={fontClass}>
+            <CardDescription className={`text-base mt-2 ${fontClass}`}>
               {t("verification.redirecting")}
             </CardDescription>
           </CardHeader>
@@ -177,39 +214,50 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-pink-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-            <Mail className="h-10 w-10 text-primary" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20" dir={direction}>
+      <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
+        <CardHeader className="text-center pb-8">
+          <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className={`text-2xl ${fontClass}`}>
+          <CardTitle className={`text-3xl font-bold ${fontClass}`}>
             {t("verification.verify_email")}
           </CardTitle>
-          <CardDescription className={fontClass}>
+          <CardDescription className={`text-base mt-3 ${fontClass}`}>
             {t("verification.enter_code")}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+
+        <CardContent className="space-y-6 px-8">
+          {/* OTP Input - Always LTR for numbers */}
           <div className="flex justify-center" dir="ltr">
             <InputOTP
               value={otp}
               onChange={setOtp}
               maxLength={6}
-              render={({ slots }) => (
-                <InputOTPGroup>
-                  {slots.map((slot, index) => (
-                    <InputOTPSlot key={index} {...slot} />
-                  ))}
-                </InputOTPGroup>
-              )}
-            />
+              pattern={REGEXP_ONLY_DIGITS}
+              className="gap-2"
+            >
+              <InputOTPGroup className="gap-2">
+                <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup className="gap-2">
+                <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+              </InputOTPGroup>
+            </InputOTP>
           </div>
 
+          {/* Verify Button */}
           <Button
             onClick={handleVerify}
             disabled={isVerifying || otp.length !== 6}
-            className="w-full h-12"
+            className="w-full h-12 text-base font-medium"
+            size="lg"
           >
             {isVerifying ? (
               <>
@@ -220,16 +268,19 @@ function VerifyEmailContent() {
               t("verification.verify")
             )}
           </Button>
+        </CardContent>
 
-          <div className="text-center space-y-2">
-            <p className={`text-sm text-muted-foreground ${fontClass}`}>
+        <CardFooter className="px-8 pb-8">
+          {/* Resend Code Section */}
+          <div className="text-center w-full">
+            <p className={`text-sm text-muted-foreground mb-2 ${fontClass}`}>
               {t("verification.didnt_receive")}
             </p>
             <Button
-              variant="link"
+              variant="outline"
               onClick={handleResend}
               disabled={isResending || countdown > 0}
-              className={fontClass}
+              className={`w-full h-10 ${fontClass}`}
             >
               {isResending ? (
                 <>
@@ -243,15 +294,7 @@ function VerifyEmailContent() {
               )}
             </Button>
           </div>
-
-          <div className="text-center">
-            <Link href="/dashboard">
-              <Button variant="ghost" className={fontClass}>
-                {t("verification.skip_for_now")}
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   )

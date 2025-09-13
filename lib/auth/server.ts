@@ -29,26 +29,56 @@ export async function getCurrentUser() {
 }
 
 /**
+ * Check if current user's email is verified
+ */
+export async function isEmailVerified() {
+  const token = await convexAuthNextjsToken();
+  if (!token) return false;
+
+  try {
+    const verificationStatus = await fetchQuery(
+      api.emailVerification.isCurrentUserVerified,
+      {},
+      { token }
+    );
+    return verificationStatus?.verified || false;
+  } catch (error) {
+    console.error("Error checking email verification:", error);
+    return false;
+  }
+}
+
+/**
  * Require a specific role, redirects if not authorized
  */
 export async function requireRole(
   role: "admin" | "store_owner" | "brand_owner"
 ) {
   const user = await getCurrentUser();
-  
+
   if (!user) {
     redirect("/signin");
   }
-  
+
+  // Check email verification
+  const emailVerified = await isEmailVerified();
+  if (!emailVerified) {
+    // Check if we should skip verification (development flag)
+    const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === "true";
+    if (!skipVerification) {
+      redirect("/verify-email");
+    }
+  }
+
   if (user.accountType !== role) {
     // Redirect to appropriate dashboard based on actual role
-    const redirectPath = 
+    const redirectPath =
       user.accountType === "store_owner" ? "/store-dashboard" :
       user.accountType === "brand_owner" ? "/brand-dashboard" :
       user.accountType === "admin" ? "/admin-dashboard" : "/";
-    
+
     redirect(redirectPath);
   }
-  
+
   return user;
 }

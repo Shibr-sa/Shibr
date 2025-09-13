@@ -33,7 +33,7 @@ async function sendVerificationOTPInternal(
     }
   }
 
-  // Invalidate any existing unused OTPs for this user
+  // Delete any existing unused OTPs for this user
   const existingOTPs = await ctx.db
     .query("emailVerificationOTP")
     .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
@@ -41,7 +41,7 @@ async function sendVerificationOTPInternal(
     .collect()
 
   for (const otp of existingOTPs) {
-    await ctx.db.patch(otp._id, { verified: true })
+    await ctx.db.delete(otp._id)
   }
 
   // Generate new OTP
@@ -275,6 +275,46 @@ export const checkVerificationStatus = query({
       otpExpiresAt: pendingOTP?.expiresAt
     }
   },
+})
+
+// Check if current user's email is verified (used after sign-in)
+export const isCurrentUserVerified = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return { verified: false, needsVerification: false }
+    }
+
+    // Get the user from the database
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first()
+
+    if (!user) {
+      return { verified: false, needsVerification: false }
+    }
+
+    // Skip verification check if environment flag is set
+    const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === "true"
+    if (skipVerification) {
+      return { verified: true, needsVerification: false }
+    }
+
+    // Check if email is verified by looking for a verified OTP record
+    const verifiedOTP = await ctx.db
+      .query("emailVerificationOTP")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("verified"), true))
+      .first()
+
+    return {
+      verified: !!verifiedOTP,
+      needsVerification: !verifiedOTP,
+      userId: user._id
+    }
+  }
 })
 
 export const resendOTP = mutation({

@@ -17,7 +17,8 @@
       "Bash(CONVEX_DEPLOYMENT=prod:enchanted-clam-269 bunx convex env set RESEND_API_KEY re_USSb9Z7Y_AtgcV1hwFEbtbMvED11i5Q1X)",
       "Bash(git checkout:*)",
       "Bash(CONVEX_DEPLOYMENT=prod:enchanted-clam-269 bunx convex env list)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:ui.shadcn.com)"
     ],
     "deny": [],
     "ask": []

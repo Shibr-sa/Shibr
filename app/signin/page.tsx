@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { toast as sonnerToast } from "sonner"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -22,6 +23,7 @@ export default function SignInPage() {
   const { toast } = useToast()
   const { signIn } = useAuthActions()
   const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
+  const verificationStatus = useQuery(api.emailVerification.isCurrentUserVerified)
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -35,15 +37,34 @@ export default function SignInPage() {
 
   // Handle redirect after successful signin
   useEffect(() => {
-    if (isCheckingAuth && userWithProfile) {
-      const redirectPath = 
+    // Only proceed if we're checking auth after signin
+    if (!isCheckingAuth) return
+
+    // Wait for both user profile and verification status to load
+    if (userWithProfile === undefined || verificationStatus === undefined) return
+
+    // Now we have both pieces of data
+    if (userWithProfile) {
+      // Check if email verification is required
+      if (verificationStatus.needsVerification) {
+        sonnerToast.warning(t("verification.please_verify_email"))
+        router.push("/verify-email")
+        setIsCheckingAuth(false) // Reset the flag
+        return
+      }
+
+      // Redirect to appropriate dashboard for verified users
+      const redirectPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
         userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
         userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/"
-      
+
+      // Show success toast for verified users
+      sonnerToast.success(t("auth.signin_success"))
       router.push(redirectPath)
+      setIsCheckingAuth(false) // Reset the flag
     }
-  }, [isCheckingAuth, userWithProfile, router])
+  }, [isCheckingAuth, userWithProfile, verificationStatus, router, t])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -84,15 +105,13 @@ export default function SignInPage() {
       authFormData.append("flow", "signIn")
       
       await signIn("password", authFormData)
-      
-      toast({
-        title: t("auth.success"),
-        description: t("auth.signin_success"),
-      })
-      
+
       // Set flag to check auth and redirect
       // The useEffect hook will handle the redirect once userWithProfile is loaded
       setIsCheckingAuth(true)
+
+      // Don't show success toast here as we need to check verification first
+      // Toast will be shown based on verification status
     } catch (error: any) {
       // More specific error handling
       let errorMessage = t("auth.invalid_credentials")
