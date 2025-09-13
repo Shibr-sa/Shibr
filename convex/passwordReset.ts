@@ -134,10 +134,8 @@ export const sendResetEmail = internalAction({
         html: emailData.html,
       })
 
-      console.log("Password reset email sent successfully:", result)
       return { success: true, data: result }
     } catch (error: any) {
-      console.error("Failed to send password reset email:", error)
       return {
         success: false,
         error: error?.message || 'Failed to send email'

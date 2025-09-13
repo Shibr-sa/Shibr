@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { toast as sonnerToast } from "sonner"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -23,7 +22,6 @@ export default function SignInPage() {
   const { toast } = useToast()
   const { signIn } = useAuthActions()
   const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
-  const verificationStatus = useQuery(api.emailVerification.isCurrentUserVerified)
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -37,34 +35,29 @@ export default function SignInPage() {
 
   // Handle redirect after successful signin
   useEffect(() => {
-    // Only proceed if we're checking auth after signin
-    if (!isCheckingAuth) return
+    // Only redirect if we're checking auth AND have user profile data
+    if (!isCheckingAuth || !userWithProfile) return
 
-    // Wait for both user profile and verification status to load
-    if (userWithProfile === undefined || verificationStatus === undefined) return
+    console.log('[signin] Post-login redirect check', {
+      accountType: userWithProfile.accountType,
+      userId: userWithProfile._id,
+      email: userWithProfile.email
+    })
 
-    // Now we have both pieces of data
-    if (userWithProfile) {
-      // Check if email verification is required
-      if (verificationStatus.needsVerification) {
-        sonnerToast.warning(t("verification.please_verify_email"))
-        router.push("/verify-email")
-        setIsCheckingAuth(false) // Reset the flag
-        return
-      }
-
-      // Redirect to appropriate dashboard for verified users
-      const redirectPath =
+    // Small delay to ensure auth state is fully established
+    const redirectTimer = setTimeout(() => {
+      // Determine the correct dashboard based on account type
+      const dashboardPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
         userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/"
+        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
 
-      // Show success toast for verified users
-      sonnerToast.success(t("auth.signin_success"))
-      router.push(redirectPath)
-      setIsCheckingAuth(false) // Reset the flag
-    }
-  }, [isCheckingAuth, userWithProfile, verificationStatus, router, t])
+      console.log('[signin] Redirecting to dashboard:', dashboardPath)
+      router.push(dashboardPath)
+    }, 500) // 500ms delay to ensure auth is fully established
+
+    return () => clearTimeout(redirectTimer)
+  }, [isCheckingAuth, userWithProfile, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -105,13 +98,15 @@ export default function SignInPage() {
       authFormData.append("flow", "signIn")
       
       await signIn("password", authFormData)
-
+      
+      toast({
+        title: t("auth.success"),
+        description: t("auth.signin_success"),
+      })
+      
       // Set flag to check auth and redirect
       // The useEffect hook will handle the redirect once userWithProfile is loaded
       setIsCheckingAuth(true)
-
-      // Don't show success toast here as we need to check verification first
-      // Toast will be shown based on verification status
     } catch (error: any) {
       // More specific error handling
       let errorMessage = t("auth.invalid_credentials")
