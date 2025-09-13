@@ -90,13 +90,15 @@ export const sendOTPEmail = internalAction({
     userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Skip email sending in development environment
-    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_EMAIL_VERIFICATION === 'true'
+    // Log OTP for debugging (keep this for development debugging)
+    console.log('📧 Sending Email Verification OTP:', args.otp)
+    console.log('📧 Sending to:', args.email)
 
-    if (isDevelopment) {
-      console.log('📧 Development Mode - Email Verification OTP:', args.otp)
-      console.log('📧 Would send to:', args.email)
-      return { success: true, data: { id: 'dev-mode', message: 'Email skipped in development' } }
+    // Check if we should skip email (only if explicitly set)
+    const skipEmail = process.env.SKIP_EMAIL_VERIFICATION === 'true'
+    if (skipEmail) {
+      console.log('⚠️ SKIP_EMAIL_VERIFICATION is true - Email not sent')
+      return { success: true, data: { id: 'skipped', message: 'Email skipped due to SKIP_EMAIL_VERIFICATION flag' } }
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY)

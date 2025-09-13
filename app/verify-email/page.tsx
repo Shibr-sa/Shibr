@@ -40,20 +40,29 @@ export default function VerifyEmailPage() {
   }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
-    if (checkVerificationStatus?.verified) {
-      setVerified(true)
-      // Determine the correct dashboard based on account type
-      const dashboardPath =
-        userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
-        userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
-        "/dashboard" // fallback
+    console.log('📊 [useEffect-verification] Check status:', checkVerificationStatus)
+    console.log('📊 [useEffect-verification] User profile:', userWithProfile)
 
-      setTimeout(() => {
+    // Only check verification status if all data is loaded
+    if (checkVerificationStatus !== undefined && checkVerificationStatus?.verified) {
+      console.log('📊 [useEffect-verification] Email is already verified!')
+      setVerified(true)
+
+      // Wait for userWithProfile to load before determining dashboard
+      if (userWithProfile !== undefined) {
+        const dashboardPath =
+          userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
+          userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
+          userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
+          "/dashboard" // fallback
+
+        console.log('📊 [useEffect-verification] Already verified, redirecting to:', dashboardPath)
+        // Immediately redirect if already verified
+        toast.success(t("verification.email_verified"))
         router.push(dashboardPath)
-      }, 3000)
+      }
     }
-  }, [checkVerificationStatus, userWithProfile, router])
+  }, [checkVerificationStatus, userWithProfile, router, t])
 
   useEffect(() => {
     if (countdown > 0) {
@@ -63,6 +72,10 @@ export default function VerifyEmailPage() {
   }, [countdown])
 
   const handleVerify = async () => {
+    console.log('🔐 [handleVerify] Starting verification process')
+    console.log('🔐 [handleVerify] Current user ID:', currentUser?._id)
+    console.log('🔐 [handleVerify] OTP entered:', otp)
+
     if (otp.length !== 6) {
       toast.error(t("verification.invalid_code"))
       return
@@ -75,10 +88,13 @@ export default function VerifyEmailPage() {
 
     setIsVerifying(true)
     try {
+      console.log('🔐 [handleVerify] Calling verifyOTP mutation...')
       const result = await verifyOTP({
         userId: currentUser._id,
         otp
       })
+
+      console.log('🔐 [handleVerify] Verification result:', result)
 
       if (result.success) {
         setVerified(true)
@@ -91,16 +107,21 @@ export default function VerifyEmailPage() {
           userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
           "/dashboard" // fallback
 
+        console.log('🔐 [handleVerify] Redirecting to:', dashboardPath)
+        console.log('🔐 [handleVerify] Using window.location for hard redirect to avoid cache issues')
+
         setTimeout(() => {
-          router.push(dashboardPath)
+          // Use window.location for a hard redirect to clear any cached queries
+          window.location.href = dashboardPath
         }, 2000)
       } else {
+        console.log('🔐 [handleVerify] Verification failed:', result.error)
         toast.error(result.error || t("verification.invalid_code"))
         setOtp("")
       }
     } catch (error) {
+      console.error('🔐 [handleVerify] Error during verification:', error)
       toast.error(t("verification.error"))
-      console.error(error)
     } finally {
       setIsVerifying(false)
     }
