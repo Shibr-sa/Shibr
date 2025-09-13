@@ -23,14 +23,6 @@ function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
-/**
- * Log with consistent formatting for debugging
- */
-function log(prefix: string, message: string, data?: any) {
-  const timestamp = new Date().toISOString()
-  console.log(`[${timestamp}] ${prefix} ${message}`, data ? JSON.stringify(data, null, 2) : '')
-}
-
 // ============================================
 // INTERNAL HELPER FUNCTIONS
 // ============================================
@@ -39,8 +31,6 @@ function log(prefix: string, message: string, data?: any) {
  * Clean up expired OTPs for all users (can be scheduled)
  */
 async function cleanupExpiredOTPs(ctx: any) {
-  log('🧹', 'Starting OTP cleanup')
-
   const now = Date.now()
   const expiredOTPs = await ctx.db
     .query("emailVerificationOTP")
@@ -53,19 +43,16 @@ async function cleanupExpiredOTPs(ctx: any) {
     deletedCount++
   }
 
-  log('🧹', `Cleaned up ${deletedCount} expired OTPs`)
   return deletedCount
 }
 
 /**
- * Internal helper for sending verification OTP with comprehensive logging
+ * Internal helper for sending verification OTP
  */
 async function sendVerificationOTPInternal(
   ctx: any,
   args: { userId: any; email: string; userName?: string }
 ): Promise<{ success: boolean; error?: string; message?: string; otpId?: any }> {
-  log('📧', 'sendVerificationOTPInternal called', { userId: args.userId, email: args.email })
-
   try {
     // Step 1: Check if email is already verified
     const existingVerifiedOTP = await ctx.db
@@ -75,7 +62,6 @@ async function sendVerificationOTPInternal(
       .first()
 
     if (existingVerifiedOTP) {
-      log('✅', 'Email already verified', { userId: args.userId })
       return {
         success: false,
         error: "Email is already verified"
@@ -90,10 +76,7 @@ async function sendVerificationOTPInternal(
       .filter((q: any) => q.gt(q.field("createdAt"), oneHourAgo))
       .collect()
 
-    log('🔒', 'Rate limit check', { recentRequests: recentOTPs.length, limit: MAX_OTP_REQUESTS_PER_HOUR })
-
     if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
-      log('❌', 'Rate limit exceeded', { userId: args.userId })
       return {
         success: false,
         error: "Too many verification attempts. Please try again later."
@@ -107,7 +90,6 @@ async function sendVerificationOTPInternal(
       .filter((q: any) => q.eq(q.field("verified"), false))
       .collect()
 
-    log('🗑️', 'Cleaning up old OTPs', { count: existingUnverifiedOTPs.length })
 
     for (const oldOTP of existingUnverifiedOTPs) {
       await ctx.db.delete(oldOTP._id)
@@ -116,12 +98,6 @@ async function sendVerificationOTPInternal(
     // Step 4: Generate new OTP
     const otp = generateOTP()
     const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
-
-    log('🔑', 'Generated new OTP', {
-      otp,
-      expiresAt: new Date(expiresAt).toISOString(),
-      expiryMinutes: OTP_EXPIRY_MINUTES
-    })
 
     // Step 5: Store the OTP
     const otpId = await ctx.db.insert("emailVerificationOTP", {
@@ -134,7 +110,6 @@ async function sendVerificationOTPInternal(
       createdAt: Date.now(),
     })
 
-    log('💾', 'OTP stored in database', { otpId })
 
     // Step 6: Schedule email to be sent
     await ctx.scheduler.runAfter(0, internal.emailVerification.sendOTPEmail, {
@@ -143,7 +118,6 @@ async function sendVerificationOTPInternal(
       userName: args.userName,
     })
 
-    log('📨', 'Email scheduled for sending', { email: args.email })
 
     return {
       success: true,
@@ -151,7 +125,6 @@ async function sendVerificationOTPInternal(
       otpId
     }
   } catch (error: any) {
-    log('❌', 'Error in sendVerificationOTPInternal', error)
     return {
       success: false,
       error: error.message || "Failed to send verification code"
@@ -173,7 +146,6 @@ export const sendVerificationOTP = mutation({
     userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    log('🚀', 'sendVerificationOTP mutation called', { userId: args.userId })
     return await sendVerificationOTPInternal(ctx, args)
   },
 })
@@ -187,7 +159,6 @@ export const verifyOTP = mutation({
     otp: v.string(),
   },
   handler: async (ctx, args) => {
-    log('🔐', 'verifyOTP mutation called', { userId: args.userId, otp: args.otp })
 
     try {
       // Step 1: Find the most recent OTP record for this user
@@ -201,22 +172,14 @@ export const verifyOTP = mutation({
       const otpRecord = otpRecords[0]
 
       if (!otpRecord) {
-        log('❌', 'No OTP record found', { userId: args.userId })
         return {
           success: false,
           error: "No verification code found. Please request a new one."
         }
       }
 
-      log('📋', 'Found OTP record', {
-        otpId: otpRecord._id,
-        attempts: otpRecord.attempts,
-        expiresAt: new Date(otpRecord.expiresAt).toISOString()
-      })
-
       // Step 2: Check if OTP has expired
       if (Date.now() > otpRecord.expiresAt) {
-        log('⏰', 'OTP expired', { userId: args.userId })
         // Clean up expired OTP
         await ctx.db.delete(otpRecord._id)
         return {
@@ -227,7 +190,6 @@ export const verifyOTP = mutation({
 
       // Step 3: Check max attempts
       if (otpRecord.attempts >= MAX_VERIFICATION_ATTEMPTS) {
-        log('🚫', 'Max attempts exceeded', { userId: args.userId, attempts: otpRecord.attempts })
         // Delete the OTP to force user to request new one
         await ctx.db.delete(otpRecord._id)
         return {
@@ -238,7 +200,6 @@ export const verifyOTP = mutation({
 
       // Step 4: Verify the OTP
       if (otpRecord.otp !== args.otp) {
-        log('❌', 'Invalid OTP', { userId: args.userId, provided: args.otp, expected: otpRecord.otp })
 
         // Increment attempts
         await ctx.db.patch(otpRecord._id, {
@@ -253,7 +214,6 @@ export const verifyOTP = mutation({
       }
 
       // Step 5: Mark as verified
-      log('✅', 'OTP verified successfully', { userId: args.userId })
 
       await ctx.db.patch(otpRecord._id, {
         verified: true,
@@ -276,14 +236,12 @@ export const verifyOTP = mutation({
         await ctx.db.delete(otp._id)
       }
 
-      log('🎉', 'Email verification complete', { userId: args.userId })
 
       return {
         success: true,
         message: "Email verified successfully!"
       }
     } catch (error: any) {
-      log('❌', 'Error in verifyOTP', error)
       return {
         success: false,
         error: "An error occurred during verification. Please try again."
@@ -300,14 +258,12 @@ export const resendOTP = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    log('🔄', 'resendOTP mutation called', { userId: args.userId })
 
     try {
       // Get user details
       const user = await ctx.db.get(args.userId)
 
       if (!user) {
-        log('❌', 'User not found', { userId: args.userId })
         return {
           success: false,
           error: "User not found"
@@ -315,7 +271,6 @@ export const resendOTP = mutation({
       }
 
       if (!user.email) {
-        log('❌', 'User has no email', { userId: args.userId })
         return {
           success: false,
           error: "User email not found"
@@ -330,7 +285,6 @@ export const resendOTP = mutation({
         .first()
 
       if (verifiedOTP) {
-        log('✅', 'Email already verified', { userId: args.userId })
         return {
           success: false,
           error: "Email is already verified"
@@ -349,7 +303,6 @@ export const resendOTP = mutation({
         const cooldownEnd = recentOTP.createdAt + (RESEND_COOLDOWN_SECONDS * 1000)
         if (Date.now() < cooldownEnd) {
           const remainingSeconds = Math.ceil((cooldownEnd - Date.now()) / 1000)
-          log('⏱️', 'Resend cooldown active', { remainingSeconds })
           return {
             success: false,
             error: `Please wait ${remainingSeconds} seconds before requesting a new code`
@@ -364,7 +317,6 @@ export const resendOTP = mutation({
         userName: user.name || undefined,
       })
     } catch (error: any) {
-      log('❌', 'Error in resendOTP', error)
       return {
         success: false,
         error: "Failed to resend verification code"
@@ -385,13 +337,11 @@ export const checkVerificationStatus = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    log('🔍', 'checkVerificationStatus query called', { userId: args.userId })
 
     try {
       const user = await ctx.db.get(args.userId)
 
       if (!user) {
-        log('❌', 'User not found in checkVerificationStatus', { userId: args.userId })
         return {
           verified: false,
           error: "User not found"
@@ -406,7 +356,6 @@ export const checkVerificationStatus = query({
         .first()
 
       if (verifiedOTP) {
-        log('✅', 'User email is verified', { userId: args.userId, verifiedAt: verifiedOTP.verifiedAt })
         return {
           verified: true,
           verifiedAt: verifiedOTP.verifiedAt
@@ -425,19 +374,12 @@ export const checkVerificationStatus = query({
         )
         .first()
 
-      log('🔄', 'Verification status', {
-        userId: args.userId,
-        verified: false,
-        hasPendingOTP: !!pendingOTP
-      })
-
       return {
         verified: false,
         hasPendingOTP: !!pendingOTP,
         otpExpiresAt: pendingOTP?.expiresAt
       }
     } catch (error: any) {
-      log('❌', 'Error in checkVerificationStatus', error)
       return {
         verified: false,
         error: "Failed to check verification status"
@@ -452,24 +394,16 @@ export const checkVerificationStatus = query({
 export const isCurrentUserVerified = query({
   args: {},
   handler: async (ctx) => {
-    log('👤', 'isCurrentUserVerified query called')
 
     try {
       const identity = await ctx.auth.getUserIdentity()
-      log('🔍', 'Identity object', {
-        hasIdentity: !!identity,
-        email: identity?.email,
-        subject: identity?.subject
-      })
 
       if (!identity) {
-        log('❌', 'No user identity found')
         return { verified: false, needsVerification: false }
       }
 
       // Check if we have an email in the identity
       if (!identity.email) {
-        log('❌', 'No email in identity', { identity })
         return { verified: false, needsVerification: false }
       }
 
@@ -480,14 +414,12 @@ export const isCurrentUserVerified = query({
         .first()
 
       if (!user) {
-        log('❌', 'User not found by email', { email: identity.email })
         return { verified: false, needsVerification: false }
       }
 
       // Development mode bypass (only for explicit flag)
       const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === "true"
       if (skipVerification) {
-        log('⚠️', 'SKIP_EMAIL_VERIFICATION is true - bypassing verification')
         return { verified: true, needsVerification: false, skipped: true }
       }
 
@@ -498,19 +430,12 @@ export const isCurrentUserVerified = query({
         .filter((q) => q.eq(q.field("verified"), true))
         .first()
 
-      log('🔍', 'Current user verification status', {
-        userId: user._id,
-        email: user.email,
-        verified: !!verifiedOTP
-      })
-
       return {
         verified: !!verifiedOTP,
         needsVerification: !verifiedOTP,
         userId: user._id
       }
     } catch (error: any) {
-      log('❌', 'Error in isCurrentUserVerified', error)
       return { verified: false, needsVerification: false, error: error.message }
     }
   }
@@ -524,7 +449,6 @@ export const getVerificationHistory = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    log('📊', 'getVerificationHistory query called', { userId: args.userId })
 
     const otps = await ctx.db
       .query("emailVerificationOTP")
@@ -558,17 +482,12 @@ export const sendOTPEmail = internalAction({
     userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    log('📮', 'sendOTPEmail action called', { email: args.email, otp: args.otp })
 
     // Development mode check
     const isDevelopment = process.env.NODE_ENV === 'development'
     const skipEmail = process.env.SKIP_EMAIL_VERIFICATION === 'true'
 
     if (isDevelopment && !process.env.RESEND_API_KEY) {
-      log('⚠️', 'Development mode - No RESEND_API_KEY, showing OTP in console', {
-        email: args.email,
-        otp: args.otp
-      })
       console.log('\n' + '='.repeat(50))
       console.log('📧 EMAIL VERIFICATION OTP')
       console.log('='.repeat(50))
@@ -587,7 +506,6 @@ export const sendOTPEmail = internalAction({
     }
 
     if (skipEmail) {
-      log('⚠️', 'SKIP_EMAIL_VERIFICATION is true - Email not sent')
       return {
         success: true,
         data: {
@@ -601,7 +519,8 @@ export const sendOTPEmail = internalAction({
       const resend = new Resend(process.env.RESEND_API_KEY)
 
       // Determine user's preferred language (default to 'en' for now)
-      const language: 'en' | 'ar' = 'en'
+      // TODO: In production, get this from user preferences
+      const language = 'en' as 'en' | 'ar'
       const isArabic = language === 'ar'
 
       const greeting = args.userName
@@ -647,10 +566,8 @@ export const sendOTPEmail = internalAction({
         html: emailData.html,
       })
 
-      log('✅', 'Email sent successfully', { emailId: result.data?.id })
       return { success: true, data: result.data }
     } catch (error: any) {
-      log('❌', 'Failed to send email', error)
       return {
         success: false,
         error: error?.message || 'Failed to send email'
@@ -665,7 +582,6 @@ export const sendOTPEmail = internalAction({
 export const cleanupOTPs = internalAction({
   args: {},
   handler: async (ctx) => {
-    log('🧹', 'cleanupOTPs action called')
     // This would need database access, so we'd need to make it a mutation
     // or use a different approach for cleanup
     return { message: "Cleanup should be implemented as a scheduled mutation" }

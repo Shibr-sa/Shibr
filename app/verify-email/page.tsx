@@ -14,14 +14,6 @@ import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 /**
- * Log with consistent formatting for debugging
- */
-function log(prefix: string, message: string, data?: any) {
-  const timestamp = new Date().toISOString()
-  console.log(`[${timestamp}] ${prefix} [verify-email] ${message}`, data ? JSON.stringify(data, null, 2) : '')
-}
-
-/**
  * Verification state machine states
  */
 type VerificationState =
@@ -88,20 +80,16 @@ function VerifyEmailContent() {
    */
   const handleRedirect = useCallback((path: string, delay: number = 0) => {
     if (hasRedirectedRef.current) {
-      log('🚫', 'Redirect already in progress, skipping', { path })
       return
     }
 
-    log('🔀', 'Scheduling redirect', { path, delay })
     hasRedirectedRef.current = true
 
     if (delay > 0) {
       redirectTimeoutRef.current = setTimeout(() => {
-        log('🚀', 'Executing redirect', { path })
         window.location.href = path
       }, delay)
     } else {
-      log('🚀', 'Executing immediate redirect', { path })
       window.location.href = path
     }
   }, [])
@@ -111,14 +99,6 @@ function VerifyEmailContent() {
    * Single source of truth for verification state
    */
   useEffect(() => {
-    log('📊', 'State determination effect running', {
-      authLoading,
-      isAuthenticated,
-      hasCurrentUser: !!currentUser,
-      currentUserId: currentUser?._id,
-      verificationStatus: checkVerificationStatus,
-      currentState: verificationState
-    })
 
     // Still loading auth - wait longer to ensure auth is fully established
     if (authLoading) {
@@ -131,9 +111,7 @@ function VerifyEmailContent() {
       setVerificationState("loading")
       // Set a timeout to check again after a delay
       const checkTimer = setTimeout(() => {
-        if (!currentUser && !authLoading) {
-          log('⏰', 'User data still not loaded after delay')
-        }
+        // Check if auth is truly not available
       }, 2000)
       return () => clearTimeout(checkTimer)
     }
@@ -141,7 +119,6 @@ function VerifyEmailContent() {
     // Only redirect to signin if we're sure user is not authenticated
     // AND we've given enough time for auth to establish
     if (!isAuthenticated && !authLoading && currentUser === null) {
-      log('❌', 'User not authenticated after waiting')
       setVerificationState("unauthenticated")
       // Add delay before redirect to prevent loops
       setTimeout(() => {
@@ -152,7 +129,6 @@ function VerifyEmailContent() {
 
     // User not found after loading completed
     if (currentUser === null && !authLoading) {
-      log('❌', 'Current user not found after loading')
       setVerificationState("unauthenticated")
       setTimeout(() => {
         handleRedirect("/signin")
@@ -173,9 +149,6 @@ function VerifyEmailContent() {
 
     // Check if already verified
     if (checkVerificationStatus?.verified) {
-      log('✅', 'Email already verified', {
-        verifiedAt: checkVerificationStatus.verifiedAt
-      })
 
       // Only redirect if we have profile data
       if (userWithProfile !== undefined) {
@@ -188,7 +161,6 @@ function VerifyEmailContent() {
     }
 
     // Email not verified, show OTP input
-    log('📧', 'Email not verified, awaiting OTP')
     setVerificationState("awaiting_otp")
 
   }, [authLoading, isAuthenticated, currentUser, checkVerificationStatus, userWithProfile,
@@ -208,7 +180,7 @@ function VerifyEmailContent() {
    * Handle OTP verification
    */
   const handleVerify = async () => {
-    log('🔐', 'Starting verification', { otp, userId: currentUser?._id })
+    
 
     if (otp.length !== 6) {
       setErrorMessage(t("verification.invalid_code"))
@@ -229,25 +201,25 @@ function VerifyEmailContent() {
         otp
       })
 
-      log('📊', 'Verification result', result)
+      
 
       if (result.success) {
-        log('✅', 'Verification successful')
+        
         setVerificationState("verified")
         toast.success(t("verification.success"))
 
         // Get dashboard path and redirect
         const dashboardPath = getDashboardPath()
-        log('🏠', 'Redirecting to dashboard', { path: dashboardPath })
+        
         handleRedirect(dashboardPath, 2000)
       } else {
-        log('❌', 'Verification failed', { error: result.error })
+        
         setVerificationState("awaiting_otp")
         setErrorMessage(result.error || t("verification.invalid_code"))
         setOtp("")
       }
     } catch (error: any) {
-      log('❌', 'Error during verification', error)
+      
       setVerificationState("error")
       setErrorMessage(t("verification.error"))
     }
@@ -257,7 +229,7 @@ function VerifyEmailContent() {
    * Handle OTP resend
    */
   const handleResend = async () => {
-    log('🔄', 'Resending OTP', { userId: currentUser?._id })
+    
 
     if (!currentUser?._id) {
       setErrorMessage(t("verification.user_not_found"))
@@ -271,7 +243,7 @@ function VerifyEmailContent() {
         userId: currentUser._id
       })
 
-      log('📊', 'Resend result', result)
+      
 
       if (result.success) {
         toast.success(t("verification.code_sent"))
@@ -280,7 +252,7 @@ function VerifyEmailContent() {
       } else {
         // Check if email is already verified
         if (result.error === "Email is already verified") {
-          log('✅', 'Email already verified during resend')
+          
           toast.success(t("verification.email_verified"))
           setVerificationState("already_verified")
 
@@ -291,7 +263,7 @@ function VerifyEmailContent() {
         }
       }
     } catch (error: any) {
-      log('❌', 'Error resending OTP', error)
+      
       setErrorMessage(t("verification.resend_error"))
     }
   }

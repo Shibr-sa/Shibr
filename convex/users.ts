@@ -240,9 +240,7 @@ export const createStoreProfile = mutation({
           otp,
           userName: user.name || args.storeName,
         });
-        console.log("Verification email scheduled for:", user.email);
       } catch (error) {
-        console.error("Failed to schedule verification email:", error);
         // Don't fail profile creation if email fails
       }
     }
@@ -334,9 +332,7 @@ export const createBrandProfile = mutation({
           otp,
           userName: user.name || args.brandName,
         });
-        console.log("Verification email scheduled for:", user.email);
       } catch (error) {
-        console.error("Failed to schedule verification email:", error);
         // Don't fail profile creation if email fails
       }
     }

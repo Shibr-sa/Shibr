@@ -38,11 +38,7 @@ export default function SignInPage() {
     // Only redirect if we're checking auth AND have user profile data
     if (!isCheckingAuth || !userWithProfile) return
 
-    console.log('[signin] Post-login redirect check', {
-      accountType: userWithProfile.accountType,
-      userId: userWithProfile._id,
-      email: userWithProfile.email
-    })
+    // Post-login redirect check
 
     // Small delay to ensure auth state is fully established
     const redirectTimer = setTimeout(() => {
@@ -52,7 +48,7 @@ export default function SignInPage() {
         userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
         userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
 
-      console.log('[signin] Redirecting to dashboard:', dashboardPath)
+      // Redirecting to dashboard
       router.push(dashboardPath)
     }, 500) // 500ms delay to ensure auth is fully established
 

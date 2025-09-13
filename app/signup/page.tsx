@@ -136,9 +136,7 @@ export default function SignUpPage() {
           const delay = Math.min(baseDelay * Math.pow(2, retryCount), 10000) // Cap at 10 seconds
           
           // Wait before attempting profile creation
-          if (retryCount > 0) {
-            console.log(`Retry attempt ${retryCount + 1} after ${delay}ms delay`)
-          }
+          // Wait before retry attempt
           await new Promise(resolve => setTimeout(resolve, delay))
           
           if (accountType === "store-owner") {
@@ -154,10 +152,8 @@ export default function SignUpPage() {
           }
           
           // If we get here, profile creation succeeded
-          console.log("Profile created successfully")
           break
         } catch (error: any) {
-          console.error(`Profile creation attempt ${retryCount + 1} failed:`, error?.message)
           
           // If profile already exists, that's actually fine - it means it was created
           if (error?.message?.includes("already exists")) {

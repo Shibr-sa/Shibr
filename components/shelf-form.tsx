@@ -187,7 +187,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             })
           },
           (error) => {
-            console.log("Location permission denied or error:", error)
+            // Location permission denied or error
             setLocationPermissionDenied(true)
             // Keep default location (Riyadh) if user denies permission
           },
