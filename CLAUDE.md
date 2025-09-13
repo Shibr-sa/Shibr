@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
-- `bun dev` - Start Next.js development server on http://localhost:3000
-- `bunx convex dev` - Start Convex backend server (run alongside `bun dev`)
+- `bun dev` - Start both Next.js (http://localhost:3000) and Convex dev servers
 - `bun run build` - Build production bundle (includes Convex codegen)
 - `bun start` - Start production server
 - `bun run lint` - Run Next.js linter
+- `bunx convex codegen --typecheck disable` - Generate TypeScript types from Convex schema
 
 ### Package Management
 This project uses Bun. Install dependencies with `bun install`.
@@ -17,13 +17,12 @@ This project uses Bun. Install dependencies with `bun install`.
 ### Database (Convex)
 - `bunx convex dev` - Start real-time backend server with hot reload
 - `bunx convex deploy` - Deploy to production
-- `bunx convex codegen` - Generate TypeScript types from schema
 - Dashboard: https://dashboard.convex.dev
 
 ## Architecture Overview
 
 ### Project Context
-Shibr is a smart platform connecting physical and online stores through a shelf rental system, targeting the Saudi Arabian market. The platform enables physical stores to rent out shelf space to online brands.
+شبر is a smart platform connecting physical and online stores through a shelf rental system, targeting the Saudi Arabian market. The platform enables physical stores to rent out shelf space to online brands.
 
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
@@ -48,14 +47,18 @@ Public routes: `/marketplace`, `/signin`, `/signup`
 
 ### Convex Database Schema
 
-The backend uses 11 main tables:
-- **userProfiles** - Multi-role users (store_owner, brand_owner, admin)
+The backend uses the following main tables:
+- **users** - Authentication (managed by Convex Auth)
+- **storeProfiles** - Physical store owner profiles
+- **brandProfiles** - Online brand owner profiles
+- **adminProfiles** - Platform administrators
 - **shelves** - Marketplace listings with location and pricing
 - **rentalRequests** - Booking system with status management
 - **products** - Brand inventory
 - **conversations/messages** - Real-time chat
 - **notifications** - User alerts
 - **payments** - Transactions
+- **platformSettings** - Global platform configuration
 
 ### Internationalization (Critical)
 

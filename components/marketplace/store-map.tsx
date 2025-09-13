@@ -64,14 +64,16 @@ const mapStyles = [
   },
 ]
 
-function StoreMapContent({ 
-  stores, 
+function StoreMapContent({
+  stores,
   selectedStoreId,
-  onStoreSelect 
+  onStoreSelect
 }: StoreMapProps) {
   const { t, direction, language } = useLanguage()
   const [selectedMarker, setSelectedMarker] = useState<Store | null>(null)
   const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   // Get Google Maps API key from environment variable
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
@@ -80,6 +82,49 @@ function StoreMapContent({
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey,
   })
+
+  // Request user's location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          }
+          setUserLocation(location)
+          // If map is already loaded, center it on user location
+          if (map) {
+            map.setCenter(location)
+            map.setZoom(13)
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              setLocationError(t("marketplace.location_permission_denied") || "Location permission denied")
+              break
+            case error.POSITION_UNAVAILABLE:
+              setLocationError(t("marketplace.location_unavailable") || "Location information unavailable")
+              break
+            case error.TIMEOUT:
+              setLocationError(t("marketplace.location_timeout") || "Location request timed out")
+              break
+            default:
+              setLocationError(t("marketplace.location_error") || "An error occurred getting your location")
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      )
+    } else {
+      setLocationError(t("marketplace.geolocation_not_supported") || "Geolocation is not supported by your browser")
+    }
+  }, [map, t])
 
   // Filter stores with valid coordinates
   const storesWithCoordinates = stores.filter(
@@ -92,11 +137,16 @@ function StoreMapContent({
   // Handle map load - only runs once when map is created
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map)
-    
-    // Set initial center
-    map.setCenter(DEFAULT_CENTER)
-    map.setZoom(11)
-  }, []) // Empty deps - only run once
+
+    // Set initial center - use user location if available, otherwise default
+    if (userLocation) {
+      map.setCenter(userLocation)
+      map.setZoom(13)
+    } else {
+      map.setCenter(DEFAULT_CENTER)
+      map.setZoom(11)
+    }
+  }, [userLocation]) // Update when user location is available
 
   const onUnmount = useCallback(() => {
     setMap(null)
@@ -220,6 +270,24 @@ function StoreMapContent({
             gestureHandling: 'greedy', // Allow single finger pan on mobile
           }}
         >
+          {/* User Location Marker */}
+          {userLocation && (
+            <Marker
+              position={userLocation}
+              options={{
+                icon: {
+                  path: window.google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: "#4285F4",
+                  fillOpacity: 1,
+                  strokeColor: "white",
+                  strokeWeight: 2,
+                } as google.maps.Symbol,
+                title: t("marketplace.your_location") || "Your Location"
+              }}
+            />
+          )}
+
           {/* Store Markers */}
           {storesWithCoordinates.map((store, index) => (
             <Marker

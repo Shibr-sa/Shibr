@@ -1198,7 +1198,7 @@ export const getPayments = query({
           status: payment.status === "completed" ? "paid" : "unpaid",
           startDate: rental.startDate,
           endDate: rental.endDate,
-          description: payment.description || `Shelf rental payment from ${brandProfile.brandName} to Shibr Platform`,
+          description: payment.description || `Shelf rental payment from ${brandProfile.brandName} to شبر Platform`,
           transactionReference: payment.transactionReference,
           dueDate: payment.dueDate,
         }

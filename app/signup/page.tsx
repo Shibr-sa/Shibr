@@ -12,17 +12,17 @@ import { Eye, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
-import { signUpSchema, formatSaudiPhoneNumber } from "@/lib/validations/auth"
+import { createSignUpSchema, formatSaudiPhoneNumber } from "@/lib/validations/auth"
 import { z } from "zod"
 
 export default function SignUpPage() {
-  
+
   const [accountType, setAccountType] = useState<"store-owner" | "brand-owner">("store-owner")
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -38,6 +38,7 @@ export default function SignUpPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t, direction, language } = useLanguage()
   const { toast } = useToast()
   const { signIn } = useAuthActions()
@@ -45,9 +46,19 @@ export default function SignUpPage() {
   const createStoreProfile = useMutation(api.users.createStoreProfile)
   const createBrandProfile = useMutation(api.users.createBrandProfile)
 
+  // Get account type from URL parameter
+  useEffect(() => {
+    const typeParam = searchParams.get('type')
+    if (typeParam === 'store-owner' || typeParam === 'brand-owner') {
+      setAccountType(typeParam)
+    }
+    // If no type provided, default to store-owner (don't redirect)
+  }, [searchParams])
+
   const validateField = (fieldName: string, value: any) => {
     try {
       const fieldData = { ...formData, [fieldName]: value, accountType }
+      const signUpSchema = createSignUpSchema(t)
       signUpSchema.partial().parse({ [fieldName]: value })
       setErrors(prev => ({ ...prev, [fieldName]: "" }))
       return true
@@ -64,7 +75,7 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate all fields
     try {
       const validationData = {
@@ -72,7 +83,8 @@ export default function SignUpPage() {
         accountType,
         phoneNumber: formData.phoneNumber ? formatSaudiPhoneNumber(formData.phoneNumber) : '',
       }
-      
+
+      const signUpSchema = createSignUpSchema(t)
       signUpSchema.parse(validationData)
       // If validation passes, clear any existing errors
       setErrors({})
@@ -80,7 +92,7 @@ export default function SignUpPage() {
       // Check if it's a Zod error by checking for the issues property
       if (error && error.issues && Array.isArray(error.issues)) {
         const newErrors: Record<string, string> = {}
-        
+
         // Take only the first error for each field
         error.issues.forEach((err: any) => {
           if (err.path && err.path[0]) {
@@ -91,7 +103,7 @@ export default function SignUpPage() {
             }
           }
         })
-        
+
         setErrors(newErrors)
       }
       // Always return on validation error
@@ -252,26 +264,42 @@ export default function SignUpPage() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Account Type Selection */}
-              <div className="space-y-3">
-                <Label>{t("auth.account_type")}</Label>
-                <ToggleGroup
-                  type="single"
-                  value={accountType}
-                  onValueChange={(value: "store-owner" | "brand-owner") => {
-                    if (value) setAccountType(value)
-                  }}
-                  className="grid grid-cols-2 gap-2"
-                  variant="outline"
-                >
-                  <ToggleGroupItem value="store-owner" variant="outline">
-                    {t("auth.im_store_owner")}
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="brand-owner" variant="outline">
-                    {t("auth.im_brand_owner")}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+              {/* Show selected account type if coming from select-type page */}
+              {searchParams.get('type') ? (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground mb-1">{t("auth.registering_as")}</p>
+                  <p className="font-medium">
+                    {accountType === "store-owner" ? t("auth.store_owner") : t("auth.brand_owner")}
+                  </p>
+                  <Link
+                    href="/signup/select-type"
+                    className="text-xs text-primary hover:underline mt-2 inline-block"
+                  >
+                    {t("auth.change_account_type")}
+                  </Link>
+                </div>
+              ) : (
+                /* Show inline account type selection if accessed directly */
+                <div className="space-y-3">
+                  <Label>{t("auth.account_type")}</Label>
+                  <ToggleGroup
+                    type="single"
+                    value={accountType}
+                    onValueChange={(value: "store-owner" | "brand-owner") => {
+                      if (value) setAccountType(value)
+                    }}
+                    className="grid grid-cols-2 gap-2"
+                    variant="outline"
+                  >
+                    <ToggleGroupItem value="store-owner" variant="outline">
+                      {t("auth.im_store_owner")}
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="brand-owner" variant="outline">
+                      {t("auth.im_brand_owner")}
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              )}
 
               {/* Name Fields - Side by Side */}
               <div className="grid gap-4 sm:grid-cols-2">

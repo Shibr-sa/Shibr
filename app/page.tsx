@@ -10,14 +10,48 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { SharedFooter } from "@/components/shared-footer"
 
 // FAQ items will be created dynamically using translations
 
-export default function ShibrLandingPage() {
+export default function شبرLandingPage() {
   const { t, direction } = useLanguage()
   const [activeServiceType, setActiveServiceType] = useState<"stores" | "centers">("stores")
-  
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Handle smooth scrolling for hash links
+  useEffect(() => {
+    const handleSmoothScroll = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const href = target.getAttribute('href')
+
+      if (href && href.startsWith('#')) {
+        e.preventDefault()
+        const element = document.querySelector(href)
+        if (element) {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          })
+        }
+      }
+    }
+
+    // Add event listener to all hash links
+    const links = document.querySelectorAll('a[href^="#"]')
+    links.forEach(link => {
+      link.addEventListener('click', handleSmoothScroll as any)
+    })
+
+    // Cleanup
+    return () => {
+      links.forEach(link => {
+        link.removeEventListener('click', handleSmoothScroll as any)
+      })
+    }
+  }, [])
+
   // Create FAQ items dynamically from translations
   const faqItems = [
     { question: t("faq.q1"), answer: t("faq.a1") },
@@ -47,18 +81,18 @@ export default function ShibrLandingPage() {
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.home")}
             </Link>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/signup/select-type" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.renter_store")}
-            </a>
+            </Link>
             <Link href="/marketplace" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.stores")}
             </Link>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="#why-choose" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.why_us_nav")}
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            </Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">
               {t("nav.contact")}
-            </a>
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -67,75 +101,126 @@ export default function ShibrLandingPage() {
             <Button size="sm" asChild>
               <Link href="/signin">{t("nav.signin")}</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
               <Menu className="h-5 w-5" />
             </Button>
           </div>
         </div>
       </header>
 
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b bg-background">
+          <nav className="container py-4 space-y-2">
+            <Link
+              href="/"
+              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("nav.home")}
+            </Link>
+            <Link
+              href="/signup/select-type"
+              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("nav.renter_store")}
+            </Link>
+            <Link
+              href="/marketplace"
+              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("nav.stores")}
+            </Link>
+            <Link
+              href="#why-choose"
+              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("nav.why_us_nav")}
+            </Link>
+            <Link
+              href="/contact"
+              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("nav.contact")}
+            </Link>
+          </nav>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <section className="container py-16 md:py-16">
-        <div className="grid lg:grid-cols-[2fr_1fr] gap-16 items-center">
+      <section className="container py-20 md:py-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="space-y-8">
             <div className="space-y-6">
-              <h1 className="text-4xl font-bold tracking-tight lg:text-5xl text-start">
+              <h1 className="text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl text-start">
                 {t("hero.title")} <span className="text-primary">{t("hero.highlight")}</span>
               </h1>
 
-              <p className="text-xl text-muted-foreground leading-7 max-w-2xl text-start">
+              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl text-start">
                 {t("hero.description")}
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-start">
-              <Link href="/signup">
-                <Button size="lg" className="text-base">
+              <Link href="/signup/select-type">
+                <Button size="lg" className="text-base px-6 py-5">
                   {t("hero.start_now")}
                 </Button>
               </Link>
             </div>
           </div>
 
-          <div className="relative max-w-md mx-auto">
-            <Image
-              src="/hero_image.png"
-              alt={`${t("hero.title")} ${t("hero.highlight")}`}
-              width={600}
-              height={400}
-              className="w-full h-auto rounded-lg object-cover"
-              priority
-            />
+          <div className="relative w-full h-full">
+            <div className="relative aspect-[4/3] lg:aspect-square w-full overflow-hidden rounded-2xl shadow-2xl">
+              <Image
+                src="/hero_image.png"
+                alt={`${t("hero.title")} ${t("hero.highlight")}`}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                className="object-cover object-center transition-transform duration-500"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Shelfy Section */}
+      {/* شبر Section */}
       <section className="bg-muted py-16">
         <div className="container text-center">
           <div className="space-y-6 mb-12">
             <h2 className="text-3xl font-medium tracking-tight">
-              {t("shelfy.title")} <span className="text-primary">{t("shelfy.highlight")}</span> {t("shelfy.subtitle")}
+              {t("shibr.title")} <span className="text-primary">{t("shibr.highlight")}</span> {t("shibr.subtitle")}
             </h2>
-            <p className="text-xl text-muted-foreground leading-7">{t("shelfy.description")}</p>
+            <p className="text-xl text-muted-foreground leading-7">{t("shibr.description")}</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="text-base"
               variant={activeServiceType === "stores" ? "default" : "outline"}
               onClick={() => setActiveServiceType("stores")}
             >
-              {t("shelfy.service_stores")}
+              {t("shibr.service_stores")}
             </Button>
-            <Button 
+            <Button
               variant={activeServiceType === "centers" ? "default" : "outline"}
-              size="lg" 
+              size="lg"
               className="text-base border-gray-300"
               onClick={() => setActiveServiceType("centers")}
             >
-              {t("shelfy.commercial_centers")}
+              {t("shibr.commercial_centers")}
             </Button>
           </div>
 
@@ -147,9 +232,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <UserPlus className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.smart_service")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.smart_service")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.smart_service_desc")}
+                      {t("shibr.smart_service_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -159,9 +244,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Settings className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.fast_service")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.fast_service")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.fast_service_desc")}
+                      {t("shibr.fast_service_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -171,9 +256,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <DollarSign className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.integrated_service")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.integrated_service")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.integrated_service_desc")}
+                      {t("shibr.integrated_service_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -185,9 +270,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Search className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.centers.premium_locations")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.premium_locations")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.centers.premium_locations_desc")}
+                      {t("shibr.centers.premium_locations_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -197,9 +282,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <CalendarCheck className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.centers.high_traffic")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.high_traffic")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.centers.high_traffic_desc")}
+                      {t("shibr.centers.high_traffic_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -209,9 +294,9 @@ export default function ShibrLandingPage() {
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <BarChart3 className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shelfy.centers.targeted_audience")}</h3>
+                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.targeted_audience")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("shelfy.centers.targeted_audience_desc")}
+                      {t("shibr.centers.targeted_audience_desc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -274,8 +359,8 @@ export default function ShibrLandingPage() {
         </div>
       </section>
 
-      {/* Why Choose Shelfy Section */}
-      <section className="bg-muted py-16">
+      {/* Why Choose شبر Section */}
+      <section id="why-choose" className="bg-muted py-16">
         <div className="container">
           <div className="grid lg:grid-cols-[1fr_1fr] gap-16 items-center">
             {/* Content Section */}
@@ -385,71 +470,7 @@ export default function ShibrLandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-primary text-primary-foreground">
-        <div className="container py-12">
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/logo.svg"
-                  alt={t("common.logo_alt")}
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 brightness-0 invert"
-                />
-                <span className="text-lg font-medium">{t("common.shibr")}</span>
-              </div>
-              <p className="text-sm text-primary-foreground/80 text-start">{t("footer.description")}</p>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-base font-medium text-start">{t("footer.company")}</h4>
-              <ul className="space-y-3 text-sm text-primary-foreground/80">
-                <li>
-                  <Link href="/signin" className="hover:text-primary-foreground text-start block">
-                    {t("footer.dashboard")}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/marketplace" className="hover:text-primary-foreground text-start block">
-                    {t("footer.available_stores")}
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-base font-medium text-start">{t("footer.customer_service")}</h4>
-              <ul className="space-y-3 text-sm text-primary-foreground/80">
-                <li>
-                  <Link href="/" className="hover:text-primary-foreground text-start block">
-                    {t("footer.home")}
-                  </Link>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-primary-foreground text-start block">
-                    {t("footer.contact_us")}
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-primary-foreground text-start block">
-                    {t("footer.why_us")}
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-          </div>
-
-          <Separator className="bg-primary-foreground/20 mb-8" />
-
-          <div className="text-center">
-            <p className="text-sm text-primary-foreground/60">
-              © 2025 {t("common.shibr")}. {t("footer.rights")}.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SharedFooter />
     </div>
   )
 }

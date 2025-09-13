@@ -1,30 +1,50 @@
-# Recreate Figma UI
+# شبر
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/ghamdidev-9088s-projects/v0-recreate-figma-ui)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/jKEDJMoGMre)
+A smart platform connecting physical and online stores through a shelf rental system, targeting the Saudi Arabian market.
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+شبر enables physical stores to rent out shelf space to online brands, creating a seamless bridge between digital and physical retail.
 
-## Deployment
+## Tech Stack
 
-Your project is live at:
+- **Framework**: Next.js 15 with App Router
+- **Runtime**: Bun
+- **Database**: Convex (real-time backend)
+- **UI**: shadcn/ui components with Tailwind CSS
+- **Authentication**: Convex Auth
+- **Languages**: Arabic & English with RTL support
 
-**[https://vercel.com/ghamdidev-9088s-projects/v0-recreate-figma-ui](https://vercel.com/ghamdidev-9088s-projects/v0-recreate-figma-ui)**
+## Getting Started
 
-## Build your app
+### Prerequisites
+- Bun installed on your system
+- Convex account for backend services
 
-Continue building your app on:
+### Installation
 
-**[https://v0.dev/chat/projects/jKEDJMoGMre](https://v0.dev/chat/projects/jKEDJMoGMre)**
+```bash
+bun install
+```
 
-## How It Works
+### Development
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+```bash
+bun run dev
+```
+
+This starts both the Next.js development server (http://localhost:3000) and Convex backend.
+
+### Build
+
+```bash
+bun run build
+```
+
+## Features
+
+- **Multi-role Dashboard**: Separate dashboards for store owners, brand owners, and admins
+- **Real-time Chat**: Built-in messaging between stores and brands
+- **Marketplace**: Browse and rent available shelf spaces
+- **Bilingual Support**: Full Arabic and English interface with RTL/LTR switching
+- **Location-based Search**: Find shelves near specific locations

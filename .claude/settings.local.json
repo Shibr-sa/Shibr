@@ -5,7 +5,14 @@
       "WebSearch",
       "WebFetch(domain:labs.convex.dev)",
       "WebFetch(domain:docs.convex.dev)",
-      "WebFetch(domain:www.franciscomoretti.com)"
+      "WebFetch(domain:www.franciscomoretti.com)",
+      "Bash(bunx tsc:*)",
+      "Bash(awk:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(sed:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

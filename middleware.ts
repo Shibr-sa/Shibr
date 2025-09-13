@@ -9,12 +9,14 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/signin",
   "/signup",
+  "/signup/select-type",
   "/marketplace",
   "/marketplace/(.*)",
   "/forgot-password",
   "/reset-password",
   "/terms",
   "/privacy",
+  "/contact",
   "/api/auth", // Auth callback route
   "/api/auth/(.*)"
 ]);

@@ -254,7 +254,7 @@ export const renewRental = mutation({
       selectedProducts: rental.selectedProducts,
       monthlyPrice: rental.monthlyPrice,
       totalAmount: newTotalPrice,
-      storeCommission: totalCommission, // Store + Shibr platform commission
+      storeCommission: totalCommission, // Store + شبر platform commission
       status: "pending",
       conversationId: rental.conversationId,
     })

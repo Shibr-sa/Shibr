@@ -61,7 +61,7 @@ export function PaymentTransferDialog({
   // Admin bank account details (in production, fetch from settings)
   const bankDetails = {
     bankName: language === "ar" ? "بنك الراجحي" : "Al Rajhi Bank",
-    accountName: language === "ar" ? "منصة شبر المحدودة" : "Shibr Platform Ltd",
+    accountName: language === "ar" ? "منصة شبر المحدودة" : "شبر Platform Ltd",
     iban: "SA1234567890123456789012",
     amount: request?.monthlyPrice || 0,
   }

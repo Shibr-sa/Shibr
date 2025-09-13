@@ -26,7 +26,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Shibr",
+  title: "شبر",
   description: "منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية",
   metadataBase: new URL('https://shibr.sa'),
   icons: {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   manifest: '/site.webmanifest',
   openGraph: {
-    title: 'Shibr - منصة ذكية تربط بين المتاجر',
+    title: 'شبر - منصة ذكية تربط بين المتاجر',
     description: 'منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية',
     type: 'website',
     locale: 'ar_SA',
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
         url: '/logo.svg',
         width: 512,
         height: 512,
-        alt: 'Shibr Logo',
+        alt: 'شعار شبر',
       },
     ],
   },
   twitter: {
     card: 'summary',
-    title: 'Shibr',
+    title: 'شبر',
     description: 'منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية',
     images: ['/logo.svg'],
   },

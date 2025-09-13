@@ -228,7 +228,7 @@ export default function SignInPage() {
             <div className="text-center pt-4">
               <p className="text-sm text-muted-foreground">
                 {t("auth.dont_have_account")}{" "}
-                <Link href="/signup" className="text-primary hover:underline">
+                <Link href="/signup/select-type" className="text-primary hover:underline">
                   {t("auth.signup")}
                 </Link>
               </p>

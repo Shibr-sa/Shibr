@@ -96,7 +96,7 @@ export const createRentalRequest = mutation({
         startDate: new Date(args.startDate).getTime(),
         endDate: new Date(args.endDate).getTime(),
         selectedProducts: selectedProducts,
-        storeCommission: totalCommission, // Store + Shibr platform commission
+        storeCommission: totalCommission, // Store + شبر platform commission
       })
       
       // Send a system message in the conversation about the update
@@ -164,7 +164,7 @@ export const createRentalRequest = mutation({
       selectedProducts: selectedProducts || [],
       monthlyPrice: shelf.monthlyPrice,
       totalAmount: totalPrice,
-      storeCommission: totalCommission, // Store + Shibr platform commission
+      storeCommission: totalCommission, // Store + شبر platform commission
       status: "pending",
       conversationId: args.conversationId,
     })

@@ -63,6 +63,7 @@ interface Store {
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
   const { t } = useLanguage()
+  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false)
 
   // Search and filter states
   const [searchInput, setSearchInput] = useState("")
@@ -206,8 +207,31 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
     }
   }, [])
 
+  // Request location permission on mount
+  useEffect(() => {
+    if (!locationPermissionAsked && navigator.geolocation) {
+      setLocationPermissionAsked(true)
+      // Just trigger the permission request, the map component will handle the result
+      navigator.geolocation.getCurrentPosition(
+        () => {}, // Success callback - handled in map
+        () => {}, // Error callback - handled in map
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      )
+    }
+  }, [locationPermissionAsked])
+
   return (
     <div className="space-y-6 pb-8">
+      {/* Location Permission Alert */}
+      {!locationPermissionAsked && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <MapPin className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            {t("marketplace.location_prompt") || "Allow location access to see stores near you and get directions"}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Search Filters */}
       <Card className="relative">
         {isFilterLoading && (

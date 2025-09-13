@@ -1,6 +1,6 @@
 # Convex Backend
 
-This directory contains the Convex backend for the Shibr platform.
+This directory contains the Convex backend for the شبر platform.
 
 ## Setup
 
