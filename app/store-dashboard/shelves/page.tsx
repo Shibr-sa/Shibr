@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Inbox } from "lucide-react"
+import { Search, Plus, Package, BarChart3, DollarSign, Eye, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Inbox, AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { formatCurrency } from "@/lib/formatters"
 import {
   Pagination,
@@ -218,6 +219,25 @@ export default function StoreDashboardShelvesPage() {
               </TabsList>
             </Tabs>
       </div>
+
+      {/* Profile Completion Warning */}
+      {!storeLoading && !isStoreDataComplete && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/store-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Statistics Cards Grid */}
       <div className="grid gap-4 md:grid-cols-3">

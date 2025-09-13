@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,9 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Save, Plus, Trash2, Edit2, Eye } from "lucide-react"
+import { Camera, Save, Plus, Trash2, Edit2, Eye, Upload, CheckCircle, AlertCircle, Lock, Info } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import { validateSaudiIBAN, SAUDI_BANKS, formatIBAN } from "@/lib/saudi-iban-validator"
+import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -22,13 +26,18 @@ import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
 import { useStoreData } from "@/contexts/store-data-context"
 import { ImageCropper } from "@/components/image-cropper"
+import { ProfileCompletionProgress } from "@/components/profile-completion-progress"
 
 export default function StoreDashboardSettingsPage() {
-  const { t, direction } = useLanguage()
+  const { t, direction, language } = useLanguage()
   const { user } = useCurrentUser()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const { userData: storeUserData } = useStoreData() // Get userData from context
-  const [activeTab, setActiveTab] = useState("general")
+
+  // Get initial tab from URL or default to "general"
+  const initialTab = searchParams.get("tab") || "general"
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [isDefault, setIsDefault] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -40,6 +49,7 @@ export default function StoreDashboardSettingsPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
+  const [isStoreDataLocked, setIsStoreDataLocked] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
   
   // Form states for General tab
@@ -58,10 +68,14 @@ export default function StoreDashboardSettingsPage() {
   const [address, setAddress] = useState("")
   
   // Form states for Payment dialog
-  const [bankName, setBankName] = useState("")
+  const [bankCode, setBankCode] = useState("")
   const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
+  const [ibanValidation, setIbanValidation] = useState<{isValid: boolean; error?: string; bankName?: string}>({isValid: false})
+  const [ibanCertificateFile, setIbanCertificateFile] = useState<File | null>(null)
+  const [ibanCertificateUrl, setIbanCertificateUrl] = useState<string | null>(null)
+  const certificateInputRef = useRef<HTMLInputElement>(null)
   
   // Convex mutations
   const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
@@ -78,6 +92,14 @@ export default function StoreDashboardSettingsPage() {
   // TODO: Create a query for store owners to fetch their payment records
   const paymentRecords = null // Temporarily disabled until proper query is created
   
+  // Update tab when URL parameter changes
+  useEffect(() => {
+    const tabParam = searchParams.get("tab")
+    if (tabParam && ["general", "store-data", "payment", "security"].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
+
   // Load user data when available from context - only initialize once
   useEffect(() => {
     if (storeUserData && !hasInitialized) {
@@ -98,6 +120,11 @@ export default function StoreDashboardSettingsPage() {
       setArea(profile?.storeLocation?.area || "")
       setAddress(profile?.storeLocation?.address || "")
       setProfileImageUrl(storeUserData.image || null)
+
+      // Check if store data is already submitted (locked)
+      if (profile?.storeName && profile?.businessCategory && profile?.commercialRegisterNumber) {
+        setIsStoreDataLocked(true)
+      }
       
       // Handle initial document URL loading
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
@@ -205,11 +232,15 @@ export default function StoreDashboardSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Profile Completion Progress */}
+      <ProfileCompletionProgress showDetails={true} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
           <TabsTrigger value="payment">{t("settings.tabs.payment")}</TabsTrigger>
+          <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
@@ -262,92 +293,23 @@ export default function StoreDashboardSettingsPage() {
 
               <Separator />
 
-              {/* Contact Information */}
+              {/* Basic Information - Read Only */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{t("settings.general.contact_info")}</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerName" className="block">{t("settings.general.owner_name")}</Label>
-                    <Input 
-                      id="ownerName" 
+                <h3 className="text-lg font-semibold">{t("settings.general.basic_info")}</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName" className="block">{t("settings.general.owner_name")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="ownerName"
                       value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
-                      className="" 
+                      disabled
+                      className="bg-muted"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="block">{t("settings.general.phone_number")}</Label>
-                    <Input 
-                      id="phoneNumber" 
-                      type="tel" 
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+966 5X XXX XXXX" 
-                      className="" 
-                       
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="block">{t("settings.general.email")}</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="" 
-                       
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="block">{t("settings.general.password")}</Label>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••" 
-                      className="" 
-                    />
+                    <span className="text-xs text-muted-foreground">{t("settings.general.cannot_change")}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button 
-                  className="gap-2"
-                  disabled={isLoading || !user?.id}
-                  onClick={async () => {
-                    if (!user?.id) return
-                    
-                    setIsLoading(true)
-                    try {
-                      const updateData: any = {}
-                      if (ownerName) updateData.name = ownerName
-                      if (phoneNumber) updateData.phone = phoneNumber
-                      if (email) updateData.email = email
-                      if (password) updateData.password = password
-                      
-                      await updateGeneralSettings(updateData)
-                      
-                      toast({
-                        title: t("settings.general.success"),
-                        description: t("settings.general.success_message"),
-                      })
-                    } catch (error) {
-                      toast({
-                        title: t("settings.general.error"),
-                        description: t("settings.general.error_message"),
-                        variant: "destructive",
-                      })
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
-                >
-                  <Save className="h-4 w-4" />
-                  {isLoading ? t("settings.general.saving") : t("settings.general.save_changes")}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -356,30 +318,49 @@ export default function StoreDashboardSettingsPage() {
         <TabsContent value="store-data" className="space-y-6">
           <Card>
             <CardContent className="space-y-6 pt-6">
+              {/* Warning Message for Locked Data */}
+              {isStoreDataLocked && (
+                <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+                  <Info className="h-4 w-4 text-orange-600" />
+                  <AlertTitle className="text-orange-800 dark:text-orange-400">
+                    {t("settings.store_data.locked_title")}
+                  </AlertTitle>
+                  <AlertDescription className="text-orange-700 dark:text-orange-300">
+                    {t("settings.store_data.locked_description")}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-4">
                 {/* Store Name and Type */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="storeName" className="block">
                       {t("settings.store_data.store_name")} *
+                      {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                     </Label>
-                    <Input 
-                      id="storeName" 
+                    <Input
+                      id="storeName"
                       value={storeName}
-                      onChange={(e) => setStoreName(e.target.value)}
+                      onChange={(e) => !isStoreDataLocked && setStoreName(e.target.value)}
                       placeholder={t("settings.store_data.store_name_placeholder")}
+                      disabled={isStoreDataLocked}
+                      className={isStoreDataLocked ? "bg-muted" : ""}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="businessCategory" className="block">
                       {t("settings.store_data.store_type")} *
+                      {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                     </Label>
-                    <Input 
-                      id="businessCategory" 
+                    <Input
+                      id="businessCategory"
                       value={businessCategory}
-                      onChange={(e) => setBusinessCategory(e.target.value)}
+                      onChange={(e) => !isStoreDataLocked && setBusinessCategory(e.target.value)}
                       placeholder={t("settings.store_data.store_type_placeholder")}
+                      disabled={isStoreDataLocked}
+                      className={isStoreDataLocked ? "bg-muted" : ""}
                       required
                     />
                   </div>
@@ -389,26 +370,39 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="website" className="block">
                     {t("settings.store_data.website")}
+                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
-                  <Input 
-                    id="website" 
-                    type="url" 
+                  <Input
+                    id="website"
+                    type="url"
                     value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder={t("settings.store_data.website_placeholder")} 
-                                     />
+                    onChange={(e) => !isStoreDataLocked && setWebsite(e.target.value)}
+                    placeholder={t("settings.store_data.website_placeholder")}
+                    disabled={isStoreDataLocked}
+                    className={isStoreDataLocked ? "bg-muted" : ""}
+                  />
                 </div>
 
                 {/* Commercial Registration Number */}
                 <div className="space-y-2">
                   <Label htmlFor="commercialRegisterNumber" className="block">
                     {t("settings.store_data.commercial_reg")} *
+                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
-                  <Input 
-                    id="commercialRegisterNumber" 
+                  <Input
+                    id="commercialRegisterNumber"
                     value={commercialRegisterNumber}
-                    onChange={(e) => setCommercialRegisterNumber(e.target.value)}
-                    placeholder={t("settings.store_data.commercial_reg_placeholder")} 
+                    onChange={(e) => {
+                      if (!isStoreDataLocked) {
+                        const value = e.target.value.replace(/[^0-9]/g, '')
+                        setCommercialRegisterNumber(value)
+                      }
+                    }}
+                    placeholder={t("settings.store_data.commercial_reg_placeholder")}
+                    disabled={isStoreDataLocked}
+                    className={isStoreDataLocked ? "bg-muted" : ""}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                     required
                   />
                 </div>
@@ -417,6 +411,7 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-2">
                   <Label className="block">
                     {t("settings.store_data.commercial_register_document")} *
+                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
                     {documentUrl ? (
@@ -447,23 +442,25 @@ export default function StoreDashboardSettingsPage() {
                             <Eye className="h-4 w-4" />
                             {t("settings.store_data.preview_document")}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setDocumentUrl(null)
-                              setPendingDocumentFile(null)
-                              if (documentInputRef.current) {
-                                documentInputRef.current.value = ''
-                              }
-                            }}
-                          >
-                            {t("settings.store_data.remove_document")}
-                          </Button>
+                          {!isStoreDataLocked && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setDocumentUrl(null)
+                                setPendingDocumentFile(null)
+                                if (documentInputRef.current) {
+                                  documentInputRef.current.value = ''
+                                }
+                              }}
+                            >
+                              {t("settings.store_data.remove_document")}
+                            </Button>
+                          )}
                         </div>
                       </div>
-                    ) : (
+                    ) : !isStoreDataLocked ? (
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <input
                           ref={documentInputRef}
@@ -473,7 +470,7 @@ export default function StoreDashboardSettingsPage() {
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
-                            
+
                             if (file.size > 10 * 1024 * 1024) {
                               toast({
                                 title: t("settings.general.error"),
@@ -482,13 +479,13 @@ export default function StoreDashboardSettingsPage() {
                               })
                               return
                             }
-                            
+
                             // Just store the file locally, don't upload yet
                             setPendingDocumentFile(file)
                             // Create a local URL for preview
                             const localUrl = URL.createObjectURL(file)
                             setDocumentUrl(localUrl)
-                            
+
                             toast({
                               title: t("settings.general.info"),
                               description: t("settings.store_data.document_ready_to_save"),
@@ -516,14 +513,20 @@ export default function StoreDashboardSettingsPage() {
                           {isLoading ? t("settings.general.uploading") : t("settings.store_data.choose_file")}
                         </Button>
                       </div>
+                    ) : (
+                      <div className="flex items-center justify-center p-6 text-muted-foreground">
+                        <Lock className="h-5 w-5 me-2" />
+                        <span className="text-sm">{t("settings.store_data.document_locked")}</span>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <Button 
+              {/* Save Button - Hide when data is locked */}
+              {!isStoreDataLocked && (
+                <div className="flex justify-end">
+                  <Button 
                   className="gap-2"
                   disabled={isLoading || !user?.id}
                   onClick={async () => {
@@ -632,8 +635,9 @@ export default function StoreDashboardSettingsPage() {
                 >
                   <Save className="h-4 w-4" />
                   {isLoading ? t("settings.store_data.saving") : t("settings.store_data.save_changes")}
-                </Button>
-              </div>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -781,6 +785,126 @@ export default function StoreDashboardSettingsPage() {
             </div>
           </div>
         </TabsContent>
+
+        {/* Security Settings Tab */}
+        <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("settings.security.title")}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t("settings.security.description")}</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Email Change Section */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentEmail" className="block">{t("settings.security.current_email")}</Label>
+                  <Input
+                    id="currentEmail"
+                    type="email"
+                    value={storeUserData?.email || email}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newEmail" className="block">{t("settings.security.new_email")}</Label>
+                  <Input
+                    id="newEmail"
+                    type="email"
+                    placeholder={t("settings.security.new_email_placeholder")}
+                    className=""
+                  />
+                  <p className="text-xs text-muted-foreground">{t("settings.security.email_verification_required")}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Phone Number Change Section */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPhone" className="block">{t("settings.security.current_phone")}</Label>
+                  <Input
+                    id="currentPhone"
+                    type="tel"
+                    value={storeUserData?.phone || phoneNumber}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPhone" className="block">{t("settings.security.new_phone")}</Label>
+                  <Input
+                    id="newPhone"
+                    type="tel"
+                    placeholder="+966 5X XXX XXXX"
+                    className=""
+                  />
+                  <p className="text-xs text-muted-foreground">{t("settings.security.sms_verification_required")}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Password Change Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">{t("settings.security.change_password")}</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword" className="block">{t("settings.security.current_password")}</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className=""
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword" className="block">{t("settings.security.new_password")}</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className=""
+                    />
+                    <p className="text-xs text-muted-foreground">{t("settings.security.password_requirements")}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="block">{t("settings.security.confirm_password")}</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className=""
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  disabled={isLoading}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  className="gap-2"
+                  disabled={isLoading}
+                  onClick={() => {
+                    toast({
+                      title: t("settings.security.verification_required"),
+                      description: t("settings.security.verification_required_desc"),
+                    })
+                  }}
+                >
+                  <Save className="h-4 w-4" />
+                  {t("settings.security.save_changes")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Add Payment Method Dialog */}
@@ -796,18 +920,23 @@ export default function StoreDashboardSettingsPage() {
             {/* Bank Selection */}
             <div className="space-y-2">
               <Label htmlFor="bank" className="block">
-                {t("settings.payment.dialog.select_bank")}
+                {t("settings.payment.dialog.select_bank")} *
               </Label>
-              <Select value={bankName} onValueChange={setBankName}>
+              <Select value={bankCode} onValueChange={setBankCode}>
                 <SelectTrigger id="bank" className="w-full">
-                  <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")} />
+                  <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")}>
+                    {bankCode && (() => {
+                      const selectedBank = SAUDI_BANKS.find(b => b.code === bankCode)
+                      return selectedBank ? (language === 'ar' ? selectedBank.nameAr : selectedBank.name) : ''
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Al-Rajhi Bank">{t("settings.payment.banks.alrajhi")}</SelectItem>
-                  <SelectItem value="National Commercial Bank">{t("settings.payment.banks.ncb")}</SelectItem>
-                  <SelectItem value="SABB">{t("settings.payment.banks.sabb")}</SelectItem>
-                  <SelectItem value="Riyad Bank">{t("settings.payment.banks.riyad")}</SelectItem>
-                  <SelectItem value="Alinma Bank">{t("settings.payment.banks.alinma")}</SelectItem>
+                <SelectContent className="max-h-[300px]">
+                  {SAUDI_BANKS.map((bank) => (
+                    <SelectItem key={bank.code} value={bank.code}>
+                      {language === 'ar' ? bank.nameAr : bank.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -834,24 +963,179 @@ export default function StoreDashboardSettingsPage() {
               <Input
                 id="accountNumber"
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '')
+                  setAccountNumber(value)
+                }}
                 placeholder={t("settings.payment.dialog.account_number_placeholder")}
                 className="w-full"
-                             />
+                pattern="[0-9]*"
+                inputMode="numeric"
+              />
             </div>
 
             {/* IBAN */}
             <div className="space-y-2">
               <Label htmlFor="iban" className="block">
-                {t("settings.payment.dialog.iban")}
+                {t("settings.payment.dialog.iban")} *
               </Label>
-              <Input
-                id="iban"
-                value={iban}
-                onChange={(e) => setIban(e.target.value)}
-                placeholder={t("settings.payment.dialog.iban_placeholder")}
-                className="w-full"
-                             />
+              <div className="relative">
+                <Input
+                  id="iban"
+                  value={iban}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase()
+                    setIban(value)
+                    // Validate IBAN as user types
+                    if (value.length >= 2) {
+                      const validation = validateSaudiIBAN(value)
+                      setIbanValidation(validation)
+                      // Auto-select bank if IBAN is valid
+                      if (validation.isValid && validation.bankCode) {
+                        setBankCode(validation.bankCode)
+                      }
+                    } else {
+                      setIbanValidation({isValid: false})
+                    }
+                  }}
+                  placeholder="SA00 0000 0000 0000 0000 0000"
+                  className={cn(
+                    "w-full pe-10",
+                    iban.length > 10 && (ibanValidation.isValid ? "border-green-500" : "border-red-500")
+                  )}
+                  maxLength={29} // SA + 22 digits + 6 spaces
+                />
+                {iban.length > 10 && (
+                  <div className="absolute end-2 top-1/2 -translate-y-1/2">
+                    {ibanValidation.isValid ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {iban.length > 2 && !ibanValidation.isValid && ibanValidation.error && (
+                <p className="text-xs text-red-500">
+                  {(() => {
+                    switch(ibanValidation.error) {
+                      case 'IBAN must start with SA for Saudi Arabia':
+                        return language === 'ar' ? 'يجب أن يبدأ رقم الآيبان بـ SA للمملكة العربية السعودية' : 'IBAN must start with SA for Saudi Arabia'
+                      case 'Saudi IBAN must be exactly 24 characters':
+                        return language === 'ar' ? 'يجب أن يكون رقم الآيبان السعودي 24 حرفًا بالضبط' : 'Saudi IBAN must be exactly 24 characters'
+                      case 'IBAN must contain only digits after SA':
+                        return language === 'ar' ? 'يجب أن يحتوي رقم الآيبان على أرقام فقط بعد SA' : 'IBAN must contain only digits after SA'
+                      case 'Invalid bank code in IBAN':
+                        return language === 'ar' ? 'رمز البنك غير صحيح في رقم الآيبان' : 'Invalid bank code in IBAN'
+                      case 'Invalid IBAN checksum':
+                        return language === 'ar' ? 'رقم الآيبان غير صحيح' : 'Invalid IBAN checksum'
+                      default:
+                        return ibanValidation.error
+                    }
+                  })()}
+                </p>
+              )}
+              {ibanValidation.isValid && ibanValidation.bankName && (
+                <p className="text-xs text-green-600">
+                  {t("settings.payment.dialog.detected_bank")}: {ibanValidation.bankName}
+                </p>
+              )}
+            </div>
+
+            {/* IBAN Certificate Upload */}
+            <div className="space-y-2">
+              <Label className="block">
+                {t("settings.payment.dialog.iban_certificate")} *
+              </Label>
+              <div className="border-2 border-dashed border-muted rounded-lg p-4">
+                {ibanCertificateUrl ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{t("settings.payment.dialog.certificate_uploaded")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ibanCertificateFile?.name || t("settings.payment.dialog.certificate_ready")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (ibanCertificateUrl) {
+                            window.open(ibanCertificateUrl, '_blank')
+                          }
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setIbanCertificateUrl(null)
+                          setIbanCertificateFile(null)
+                          if (certificateInputRef.current) {
+                            certificateInputRef.current.value = ''
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <input
+                      ref={certificateInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast({
+                            title: t("settings.general.error"),
+                            description: t("settings.payment.dialog.file_too_large"),
+                            variant: "destructive",
+                          })
+                          return
+                        }
+
+                        setIbanCertificateFile(file)
+                        const localUrl = URL.createObjectURL(file)
+                        setIbanCertificateUrl(localUrl)
+                      }}
+                    />
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">{t("settings.payment.dialog.upload_certificate")}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("settings.payment.dialog.certificate_formats")}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => certificateInputRef.current?.click()}
+                    >
+                      {t("settings.payment.dialog.choose_file")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.payment.dialog.certificate_hint")}
+              </p>
             </div>
 
             {/* Virtual Checkbox */}
@@ -877,13 +1161,13 @@ export default function StoreDashboardSettingsPage() {
             >
               {t("settings.payment.dialog.cancel")}
             </Button>
-            <Button 
+            <Button
               disabled={isLoading || !user?.id}
               onClick={async () => {
                 if (!user?.id) return
-                
+
                 // Validate required fields
-                if (!bankName || !accountHolderName || !accountNumber || !iban) {
+                if (!bankCode || !accountHolderName || !accountNumber || !iban) {
                   toast({
                     title: t("settings.payment.validation_error"),
                     description: t("settings.payment.fill_all_fields"),
@@ -891,9 +1175,33 @@ export default function StoreDashboardSettingsPage() {
                   })
                   return
                 }
+
+                // Validate IBAN
+                if (!ibanValidation.isValid) {
+                  toast({
+                    title: t("settings.payment.validation_error"),
+                    description: t("settings.payment.invalid_iban"),
+                    variant: "destructive",
+                  })
+                  return
+                }
+
+                // Validate IBAN certificate
+                if (!ibanCertificateUrl || !ibanCertificateFile) {
+                  toast({
+                    title: t("settings.payment.validation_error"),
+                    description: t("settings.payment.certificate_required"),
+                    variant: "destructive",
+                  })
+                  return
+                }
                 
                 setIsLoading(true)
                 try {
+                  // Get the bank name from the code
+                  const selectedBank = SAUDI_BANKS.find(b => b.code === bankCode)
+                  const bankName = selectedBank ? selectedBank.name : ''
+
                   await addPaymentMethod({
                     bankName,
                     accountHolderName,
@@ -908,10 +1216,16 @@ export default function StoreDashboardSettingsPage() {
                   })
                   
                   // Reset form
-                  setBankName("")
+                  setBankCode("")
                   setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
+                  setIbanValidation({isValid: false})
+                  setIbanCertificateFile(null)
+                  setIbanCertificateUrl(null)
+                  if (certificateInputRef.current) {
+                    certificateInputRef.current.value = ''
+                  }
                   setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {

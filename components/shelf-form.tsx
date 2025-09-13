@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Upload, MapPin, Info, CalendarIcon, Loader2, X, Coffee, ShoppingBag, Heart, Home, Baby, Dumbbell, BookOpen, Gift, Package, Check, Ruler, Box, ArrowRight, ArrowUp, ArrowLeft } from "lucide-react"
+import { Upload, MapPin, Info, CalendarIcon, Loader2, X, Coffee, ShoppingBag, Heart, Home, Baby, Dumbbell, BookOpen, Gift, Package, Check, Ruler, Box, ArrowRight, ArrowUp, ArrowLeft, HelpCircle } from "lucide-react"
 import { MapPicker } from "@/components/ui/map-picker"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
@@ -139,6 +140,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     latitude: mode === "edit" && (initialData?.location?.lat || initialData?.latitude) || 24.7136,
     longitude: mode === "edit" && (initialData?.location?.lng || initialData?.longitude) || 46.6753
   })
+
+  const [userLocationRequested, setUserLocationRequested] = useState(false)
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
   
   // City coordinates in Saudi Arabia
   const cityCoordinates: Record<string, { lat: number; lng: number }> = {
@@ -168,13 +172,42 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     "Al-Ahsa": { lat: 25.3487, lng: 49.5856 }
   }
 
+  // Request user location on mount (only in create mode)
+  useEffect(() => {
+    if (mode === "create" && !userLocationRequested) {
+      setUserLocationRequested(true)
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setSelectedLocation({
+              address: "",
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude
+            })
+          },
+          (error) => {
+            console.log("Location permission denied or error:", error)
+            setLocationPermissionDenied(true)
+            // Keep default location (Riyadh) if user denies permission
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        )
+      }
+    }
+  }, [mode, userLocationRequested])
+
   // Load existing images when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
       // Load existing images from the images array with url property
       const loadImages = () => {
         const previews: any = {}
-        
+
         if (initialData.images && Array.isArray(initialData.images)) {
           for (const img of initialData.images) {
             if (img.url && img.type) {
@@ -182,7 +215,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             }
           }
         }
-        
+
         setImagePreviews(previews)
       }
       loadImages()
@@ -499,9 +532,21 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           {/* Second Row - Pricing */}
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="monthlyPrice" className="text-start block">
-                {t("add_shelf.monthly_price")} *
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="monthlyPrice" className="text-start">
+                  {t("add_shelf.monthly_price")} *
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("add_shelf.monthly_price_tooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <div className="relative">
                 <Input
                   id="monthlyPrice"
@@ -519,11 +564,23 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 </span>
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="storeCommission" className="text-start block">
-                {t("add_shelf.discount_percentage")} *
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="storeCommission" className="text-start">
+                  {t("add_shelf.discount_percentage")} *
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("add_shelf.discount_percentage_tooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <div className="relative">
                 <Input
                   id="storeCommission"
@@ -532,13 +589,13 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   onChange={(e) => {
                     const value = parseFloat(e.target.value)
                     const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
-                    
+
                     // Allow empty value for user to clear and re-type
                     if (e.target.value === '') {
                       setStoreCommission('')
                       return
                     }
-                    
+
                     // Enforce min and max limits
                     if (value < 0) {
                       setStoreCommission('0')
@@ -552,7 +609,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                     // On blur, ensure the value is within range
                     const value = parseFloat(e.target.value)
                     const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
-                    
+
                     if (isNaN(value) || value < 0) {
                       setStoreCommission('0')
                     } else if (value > maxDiscount) {
@@ -605,17 +662,6 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
               </Popover>
             </div>
           </div>
-
-          {/* Price Notice */}
-          <Alert className="border-amber-500/50 bg-amber-50/10 dark:border-amber-500/30 dark:bg-amber-950/10">
-            <Info className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-            <AlertTitle className="text-amber-900 dark:text-amber-200">
-              {t("add_shelf.shibr_percentage")}
-            </AlertTitle>
-            <AlertDescription className="text-amber-900 dark:text-amber-200">
-              {t("add_shelf.price_fee_notice")} {platformSettings?.platformFeePercentage || 8}%
-            </AlertDescription>
-          </Alert>
 
           {/* Shelf Dimensions - Visual */}
           <div className="space-y-4">
@@ -822,59 +868,65 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </div>
           </div>
 
-          {/* Location Section */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-start block">
-                {t("add_shelf.description_optional")}
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t("add_shelf.description_example")}
-                className="min-h-[260px] text-start resize-none"
-              />
-            </div>
+          {/* Map Section */}
+          <div className="space-y-3">
+            {/* Interactive Map Container */}
+            <MapPicker
+              defaultLocation={{
+                lat: selectedLocation.latitude,
+                lng: selectedLocation.longitude,
+                address: selectedLocation.address
+              }}
+              onLocationSelect={(location) => {
+                setSelectedLocation({
+                  latitude: location.lat,
+                  longitude: location.lng,
+                  address: location.address
+                })
+              }}
+              height="400px"
+              zoom={14}
+            />
 
-            {/* Map */}
+            {/* Location Label and Display - Under the Map */}
             <div className="space-y-2">
-              <Label className="text-start block">
-                {t("add_shelf.location")} *
-              </Label>
-              <div className="space-y-3">
-                {/* Interactive Map Container */}
-                <MapPicker
-                  defaultLocation={{
-                    lat: selectedLocation.latitude,
-                    lng: selectedLocation.longitude,
-                    address: selectedLocation.address
-                  }}
-                  onLocationSelect={(location) => {
-                    setSelectedLocation({
-                      latitude: location.lat,
-                      longitude: location.lng,
-                      address: location.address
-                    })
-                  }}
-                  height="200px"
-                  zoom={15}
-                />
-                
-                {/* Selected location display */}
-                <div className="border rounded-lg p-3 bg-muted/30">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">
-                        {selectedLocation.address || t("add_shelf.click_map_to_select")}
-                      </p>
-                    </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-start block">
+                  {t("add_shelf.location")} *
+                </Label>
+                {locationPermissionDenied && (
+                  <p className="text-sm text-muted-foreground">
+                    {t("add_shelf.location_permission_denied")}
+                  </p>
+                )}
+              </div>
+
+              {/* Selected location display */}
+              <div className="border rounded-lg p-3 bg-muted/30">
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">
+                      {selectedLocation.address || t("add_shelf.click_map_to_select")}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Description Section - After Map */}
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-start block">
+              {t("add_shelf.description_optional")}
+            </Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("add_shelf.description_example")}
+              className="min-h-[120px] text-start resize-none"
+            />
           </div>
 
           {/* Image Upload Section */}
@@ -889,7 +941,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 <input
                   ref={exteriorInputRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*"
                   className="hidden"
                   onChange={(e) => handleFileSelect('exterior', e.target.files?.[0] || null)}
                 />
@@ -945,7 +997,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 <input
                   ref={interiorInputRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*"
                   className="hidden"
                   onChange={(e) => handleFileSelect('interior', e.target.files?.[0] || null)}
                 />
@@ -1001,7 +1053,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 <input
                   ref={shelfInputRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*"
                   className="hidden"
                   onChange={(e) => handleFileSelect('shelf', e.target.files?.[0] || null)}
                 />

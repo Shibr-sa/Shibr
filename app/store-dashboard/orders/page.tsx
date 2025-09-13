@@ -7,7 +7,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -48,6 +48,7 @@ export default function StoreDashboardOrdersPage() {
   const { t, direction, language } = useLanguage()
   const { user } = useCurrentUser()
   const router = useRouter()
+  const { isLoading: storeLoading, isStoreDataComplete } = useStoreData()
   const [filter, setFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -197,6 +198,25 @@ export default function StoreDashboardOrdersPage() {
         </p>
       </div>
 
+      {/* Profile Completion Warning */}
+      {!storeLoading && !isStoreDataComplete && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/store-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Search and Filter Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         {/* Filter Pills */}
@@ -227,13 +247,15 @@ export default function StoreDashboardOrdersPage() {
         </div>
       </div>
 
-      {/* Warning Alert */}
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {t("store.cancellation_notice")}
-        </AlertDescription>
-      </Alert>
+      {/* Warning Alert - Only show when there are orders */}
+      {paginatedRequests.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {t("store.cancellation_notice")}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Table */}
       <div className="rounded-md border">

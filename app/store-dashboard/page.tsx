@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Inbox, Layout, Eye, Star } from "lucide-react"
+import { TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Inbox, Layout, Eye, Star, AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
@@ -102,24 +102,21 @@ export default function StoreDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Data Completion Warning - Only show if loaded and data is incomplete */}
-      {!isLoading && !isStoreDataComplete && (
-        <Alert className="border-destructive/50 bg-destructive/10">
-          <AlertTriangle className="h-4 w-4" />
+      {/* Profile Completion Warning */}
+      {!storeLoading && !isStoreDataComplete && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("dashboard.incomplete_profile_warning")}</AlertTitle>
-          <AlertDescription className="mt-2">
-            <div className="flex items-center justify-between">
-              <span>{t("dashboard.complete_data_description")}</span>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => router.push("/store-dashboard/settings")}
-                className="gap-2 ms-4 flex-shrink-0"
-              >
-                {t("dashboard.complete_profile_now")}
-                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </div>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t("dashboard.complete_profile_first")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ms-4"
+              onClick={() => router.push("/store-dashboard/settings")}
+            >
+              {t("dashboard.complete_profile_now")}
+            </Button>
           </AlertDescription>
         </Alert>
       )}
