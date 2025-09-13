@@ -35,14 +35,28 @@ export default function SignInPage() {
 
   // Handle redirect after successful signin
   useEffect(() => {
-    if (isCheckingAuth && userWithProfile) {
-      const redirectPath = 
+    // Only redirect if we're checking auth AND have user profile data
+    if (!isCheckingAuth || !userWithProfile) return
+
+    console.log('[signin] Post-login redirect check', {
+      accountType: userWithProfile.accountType,
+      userId: userWithProfile._id,
+      email: userWithProfile.email
+    })
+
+    // Small delay to ensure auth state is fully established
+    const redirectTimer = setTimeout(() => {
+      // Determine the correct dashboard based on account type
+      const dashboardPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
         userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/"
-      
-      router.push(redirectPath)
-    }
+        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+
+      console.log('[signin] Redirecting to dashboard:', dashboardPath)
+      router.push(dashboardPath)
+    }, 500) // 500ms delay to ensure auth is fully established
+
+    return () => clearTimeout(redirectTimer)
   }, [isCheckingAuth, userWithProfile, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
