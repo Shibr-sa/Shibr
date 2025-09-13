@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   "/signin",
   "/signup",
   "/signup/select-type",
+  "/verify-email", // Email verification page
   "/marketplace",
   "/marketplace/(.*)",
   "/forgot-password",
