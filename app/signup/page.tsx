@@ -14,8 +14,7 @@ import Image from "next/image"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
-import { useAuthActions } from "@convex-dev/auth/react"
-import { useQuery, useMutation } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
 import { createSignUpSchema, formatSaudiPhoneNumber } from "@/lib/validations/auth"
@@ -36,15 +35,12 @@ export default function SignUpPage() {
     agreeToTerms: false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t, direction, language } = useLanguage()
   const { toast } = useToast()
-  const { signIn } = useAuthActions()
-  const currentUser = useQuery(api.users.getCurrentUser)
-  const createStoreProfile = useMutation(api.users.createStoreProfile)
-  const createBrandProfile = useMutation(api.users.createBrandProfile)
+  const sendSignupOTP = useMutation(api.emailVerification.sendSignupOTP)
 
   // Get account type from URL parameter
   useEffect(() => {
@@ -113,101 +109,43 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      // Create FormData for Convex Auth signup
-      const authFormData = new FormData()
-      authFormData.append("email", formData.email.toLowerCase().trim())
-      authFormData.append("password", formData.password)
-      authFormData.append("flow", "signUp")
-      authFormData.append("name", formData.fullName.trim())
-      authFormData.append("phone", formatSaudiPhoneNumber(formData.phoneNumber))
-      
-      // Sign up the user first (name and phone stored in users table)
-      await signIn("password", authFormData)
-      
-      // Use exponential backoff for profile creation
-      let profileResult = null
-      let retryCount = 0
-      const maxRetries = 8
-      const baseDelay = 1000 // Start with 1 second
-      
-      while (!profileResult && retryCount < maxRetries) {
-        try {
-          // Calculate delay with exponential backoff (1s, 2s, 4s, 8s, etc.)
-          const delay = Math.min(baseDelay * Math.pow(2, retryCount), 10000) // Cap at 10 seconds
-          
-          // Wait before attempting profile creation
-          // Wait before retry attempt
-          await new Promise(resolve => setTimeout(resolve, delay))
-          
-          if (accountType === "store-owner") {
-            profileResult = await createStoreProfile({
-              storeName: formData.storeName.trim(),
-              businessCategory: "", // Will be updated in settings
-              commercialRegisterNumber: "", // Will be updated in settings
-            })
-          } else {
-            profileResult = await createBrandProfile({
-              brandName: formData.brandName.trim(),
-            })
-          }
-          
-          // If we get here, profile creation succeeded
-          break
-        } catch (error: any) {
-          
-          // If profile already exists, that's actually fine - it means it was created
-          if (error?.message?.includes("already exists")) {
-            // Fetch the user profile since it exists
-            const accountTypeName = accountType === "store-owner" ? "store_owner" : "brand_owner"
-            profileResult = { accountType: accountTypeName }
-            break
-          }
-          
-          // If auth not ready, continue retrying with backoff
-          if (error?.message?.includes("Not authenticated")) {
-            retryCount++
-            if (retryCount >= maxRetries) {
-              throw new Error(t("auth.profile_creation_timeout"))
-            }
-          } else {
-            // Other errors, throw immediately
-            throw error
-          }
-        }
-      }
-      
-      if (!profileResult) {
-        throw new Error(t("auth.profile_creation_timeout"))
-      }
-
-      // Email verification is now handled in the profile creation functions
-      toast({
-        title: t("auth.success"),
-        description: t("auth.account_created_verify_email") || "Account created! Please check your email to verify your account.",
+      // Send OTP to email (no account creation)
+      const result = await sendSignupOTP({
+        email: formData.email.toLowerCase().trim(),
+        name: formData.fullName.trim(),
       })
 
-      // Add a small delay to ensure auth session is fully established
-      await new Promise(resolve => setTimeout(resolve, 500))
+      if (result.success) {
+        toast({
+          title: t("auth.success"),
+          description: t("verification.code_sent"),
+        })
 
-      // Redirect to email verification page instead of dashboard
-      router.push("/verify-email")
-    } catch (error: any) {
-      // More specific error handling
-      let errorMessage = t("auth.signup_failed")
-      
-      if (error?.message?.includes("already exists")) {
-        errorMessage = t("auth.account_already_exists")
-      } else if (error?.message?.includes("Invalid email")) {
-        errorMessage = t("auth.invalid_email")
-      } else if (error?.message?.includes("password")) {
-        errorMessage = t("auth.weak_password")
-      } else if (error?.message?.includes("timeout")) {
-        errorMessage = t("auth.signup_timeout")
+        // Store signup data in sessionStorage and navigate to verify-email
+        const signupData = {
+          isSignup: true,
+          fullName: formData.fullName.trim(),
+          email: formData.email.toLowerCase().trim(),
+          phoneNumber: formatSaudiPhoneNumber(formData.phoneNumber),
+          password: formData.password,
+          accountType,
+          storeName: accountType === "store-owner" ? formData.storeName.trim() : undefined,
+          brandName: accountType === "brand-owner" ? formData.brandName.trim() : undefined,
+        }
+
+        sessionStorage.setItem('signupData', JSON.stringify(signupData))
+        router.push('/verify-email')
+      } else {
+        toast({
+          title: t("auth.error"),
+          description: result.error || t("auth.signup_failed"),
+          variant: "destructive",
+        })
       }
-      
+    } catch (error: any) {
       toast({
         title: t("auth.error"),
-        description: errorMessage,
+        description: t("auth.signup_failed"),
         variant: "destructive",
       })
     } finally {
@@ -221,13 +159,13 @@ export default function SignUpPage() {
       ...prev,
       [name]: value
     }))
-    
+
     // Validate field on change (with debounce for email)
     if (name !== "email" || value.includes("@")) {
       validateField(name, value)
     }
   }
-  
+
   const handleEmailBlur = () => {
     validateField("email", formData.email)
   }
@@ -446,11 +384,11 @@ export default function SignUpPage() {
                     <Eye className="h-4 w-4" />
                   </button>
                 </div>
-                
+
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password}</p>
                 )}
-                
+
                 <div id="password-requirements" className="text-xs text-muted-foreground space-y-1">
                   <p>{t("auth.password_requirements")}</p>
                   <ul className="ms-4 space-y-0.5">
@@ -464,8 +402,8 @@ export default function SignUpPage() {
 
               {/* Terms and Conditions */}
               <div className="flex items-start gap-2">
-                <Checkbox 
-                  id="terms" 
+                <Checkbox
+                  id="terms"
                   checked={formData.agreeToTerms}
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agreeToTerms: checked as boolean }))}
                   disabled={isLoading}
@@ -479,8 +417,8 @@ export default function SignUpPage() {
               </div>
 
               {/* Sign Up Button */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={isLoading || !formData.agreeToTerms}
               >
@@ -490,7 +428,7 @@ export default function SignUpPage() {
                     {t("common.loading")}
                   </>
                 ) : (
-                  t("auth.create_account")
+                  t("auth.continue")
                 )}
               </Button>
             </form>

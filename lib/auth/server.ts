@@ -28,94 +28,8 @@ export async function getCurrentUser() {
 }
 
 /**
- * Check if current user's email is verified
- * Uses the proper OTP table check
- */
-export async function isEmailVerified() {
-  const token = await convexAuthNextjsToken();
-  if (!token) {
-    return false;
-  }
-
-  try {
-    const verificationStatus = await fetchQuery(
-      api.emailVerification.isCurrentUserVerified,
-      {},
-      { token }
-    );
-
-    // Check if explicitly skipped in development
-    if (verificationStatus?.skipped) {
-      return true;
-    }
-
-    return verificationStatus?.verified || false;
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * Get detailed verification status for current user
- * Useful for debugging and detailed checks
- */
-export async function getVerificationStatus() {
-  const token = await convexAuthNextjsToken();
-  if (!token) {
-    return {
-      isAuthenticated: false,
-      isVerified: false,
-      needsVerification: false,
-      error: "Not authenticated"
-    };
-  }
-
-  try {
-    // Get current user first
-    const user = await fetchQuery(
-      api.users.getCurrentUser,
-      {},
-      { token }
-    );
-
-    if (!user) {
-      return {
-        isAuthenticated: false,
-        isVerified: false,
-        needsVerification: false,
-        error: "User not found"
-      };
-    }
-
-    // Check verification status
-    const verificationStatus = await fetchQuery(
-      api.emailVerification.checkVerificationStatus,
-      { userId: user._id },
-      { token }
-    );
-
-    return {
-      isAuthenticated: true,
-      isVerified: verificationStatus?.verified || false,
-      needsVerification: !verificationStatus?.verified,
-      hasPendingOTP: verificationStatus?.hasPendingOTP,
-      otpExpiresAt: verificationStatus?.otpExpiresAt,
-      userId: user._id,
-      email: user.email
-    };
-  } catch (error) {
-    return {
-      isAuthenticated: false,
-      isVerified: false,
-      needsVerification: false,
-      error: "Failed to check verification status"
-    };
-  }
-}
-
-/**
  * Require a specific role, redirects if not authorized
- * Also checks email verification status
+ * Users only exist if verified (email verification happens before account creation)
  */
 export async function requireRole(
   role: "admin" | "store_owner" | "brand_owner"
@@ -125,18 +39,6 @@ export async function requireRole(
 
   if (!user) {
     redirect("/signin");
-  }
-
-  // Check email verification
-  const emailVerified = await isEmailVerified();
-
-  if (!emailVerified) {
-    // Check if we should skip verification (development flag)
-    const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === "true";
-
-    if (!skipVerification) {
-      redirect("/verify-email");
-    }
   }
 
   // Check role authorization
@@ -169,12 +71,6 @@ export async function redirectToDashboard() {
 
   if (!user) {
     redirect("/signin");
-  }
-
-  // Check email verification first
-  const emailVerified = await isEmailVerified();
-  if (!emailVerified && process.env.SKIP_EMAIL_VERIFICATION !== "true") {
-    redirect("/verify-email");
   }
 
   const dashboardPath =

@@ -146,6 +146,10 @@ const translations = {
     "nav.signin": "تسجيل الدخول",
     "nav.marketplace": "السوق",
     "nav.dashboard": "لوحة التحكم",
+    "nav.settings": "الإعدادات",
+    "nav.signout": "تسجيل الخروج",
+    "nav.verify_email": "تحقق من البريد الإلكتروني",
+    "nav.email_not_verified": "البريد الإلكتروني غير محقق",
     "nav.navigation": "التنقل",
     "nav.questions": "المستأجر والمتجر",
     "nav.services": "المحلات",
@@ -1284,6 +1288,8 @@ const translations = {
     "hero.description":
       "شبر هي منصة تقنية تربط بين المتاجر الإلكترونية والمحلات التجارية الواقعية من خلال عرض وتأجير مساحات رفوف مخصصة داخل المحلات، بهدف تحويل المساحات غير المستغلة إلى نقاط بيع فورية.",
     "hero.start_now": "ابدأ الآن",
+    "hero.go_to_dashboard": "انتقل إلى لوحة التحكم",
+    "hero.verify_email_now": "تحقق من بريدك الإلكتروني الآن",
     "hero.learn_more": "تعلم المزيد",
     
     // Features
@@ -2245,6 +2251,10 @@ const translations = {
     "nav.signin": "Sign In",
     "nav.marketplace": "Marketplace",
     "nav.dashboard": "Dashboard",
+    "nav.settings": "Settings",
+    "nav.signout": "Sign Out",
+    "nav.verify_email": "Verify Email",
+    "nav.email_not_verified": "Email not verified",
     "nav.navigation": "Navigation",
     "nav.questions": "Renter & Store",
     "nav.services": "Stores",
@@ -3378,6 +3388,8 @@ const translations = {
     "hero.description":
       "Shibr is a technology platform that connects online stores with physical retail shops through displaying and renting dedicated shelf spaces inside stores, aiming to transform unused spaces into instant points of sale.",
     "hero.start_now": "Start Now",
+    "hero.go_to_dashboard": "Go to Dashboard",
+    "hero.verify_email_now": "Verify Your Email Now",
     "hero.learn_more": "Learn More",
     
     // Features

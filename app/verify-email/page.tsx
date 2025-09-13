@@ -1,174 +1,63 @@
 "use client"
 
-import { useState, useEffect, Suspense, useCallback, useRef } from "react"
+import { useState, useEffect, Suspense, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useConvexAuth, useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useLanguage } from "@/contexts/localization-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Loader2, Mail, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react"
+import { Loader2, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react"
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuthActions } from "@convex-dev/auth/react"
 
 /**
- * Verification state machine states
+ * Signup verification page - only handles new user signup flow
+ * Email verification happens BEFORE account creation
  */
-type VerificationState =
-  | "loading"           // Initial loading
-  | "unauthenticated"   // Not logged in
-  | "already_verified"  // Email already verified
-  | "awaiting_otp"      // Waiting for user to enter OTP
-  | "verifying"         // Currently verifying OTP
-  | "verified"          // Just verified successfully
-  | "error"             // Error state
-
-/**
- * Main verification component with proper state management
- */
-function VerifyEmailContent() {
+export default function VerifyEmailPage() {
   const { t, language, direction } = useLanguage()
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
   const fontClass = direction === "rtl" ? "font-cairo" : "font-inter"
+  const { signIn } = useAuthActions()
 
-  // State Management
-  const [verificationState, setVerificationState] = useState<VerificationState>("loading")
+  // State
+  const [signupData, setSignupData] = useState<any>(null)
   const [otp, setOtp] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Refs to prevent multiple redirects
-  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const hasRedirectedRef = useRef(false)
-
-  // Queries
-  const currentUser = useQuery(api.users.getCurrentUser)
-  const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
-  const checkVerificationStatus = useQuery(
-    api.emailVerification.checkVerificationStatus,
-    currentUser?._id ? { userId: currentUser._id } : "skip"
-  )
-
   // Mutations
-  const verifyOTP = useMutation(api.emailVerification.verifyOTP)
-  const resendOTP = useMutation(api.emailVerification.resendOTP)
+  const verifySignupAndCreateAccount = useMutation(api.emailVerification.verifySignupAndCreateAccount)
+  const resendSignupOTP = useMutation(api.emailVerification.resendSignupOTP)
+  const createStoreProfile = useMutation(api.users.createStoreProfile)
+  const createBrandProfile = useMutation(api.users.createBrandProfile)
 
-  // Cleanup on unmount
+  // Load signup data from sessionStorage
   useEffect(() => {
-    return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  /**
-   * Determine the correct dashboard path based on account type
-   */
-  const getDashboardPath = useCallback(() => {
-    return userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
-           userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
-           userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
-           "/dashboard"
-  }, [userWithProfile])
-
-  /**
-   * Handle redirect with debouncing and single execution
-   */
-  const handleRedirect = useCallback((path: string, delay: number = 0) => {
-    if (hasRedirectedRef.current) {
+    const data = sessionStorage.getItem('signupData')
+    if (!data) {
+      // No signup data, redirect to signup
+      toast.error(t("verification.session_expired"))
+      router.push('/signup')
       return
     }
 
-    hasRedirectedRef.current = true
-
-    if (delay > 0) {
-      redirectTimeoutRef.current = setTimeout(() => {
-        window.location.href = path
-      }, delay)
-    } else {
-      window.location.href = path
+    try {
+      const parsedData = JSON.parse(data)
+      setSignupData(parsedData)
+    } catch {
+      toast.error(t("verification.invalid_session"))
+      router.push('/signup')
     }
-  }, [])
+  }, [router, t])
 
-  /**
-   * Main state determination logic
-   * Single source of truth for verification state
-   */
-  useEffect(() => {
-
-    // Still loading auth - wait longer to ensure auth is fully established
-    if (authLoading) {
-      setVerificationState("loading")
-      return
-    }
-
-    // Waiting for user data to load (give it more time)
-    if (currentUser === undefined) {
-      setVerificationState("loading")
-      // Set a timeout to check again after a delay
-      const checkTimer = setTimeout(() => {
-        // Check if auth is truly not available
-      }, 2000)
-      return () => clearTimeout(checkTimer)
-    }
-
-    // Only redirect to signin if we're sure user is not authenticated
-    // AND we've given enough time for auth to establish
-    if (!isAuthenticated && !authLoading && currentUser === null) {
-      setVerificationState("unauthenticated")
-      // Add delay before redirect to prevent loops
-      setTimeout(() => {
-        handleRedirect("/signin")
-      }, 1000)
-      return
-    }
-
-    // User not found after loading completed
-    if (currentUser === null && !authLoading) {
-      setVerificationState("unauthenticated")
-      setTimeout(() => {
-        handleRedirect("/signin")
-      }, 1000)
-      return
-    }
-
-    // If we have a user, continue with verification checks
-    if (!currentUser) {
-      return
-    }
-
-    // Waiting for verification status
-    if (checkVerificationStatus === undefined) {
-      setVerificationState("loading")
-      return
-    }
-
-    // Check if already verified
-    if (checkVerificationStatus?.verified) {
-
-      // Only redirect if we have profile data
-      if (userWithProfile !== undefined) {
-        setVerificationState("already_verified")
-        const dashboardPath = getDashboardPath()
-        toast.success(t("verification.email_verified"))
-        handleRedirect(dashboardPath, 2000)
-      }
-      return
-    }
-
-    // Email not verified, show OTP input
-    setVerificationState("awaiting_otp")
-
-  }, [authLoading, isAuthenticated, currentUser, checkVerificationStatus, userWithProfile,
-      verificationState, getDashboardPath, handleRedirect, t])
-
-  /**
-   * Countdown timer for resend cooldown
-   */
+  // Countdown timer for resend
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
@@ -176,313 +65,271 @@ function VerifyEmailContent() {
     }
   }, [countdown])
 
-  /**
-   * Handle OTP verification
-   */
+  // Handle OTP verification and account creation
   const handleVerify = async () => {
-    
+    if (!signupData) {
+      toast.error(t("verification.session_expired"))
+      router.push('/signup')
+      return
+    }
 
     if (otp.length !== 6) {
       setErrorMessage(t("verification.invalid_code"))
       return
     }
 
-    if (!currentUser?._id) {
-      setErrorMessage(t("verification.user_not_found"))
-      return
-    }
-
-    setVerificationState("verifying")
+    setIsVerifying(true)
     setErrorMessage(null)
 
     try {
-      const result = await verifyOTP({
-        userId: currentUser._id,
-        otp
+      // Verify OTP
+      const result = await verifySignupAndCreateAccount({
+        email: signupData.email,
+        otp,
+        fullName: signupData.fullName,
+        password: signupData.password,
+        phoneNumber: signupData.phoneNumber,
+        accountType: signupData.accountType,
+        storeName: signupData.storeName,
+        brandName: signupData.brandName,
       })
 
-      
-
       if (result.success) {
-        
-        setVerificationState("verified")
-        toast.success(t("verification.success"))
+        // OTP verified! Now create the account
+        setIsCreatingAccount(true)
+        toast.success(t("verification.email_verified"))
 
-        // Get dashboard path and redirect
-        const dashboardPath = getDashboardPath()
-        
-        handleRedirect(dashboardPath, 2000)
+        // Create FormData for Convex Auth signup
+        const authFormData = new FormData()
+        authFormData.append("email", signupData.email)
+        authFormData.append("password", signupData.password)
+        authFormData.append("flow", "signUp")
+        authFormData.append("name", signupData.fullName)
+        authFormData.append("phone", signupData.phoneNumber)
+
+        // Sign up the user
+        await signIn("password", authFormData)
+
+        // Create profile with retry logic
+        let profileCreated = false
+        let retryCount = 0
+        const maxRetries = 8
+
+        while (!profileCreated && retryCount < maxRetries) {
+          try {
+            const delay = Math.min(1000 * Math.pow(2, retryCount), 10000)
+            await new Promise(resolve => setTimeout(resolve, delay))
+
+            if (signupData.accountType === "store-owner") {
+              await createStoreProfile({
+                storeName: signupData.storeName,
+                businessCategory: "",
+                commercialRegisterNumber: "",
+              })
+            } else {
+              await createBrandProfile({
+                brandName: signupData.brandName,
+              })
+            }
+
+            profileCreated = true
+          } catch (error: any) {
+            if (error?.message?.includes("already exists")) {
+              profileCreated = true
+              break
+            }
+
+            if (error?.message?.includes("Not authenticated")) {
+              retryCount++
+              if (retryCount >= maxRetries) {
+                throw new Error(t("auth.profile_creation_timeout"))
+              }
+            } else {
+              throw error
+            }
+          }
+        }
+
+        // Clear signup data
+        sessionStorage.removeItem('signupData')
+
+        // Success! Redirect to dashboard
+        toast.success(t("auth.account_created"))
+
+        const dashboardPath =
+          signupData.accountType === "store-owner" ? "/store-dashboard" :
+          signupData.accountType === "brand-owner" ? "/brand-dashboard" :
+          "/dashboard"
+
+        // Force redirect with window.location for clean navigation
+        window.location.href = dashboardPath
       } else {
-        
-        setVerificationState("awaiting_otp")
         setErrorMessage(result.error || t("verification.invalid_code"))
         setOtp("")
       }
     } catch (error: any) {
-      
-      setVerificationState("error")
+      console.error('Verification error:', error)
       setErrorMessage(t("verification.error"))
+    } finally {
+      setIsVerifying(false)
+      setIsCreatingAccount(false)
     }
   }
 
-  /**
-   * Handle OTP resend
-   */
+  // Handle OTP resend
   const handleResend = async () => {
-    
-
-    if (!currentUser?._id) {
-      setErrorMessage(t("verification.user_not_found"))
+    if (!signupData) {
+      toast.error(t("verification.session_expired"))
+      router.push('/signup')
       return
     }
 
     setErrorMessage(null)
 
     try {
-      const result = await resendOTP({
-        userId: currentUser._id
+      const result = await resendSignupOTP({
+        email: signupData.email,
+        name: signupData.fullName,
       })
-
-      
 
       if (result.success) {
         toast.success(t("verification.code_sent"))
-        setCountdown(60) // 60 second cooldown
+        setCountdown(60)
         setOtp("")
       } else {
-        // Check if email is already verified
-        if (result.error === "Email is already verified") {
-          
-          toast.success(t("verification.email_verified"))
-          setVerificationState("already_verified")
-
-          const dashboardPath = getDashboardPath()
-          handleRedirect(dashboardPath, 1500)
-        } else {
-          setErrorMessage(result.error || t("verification.resend_error"))
-        }
+        setErrorMessage(result.error || t("verification.resend_error"))
       }
     } catch (error: any) {
-      
       setErrorMessage(t("verification.resend_error"))
     }
   }
 
-  // Render based on state
-  switch (verificationState) {
-    case "loading":
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )
-
-    case "unauthenticated":
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{t("auth.please_sign_in")}</AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-        </div>
-      )
-
-    case "already_verified":
-    case "verified":
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
-          <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
-            <CardHeader className="text-center pb-8">
-              <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-green-100 flex items-center justify-center animate-in fade-in zoom-in duration-500">
-                <CheckCircle2 className="h-12 w-12 text-green-600" />
-              </div>
-              <CardTitle className={`text-3xl font-bold ${fontClass}`}>
-                {t("verification.email_verified")}
-              </CardTitle>
-              <CardDescription className={`text-base mt-2 ${fontClass}`}>
-                {t("verification.redirecting")}
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      )
-
-    case "error":
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage || t("verification.error")}</AlertDescription>
-              </Alert>
-              <Button
-                onClick={() => {
-                  setVerificationState("awaiting_otp")
-                  setErrorMessage(null)
-                }}
-                className="w-full mt-4"
-              >
-                {t("common.try_again")}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )
-
-    case "verifying":
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <p className={`text-lg ${fontClass}`}>{t("verification.verifying")}</p>
-            </CardContent>
-          </Card>
-        </div>
-      )
-
-    case "awaiting_otp":
-    default:
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20" dir={direction}>
-          <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
-            <CardHeader className="text-center pb-8">
-              <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShieldCheck className="h-10 w-10 text-primary" />
-              </div>
-              <CardTitle className={`text-3xl font-bold ${fontClass}`}>
-                {t("verification.verify_email")}
-              </CardTitle>
-              <CardDescription className={`text-base mt-3 ${fontClass}`}>
-                {t("verification.enter_code")}
-              </CardDescription>
-              {currentUser?.email && (
-                <p className={`text-sm text-muted-foreground mt-2 ${fontClass}`}>
-                  {currentUser.email}
-                </p>
-              )}
-            </CardHeader>
-
-            <CardContent className="space-y-6 px-8">
-              {/* Error Alert */}
-              {errorMessage && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{errorMessage}</AlertDescription>
-                </Alert>
-              )}
-
-              {/* OTP Input - Always LTR for numbers */}
-              <div className="flex justify-center" dir="ltr">
-                <InputOTP
-                  value={otp}
-                  onChange={setOtp}
-                  maxLength={6}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  className="gap-2"
-                  disabled={verificationState === "verifying"}
-                >
-                  <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-
-              {/* OTP Expiry Info */}
-              {checkVerificationStatus?.otpExpiresAt && (
-                <p className={`text-xs text-center text-muted-foreground ${fontClass}`}>
-                  {t("verification.expires_in")} {Math.max(0, Math.floor((checkVerificationStatus.otpExpiresAt - Date.now()) / 60000))} {t("common.minutes")}
-                </p>
-              )}
-
-              {/* Verify Button */}
-              <Button
-                onClick={handleVerify}
-                disabled={verificationState === "verifying" || otp.length !== 6}
-                className="w-full h-12 text-base font-medium"
-                size="lg"
-              >
-                {verificationState === "verifying" ? (
-                  <>
-                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                    {t("verification.verifying")}
-                  </>
-                ) : (
-                  t("verification.verify")
-                )}
-              </Button>
-            </CardContent>
-
-            <CardFooter className="px-8 pb-8">
-              {/* Resend Code Section */}
-              <div className="text-center w-full">
-                <p className={`text-sm text-muted-foreground mb-2 ${fontClass}`}>
-                  {t("verification.didnt_receive")}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleResend}
-                  disabled={countdown > 0}
-                  className={`w-full h-10 ${fontClass}`}
-                >
-                  {countdown > 0 ? (
-                    `${t("verification.resend_in")} ${countdown}s`
-                  ) : (
-                    t("verification.resend_code")
-                  )}
-                </Button>
-              </div>
-            </CardFooter>
-
-            {/* Debug Info (Development Only) */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="px-8 pb-4">
-                <details className="text-xs text-muted-foreground">
-                  <summary className="cursor-pointer">Debug Info</summary>
-                  <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
-                    {JSON.stringify({
-                      state: verificationState,
-                      userId: currentUser?._id,
-                      email: currentUser?.email,
-                      verified: checkVerificationStatus?.verified,
-                      hasPendingOTP: checkVerificationStatus?.hasPendingOTP,
-                      countdown,
-                      otpLength: otp.length
-                    }, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-          </Card>
-        </div>
-      )
-  }
-}
-
-/**
- * Main page component with Suspense boundary
- */
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={
+  // Loading state while checking for signup data
+  if (!signupData) {
+    return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    }>
-      <VerifyEmailContent />
-    </Suspense>
+    )
+  }
+
+  // Creating account state
+  if (isCreatingAccount) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
+          <CardHeader className="text-center pb-8">
+            <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle2 className="h-12 w-12 text-green-600" />
+            </div>
+            <CardTitle className={`text-3xl font-bold ${fontClass}`}>
+              {t("auth.creating_account")}
+            </CardTitle>
+            <CardDescription className={`text-base mt-2 ${fontClass}`}>
+              {t("auth.please_wait")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Main OTP verification UI
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20" dir={direction}>
+      <Card className="w-full max-w-md border-0 shadow-2xl bg-card/95 backdrop-blur">
+        <CardHeader className="text-center pb-8">
+          <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="h-10 w-10 text-primary" />
+          </div>
+          <CardTitle className={`text-3xl font-bold ${fontClass}`}>
+            {t("verification.verify_email")}
+          </CardTitle>
+          <CardDescription className={`text-base mt-3 ${fontClass}`}>
+            {t("verification.enter_code")}
+          </CardDescription>
+          {signupData?.email && (
+            <p className={`text-sm text-muted-foreground mt-2 ${fontClass}`}>
+              {signupData.email}
+            </p>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-6 px-8">
+          {/* Error Alert */}
+          {errorMessage && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* OTP Input - Always LTR for numbers */}
+          <div className="flex justify-center" dir="ltr">
+            <InputOTP
+              value={otp}
+              onChange={setOtp}
+              maxLength={6}
+              pattern={REGEXP_ONLY_DIGITS}
+              className="gap-2"
+              disabled={isVerifying}
+            >
+              <InputOTPGroup className="gap-2">
+                <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup className="gap-2">
+                <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
+                <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+
+          {/* Verify Button */}
+          <Button
+            onClick={handleVerify}
+            disabled={isVerifying || otp.length !== 6}
+            className="w-full h-12 text-base font-medium"
+            size="lg"
+          >
+            {isVerifying ? (
+              <>
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                {t("verification.verifying")}
+              </>
+            ) : (
+              t("verification.verify")
+            )}
+          </Button>
+        </CardContent>
+
+        <CardFooter className="px-8 pb-8">
+          {/* Resend Code Section */}
+          <div className="text-center w-full">
+            <p className={`text-sm text-muted-foreground mb-2 ${fontClass}`}>
+              {t("verification.didnt_receive")}
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleResend}
+              disabled={countdown > 0}
+              className={`w-full h-10 ${fontClass}`}
+            >
+              {countdown > 0 ? (
+                `${t("verification.resend_in")} ${countdown}s`
+              ) : (
+                t("verification.resend_code")
+              )}
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   )
 }

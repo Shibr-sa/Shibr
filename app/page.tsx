@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Building2, ShoppingBag, Target, UserPlus, DollarSign, PackageCheck, Settings, Search, CalendarCheck, BarChart3, Twitter, Linkedin } from "lucide-react"
+import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Building2, ShoppingBag, Target, UserPlus, DollarSign, PackageCheck, Settings, Search, CalendarCheck, BarChart3, Twitter, Linkedin, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -12,6 +12,9 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect } from "react"
 import { SharedFooter } from "@/components/shared-footer"
+import { useConvexAuth, useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // FAQ items will be created dynamically using translations
 
@@ -19,6 +22,18 @@ export default function شبرLandingPage() {
   const { t, direction } = useLanguage()
   const [activeServiceType, setActiveServiceType] = useState<"stores" | "centers">("stores")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Authentication state
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
+  const user = useQuery(api.users.getCurrentUserWithProfile)
+
+  // Determine dashboard path based on user role
+  const getDashboardPath = () => {
+    if (!user) return "/"
+    return user.accountType === "store_owner" ? "/store-dashboard" :
+           user.accountType === "brand_owner" ? "/brand-dashboard" :
+           user.accountType === "admin" ? "/admin-dashboard" : "/"
+  }
 
   // Handle smooth scrolling for hash links
   useEffect(() => {
@@ -103,9 +118,20 @@ export default function شبرLandingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <LanguageSwitcher />
-            <Button size="sm" asChild>
-              <Link href="/signin">{t("nav.signin")}</Link>
-            </Button>
+
+            {/* Authentication UI */}
+            {authLoading || (isAuthenticated && user === undefined) ? (
+              <Skeleton className="h-9 w-24" />
+            ) : isAuthenticated && user ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link href={getDashboardPath()}>{t("nav.dashboard")}</Link>
+              </Button>
+            ) : (
+              <Button size="sm" asChild>
+                <Link href="/signin">{t("nav.signin")}</Link>
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="sm"
@@ -176,11 +202,24 @@ export default function شبرLandingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-start">
-              <Link href="/signup/select-type">
-                <Button size="lg" className="text-base px-6 py-5">
-                  {t("hero.start_now")}
+              {authLoading || (isAuthenticated && user === undefined) ? (
+                <Button size="lg" className="text-base px-6 py-5" disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("common.loading")}
                 </Button>
-              </Link>
+              ) : isAuthenticated && user ? (
+                <Link href={getDashboardPath()}>
+                  <Button size="lg" className="text-base px-6 py-5">
+                    {t("hero.go_to_dashboard")}
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/signup/select-type">
+                  <Button size="lg" className="text-base px-6 py-5">
+                    {t("hero.start_now")}
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 

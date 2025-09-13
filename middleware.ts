@@ -28,26 +28,25 @@ const isStoreRoute = createRouteMatcher(["/store-dashboard", "/store-dashboard/(
 const isBrandRoute = createRouteMatcher(["/brand-dashboard", "/brand-dashboard/(.*)"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+  const isAuthenticated = await convexAuth.isAuthenticated();
+  const pathname = request.nextUrl.pathname;
+
+  // Don't process signin/signup pages - let them handle their own redirects
+  // This allows the signin page to redirect directly to the dashboard
+
   // Allow public routes without authentication
   if (isPublicRoute(request)) {
-    // If user is authenticated and trying to access signin/signup, redirect to dashboard
-    if (request.nextUrl.pathname === "/signin" || request.nextUrl.pathname === "/signup") {
-      if (await convexAuth.isAuthenticated()) {
-        // We'll determine the correct dashboard in the signin page
-        // For now, just allow access and let the page handle redirect
-        return;
-      }
-    }
     return;
   }
 
   // Check if user is authenticated for protected routes
-  if (!(await convexAuth.isAuthenticated())) {
+  if (!isAuthenticated) {
     return nextjsMiddlewareRedirect(request, "/signin");
   }
 
   // Allow authenticated users to access their dashboards
   // Role-based access control will be handled at the page/layout level
+  // No email verification check needed - users only exist if verified
   return;
 }, {
   apiRoute: "/api/auth",

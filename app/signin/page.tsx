@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthActions } from "@convex-dev/auth/react"
-import { useQuery } from "convex/react"
+import { useQuery, useConvexAuth } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
 export default function SignInPage() {
@@ -21,8 +21,9 @@ export default function SignInPage() {
   const { t } = useLanguage()
   const { toast } = useToast()
   const { signIn } = useAuthActions()
+  const { isAuthenticated } = useConvexAuth()
   const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
-  
+
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(false)
@@ -31,7 +32,18 @@ export default function SignInPage() {
     password: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  
+
+  // Check if already authenticated on mount
+  useEffect(() => {
+    if (isAuthenticated && userWithProfile) {
+      const dashboardPath =
+        userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
+        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+
+      router.push(dashboardPath)
+    }
+  }, [isAuthenticated, userWithProfile, router])
 
   // Handle redirect after successful signin
   useEffect(() => {

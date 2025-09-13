@@ -8,10 +8,27 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { cn } from "@/lib/utils"
+import { useConvexAuth, useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useEffect } from "react"
 
 export default function SelectAccountTypePage() {
   const router = useRouter()
   const { t, direction } = useLanguage()
+  const { isAuthenticated } = useConvexAuth()
+  const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && userWithProfile) {
+      const dashboardPath =
+        userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
+        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+
+      router.push(dashboardPath)
+    }
+  }, [isAuthenticated, userWithProfile, router])
 
   const handleSelection = (type: "store-owner" | "brand-owner") => {
     router.push(`/signup?type=${type}`)

@@ -359,22 +359,17 @@ const schema = defineSchema({
     .index("by_expires", ["expiresAt"])
     .index("by_used", ["used"]),
 
-  // Email verification OTP
+  // Email verification OTP (for signup only - no userId needed)
   emailVerificationOTP: defineTable({
-    userId: v.id("users"),
     email: v.string(),
     otp: v.string(),
     expiresAt: v.number(), // Unix timestamp
-    verified: v.boolean(),
-    verifiedAt: v.optional(v.number()), // Unix timestamp when OTP was verified
     attempts: v.number(), // Number of verification attempts
     createdAt: v.number(), // Unix timestamp
   })
-    .index("by_user", ["userId"])
     .index("by_email", ["email"])
     .index("by_otp", ["otp"])
-    .index("by_expires", ["expiresAt"])
-    .index("by_verified", ["verified"]),
+    .index("by_expires", ["expiresAt"]),
 
 })
 
