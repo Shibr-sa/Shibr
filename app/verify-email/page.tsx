@@ -29,29 +29,37 @@ export default function VerifyEmailPage() {
   const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
   const verifyOTP = useMutation(api.emailVerification.verifyOTP)
   const resendOTP = useMutation(api.emailVerification.resendOTP)
-  const checkVerificationStatus = useQuery(api.emailVerification.checkVerificationStatus,
-    currentUser?._id ? { userId: currentUser._id } : "skip"
+
+  // Only query verification status when we have a user ID
+  const checkVerificationStatus = useQuery(
+    api.emailVerification.checkVerificationStatus,
+    currentUser === undefined ? "skip" : currentUser?._id ? { userId: currentUser._id } : "skip"
   )
 
   useEffect(() => {
+    // Only redirect to signin if we're sure the user is not authenticated
     if (!authLoading && !isAuthenticated) {
       router.push("/signin")
     }
   }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
-    if (checkVerificationStatus?.verified) {
+    // Only check verification status if all data is loaded
+    if (checkVerificationStatus !== undefined && checkVerificationStatus?.verified) {
       setVerified(true)
-      // Determine the correct dashboard based on account type
-      const dashboardPath =
-        userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
-        userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
-        "/dashboard" // fallback
 
-      setTimeout(() => {
-        router.push(dashboardPath)
-      }, 3000)
+      // Wait for userWithProfile to load before determining dashboard
+      if (userWithProfile !== undefined) {
+        const dashboardPath =
+          userWithProfile?.accountType === "store_owner" ? "/store-dashboard" :
+          userWithProfile?.accountType === "brand_owner" ? "/brand-dashboard" :
+          userWithProfile?.accountType === "admin" ? "/admin-dashboard" :
+          "/dashboard" // fallback
+
+        setTimeout(() => {
+          router.push(dashboardPath)
+        }, 3000)
+      }
     }
   }, [checkVerificationStatus, userWithProfile, router])
 
@@ -133,12 +141,19 @@ export default function VerifyEmailPage() {
     }
   }
 
-  if (authLoading) {
+  // Show loading state while auth or user data is loading
+  if (authLoading || currentUser === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
+  }
+
+  // If user is not found after loading, redirect to signin
+  if (!currentUser) {
+    router.push("/signin")
+    return null
   }
 
   if (verified) {

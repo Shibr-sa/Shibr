@@ -190,6 +190,9 @@ export default function SignUpPage() {
         description: t("auth.account_created_verify_email") || "Account created! Please check your email to verify your account.",
       })
 
+      // Add a small delay to ensure auth session is fully established
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       // Redirect to email verification page instead of dashboard
       router.push("/verify-email")
     } catch (error: any) {
