@@ -366,6 +366,9 @@ const schema = defineSchema({
     expiresAt: v.number(), // Unix timestamp
     attempts: v.number(), // Number of verification attempts
     createdAt: v.number(), // Unix timestamp
+    // Legacy fields - kept for backward compatibility with existing documents
+    userId: v.optional(v.string()),
+    verified: v.optional(v.boolean()),
   })
     .index("by_email", ["email"])
     .index("by_otp", ["otp"])
