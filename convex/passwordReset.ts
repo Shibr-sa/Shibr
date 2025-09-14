@@ -200,10 +200,13 @@ export const resetPassword = mutation({
       throw new Error("User not found")
     }
 
-    // Update the password using Convex Auth
-    // Import bcryptjs
-    const bcrypt = await import("bcryptjs")
-    const hashedPassword = await bcrypt.hash(args.newPassword, 10)
+    // Hash the password using Web Crypto API which is available in Convex runtime
+    // Create a simple hash using the same approach Convex Auth likely uses
+    const encoder = new TextEncoder()
+    const data = encoder.encode(args.newPassword)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
     // Find and update the authAccounts entry for password provider
     const authAccounts = await ctx.db

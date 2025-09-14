@@ -12,14 +12,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { useToast } from "@/hooks/use-toast"
-import { useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
+import { useAuthActions } from "@convex-dev/auth/react"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
   const { t } = useLanguage()
   const { toast } = useToast()
-  const requestPasswordReset = useMutation(api.passwordReset.requestPasswordReset)
+  const { signIn } = useAuthActions()
 
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
@@ -46,27 +45,42 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
-      const result = await requestPasswordReset({ email })
+      // Use Convex Auth's password reset flow
+      const formData = new FormData()
+      formData.append("email", email)
+      formData.append("flow", "reset")
 
-      if (result.success) {
+      await signIn("password", formData)
+
+      setIsSubmitted(true)
+
+      // Store email in sessionStorage for the reset page
+      sessionStorage.setItem('resetEmail', email)
+
+      toast({
+        title: t("auth.email_sent"),
+        description: t("auth.password_reset_email_sent"),
+      })
+
+      // Redirect to reset password page
+      router.push("/reset-password")
+    } catch (error: any) {
+      // Handle specific error cases
+      if (error?.message?.includes("User not found")) {
+        // For security, don't reveal if user exists
         setIsSubmitted(true)
         toast({
           title: t("auth.email_sent"),
           description: t("auth.password_reset_email_sent"),
         })
-      } else if (result.error) {
+        router.push("/reset-password")
+      } else {
         toast({
           title: t("auth.error"),
-          description: result.error,
+          description: error?.message || t("auth.something_went_wrong"),
           variant: "destructive",
         })
       }
-    } catch (error: any) {
-      toast({
-        title: t("auth.error"),
-        description: t("auth.something_went_wrong"),
-        variant: "destructive",
-      })
     } finally {
       setIsLoading(false)
     }
