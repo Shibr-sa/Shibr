@@ -345,21 +345,7 @@ const schema = defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Password reset tokens
-  passwordResetTokens: defineTable({
-    userId: v.id("users"),
-    token: v.string(),
-    expiresAt: v.number(), // Unix timestamp
-    used: v.boolean(),
-    usedAt: v.optional(v.number()), // Unix timestamp when token was used
-    createdAt: v.number(), // Unix timestamp
-  })
-    .index("by_token", ["token"])
-    .index("by_user", ["userId"])
-    .index("by_expires", ["expiresAt"])
-    .index("by_used", ["used"]),
-
-  // Email verification OTP (for signup only - no userId needed)
+// Email verification OTP (for signup only - no userId needed)
   emailVerificationOTP: defineTable({
     email: v.string(),
     otp: v.string(),

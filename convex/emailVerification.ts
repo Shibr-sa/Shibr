@@ -308,7 +308,7 @@ export const sendSignupOTPEmail = internalAction({
       })
 
       const { data, error } = await resend.emails.send({
-        from: 'Shibr Platform <noreply@shibr.sa>',
+        from: 'Shibr Platform <noreply@shibr.io>',
         to: args.email,
         subject,
         html,

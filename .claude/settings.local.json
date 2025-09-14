@@ -20,6 +20,7 @@
       "Bash(curl:*)",
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(bunx convex run:*)",
+      "Bash(bunx convex codegen:*)",
       "Bash(git merge:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)"

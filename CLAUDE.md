@@ -5,148 +5,275 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
-- `bun dev` - Start both Next.js (http://localhost:3000) and Convex dev servers
-- `bun run build` - Build production bundle (includes Convex codegen)
+- `bun dev` - Start both Next.js (http://localhost:3000) and Convex dev servers concurrently
+- `bun run build` - Build production bundle (runs `bunx convex codegen` then `next build`)
 - `bun start` - Start production server
 - `bun run lint` - Run Next.js linter
 - `bunx convex codegen --typecheck disable` - Generate TypeScript types from Convex schema
 
-### Package Management
-This project uses Bun. Install dependencies with `bun install`.
+### Testing & Debugging
+- `bunx convex run <function> <args>` - Run Convex functions directly (e.g., `bunx convex run users:getCurrentUserWithProfile {}`)
+- `bunx convex logs` - View real-time Convex function logs
+- `CONVEX_DEPLOYMENT=prod:enchanted-clam-269 bunx convex run <function>` - Run functions against production
 
 ### Database (Convex)
-- `bunx convex dev` - Start real-time backend server with hot reload
-- `bunx convex deploy` - Deploy to production
+- `bunx convex dev` - Start Convex dev server independently
+- `bunx convex deploy -y` - Deploy to production (auto-confirm)
+- `bunx convex env set <KEY> <VALUE>` - Set environment variables in Convex
 - Dashboard: https://dashboard.convex.dev
+
+### Package Management
+This project uses Bun. Install dependencies with `bun install`.
 
 ## Architecture Overview
 
 ### Project Context
-شبر is a smart platform connecting physical and online stores through a shelf rental system, targeting the Saudi Arabian market. The platform enables physical stores to rent out shelf space to online brands.
+شبر (Shibr) is a B2B marketplace platform connecting physical stores with online brands through a shelf rental system in Saudi Arabia. Physical stores monetize unused shelf space while online brands gain physical retail presence.
+
+### Core Business Logic
+
+#### Authentication Flow (Verify-Before-Create Pattern)
+1. **Signup**: User data stored in sessionStorage → Email OTP sent → Verify OTP → Create account & profile
+2. **Password Reset**: Uses Convex Auth's built-in OTP system via `authPasswordReset.ts`
+3. **Email Provider**: Resend API with `noreply@shibr.io` domain
+
+#### User Journey
+1. Users sign up selecting role (store owner or brand owner)
+2. Store owners list shelves with location, size, and pricing
+3. Brand owners browse marketplace and request rentals
+4. Real-time chat between parties
+5. Store owners approve/reject requests
+6. Approved rentals become active contracts
 
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
-- **Runtime**: Bun (for package management and scripts)
+- **Runtime**: Bun (package management and scripts)
 - **Language**: TypeScript with strict mode
-- **UI Components**: 52 shadcn/ui components (Radix UI based)
-- **Styling**: Tailwind CSS with CSS variables
-- **Database**: Convex (real-time, reactive backend)
-- **Authentication**: Convex Auth (password-based)
+- **Database**: Convex (real-time, reactive backend with WebSocket sync)
+- **Authentication**: Convex Auth (password-based with OTP verification)
+- **Email**: Resend API
+- **UI Components**: 52 shadcn/ui components (Radix UI primitives)
+- **Styling**: Tailwind CSS with CSS variables for theming
 - **Forms**: React Hook Form + Zod validation
-- **i18n**: Custom implementation in `/contexts/localization-context.tsx`
+- **Maps**: Google Maps API (for location selection)
+- **i18n**: Custom context-based implementation
 
 ### Route Structure & User Roles
 
-Three distinct user types with separate dashboards:
+Three distinct user types with role-based access control:
 
-1. **Admin Dashboard** (`/admin-dashboard/*`) - Platform administration
-2. **Brand Dashboard** (`/brand-dashboard/*`) - Online store owners
-3. **Store Dashboard** (`/store-dashboard/*`) - Physical store owners
+1. **Admin Dashboard** (`/admin-dashboard/*`)
+   - User management
+   - Platform settings
+   - Analytics and metrics
+   - Content moderation
 
-Public routes: `/marketplace`, `/signin`, `/signup`
+2. **Brand Dashboard** (`/brand-dashboard/*`)
+   - Browse marketplace
+   - Manage rental requests
+   - Product inventory
+   - Performance metrics
+
+3. **Store Dashboard** (`/store-dashboard/*`)
+   - Shelf management
+   - Request approval
+   - Revenue tracking
+   - Store settings
+
+**Public Routes**:
+- `/` - Landing page
+- `/marketplace` - Public shelf listings
+- `/signin`, `/signup`, `/verify-email` - Authentication flow
+- `/forgot-password`, `/reset-password` - Password recovery
 
 ### Convex Database Schema
 
-The backend uses the following main tables:
-- **users** - Authentication (managed by Convex Auth)
-- **storeProfiles** - Physical store owner profiles
-- **brandProfiles** - Online brand owner profiles
-- **adminProfiles** - Platform administrators
-- **shelves** - Marketplace listings with location and pricing
-- **rentalRequests** - Booking system with status management
-- **products** - Brand inventory
-- **conversations/messages** - Real-time chat
-- **notifications** - User alerts
-- **payments** - Transactions
-- **platformSettings** - Global platform configuration
+#### Core Tables
+- **users** - Convex Auth managed user accounts
+- **authAccounts** - Authentication providers (password)
+- **authSessions** - Active user sessions
+- **storeProfiles** - Physical store details (name, location, phone)
+- **brandProfiles** - Brand details (name, website, category)
+- **adminProfiles** - Admin user profiles
+
+#### Business Tables
+- **shelves** - Marketplace listings
+  - Location (city, area, coordinates)
+  - Dimensions and pricing
+  - Availability status
+  - Multiple indexes for search optimization
+- **rentalRequests** - Booking workflow
+  - Status: pending → approved/rejected → active/completed
+  - Selected products
+  - Commission rates
+- **products** - Brand inventory with images
+- **conversations/messages** - Real-time chat with read receipts
+- **notifications** - User alerts for requests, messages
+- **payments** - Transaction records
+- **platformSettings** - Global configuration (fees, terms)
+
+#### Email Verification
+- **emailVerificationOTP** - Temporary OTP storage for signup only
+
+### Authentication System
+
+#### Signup Flow (Verify-Before-Create)
+1. User fills form → Data stored in `sessionStorage`
+2. `sendSignupOTP` mutation sends 6-digit code
+3. User enters OTP on `/verify-email`
+4. `verifySignupAndCreateAccount` creates account after verification
+5. Auto-signin and redirect to appropriate dashboard
+
+#### Password Reset (Convex Auth OTP)
+1. Uses Convex Auth's built-in password reset provider
+2. Configured in `authPasswordReset.ts` with Resend
+3. 6-digit OTP valid for 10 minutes
+4. Auto-redirects to dashboard after reset
 
 ### Internationalization (Critical)
 
-The app supports Arabic/English with RTL/LTR switching:
-- Language context at `/contexts/localization-context.tsx` contains 500+ translation keys
-- Use `useLanguage()` hook: `const { t, language, direction } = useLanguage()`
+The app is fully bilingual with RTL/LTR support:
 
-**CRITICAL RULES**:
+#### Implementation
+- Context: `/contexts/localization-context.tsx` (500+ translation keys)
+- Hook: `const { t, language, direction } = useLanguage()`
+- Storage: Language preference in localStorage
+
+#### Critical Rules
 - **ALL text must use translation keys** - NEVER hardcode strings
-- **Every Arabic key must have an English equivalent** and vice versa
-- **Always add translations for BOTH languages** when creating new keys
-- **Use the `direction` value** for RTL/LTR specific layouts
-- **Apply conditional font classes**: `${direction === "rtl" ? "font-cairo" : "font-inter"}`
-- **ALWAYS use English numerals** (0-9), never Arabic-Hindi numerals
-- **Use Gregorian calendar only**, no Hijri dates
+- **Every key needs both languages**: `"key": { en: "English", ar: "العربية" }`
+- **Direction-aware styling**: Use `direction` for RTL/LTR layouts
+- **Font switching**: `${direction === "rtl" ? "font-cairo" : "font-inter"}`
+- **Number formatting**: ALWAYS English numerals (0-9), use `formatters.ts`
+- **Date system**: Gregorian calendar only
+- **Phone numbers**: Saudi format validation (05XXXXXXXX)
 
-### shadcn/ui Component Usage (Critical)
+### shadcn/ui Component Usage
 
-**BEFORE IMPLEMENTING ANY UI COMPONENT**:
-1. **CHECK shadcn/ui documentation FIRST**: https://ui.shadcn.com/docs/components/
-2. **VERIFY if component exists** in the full component list
-3. **COPY exact implementation** from documentation
-4. **CHECK examples**: https://ui.shadcn.com/examples
+#### Before Implementation
+1. Check documentation: https://ui.shadcn.com/docs/components/
+2. Verify component exists in `/components/ui/`
+3. Copy exact patterns from docs
+4. Use `cn()` utility for className merging
 
-**Implementation Rules**:
-- **ALWAYS use shadcn/ui components** from `/components/ui/` exactly as documented
-- **NEVER modify shadcn/ui components** - they are library code
-- **NEVER create custom UI components** if shadcn/ui has an equivalent
-- **USE exact props and patterns** from shadcn documentation
-- Use the `cn()` utility from `/lib/utils.ts` for conditional className merging
+#### Rules
+- NEVER modify files in `/components/ui/` - they're library code
+- NEVER create custom components if shadcn/ui equivalent exists
+- ALWAYS follow shadcn patterns for consistency
+- Use component composition over customization
 
-### Important Files & Directories
+### Real-time Features
 
-- `/contexts/localization-context.tsx` - All translations and language switching
-- `/lib/formatters.ts` - Centralized formatting utilities (English numerals only)
-- `/lib/validations.ts` - Zod schemas for type-safe validation
-- `/lib/constants.ts` - Application-wide constants and limits
-- `/lib/utils.ts` - Utility functions including `cn()` for className merging
-- `/components/ui/` - shadcn/ui component library (DO NOT MODIFY)
-- `/components/` - Custom components specific to the application
-- `/convex/` - Backend functions and schema
-- `/convex/_generated/` - Auto-generated Convex client code (DO NOT EDIT)
-- `/hooks/` - Custom React hooks
+#### Convex Reactivity
+- All queries are reactive by default
+- Use `useQuery` for real-time data
+- Mutations trigger automatic UI updates
+- WebSocket connection handles sync
 
-### Development Principles
+#### Chat System
+- Conversations linked to rental requests
+- Real-time message delivery
+- Read receipts
+- Typing indicators (if implemented)
 
-- **Navigation**: Prefer page-based navigation over modals/dialogs for detail views
-- **Performance**: Implement server-side search and pagination for large datasets
-- **Loading States**: Show skeletons on initial load, keep previous data visible during updates
-- **Search**: Debounce user input (300ms) before API calls
-- **Pagination**: Server-side with 5-10 items per page
-- **URL State**: Persist UI state (filters, pagination, tabs) in URL parameters
+### Performance Patterns
 
-### Form Handling Patterns
+- **Search**: Server-side with debouncing (300ms)
+- **Pagination**: Backend pagination (10 items default)
+- **Loading**: Skeletons on initial load, preserve data during updates
+- **Images**: Convex file storage with URL generation
+- **Caching**: Convex handles query caching automatically
 
-- Use React Hook Form for all forms
-- Define Zod schemas in `/lib/validations.ts`
-- Show field-level errors immediately after blur
-- Use controlled components
-- Include helpful placeholder text using translation keys
+### Form Patterns
+
+- Validation: Zod schemas in `/lib/validations.ts`
+- State: React Hook Form with `useForm`
+- Errors: Field-level validation on blur
+- Submission: Optimistic updates where appropriate
 
 ### RTL/LTR Support
 
-- Use logical properties: `ps-*`, `pe-*`, `ms-*`, `me-*`, `start-*`, `end-*`
-- Avoid physical properties: `pl-*`, `pr-*`, `ml-*`, `mr-*`, `left-*`, `right-*`
-- Use `gap-*` instead of `space-x-*` for spacing
-- Use Tailwind's `rtl:` modifiers for direction-specific styling
+- Logical properties: `ps-*`, `pe-*`, `ms-*`, `me-*`
+- Avoid physical: `pl-*`, `pr-*`, `ml-*`, `mr-*`
+- Spacing: Use `gap-*` over `space-x-*`
+- Modifiers: Tailwind's `rtl:` and `ltr:` prefixes
 
-### Design System
+### Environment Variables
 
-- **Primary Color**: #725CAD (Purple) - The ONLY custom brand color
-- **Typography**: Cairo font for Arabic, Inter for English
-- **Spacing**: Use consistent spacing utilities (space-y-6 for forms, gap-2 for buttons)
-- **Heights**: h-12 for all form inputs and buttons
-- **DO NOT use custom colors** - only use design system CSS variables
+#### Required in `.env.local`
+```
+NEXT_PUBLIC_CONVEX_URL=<convex-deployment-url>
+CONVEX_DEPLOYMENT=<deployment-name>
+RESEND_API_KEY=<resend-api-key>
+SITE_URL=<production-url>
+JWT_PRIVATE_KEY=<auth-private-key>
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<maps-key>
+```
 
-### Version Control Standards
+#### Convex Environment (set via CLI)
+```
+RESEND_API_KEY=<resend-api-key>
+SITE_URL=<production-url>
+JWT_PRIVATE_KEY=<auth-private-key>
+```
 
-- **NEVER commit or push** unless explicitly instructed by user
-- Use conventional commits (feat:, fix:, docs:, style:, refactor:)
-- Branch naming: feature/*, bugfix/*, hotfix/*
+### Deployment
 
-### Code Quality Standards
+#### Production Deployments
+- Main branch: `master`
+- Development branch: `development`
+- Production Convex: `prod:enchanted-clam-269`
+- Development Convex: `dev:warmhearted-capybara-335`
 
-- TypeScript strict mode - no `any` without justification
-- Remove all console.log statements before production
-- Clean up unused imports and dead code regularly
-- One component per file
-- Functional components only
-- Custom hooks prefixed with `use`
-- Centralize utilities in `/lib/`
+#### Deployment Process
+1. Merge to master
+2. `bunx convex deploy -y`
+3. `bun run build`
+4. Deploy Next.js app to hosting
+
+### Common Patterns
+
+#### API Calls
+```typescript
+// Query with real-time updates
+const data = useQuery(api.shelves.getAvailable, { city: "Riyadh" })
+
+// Mutation
+const createShelf = useMutation(api.shelves.create)
+await createShelf({ ...shelfData })
+```
+
+#### Translation Usage
+```typescript
+const { t } = useLanguage()
+return <h1>{t("dashboard.welcome")}</h1>
+```
+
+#### Protected Routes
+```typescript
+// Middleware handles auth redirects
+// Check user role in components
+const { userWithProfile } = useCurrentUser()
+if (userWithProfile?.accountType !== "store_owner") {
+  redirect("/")
+}
+```
+
+### Important Files
+
+- `/convex/schema.ts` - Database schema definition
+- `/convex/auth.ts` - Authentication configuration
+- `/contexts/localization-context.tsx` - All translations
+- `/lib/formatters.ts` - Number/date/currency formatting
+- `/lib/validations.ts` - Zod validation schemas
+- `/lib/constants.ts` - App-wide constants
+- `/middleware.ts` - Route protection logic
+
+### Code Standards
+
+- TypeScript: Strict mode, avoid `any`
+- Components: Functional only, one per file
+- Hooks: Prefix with `use`
+- Imports: Clean up unused
+- Console: Remove `console.log` before production
+- Commits: Conventional format (feat:, fix:, etc.)
