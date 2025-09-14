@@ -19,7 +19,8 @@
       "Bash(CONVEX_DEPLOYMENT=prod:enchanted-clam-269 bunx convex env list)",
       "Bash(curl:*)",
       "WebFetch(domain:ui.shadcn.com)",
-      "Bash(bunx convex run:*)"
+      "Bash(bunx convex run:*)",
+      "Bash(bunx convex codegen:*)"
     ],
     "deny": [],
     "ask": []
