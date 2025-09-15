@@ -20,10 +20,8 @@ import { z } from "zod"
 // Password validation schema
 const passwordSchema = z
   .string()
+  .min(1, "Password is required")
   .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -283,12 +281,6 @@ export default function ResetPasswordPage() {
                 {errors.password && (
                   <p id="password-error" className="text-xs text-destructive mt-1">{errors.password}</p>
                 )}
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>{t("auth.password_requirements.min_length")}</li>
-                  <li>{t("auth.password_requirements.uppercase")}</li>
-                  <li>{t("auth.password_requirements.lowercase")}</li>
-                  <li>{t("auth.password_requirements.number")}</li>
-                </ul>
               </div>
 
               {/* Confirm Password Field */}

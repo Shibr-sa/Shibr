@@ -17,10 +17,7 @@ export const createSignUpSchema = (t: (key: string) => string) => {
       .regex(saudiPhoneRegex, t("validation.phone_invalid")),
     password: z.string()
       .min(1, t("validation.password_required"))
-      .min(8, t("validation.password_min_length"))
-      .regex(/[A-Z]/, t("validation.password_uppercase"))
-      .regex(/[a-z]/, t("validation.password_lowercase"))
-      .regex(/[0-9]/, t("validation.password_number")),
+      .min(8, t("validation.password_min_8")),
     accountType: z.enum(["store-owner", "brand-owner"]),
     storeName: z.string().optional(),
     brandName: z.string().optional(),
@@ -54,10 +51,7 @@ export const signUpSchema = z.object({
   phoneNumber: z.string().min(1, "Phone number is required").regex(saudiPhoneRegex, "Invalid Saudi phone number"),
   password: z.string()
     .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
+    .min(8, "Password must be at least 8 characters"),
   accountType: z.enum(["store-owner", "brand-owner"]),
   storeName: z.string().optional(),
   brandName: z.string().optional(),
@@ -100,24 +94,3 @@ export function formatSaudiPhoneNumber(phone: string): string {
   return digits
 }
 
-export function checkPasswordStrength(password: string): { score: number; feedback: string[] } {
-  let score = 0
-  const feedback: string[] = []
-  
-  if (password.length >= 8) score++
-  if (password.length >= 12) score++
-  if (/[A-Z]/.test(password)) score++
-  if (/[a-z]/.test(password)) score++
-  if (/[0-9]/.test(password)) score++
-  if (/[^A-Za-z0-9]/.test(password)) {
-    score++
-    feedback.push("Contains special characters ✓")
-  }
-  
-  if (password.length < 8) feedback.push("At least 8 characters required")
-  if (!/[A-Z]/.test(password)) feedback.push("Add uppercase letters")
-  if (!/[a-z]/.test(password)) feedback.push("Add lowercase letters")
-  if (!/[0-9]/.test(password)) feedback.push("Add numbers")
-  
-  return { score, feedback }
-}

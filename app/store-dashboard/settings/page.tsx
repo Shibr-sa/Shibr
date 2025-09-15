@@ -95,7 +95,7 @@ export default function StoreDashboardSettingsPage() {
   // Update tab when URL parameter changes
   useEffect(() => {
     const tabParam = searchParams.get("tab")
-    if (tabParam && ["general", "store-data", "payment", "security"].includes(tabParam)) {
+    if (tabParam && ["general", "store-data", "payment"].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
@@ -236,11 +236,10 @@ export default function StoreDashboardSettingsPage() {
       <StoreProfileCompletionProgress showDetails={true} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-3xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="store-data">{t("settings.tabs.store_data")}</TabsTrigger>
           <TabsTrigger value="payment">{t("settings.tabs.payment")}</TabsTrigger>
-          <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
@@ -784,126 +783,6 @@ export default function StoreDashboardSettingsPage() {
                 </Table>
             </div>
           </div>
-        </TabsContent>
-
-        {/* Security Settings Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("settings.security.title")}</CardTitle>
-              <p className="text-sm text-muted-foreground">{t("settings.security.description")}</p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Email Change Section */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currentEmail" className="block">{t("settings.security.current_email")}</Label>
-                  <Input
-                    id="currentEmail"
-                    type="email"
-                    value={storeUserData?.email || email}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newEmail" className="block">{t("settings.security.new_email")}</Label>
-                  <Input
-                    id="newEmail"
-                    type="email"
-                    placeholder={t("settings.security.new_email_placeholder")}
-                    className=""
-                  />
-                  <p className="text-xs text-muted-foreground">{t("settings.security.email_verification_required")}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Phone Number Change Section */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currentPhone" className="block">{t("settings.security.current_phone")}</Label>
-                  <Input
-                    id="currentPhone"
-                    type="tel"
-                    value={storeUserData?.phone || phoneNumber}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newPhone" className="block">{t("settings.security.new_phone")}</Label>
-                  <Input
-                    id="newPhone"
-                    type="tel"
-                    placeholder="+966 5X XXX XXXX"
-                    className=""
-                  />
-                  <p className="text-xs text-muted-foreground">{t("settings.security.sms_verification_required")}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Password Change Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{t("settings.security.change_password")}</h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="block">{t("settings.security.current_password")}</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      className=""
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="block">{t("settings.security.new_password")}</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      className=""
-                    />
-                    <p className="text-xs text-muted-foreground">{t("settings.security.password_requirements")}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="block">{t("settings.security.confirm_password")}</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      className=""
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  disabled={isLoading}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  className="gap-2"
-                  disabled={isLoading}
-                  onClick={() => {
-                    toast({
-                      title: t("settings.security.verification_required"),
-                      description: t("settings.security.verification_required_desc"),
-                    })
-                  }}
-                >
-                  <Save className="h-4 w-4" />
-                  {t("settings.security.save_changes")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

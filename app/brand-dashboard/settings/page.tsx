@@ -95,7 +95,7 @@ export default function BrandDashboardSettingsPage() {
   // Update tab when URL parameter changes
   useEffect(() => {
     const tabParam = searchParams.get("tab")
-    if (tabParam && ["general", "brand-data", "payment", "security"].includes(tabParam)) {
+    if (tabParam && ["general", "brand-data", "payment"].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
@@ -276,11 +276,10 @@ export default function BrandDashboardSettingsPage() {
       <BrandProfileCompletionProgress showDetails={true} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-3xl">
           <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="brand-data">{t("settings.tabs.brand_data")}</TabsTrigger>
           <TabsTrigger value="payment">{t("settings.tabs.payment")}</TabsTrigger>
-          <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}

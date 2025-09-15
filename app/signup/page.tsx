@@ -199,9 +199,11 @@ export default function SignUpPage() {
               {/* Show selected account type if coming from select-type page */}
               {searchParams.get('type') ? (
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground mb-1">{t("auth.registering_as")}</p>
-                  <p className="font-medium">
-                    {accountType === "store-owner" ? t("auth.store_owner") : t("auth.brand_owner")}
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">{t("auth.registering_as")}</span>{" "}
+                    <span className="font-medium">
+                      {accountType === "store-owner" ? t("auth.store_owner") : t("auth.brand_owner")}
+                    </span>
                   </p>
                   <Link
                     href="/signup/select-type"
@@ -374,7 +376,6 @@ export default function SignUpPage() {
                     onChange={handleInputChange}
                     disabled={isLoading}
                     aria-invalid={!!errors.password}
-                    aria-describedby="password-requirements"
                   />
                   <button
                     type="button"
@@ -388,16 +389,6 @@ export default function SignUpPage() {
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password}</p>
                 )}
-
-                <div id="password-requirements" className="text-xs text-muted-foreground space-y-1">
-                  <p>{t("auth.password_requirements")}</p>
-                  <ul className="ms-4 space-y-0.5">
-                    <li className={formData.password.length >= 8 ? "text-primary" : ""}>• {t("auth.password_min_length")}</li>
-                    <li className={/[A-Z]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_uppercase")}</li>
-                    <li className={/[a-z]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_lowercase")}</li>
-                    <li className={/[0-9]/.test(formData.password) ? "text-primary" : ""}>• {t("auth.password_number")}</li>
-                  </ul>
-                </div>
               </div>
 
               {/* Terms and Conditions */}

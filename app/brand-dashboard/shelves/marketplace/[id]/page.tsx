@@ -582,9 +582,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             ? "لم تقم بإضافة منتجات بعد" 
                             : "You haven't added any products yet"}
                         </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
                           className="mt-4"
                           onClick={() => router.push("/brand-dashboard/products")}
                         >

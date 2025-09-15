@@ -51,7 +51,6 @@ import {
   CreditCard,
   Eye,
   Trash2,
-  Ban,
   Mail,
   User,
   Inbox,
@@ -220,7 +219,7 @@ export default function ShelfDetailsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  {Array.from({ length: 6 }).map((_, i) => (
+                  {Array.from({ length: 5 }).map((_, i) => (
                     <TableHead key={i} className="h-12">
                       <Skeleton className="h-4 w-24" />
                     </TableHead>
@@ -233,7 +232,6 @@ export default function ShelfDetailsPage() {
                   <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
                 </TableRow>
               </TableBody>
@@ -326,18 +324,18 @@ export default function ShelfDetailsPage() {
   // Format renter details from active rental
   const renterDetails = activeRental ? [{
     merchantName: activeRental.requesterProfile?.brandName || t("common.unknown"),
-    activityType: activeRental.requesterProfile?.brandType || t("common.not_specified"),
+    activityType: activeRental.requesterProfile?.businessCategory || t("common.not_specified"),
     rentalDate: new Date(activeRental.startDate).toLocaleDateString(),
     endDate: activeRental.endDate ? new Date(activeRental.endDate).toLocaleDateString() : "-",
-    rentalMethod: t("shelf_details.monthly_rental"),
-    commercialRegister: activeRental.requesterProfile?.brandCommercialRegisterNumber || "-"
+    commercialRegisterNumber: activeRental.requesterProfile?.commercialRegisterNumber || activeRental.requesterProfile?.freelanceLicenseNumber || "-",
+    commercialRegisterUrl: activeRental.requesterProfile?.commercialRegisterUrl
   }] : []
 
   // Format products data
   const allProducts: Array<{id: string, name: string, quantity: number, sales: number, price: number, imageUrl?: string, mainImage?: Id<"_storage">}> = shelfProducts?.map(product => ({
     id: product?._id || "",
     name: product?.name || "",
-    quantity: product?.quantity || 0,
+    quantity: product?.requestedQuantity || 0,
     sales: product?.totalSales || 0,
     price: product?.price || 0,
     imageUrl: product?.imageUrl,
@@ -360,7 +358,7 @@ export default function ShelfDetailsPage() {
   
   const allPreviousInfo = previousRentals.map(rental => ({
     merchantName: rental.requesterProfile?.brandName || t("common.unknown"),
-    activityType: rental.requesterProfile?.brandType || t("common.not_specified"),
+    activityType: rental.requesterProfile?.businessCategory || t("common.not_specified"),
     rentalMethod: t("shelf_details.monthly_rental"),
     revenue: rental.totalAmount || (rental.monthlyPrice * (rental.rentalPeriod || 1))
   }))
@@ -651,7 +649,7 @@ export default function ShelfDetailsPage() {
             {formattedData.renterName && (
               <>
                 <Separator className="my-6" />
-                <div className="flex items-center justify-between px-3">
+                <div className="flex items-center px-3">
                   <div className="flex items-center gap-6 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <User className="h-3.5 w-3.5" />
@@ -666,12 +664,6 @@ export default function ShelfDetailsPage() {
                         </div>
                       </>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Ban className="h-4 w-4 me-2" />
-                      {t("shelf_details.end_rental")}
-                    </Button>
                   </div>
                 </div>
               </>
@@ -700,14 +692,13 @@ export default function ShelfDetailsPage() {
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.activity_type")}</TableHead>
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.rental_date")}</TableHead>
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.end_date")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium">{t("shelf_details.rental_method")}</TableHead>
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.commercial_register")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {renterDetails.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                       <div className="flex w-full items-center justify-center">
                         <div className="flex flex-col items-center gap-1 py-10">
                           <Users className="h-10 w-10 text-muted-foreground/40 mb-2" />
@@ -728,16 +719,23 @@ export default function ShelfDetailsPage() {
                       <TableCell className="py-3">{renter.activityType}</TableCell>
                       <TableCell className="py-3">{renter.rentalDate}</TableCell>
                       <TableCell className="py-3">{renter.endDate}</TableCell>
-                      <TableCell className="py-3">{renter.rentalMethod}</TableCell>
                       <TableCell className="py-3">
-                        <Button 
-                          variant="link" 
-                          className="p-0 h-auto text-primary text-sm"
-                          onClick={() => {/* Download commercial register */}}
-                        >
-                          <Download className="h-3 w-3 me-1" />
-                          {t("shelf_details.download")}
-                        </Button>
+                        {renter.commercialRegisterUrl ? (
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-primary text-sm"
+                            onClick={() => {
+                              window.open(renter.commercialRegisterUrl, '_blank')
+                            }}
+                          >
+                            <Download className="h-3 w-3 me-1" />
+                            {t("shelf_details.download")}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            {renter.commercialRegisterNumber}
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

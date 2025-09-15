@@ -550,21 +550,32 @@ export const getShelfRentalRequests = query({
       .query("rentalRequests")
       .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
       .collect()
-    
+
     // Get profile information for each requester
     const requestsWithProfiles = await Promise.all(
       rentalRequests.map(async (request) => {
         const requesterProfile = request.brandProfileId
           ? await ctx.db.get(request.brandProfileId)
           : null
-        
+
+        // Get commercial register document URL if available
+        let commercialRegisterUrl = null
+        if (requesterProfile?.commercialRegisterDocument) {
+          commercialRegisterUrl = await ctx.storage.getUrl(requesterProfile.commercialRegisterDocument)
+        } else if (requesterProfile?.freelanceLicenseDocument) {
+          commercialRegisterUrl = await ctx.storage.getUrl(requesterProfile.freelanceLicenseDocument)
+        }
+
         return {
           ...request,
-          requesterProfile,
+          requesterProfile: requesterProfile ? {
+            ...requesterProfile,
+            commercialRegisterUrl
+          } : null,
         }
       })
     )
-    
+
     return requestsWithProfiles
   },
 })
