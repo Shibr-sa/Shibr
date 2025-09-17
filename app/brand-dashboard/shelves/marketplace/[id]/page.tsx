@@ -377,7 +377,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {formatCurrency(shelfDetails.monthlyPrice, language)}
                         </p>
                         <Badge variant="secondary" className="text-xs px-2 py-0">
-                          {`${(shelfDetails.storeCommission || 0) + 8}%`}
+                          {`${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%`}
                         </Badge>
                       </div>
                     </div>

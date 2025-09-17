@@ -456,7 +456,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
                                   <p className="text-lg font-bold">
-                                    {((store.storeCommission || 10) + (platformSettings?.platformFeePercentage || 8))}%
+                                    {((store.storeCommission ?? 0) + (platformSettings?.brandSalesCommission ?? 0))}%
                                   </p>
                                 </div>
 

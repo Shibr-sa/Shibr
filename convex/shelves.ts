@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { internal } from "./_generated/api"
 
 
 // Add a new shelf
@@ -42,17 +43,9 @@ export const addShelf = mutation({
     }
     
     // Get platform settings for dynamic fee percentage
-    const allSettings = await ctx.db
-      .query("platformSettings")
-      .collect()
-    
-    // Find platform fee setting or default to 8%
-    let platformFeePercentage = 8
-    const feeSettings = allSettings.find(s => s.key === "platformFeePercentage")
-    if (feeSettings) {
-      platformFeePercentage = feeSettings.value
-    }
-    const finalPrice = args.monthlyPrice * (1 + platformFeePercentage / 100)
+    const settings = await ctx.runQuery(internal.platformSettings.internalGetPlatformSettings)
+    const storeRentCommission = settings.storeRentCommission
+    const finalPrice = args.monthlyPrice * (1 + storeRentCommission / 100)
     
     // Create the shelf with approved status (active listing)
     const shelfId = await ctx.db.insert("shelves", {

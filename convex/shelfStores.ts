@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 // Create a shelf store when a rental becomes active
 export const createShelfStore = mutation({
@@ -61,6 +61,10 @@ export const createShelfStore = mutation({
       counter++
     }
 
+    // Get platform settings for commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+
     // Create the store
     const siteUrl = process.env.SITE_URL || "http://localhost:3000"
     const qrCodeUrl = `${siteUrl}/store/${slug}`
@@ -75,7 +79,7 @@ export const createShelfStore = mutation({
       description: shelf.description,
       qrCodeUrl,
       storeCommissionRate: rental.storeCommission,
-      platformFeeRate: 8, // 8% platform fee
+      platformFeeRate: brandSalesCommission,
       isActive: true,
       activatedAt: Date.now(),
       totalScans: 0,

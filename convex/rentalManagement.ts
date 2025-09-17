@@ -238,8 +238,10 @@ export const renewRental = mutation({
     // Get the shelf to get current commission rate
     const shelf = await ctx.db.get(rental.shelfId)
     
-    // Calculate total commission (store + platform)
-    const platformFee = 8 // 8% platform fee
+    // Get platform settings for commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+    const platformFee = brandSalesCommission
     const shelfStoreCommission = shelf?.storeCommission || 0
     // If shelf has commission, use shelf + platform. Otherwise use the original rental's total commission
     const totalCommission = shelf ? (shelfStoreCommission + platformFee) : (rental.storeCommission || 0)

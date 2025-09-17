@@ -297,7 +297,7 @@ const schema = defineSchema({
     
     // Amounts
     amount: v.number(), // Base amount
-    platformFee: v.optional(v.number()), // Platform commission (8%)
+    platformFee: v.optional(v.number()), // Platform commission
     netAmount: v.optional(v.number()), // Amount after platform fee
     
     // Payment details
@@ -378,7 +378,7 @@ const schema = defineSchema({
 
     // Commission settings (inherited from rental)
     storeCommissionRate: v.number(), // Store's commission percentage
-    platformFeeRate: v.number(), // Platform fee percentage (8%)
+    platformFeeRate: v.number(), // Platform fee percentage
 
     // Store status
     isActive: v.boolean(),

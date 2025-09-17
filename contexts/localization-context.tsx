@@ -273,10 +273,10 @@ const translations = {
     "add_shelf.branch": "الفرع",
     "add_shelf.branch_placeholder": "مثال: حي الروضة، شارع الملك فهد",
     "add_shelf.discount_percentage": "نسبة المحل من المبيعات",
-    "add_shelf.discount_percentage_tooltip": "السعر سوف يضاف عليه نسبة شبر هي 8%",
+    "add_shelf.discount_percentage_tooltip": "السعر سوف يضاف عليه نسبة شبر هي {fee}%",
     "add_shelf.discount_placeholder": "مثال 5 %",
     "add_shelf.monthly_price": "سعر الاشتراك الشهري",
-    "add_shelf.monthly_price_tooltip": "شبر تأخذ عمولة 10% من سعر الاشتراك",
+    "add_shelf.monthly_price_tooltip": "شبر تأخذ عمولة {fee}% من سعر الاشتراك",
     "add_shelf.price_placeholder_min": "مثال 500 ريال",
     "add_shelf.price_placeholder_max": "580 ريال",
     "add_shelf.available_from": "متاح من",
@@ -324,7 +324,7 @@ const translations = {
     "add_shelf.upload_exterior_image_desc": "حجم الملف لا يزيد عن 10 ميجابايت - JPG, PNG, GIF, WebP",
     "add_shelf.submit_button": "نشر الرف الآن",
     "add_shelf.update_button": "تحديث الرف",
-    "add_shelf.price_increase_notice": "السعر سوف يضاف عليه نسبة تتراوح 8%",
+    "add_shelf.price_increase_notice": "السعر سوف يضاف عليه نسبة تتراوح {fee}%",
     "add_shelf.price_fee_notice": "السعر سوف يضاف عليه نسبة شبر هي",
     "add_shelf.shibr_percentage": "نسبة شبر",
     "add_shelf.shelf_dimensions": "أبعاد الرف",
@@ -847,6 +847,14 @@ const translations = {
     "admin.settings.max_stores_per_user": "الحد الأقصى للمحلات لكل مستخدم",
     "admin.settings.max_shelves_per_store": "الحد الأقصى للرفوف لكل محل",
     "admin.settings.save_user_settings": "حفظ إعدادات المستخدمين",
+
+    // Platform Commission Settings
+    "admin.settings.commission_settings": "إعدادات العمولة",
+    "admin.brand_sales_commission": "عمولة مبيعات العلامة التجارية",
+    "admin.store_rent_commission": "عمولة إيجار الرفوف",
+    "admin.brand_commission_desc": "النسبة المحتسبة على مبيعات منتجات العلامة التجارية",
+    "admin.store_commission_desc": "النسبة المحتسبة على رسوم إيجار الرفوف",
+    "admin.commission_percentage_symbol": "%",
 
     // Settings Page
     "settings.title": "الإعدادات",
@@ -2447,10 +2455,10 @@ const translations = {
     "add_shelf.branch": "Branch",
     "add_shelf.branch_placeholder": "Example: Al Rawdah District, King Fahd Street",
     "add_shelf.discount_percentage": "Store's Sales Percentage",
-    "add_shelf.discount_percentage_tooltip": "Shibr adds 8% commission to the price",
+    "add_shelf.discount_percentage_tooltip": "Shibr adds {fee}% commission to the price",
     "add_shelf.discount_placeholder": "Example 5%",
     "add_shelf.monthly_price": "Monthly Subscription Price",
-    "add_shelf.monthly_price_tooltip": "Shibr takes 10% commission from subscription",
+    "add_shelf.monthly_price_tooltip": "Shibr takes {fee}% commission from subscription",
     "add_shelf.price_placeholder_min": "Example 500 SAR",
     "add_shelf.price_placeholder_max": "580 SAR",
     "add_shelf.available_from": "Available From",
@@ -2497,7 +2505,7 @@ const translations = {
     "add_shelf.upload_exterior_image": "Store Exterior Image",
     "add_shelf.upload_exterior_image_desc": "File size not exceeding 10 MB - JPG, PNG, GIF, WebP",
     "add_shelf.submit_button": "Publish Shelf Now",
-    "add_shelf.price_increase_notice": "Price will be increased by approximately 8%",
+    "add_shelf.price_increase_notice": "Price will be increased by approximately {fee}%",
     "add_shelf.success_message": "Shelf added successfully and is now available for rent",
     "add_shelf.error_message": "Error adding shelf. Please try again",
     "add_shelf.discount_max_error": "Percentage must not exceed 22%",
@@ -3017,6 +3025,14 @@ const translations = {
     "admin.settings.max_stores_per_user": "Maximum Stores per User",
     "admin.settings.max_shelves_per_store": "Maximum Shelves per Store",
     "admin.settings.save_user_settings": "Save User Settings",
+
+    // Platform Commission Settings
+    "admin.settings.commission_settings": "Commission Settings",
+    "admin.brand_sales_commission": "Brand Sales Commission",
+    "admin.store_rent_commission": "Store Rent Commission",
+    "admin.brand_commission_desc": "Percentage charged on brand product sales",
+    "admin.store_commission_desc": "Percentage charged on shelf rental fees",
+    "admin.commission_percentage_symbol": "%",
 
     // Settings Page
     "settings.title": "Settings",

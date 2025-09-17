@@ -4,7 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { getImageUrlsFromArray } from "./helpers"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 
 // Create a new rental request
@@ -87,8 +87,10 @@ export const createRentalRequest = mutation({
         }
       }
       
-      // Calculate total commission (store + platform)
-      const platformFee = 8 // 8% platform fee
+      // Get platform settings for commission
+      const platformSettings = await ctx.db.query("platformSettings").collect()
+      const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+      const platformFee = brandSalesCommission
       const storeCommissionRate = shelf.storeCommission || 0
       const totalCommission = storeCommissionRate + platformFee
       
@@ -149,8 +151,10 @@ export const createRentalRequest = mutation({
       }
     }
     
-    // Calculate total commission (store + platform)
-    const platformFee = 8 // 8% platform fee
+    // Get platform settings for commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+    const platformFee = brandSalesCommission
     const storeCommissionRate = shelf.storeCommission || 0
     const totalCommission = storeCommissionRate + platformFee
     
@@ -216,9 +220,12 @@ export const acceptRentalRequest = mutation({
     const invoiceCount = existingInvoices.length + 1
     const invoiceNumber = `INV-${currentYear}-${String(invoiceCount).padStart(4, '0')}`
     
-    // Calculate platform fee (8%)
-    const platformFeePercentage = 8
-    const platformFee = (request.totalAmount * platformFeePercentage) / 100
+    // Get platform settings for store rent commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
+
+    // Calculate platform fee based on store rent commission
+    const platformFee = (request.totalAmount * storeRentCommission) / 100
     const netAmount = request.totalAmount - platformFee
     
     // Create payment record (invoice)
