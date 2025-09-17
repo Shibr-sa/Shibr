@@ -260,11 +260,11 @@ export default function BrandShelvesPage() {
                     variant="ghost"
                     className="h-8 w-8 p-0"
                     onClick={() => {
-                      // Navigate to the shelf details page with conversation
+                      // Always go to marketplace page with conversation if exists
                       if (request.conversationId) {
                         router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
                       } else {
-                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                        router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
                       }
                     }}
                   >
@@ -298,8 +298,13 @@ export default function BrandShelvesPage() {
                       size="sm" 
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      onClick={async () => {
-                        router.push(`/brand-dashboard/shelves/${request._id}`)
+                      onClick={() => {
+                        // Always go to marketplace page with conversation if exists
+                        if (request.conversationId) {
+                          router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
+                        } else {
+                          router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
+                        }
                       }}
                     >
                       <Eye className="h-4 w-4" />
@@ -556,7 +561,9 @@ export default function BrandShelvesPage() {
                           : "-"
                         }
                       </TableCell>
-                      <TableCell className="py-3 w-[15%]">{request.status ? getStatusBadge(request.status) : "-"}</TableCell>
+                      <TableCell className="py-3 w-[15%]">
+                        {request.status ? getStatusBadge(request.status) : "-"}
+                      </TableCell>
                       <TableCell className="py-3 w-[10%]">{getActionButton(request)}</TableCell>
                     </TableRow>
                   ))}

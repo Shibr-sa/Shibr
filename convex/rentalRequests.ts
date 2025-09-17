@@ -504,6 +504,12 @@ export const getRentalRequestById = query({
       products = products.filter(p => p !== null)
     }
     
+    // Get shelf store if exists (for active rentals)
+    const shelfStore = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
+      .first()
+
     // Return enriched request data
     return {
       ...request,
@@ -519,8 +525,8 @@ export const getRentalRequestById = query({
       businessCategory: brandOwnerProfile?.businessCategory,
       website: brandOwnerProfile?.website,
       commercialRegisterNumber: brandOwnerProfile?.commercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
-      commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument 
-        ? await ctx.storage.getUrl(brandOwnerProfile.commercialRegisterDocument) 
+      commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument
+        ? await ctx.storage.getUrl(brandOwnerProfile.commercialRegisterDocument)
         : brandOwnerProfile?.freelanceLicenseDocument
         ? await ctx.storage.getUrl(brandOwnerProfile.freelanceLicenseDocument)
         : undefined,
@@ -530,6 +536,17 @@ export const getRentalRequestById = query({
       brandTotalRatings: 0, // brandOwner?.totalRatings || 0,
       // Products
       products: products,
+      // Shelf store information
+      shelfStore: shelfStore ? {
+        _id: shelfStore._id,
+        storeSlug: shelfStore.storeSlug,
+        qrCodeUrl: shelfStore.qrCodeUrl,
+        isActive: shelfStore.isActive,
+        totalScans: shelfStore.totalScans,
+        totalViews: shelfStore.totalViews,
+        totalOrders: shelfStore.totalOrders,
+        totalRevenue: shelfStore.totalRevenue,
+      } : null,
     }
   },
 })
@@ -584,7 +601,7 @@ export const getUserRentalRequests = query({
         
         // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
-        
+
         // For store owners viewing brand requests, include all brand details
         if (args.userType === "store" && otherUser && otherUserProfile) {
           return {
@@ -599,15 +616,15 @@ export const getUserRentalRequests = query({
             activityType: (otherUserProfile as any).brandType,
                   website: (otherUserProfile as any).website,
             commercialRegisterNumber: (otherUserProfile as any).commercialRegisterNumber || (otherUserProfile as any).freelanceLicenseNumber,
-            commercialRegisterFile: (otherUserProfile as any).commercialRegisterDocument 
-              ? await ctx.storage.getUrl((otherUserProfile as any).commercialRegisterDocument) 
+            commercialRegisterFile: (otherUserProfile as any).commercialRegisterDocument
+              ? await ctx.storage.getUrl((otherUserProfile as any).commercialRegisterDocument)
               : (otherUserProfile as any).freelanceLicenseDocument
               ? await ctx.storage.getUrl((otherUserProfile as any).freelanceLicenseDocument)
               : undefined,
             ownerName: (otherUserProfile as any).brandName
           }
         }
-        
+
         // For brand owners viewing store responses
         return {
           ...request,
@@ -943,10 +960,15 @@ export const confirmPayment = mutation({
     await ctx.db.patch(args.requestId, {
       status: "active",
     })
-    
+
     // Update shelf availability
     await ctx.db.patch(request.shelfId, {
       isAvailable: false,
+    })
+
+    // Create shelf store for QR code functionality
+    await ctx.runMutation(api.shelfStores.createShelfStore, {
+      rentalRequestId: args.requestId,
     })
     
     // Auto-reject any other accepted/pending requests for the same shelf

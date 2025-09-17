@@ -360,6 +360,149 @@ const schema = defineSchema({
     .index("by_otp", ["otp"])
     .index("by_expires", ["expiresAt"]),
 
+  // Shelf Stores (QR code-enabled stores for active rentals)
+  shelfStores: defineTable({
+    rentalRequestId: v.id("rentalRequests"), // Link to active rental
+    shelfId: v.id("shelves"),
+    storeProfileId: v.id("storeProfiles"),
+    brandProfileId: v.id("brandProfiles"),
+
+    // Store details
+    storeName: v.string(), // Generated name for the store
+    storeSlug: v.string(), // URL-friendly identifier
+    description: v.optional(v.string()),
+
+    // QR Code data
+    qrCodeUrl: v.string(), // Full URL that QR code points to
+    qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
+
+    // Commission settings (inherited from rental)
+    storeCommissionRate: v.number(), // Store's commission percentage
+    platformFeeRate: v.number(), // Platform fee percentage (8%)
+
+    // Store status
+    isActive: v.boolean(),
+    activatedAt: v.number(), // When store was activated
+    deactivatedAt: v.optional(v.number()),
+
+    // Analytics
+    totalScans: v.number(),
+    totalViews: v.number(),
+    totalOrders: v.number(),
+    totalRevenue: v.number(),
+  })
+    .index("by_rental", ["rentalRequestId"])
+    .index("by_shelf", ["shelfId"])
+    .index("by_store_profile", ["storeProfileId"])
+    .index("by_brand_profile", ["brandProfileId"])
+    .index("by_slug", ["storeSlug"])
+    .index("by_active", ["isActive"]),
+
+  // Customer Orders from shelf stores
+  customerOrders: defineTable({
+    shelfStoreId: v.id("shelfStores"),
+
+    // Customer information (guest checkout)
+    customerName: v.string(),
+    customerEmail: v.string(),
+    customerPhone: v.string(),
+
+    // Order items
+    items: v.array(v.object({
+      productId: v.id("products"),
+      productName: v.string(),
+      price: v.number(),
+      quantity: v.number(),
+      subtotal: v.number(),
+    })),
+
+    // Order totals
+    subtotal: v.number(),
+    storeCommission: v.number(), // Amount for store owner
+    platformFee: v.number(), // Platform commission
+    brandRevenue: v.number(), // Amount for brand owner
+    total: v.number(),
+
+    // Order status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("delivered"),
+      v.literal("cancelled"),
+      v.literal("refunded")
+    ),
+
+    // Payment info
+    paymentMethod: v.union(
+      v.literal("cash"),
+      v.literal("bank_transfer"),
+      v.literal("card"), // For future integration
+    ),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    paymentReference: v.optional(v.string()),
+
+    // Order tracking
+    orderNumber: v.string(), // Human-readable order number
+    notes: v.optional(v.string()),
+
+    // Timestamps
+    orderedAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  })
+    .index("by_shelf_store", ["shelfStoreId"])
+    .index("by_customer_email", ["customerEmail"])
+    .index("by_customer_phone", ["customerPhone"])
+    .index("by_order_number", ["orderNumber"])
+    .index("by_status", ["status"])
+    .index("by_payment_status", ["paymentStatus"])
+    .index("by_ordered_at", ["orderedAt"]),
+
+  // Analytics for shelf stores
+  shelfStoreAnalytics: defineTable({
+    shelfStoreId: v.id("shelfStores"),
+
+    // Event type
+    eventType: v.union(
+      v.literal("qr_scan"), // QR code scanned
+      v.literal("page_view"), // Store page viewed
+      v.literal("product_view"), // Product clicked
+      v.literal("add_to_cart"), // Product added to cart
+      v.literal("checkout_started"), // Checkout initiated
+      v.literal("order_completed"), // Order placed
+    ),
+
+    // Event details
+    productId: v.optional(v.id("products")), // For product-specific events
+    orderId: v.optional(v.id("customerOrders")), // For order events
+
+    // Session info
+    sessionId: v.string(), // Browser session ID
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    referrer: v.optional(v.string()),
+
+    // Location (if available)
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
+
+    // Timestamp
+    timestamp: v.number(),
+  })
+    .index("by_shelf_store", ["shelfStoreId"])
+    .index("by_event_type", ["eventType"])
+    .index("by_session", ["sessionId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_store_and_type", ["shelfStoreId", "eventType"]),
+
 })
 
 export default schema

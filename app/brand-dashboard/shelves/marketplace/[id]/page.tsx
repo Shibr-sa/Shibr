@@ -26,6 +26,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { ChatInterface } from "@/components/chat/chat-interface"
+import { QRStoreCard } from "@/components/qr-store-card"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useBrandData } from "@/contexts/brand-data-context"
 
@@ -527,6 +528,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
               {t("marketplace.details.approval_notice")}
             </p>
+          </div>
+        )}
+
+        {/* QR Store Section - Only for active rentals */}
+        {activeRequest?.status === 'active' && activeRequest._id && (
+          <div className="mb-6">
+            <QRStoreCard rentalRequestId={activeRequest._id as Id<"rentalRequests">} />
           </div>
         )}
 
