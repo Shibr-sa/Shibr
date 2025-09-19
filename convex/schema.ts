@@ -387,7 +387,6 @@ const schema = defineSchema({
 
     // Analytics
     totalScans: v.number(),
-    totalViews: v.number(),
     totalOrders: v.number(),
     totalRevenue: v.number(),
   })
@@ -403,8 +402,6 @@ const schema = defineSchema({
     shelfStoreId: v.id("shelfStores"),
 
     // Customer information (guest checkout)
-    customerName: v.string(),
-    customerEmail: v.string(),
     customerPhone: v.string(),
 
     // Order items
@@ -423,17 +420,6 @@ const schema = defineSchema({
     brandRevenue: v.number(), // Amount for brand owner
     total: v.number(),
 
-    // Order status
-    status: v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("processing"),
-      v.literal("ready"),
-      v.literal("delivered"),
-      v.literal("cancelled"),
-      v.literal("refunded")
-    ),
-
     // Payment info
     paymentMethod: v.union(
       v.literal("cash"),
@@ -441,31 +427,14 @@ const schema = defineSchema({
       v.literal("card"),
       v.literal("apple"), // Apple Pay
     ),
-    paymentStatus: v.union(
-      v.literal("pending"),
-      v.literal("paid"),
-      v.literal("failed"),
-      v.literal("refunded")
-    ),
     paymentReference: v.optional(v.string()),
 
     // Order tracking
     orderNumber: v.string(), // Human-readable order number
-    notes: v.optional(v.string()),
-
-    // Timestamps
-    orderedAt: v.number(),
-    confirmedAt: v.optional(v.number()),
-    deliveredAt: v.optional(v.number()),
-    cancelledAt: v.optional(v.number()),
   })
     .index("by_shelf_store", ["shelfStoreId"])
-    .index("by_customer_email", ["customerEmail"])
     .index("by_customer_phone", ["customerPhone"])
-    .index("by_order_number", ["orderNumber"])
-    .index("by_status", ["status"])
-    .index("by_payment_status", ["paymentStatus"])
-    .index("by_ordered_at", ["orderedAt"]),
+    .index("by_order_number", ["orderNumber"]),
 })
 
 export default schema

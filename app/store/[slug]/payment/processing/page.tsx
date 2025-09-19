@@ -86,15 +86,12 @@ export default function PaymentProcessingPage() {
         // Create the actual order in the database
         const result = await createOrder({
           shelfStoreId: data.shelfStoreId,
-          customerName: "Guest Customer",
-          customerEmail: "guest@store.com",
           customerPhone: data.customerPhone,
           items: data.items.map(item => ({
             productId: item.productId as any,
             quantity: item.quantity
           })),
           paymentMethod: data.paymentMethod,
-          notes: "",
         })
 
         setOrderId(result.orderId)

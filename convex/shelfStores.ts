@@ -83,7 +83,6 @@ export const createShelfStore = mutation({
       isActive: true,
       activatedAt: Date.now(),
       totalScans: 0,
-      totalViews: 0,
       totalOrders: 0,
       totalRevenue: 0,
     })
@@ -190,6 +189,118 @@ export const deactivateShelfStore = mutation({
   },
 })
 
+// Get aggregated shelf store stats for a brand
+export const getBrandShelfStoresStats = query({
+  args: {
+    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      return {
+        totalScans: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        scansChange: 0,
+        ordersChange: 0,
+        revenueChange: 0,
+      }
+    }
+
+    // Get user's brand profile
+    const profileData = await getUserProfile(ctx, userId)
+    if (!profileData || profileData.type !== "brand_owner") {
+      return {
+        totalScans: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        scansChange: 0,
+        ordersChange: 0,
+        revenueChange: 0,
+      }
+    }
+
+    // Get all shelf stores for this brand
+    const shelfStores = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", profileData.profile._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect()
+
+    // Calculate date range based on period
+    const now = new Date()
+    const currentPeriodStart = new Date()
+    const previousPeriodStart = new Date()
+    const previousPeriodEnd = new Date()
+
+    switch (args.period) {
+      case "daily":
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setDate(now.getDate() - 1)
+        previousPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodEnd.setDate(now.getDate() - 1)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
+        break
+      case "weekly":
+        currentPeriodStart.setDate(now.getDate() - now.getDay())
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setDate(currentPeriodStart.getDate() - 7)
+        previousPeriodEnd.setDate(currentPeriodStart.getDate() - 1)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
+        break
+      case "monthly":
+        currentPeriodStart.setDate(1)
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setMonth(now.getMonth() - 1)
+        previousPeriodStart.setDate(1)
+        previousPeriodEnd.setMonth(now.getMonth())
+        previousPeriodEnd.setDate(0)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
+        break
+      case "yearly":
+        currentPeriodStart.setMonth(0, 1)
+        currentPeriodStart.setHours(0, 0, 0, 0)
+        previousPeriodStart.setFullYear(now.getFullYear() - 1)
+        previousPeriodStart.setMonth(0, 1)
+        previousPeriodEnd.setFullYear(now.getFullYear() - 1)
+        previousPeriodEnd.setMonth(11, 31)
+        previousPeriodEnd.setHours(23, 59, 59, 999)
+        break
+    }
+
+    // Aggregate current stats
+    const currentStats = shelfStores.reduce(
+      (acc, store) => {
+        // Only count stats from stores activated in current period
+        const activatedDate = new Date(store.activatedAt)
+        if (activatedDate >= currentPeriodStart) {
+          acc.totalScans += store.totalScans || 0
+          acc.totalOrders += store.totalOrders || 0
+          acc.totalRevenue += store.totalRevenue || 0
+        }
+        return acc
+      },
+      { totalScans: 0, totalOrders: 0, totalRevenue: 0 }
+    )
+
+    // For now, return 0 changes as we don't have historical data
+    // In production, you'd query historical data or store periodic snapshots
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return Math.round(((current - previous) / previous) * 100)
+    }
+
+    return {
+      totalScans: currentStats.totalScans,
+      totalOrders: currentStats.totalOrders,
+      totalRevenue: currentStats.totalRevenue,
+      scansChange: 0, // Would need historical data
+      ordersChange: 0, // Would need historical data
+      revenueChange: 0, // Would need historical data
+    }
+  },
+})
+
 // Simplified stats increment
 export const incrementStats = mutation({
   args: {
@@ -207,10 +318,9 @@ export const incrementStats = mutation({
 
     const updates: any = {}
 
-    if (args.statType === "scan") {
+    if (args.statType === "scan" || args.statType === "view") {
+      // Both scan and view events increment totalScans
       updates.totalScans = (store.totalScans || 0) + 1
-    } else if (args.statType === "view") {
-      updates.totalViews = (store.totalViews || 0) + 1
     } else if (args.statType === "order") {
       updates.totalOrders = (store.totalOrders || 0) + 1
       if (args.revenue) {

@@ -105,7 +105,7 @@ export default function OrderConfirmationPage() {
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("order.order_date")}</p>
-                  <p className="font-semibold text-sm">{formatDate(order.orderedAt)}</p>
+                  <p className="font-semibold text-sm">{formatDate(order._creationTime)}</p>
                 </div>
               </div>
 

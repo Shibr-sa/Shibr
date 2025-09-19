@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { useLanguage } from "@/contexts/localization-context"
 import { formatCurrency } from "@/lib/formatters"
+import { StatCard } from "@/components/ui/stat-card"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import {
   Copy,
   ExternalLink,
   TrendingUp,
-  Eye,
   ShoppingCart,
   ScanLine,
   Loader2
@@ -187,7 +187,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
                   onClick={() => setShowQRDialog(true)}
                   disabled={!qrCodeDataUrl}
                 >
-                  <Eye className="h-4 w-4 me-2" />
+                  <QrCode className="h-4 w-4 me-2" />
                   {t("qr_stores.view_qr")}
                 </Button>
               </div>
@@ -195,48 +195,25 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
           </div>
 
           {/* Analytics */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <ScanLine className="h-4 w-4" />
-                  <span className="text-xs">{t("qr_stores.scans")}</span>
-                </div>
-                <p className="text-2xl font-bold">
-                  {shelfStore.totalScans || 0}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Eye className="h-4 w-4" />
-                  <span className="text-xs">{t("qr_stores.views")}</span>
-                </div>
-                <p className="text-2xl font-bold">
-                  {shelfStore.totalViews || 0}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <ShoppingCart className="h-4 w-4" />
-                  <span className="text-xs">{t("qr_stores.orders")}</span>
-                </div>
-                <p className="text-2xl font-bold">
-                  {shelfStore.totalOrders || 0}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs">{t("qr_stores.revenue")}</span>
-                </div>
-                <p className="text-xl font-bold">
-                  {formatCurrency(shelfStore.totalRevenue || 0, language)}
-                </p>
-              </div>
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              title={t("qr_stores.scans")}
+              value={shelfStore.totalScans || 0}
+              icon={<ScanLine className="h-5 w-5 text-primary" />}
+              className="bg-background border"
+            />
+            <StatCard
+              title={t("qr_stores.orders")}
+              value={shelfStore.totalOrders || 0}
+              icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+              className="bg-background border"
+            />
+            <StatCard
+              title={t("qr_stores.revenue")}
+              value={formatCurrency(shelfStore.totalRevenue || 0, language)}
+              icon={<TrendingUp className="h-5 w-5 text-primary" />}
+              className="bg-background border"
+            />
           </div>
         </CardContent>
       </Card>

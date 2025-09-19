@@ -34,6 +34,7 @@ import { useMutation } from "convex/react"
 import React, { useMemo } from "react"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import BrandShelvesLoading from "./loading"
+import { formatCurrency } from "@/lib/formatters"
 
 // Helper function to calculate rental months
 const calculateRentalMonths = (startDate: number | undefined, endDate: number | undefined) => {
@@ -71,13 +72,21 @@ export default function BrandShelvesPage() {
     api.chats.getUnreadMessageCounts,
     userId ? { userId: userId } : "skip"
   )
-  
+
 
   // Fetch rental statistics with percentage changes based on selected period
   const rentalStats = useQuery(
     api.rentalRequests.getRentalStatsWithChanges,
     userId ? {
       userType: "brand" as const,
+      period: selectedPeriod as "daily" | "weekly" | "monthly" | "yearly"
+    } : "skip"
+  )
+
+  // Fetch shelf store statistics (QR scans, orders, revenue)
+  const shelfStoreStats = useQuery(
+    api.shelfStores.getBrandShelfStoresStats,
+    userId ? {
       period: selectedPeriod as "daily" | "weekly" | "monthly" | "yearly"
     } : "skip"
   )
@@ -425,9 +434,9 @@ export default function BrandShelvesPage() {
             {/* QR Code Scans Card */}
             <StatCard
               title={t("brand.shelves.qr_scans")}
-              value={0}
+              value={shelfStoreStats?.totalScans || 0}
               trend={{
-                value: 0,
+                value: shelfStoreStats?.scansChange || 0,
                 label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
               }}
               icon={<QrCode className="h-5 w-5 text-primary" />}
@@ -436,9 +445,9 @@ export default function BrandShelvesPage() {
             {/* Total Sales Card */}
             <StatCard
               title={t("brand.shelves.total_sales")}
-              value={language === "ar" ? `0 ${t("common.currency")}` : `${t("common.currency")} 0`}
+              value={formatCurrency(shelfStoreStats?.totalRevenue || 0, language)}
               trend={{
-                value: 0,
+                value: shelfStoreStats?.revenueChange || 0,
                 label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
               }}
               icon={<Banknote className="h-5 w-5 text-primary" />}

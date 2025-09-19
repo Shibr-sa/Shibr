@@ -9,8 +9,6 @@ import { api } from "./_generated/api"
 export const createOrder = mutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
-    customerName: v.string(),
-    customerEmail: v.string(),
     customerPhone: v.string(),
     items: v.array(v.object({
       productId: v.id("products"),
@@ -22,7 +20,6 @@ export const createOrder = mutation({
       v.literal("card"),
       v.literal("apple")
     ),
-    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Get the shelf store
@@ -75,8 +72,6 @@ export const createOrder = mutation({
     // Create the order
     const orderId = await ctx.db.insert("customerOrders", {
       shelfStoreId: args.shelfStoreId,
-      customerName: args.customerName,
-      customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,
       items: orderItems,
       subtotal,
@@ -84,12 +79,8 @@ export const createOrder = mutation({
       platformFee,
       brandRevenue,
       total,
-      status: "pending",
       paymentMethod: args.paymentMethod,
-      paymentStatus: "pending",
       orderNumber,
-      notes: args.notes,
-      orderedAt: Date.now(),
     })
 
     // Update product stock
@@ -195,30 +186,15 @@ export const getOrderByNumber = query({
 export const getShelfStoreOrders = query({
   args: {
     shelfStoreId: v.id("shelfStores"),
-    status: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("processing"),
-      v.literal("ready"),
-      v.literal("delivered"),
-      v.literal("cancelled"),
-      v.literal("refunded")
-    )),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    const orders = await ctx.db
       .query("customerOrders")
       .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", args.shelfStoreId))
-
-    const orders = await query.collect()
-
-    // Filter by status if provided
-    const filteredOrders = args.status
-      ? orders.filter(order => order.status === args.status)
-      : orders
+      .collect()
 
     // Sort by order date (newest first)
-    return filteredOrders.sort((a, b) => b.orderedAt - a.orderedAt)
+    return orders.sort((a, b) => b._creationTime - a._creationTime)
   },
 })
 
@@ -279,11 +255,11 @@ export const getStoreOwnerOrders = query({
         month: now - 30 * 24 * 60 * 60 * 1000,
       }[args.period]
 
-      orders = orders.filter(order => order.orderedAt >= periodStart)
+      orders = orders.filter(order => order._creationTime >= periodStart)
     }
 
     // Sort by order date (newest first)
-    return orders.sort((a, b) => b.orderedAt - a.orderedAt)
+    return orders.sort((a, b) => b._creationTime - a._creationTime)
   },
 })
 
@@ -344,15 +320,17 @@ export const getBrandOwnerOrders = query({
         month: now - 30 * 24 * 60 * 60 * 1000,
       }[args.period]
 
-      orders = orders.filter(order => order.orderedAt >= periodStart)
+      orders = orders.filter(order => order._creationTime >= periodStart)
     }
 
     // Sort by order date (newest first)
-    return orders.sort((a, b) => b.orderedAt - a.orderedAt)
+    return orders.sort((a, b) => b._creationTime - a._creationTime)
   },
 })
 
-// Update order status
+// DEPRECATED: Status field has been removed from schema
+// Keeping this commented for potential future use
+/*
 export const updateOrderStatus = mutation({
   args: {
     orderId: v.id("customerOrders"),
@@ -456,8 +434,10 @@ export const updateOrderStatus = mutation({
     return { success: true }
   },
 })
+*/
 
-// Update payment status
+// DEPRECATED: PaymentStatus field has been removed from schema
+/*
 export const updatePaymentStatus = mutation({
   args: {
     orderId: v.id("customerOrders"),
@@ -483,6 +463,7 @@ export const updatePaymentStatus = mutation({
     return { success: true }
   },
 })
+*/
 
 // Get order statistics for dashboard
 export const getOrderStatistics = query({
@@ -560,22 +541,16 @@ export const getOrderStatistics = query({
         month: now - 30 * 24 * 60 * 60 * 1000,
       }[args.period as "today" | "week" | "month"]
 
-      orders = orders.filter(order => order.orderedAt >= periodStart)
+      orders = orders.filter(order => order._creationTime >= periodStart)
     }
 
     // Calculate statistics
     const totalOrders = orders.length
-    const pendingOrders = orders.filter(o => o.status === "pending").length
-    const completedOrders = orders.filter(o => o.status === "delivered").length
-    const totalRevenue = orders
-      .filter(o => o.paymentStatus === "paid")
-      .reduce((sum, o) => sum + o.total, 0)
+    const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0)
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
     return {
       totalOrders,
-      pendingOrders,
-      completedOrders,
       totalRevenue,
       averageOrderValue,
     }

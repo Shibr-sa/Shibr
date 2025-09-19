@@ -550,7 +550,6 @@ export const getRentalRequestById = query({
         qrCodeUrl: shelfStore.qrCodeUrl,
         isActive: shelfStore.isActive,
         totalScans: shelfStore.totalScans,
-        totalViews: shelfStore.totalViews,
         totalOrders: shelfStore.totalOrders,
         totalRevenue: shelfStore.totalRevenue,
       } : null,
