@@ -19,7 +19,8 @@ export const createOrder = mutation({
     paymentMethod: v.union(
       v.literal("cash"),
       v.literal("bank_transfer"),
-      v.literal("card")
+      v.literal("card"),
+      v.literal("apple")
     ),
     notes: v.optional(v.string()),
   },
@@ -103,6 +104,26 @@ export const createOrder = mutation({
       }
     }
 
+    // Update rental request's selectedProducts quantities
+    const rental = await ctx.db.get(shelfStore.rentalRequestId)
+    if (rental && rental.selectedProducts) {
+      const updatedProducts = rental.selectedProducts.map(prod => {
+        const orderedItem = args.items.find(item => item.productId === prod.productId)
+        if (orderedItem) {
+          // Reduce the quantity available on the shelf
+          return {
+            ...prod,
+            quantity: Math.max(0, prod.quantity - orderedItem.quantity)
+          }
+        }
+        return prod
+      })
+
+      await ctx.db.patch(rental._id, {
+        selectedProducts: updatedProducts
+      })
+    }
+
     // Update shelf store statistics
     await ctx.db.patch(args.shelfStoreId, {
       totalOrders: (shelfStore.totalOrders || 0) + 1,
@@ -130,9 +151,17 @@ export const getOrderById = query({
     // Get shelf store details
     const shelfStore = await ctx.db.get(order.shelfStoreId)
 
+    // Get brand profile details
+    let brandName = null
+    if (shelfStore?.brandProfileId) {
+      const brandProfile = await ctx.db.get(shelfStore.brandProfileId)
+      brandName = brandProfile?.brandName
+    }
+
     return {
       ...order,
       storeName: shelfStore?.storeName,
+      brandName: brandName || "Brand",
     }
   },
 })
@@ -393,6 +422,26 @@ export const updateOrderStatus = mutation({
             totalRevenue: Math.max(0, (product.totalRevenue || 0) - item.subtotal),
           })
         }
+      }
+
+      // Restore rental request's selectedProducts quantities
+      const rental = await ctx.db.get(shelfStore.rentalRequestId)
+      if (rental && rental.selectedProducts) {
+        const updatedProducts = rental.selectedProducts.map(prod => {
+          const cancelledItem = order.items.find(item => item.productId === prod.productId)
+          if (cancelledItem) {
+            // Restore the quantity back to the shelf
+            return {
+              ...prod,
+              quantity: prod.quantity + cancelledItem.quantity
+            }
+          }
+          return prod
+        })
+
+        await ctx.db.patch(rental._id, {
+          selectedProducts: updatedProducts
+        })
       }
 
       // Update shelf store statistics

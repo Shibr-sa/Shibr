@@ -13,12 +13,13 @@ interface CartItem {
 
 interface CartContextType {
   items: CartItem[]
-  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void
+  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => { success: boolean; message?: string; quantityAdded?: number }
   removeItem: (productId: Id<"products">) => void
   updateQuantity: (productId: Id<"products">, quantity: number) => void
   clearCart: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
+  getItemQuantity: (productId: Id<"products">) => number
   storeSlug: string | null
   setStoreSlug: (slug: string) => void
 }
@@ -64,21 +65,60 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [storeSlug])
 
   const addItem = (newItem: Omit<CartItem, "quantity"> & { quantity?: number }) => {
-    setItems(prevItems => {
-      const existingItem = prevItems.find(item => item.productId === newItem.productId)
+    const existingItem = items.find(item => item.productId === newItem.productId)
+    const currentQuantity = existingItem?.quantity || 0
+    const requestedQuantity = newItem.quantity || 1
+    const maxQuantity = newItem.maxQuantity || Infinity
 
+    // Check if adding would exceed limit
+    if (currentQuantity + requestedQuantity > maxQuantity) {
+      const canAdd = maxQuantity - currentQuantity
+      if (canAdd <= 0) {
+        return {
+          success: false,
+          message: `Maximum quantity (${maxQuantity}) already in cart`,
+          quantityAdded: 0
+        }
+      }
+      // Only add what's possible
+      const actualQuantityToAdd = canAdd
+
+      setItems(prevItems => {
+        if (existingItem) {
+          return prevItems.map(item =>
+            item.productId === newItem.productId
+              ? { ...item, quantity: item.quantity + actualQuantityToAdd }
+              : item
+          )
+        } else {
+          return [...prevItems, { ...newItem, quantity: actualQuantityToAdd }]
+        }
+      })
+
+      return {
+        success: true,
+        message: `Only ${actualQuantityToAdd} added (maximum ${maxQuantity} allowed)`,
+        quantityAdded: actualQuantityToAdd
+      }
+    }
+
+    // Normal add - within limits
+    setItems(prevItems => {
       if (existingItem) {
-        // Update quantity if item already exists
         return prevItems.map(item =>
           item.productId === newItem.productId
-            ? { ...item, quantity: item.quantity + (newItem.quantity || 1) }
+            ? { ...item, quantity: item.quantity + requestedQuantity }
             : item
         )
       } else {
-        // Add new item
-        return [...prevItems, { ...newItem, quantity: newItem.quantity || 1 }]
+        return [...prevItems, { ...newItem, quantity: requestedQuantity }]
       }
     })
+
+    return {
+      success: true,
+      quantityAdded: requestedQuantity
+    }
   }
 
   const removeItem = (productId: Id<"products">) => {
@@ -116,6 +156,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return items.reduce((total, item) => total + (item.price * item.quantity), 0)
   }
 
+  const getItemQuantity = (productId: Id<"products">) => {
+    const item = items.find(item => item.productId === productId)
+    return item?.quantity || 0
+  }
+
   return (
     <CartContext.Provider
       value={{
@@ -126,6 +171,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         getTotalItems,
         getTotalPrice,
+        getItemQuantity,
         storeSlug,
         setStoreSlug,
       }}

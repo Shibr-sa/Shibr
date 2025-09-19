@@ -5,13 +5,21 @@ import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
-import { CartProvider, useCart } from "@/contexts/cart-context"
+import { useCart } from "@/contexts/cart-context"
 import { useLanguage } from "@/contexts/localization-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Input } from "@/components/ui/input"
 import {
   ShoppingCart,
   Plus,
@@ -21,7 +29,9 @@ import {
   Phone,
   Globe,
   Package,
-  ArrowLeft
+  ArrowLeft,
+  Building2,
+  Search
 } from "lucide-react"
 import { formatCurrency } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
@@ -29,14 +39,30 @@ import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-function StoreContent() {
+export default function StorePage() {
   const params = useParams()
   const router = useRouter()
   const { t, language, direction } = useLanguage()
   const { toast } = useToast()
   const cart = useCart()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const slug = params.slug as string
+
+  // Function to get initials from brand name
+  const getInitials = (name: string) => {
+    if (!name || name.trim().length === 0) {
+      return "BR"
+    }
+    const parts = name.trim().split(" ")
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    }
+    return name.substring(0, 2).toUpperCase()
+  }
 
   // Fetch store data
   const store = useQuery(api.shelfStores.getShelfStoreBySlug, { slug })
@@ -59,20 +85,80 @@ function StoreContent() {
     }
   }, [store?._id, slug])
 
-  const handleAddToCart = (product: any) => {
-    cart.addItem({
+  const handleAddToCart = (product: any, customQuantity?: number) => {
+    const quantityToAdd = customQuantity || 1
+    const result = cart.addItem({
       productId: product._id,
       name: product.name,
       price: product.price,
       maxQuantity: product.shelfQuantity,
+      quantity: quantityToAdd,
     })
 
-    // No need to track add to cart anymore - only orders matter
+    if (result.success) {
+      if (result.message && result.quantityAdded && result.quantityAdded < quantityToAdd) {
+        // Partial add
+        toast({
+          title: t("store.added_to_cart"),
+          description: result.message,
+          variant: "default",
+        })
+      } else {
+        // Full add
+        toast({
+          title: t("store.added_to_cart"),
+          description: `${product.name} (${result.quantityAdded}x)`,
+        })
+      }
+    } else {
+      // Failed to add
+      toast({
+        title: t("store.cart_limit_reached"),
+        description: result.message,
+        variant: "destructive",
+      })
+    }
+  }
 
-    toast({
-      title: t("store.added_to_cart"),
-      description: product.name,
+  const handleProductClick = (product: any) => {
+    const currentInCart = cart.getItemQuantity(product._id)
+    const maxCanAdd = Math.max(0, product.shelfQuantity - currentInCart)
+
+    setSelectedProduct({
+      ...product,
+      currentInCart,
+      maxCanAdd
     })
+    setQuantity(Math.min(1, maxCanAdd))
+    setSheetOpen(true)
+  }
+
+  const handleAddFromSheet = () => {
+    if (selectedProduct) {
+      handleAddToCart(selectedProduct, quantity)
+      setSheetOpen(false)
+    }
+  }
+
+  const handleQuantityChange = (value: string) => {
+    const num = parseInt(value)
+    const maxCanAdd = selectedProduct?.maxCanAdd || 0
+    if (!isNaN(num) && num >= 1 && num <= maxCanAdd) {
+      setQuantity(num)
+    }
+  }
+
+  const incrementQuantity = () => {
+    const maxCanAdd = selectedProduct?.maxCanAdd || 0
+    if (quantity < maxCanAdd) {
+      setQuantity(quantity + 1)
+    }
+  }
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1)
+    }
   }
 
   const handleViewCart = () => {
@@ -83,7 +169,7 @@ function StoreContent() {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i}>
                 <CardHeader>
@@ -124,23 +210,32 @@ function StoreContent() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Store className="h-6 w-6" />
+          <div className="flex items-center gap-3">
+            {store.brandLogo ? (
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={store.brandLogo} alt={store.brandName} />
+                <AvatarFallback>{getInitials(store.brandName || "")}</AvatarFallback>
+              </Avatar>
+            ) : (
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-muted">
+                  {getInitials(store.brandName || "")}
+                </AvatarFallback>
+              </Avatar>
+            )}
             <div>
-              <h1 className="text-lg font-semibold">{store.storeName}</h1>
-              <p className="text-xs text-muted-foreground">{store.brandName}</p>
+              <h1 className="text-lg font-semibold">{store.brandName}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={handleViewCart}
               className="relative"
             >
-              <ShoppingCart className="h-4 w-4 me-2" />
-              {t("store.cart")}
+              <ShoppingCart className="h-4 w-4" />
               {cart.getTotalItems() > 0 && (
                 <Badge
                   variant="destructive"
@@ -156,32 +251,18 @@ function StoreContent() {
         </div>
       </header>
 
-      {/* Store Info */}
+      {/* Search Bar */}
       <div className="container py-6">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle>{store.shelf?.shelfName}</CardTitle>
-                <CardDescription className="mt-2">
-                  {store.shelf?.description || t("store.welcome_message")}
-                </CardDescription>
-              </div>
-              <Badge variant="outline">
-                <MapPin className="h-3 w-3 me-1" />
-                {store.shelf?.city}
-              </Badge>
-            </div>
-          </CardHeader>
-          {store.shelf?.location?.address && (
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 inline me-1" />
-                {store.shelf.location.address}
-              </p>
-            </CardContent>
-          )}
-        </Card>
+        <div className="relative max-w-xl mx-auto">
+          <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <input
+            type="search"
+            placeholder={t("brands.search_products_placeholder")}
+            className="w-full ps-10 pe-4 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Products */}
@@ -189,9 +270,19 @@ function StoreContent() {
         <h2 className="text-2xl font-bold mb-6">{t("store.available_products")}</h2>
 
         {store.products && store.products.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {store.products.map((product: any) => (
-              <Card key={product._id} className="overflow-hidden">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {store.products
+              .filter((product: any) =>
+                searchQuery === "" ||
+                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()))
+              )
+              .map((product: any) => (
+              <Card
+                key={product._id}
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handleProductClick(product)}
+              >
                 {product.imageUrl && (
                   <div className="aspect-square relative bg-muted">
                     <img
@@ -210,29 +301,25 @@ function StoreContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <p className="text-2xl font-bold">
-                        {formatCurrency(product.price, language)}
-                      </p>
-                      <Badge
-                        variant={product.shelfQuantity > 0 ? "outline" : "destructive"}
-                      >
-                        {product.shelfQuantity > 0
-                          ? `${product.shelfQuantity} ${t("store.available")}`
-                          : t("store.out_of_stock")}
-                      </Badge>
-                    </div>
-
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-lg sm:text-xl font-bold">
+                      {formatCurrency(product.price, language)}
+                    </p>
                     <Button
-                      className="w-full"
-                      onClick={() => handleAddToCart(product)}
+                      className="min-w-fit"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleAddToCart(product)
+                      }}
                       disabled={!product.available || product.shelfQuantity === 0}
                     >
-                      <ShoppingCart className="h-4 w-4 me-2" />
-                      {product.available && product.shelfQuantity > 0
-                        ? t("store.add_to_cart")
-                        : t("store.out_of_stock")}
+                      <ShoppingCart className="h-4 w-4 sm:me-2" />
+                      <span className="hidden sm:inline">
+                        {product.available && product.shelfQuantity > 0
+                          ? t("store.add_to_cart")
+                          : t("store.out_of_stock")}
+                      </span>
                     </Button>
                   </div>
                 </CardContent>
@@ -264,14 +351,121 @@ function StoreContent() {
           </Button>
         </div>
       )}
-    </div>
-  )
-}
 
-export default function StorePage() {
-  return (
-    <CartProvider>
-      <StoreContent />
-    </CartProvider>
+      {/* Product Details Bottom Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{selectedProduct?.name}</SheetTitle>
+          </SheetHeader>
+
+          {selectedProduct && (
+            <div className="space-y-4">
+              {/* Product Image */}
+              {selectedProduct.imageUrl && (
+                <div className="aspect-square relative bg-muted rounded-lg overflow-hidden max-w-md mx-auto">
+                  <img
+                    src={selectedProduct.imageUrl}
+                    alt={selectedProduct.name}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              )}
+
+              {/* Product Description */}
+              {selectedProduct.description && (
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProduct.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Price and Stock */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(selectedProduct.price, language)}
+                  </p>
+                  <Badge
+                    variant={selectedProduct.shelfQuantity > 0 ? "secondary" : "destructive"}
+                  >
+                    {selectedProduct.shelfQuantity > 0
+                      ? `${selectedProduct.shelfQuantity} ${t("store.available")}`
+                      : t("store.out_of_stock")}
+                  </Badge>
+                </div>
+                {selectedProduct.currentInCart > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProduct.currentInCart} {t("store.already_in_cart")}
+                  </p>
+                )}
+              </div>
+
+              {/* Quantity Selector */}
+              {selectedProduct.maxCanAdd > 0 ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("store.quantity")}
+                    <span className="text-muted-foreground">
+                      ({t("store.max")} {selectedProduct.maxCanAdd})
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={decrementQuantity}
+                      disabled={quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => handleQuantityChange(e.target.value)}
+                      className="w-20 text-center"
+                      min="1"
+                      max={selectedProduct.maxCanAdd}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={incrementQuantity}
+                      disabled={quantity >= selectedProduct.maxCanAdd}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                selectedProduct.shelfQuantity > 0 && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-center text-muted-foreground">
+                      {t("store.max_quantity_in_cart")}
+                    </p>
+                  </div>
+                )
+              )}
+
+              {/* Actions - Sticky at bottom on mobile */}
+              <div className="flex gap-2 pt-4 sticky bottom-0 bg-background pb-safe">
+                <Button
+                  className="flex-1"
+                  size="lg"
+                  onClick={handleAddFromSheet}
+                  disabled={!selectedProduct.available || selectedProduct.shelfQuantity === 0 || selectedProduct.maxCanAdd === 0}
+                >
+                  <ShoppingCart className="h-4 w-4 me-2" />
+                  {t("store.add_to_cart")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }

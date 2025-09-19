@@ -438,7 +438,8 @@ const schema = defineSchema({
     paymentMethod: v.union(
       v.literal("cash"),
       v.literal("bank_transfer"),
-      v.literal("card"), // For future integration
+      v.literal("card"),
+      v.literal("apple"), // Apple Pay
     ),
     paymentStatus: v.union(
       v.literal("pending"),
