@@ -103,6 +103,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Product type is now derived from selected products
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
+
+  // Helper function to calculate rental months
+  const calculateRentalMonths = (from: Date | undefined, to: Date | undefined) => {
+    if (!from || !to) return 0
+    const daysDiff = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
+    return Math.max(1, Math.ceil(daysDiff / 30))
+  }
   
   // Check if user has an existing rental request for this shelf
   const existingRequest = useQuery(api.rentalRequests.getUserRequestForShelf,
@@ -710,54 +717,117 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   
                   {/* Booking Details */}
                   
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="booking-date" className="text-sm">
                         {t("marketplace.details.booking_duration")}*
                       </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="booking-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dateRange && "text-muted-foreground"
-                            )}
-                            disabled={shelfAvailability && !shelfAvailability.available}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} - 
-                                  {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
-                                </>
+                      <div className="flex items-start gap-3">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="booking-date"
+                              variant="outline"
+                              className={cn(
+                                "flex-1 justify-start text-left font-normal",
+                                !dateRange && "text-muted-foreground"
+                              )}
+                              disabled={shelfAvailability && !shelfAvailability.available}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateRange?.from ? (
+                                dateRange.to ? (
+                                  <>
+                                    {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} -
+                                    {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
+                                  </>
+                                ) : (
+                                  format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
+                                )
                               ) : (
-                                format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
-                              )
-                            ) : (
-                              <span>{t("marketplace.details.pick_dates")}</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="range"
-                            defaultMonth={dateRange?.from || new Date()}
-                            selected={dateRange}
-                            onSelect={setDateRange}
-                            numberOfMonths={1}
-                            disabled={(date) => {
-                              const today = new Date()
-                              today.setHours(0, 0, 0, 0)
-                              return date < today
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                                <span>{t("marketplace.details.pick_dates")}</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="range"
+                              defaultMonth={dateRange?.from || new Date()}
+                              selected={dateRange}
+                              onSelect={setDateRange}
+                              numberOfMonths={1}
+                              disabled={(date) => {
+                                // Calculate minimum date (either availableFrom or tomorrow)
+                                const tomorrow = new Date()
+                                tomorrow.setDate(tomorrow.getDate() + 1)
+                                tomorrow.setHours(0, 0, 0, 0)
 
+                                const availableFrom = new Date(shelfDetails.availableFrom)
+                                availableFrom.setHours(0, 0, 0, 0)
+
+                                const minDate = availableFrom > tomorrow ? availableFrom : tomorrow
+
+                                return date < minDate
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Rental Duration Display - Always Visible */}
+                        <div
+                          className="flex flex-col items-center justify-center min-w-[100px] h-10 px-4 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                          data-selected={!!(dateRange?.from && dateRange?.to)}
+                        >
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-medium">
+                              {dateRange?.from && dateRange?.to
+                                ? calculateRentalMonths(dateRange.from, dateRange.to)
+                                : "1"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {dateRange?.from && dateRange?.to ? (
+                                language === "ar"
+                                  ? calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                    ? "شهر"
+                                    : calculateRentalMonths(dateRange.from, dateRange.to) === 2
+                                    ? "شهرين"
+                                    : "أشهر"
+                                  : calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                    ? "month"
+                                    : "months"
+                              ) : (
+                                language === "ar" ? "شهر كحد أدنى" : "month minimum"
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Price Display - Always Visible */}
+                      <div
+                        className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                        data-selected={!!(dateRange?.from && dateRange?.to)}
+                      >
+                        <span className="text-sm text-muted-foreground">
+                          {dateRange?.from && dateRange?.to
+                            ? t("rental.total_price")
+                            : t("marketplace.price_per_month")}
+                        </span>
+                        <span className="text-lg font-semibold flex items-baseline gap-1">
+                          {dateRange?.from && dateRange?.to ? (
+                            formatCurrency(
+                              shelfDetails.monthlyPrice * calculateRentalMonths(dateRange.from, dateRange.to),
+                              language
+                            )
+                          ) : (
+                            <>
+                              {formatCurrency(shelfDetails.monthlyPrice, language)}
+                              <span className="text-sm font-normal text-muted-foreground">/{language === "ar" ? "شهر" : "month"}</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">

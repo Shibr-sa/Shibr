@@ -39,12 +39,12 @@ function getRequestStatusBadgeVariant(status: string): "default" | "secondary" |
 
 // Helper function to get badge variant based on shelf status
 function getShelfStatusBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  // Check if shelf is rented (has a renterName)
-  if (shelf.renterName) {
+  // Check if shelf is rented (not available)
+  if (!shelf.isAvailable) {
     return "default"
-  } else if (shelf.status === "approved" && shelf.isAvailable) {
+  } else if (shelf.status === "active" && shelf.isAvailable) {
     return "secondary"
-  } else if (shelf.status === "pending") {
+  } else if (shelf.status === "suspended") {
     return "outline"
   }
   return "secondary"
@@ -432,8 +432,8 @@ export default function StoreDashboardPage() {
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                             <TableCell>{shelf.branch}</TableCell>
                             <TableCell>
-                              {shelf.renterName ? 
-                                shelf.renterName : 
+                              {!shelf.isAvailable && shelf.renterName ?
+                                shelf.renterName :
                                 "-"
                               }
                             </TableCell>
@@ -442,19 +442,19 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={getShelfStatusBadgeVariant(shelf)}>
-                                {shelf.renterName 
+                                {!shelf.isAvailable
                                   ? t("shelves.status.rented")
-                                  : shelf.status === "approved" && shelf.isAvailable
+                                  : shelf.status === "active" && shelf.isAvailable
                                   ? t("shelves.status.available")
-                                  : shelf.status === "pending"
-                                  ? t("shelves.status.pending")
+                                  : shelf.status === "suspended"
+                                  ? t("shelves.status.suspended")
                                   : t("shelves.status.unavailable")
                                 }
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {shelf.renterName && shelf.nextCollectionDate ? 
-                                new Date(shelf.nextCollectionDate).toLocaleDateString("en-US") : 
+                              {!shelf.isAvailable && shelf.nextCollectionDate ?
+                                new Date(shelf.nextCollectionDate).toLocaleDateString("en-US") :
                                 "-"
                               }
                             </TableCell>

@@ -35,6 +35,13 @@ import React, { useMemo } from "react"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import BrandShelvesLoading from "./loading"
 
+// Helper function to calculate rental months
+const calculateRentalMonths = (startDate: number | undefined, endDate: number | undefined) => {
+  if (!startDate || !endDate) return 0
+  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.ceil(daysDiff / 30))
+}
+
 export default function BrandShelvesPage() {
   const { t, direction, language } = useLanguage()
   const { isBrandDataComplete } = useBrandData()
@@ -503,13 +510,16 @@ export default function BrandShelvesPage() {
                 <TableHead className="h-12 text-start font-medium w-[10%]">
                   {t("table.sales_count")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium w-[12%]">
+                  {t("table.rental_duration")}
+                </TableHead>
+                <TableHead className="h-12 text-start font-medium w-[13%]">
                   {t("table.rental_start_date")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium w-[13%]">
                   {t("table.rental_end_date")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium w-[12%]">
                   {t("table.status")}
                 </TableHead>
                 <TableHead className="h-12 text-start font-medium w-[10%]">
@@ -525,9 +535,10 @@ export default function BrandShelvesPage() {
                     <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
                     <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell className="py-3 w-[13%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 w-[13%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
                     <TableCell className="py-3 w-[10%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                   </TableRow>
                 ))
@@ -545,15 +556,27 @@ export default function BrandShelvesPage() {
                       <TableCell className="py-3 text-muted-foreground w-[10%]">
                         {(request as any).salesCount !== undefined ? (request as any).salesCount : "0"}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[15%]">
-                        {request.startDate 
+                      <TableCell className="py-3 text-muted-foreground w-[12%]">
+                        {(() => {
+                          const months = calculateRentalMonths(request.startDate, request.endDate)
+                          if (language === "ar") {
+                            if (months === 1) return "شهر واحد"
+                            if (months === 2) return "شهرين"
+                            return `${months} أشهر`
+                          } else {
+                            return months === 1 ? "1 month" : `${months} months`
+                          }
+                        })()}
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground w-[13%]">
+                        {request.startDate
                           ? format(new Date(request.startDate), "d MMM yyyy", {
                               locale: language === "ar" ? ar : enUS
                             })
                           : "-"
                         }
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                      <TableCell className="py-3 text-muted-foreground w-[13%]">
                         {request.endDate
                           ? format(new Date(request.endDate), "d MMM yyyy", {
                               locale: language === "ar" ? ar : enUS
@@ -561,7 +584,7 @@ export default function BrandShelvesPage() {
                           : "-"
                         }
                       </TableCell>
-                      <TableCell className="py-3 w-[15%]">
+                      <TableCell className="py-3 w-[12%]">
                         {request.status ? getStatusBadge(request.status) : "-"}
                       </TableCell>
                       <TableCell className="py-3 w-[10%]">{getActionButton(request)}</TableCell>
