@@ -190,119 +190,35 @@ export const deactivateShelfStore = mutation({
   },
 })
 
-// Track analytics event
-export const trackAnalytics = mutation({
+// Simplified stats increment
+export const incrementStats = mutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
-    eventType: v.union(
-      v.literal("qr_scan"),
-      v.literal("page_view"),
-      v.literal("product_view"),
-      v.literal("add_to_cart"),
-      v.literal("checkout_started"),
-      v.literal("order_completed")
+    statType: v.union(
+      v.literal("scan"),
+      v.literal("view"),
+      v.literal("order")
     ),
-    sessionId: v.string(),
-    productId: v.optional(v.id("products")),
-    orderId: v.optional(v.id("customerOrders")),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
-    referrer: v.optional(v.string()),
-    country: v.optional(v.string()),
-    city: v.optional(v.string()),
+    revenue: v.optional(v.number()), // For order events
   },
   handler: async (ctx, args) => {
-    // Record the analytics event
-    await ctx.db.insert("shelfStoreAnalytics", {
-      shelfStoreId: args.shelfStoreId,
-      eventType: args.eventType,
-      sessionId: args.sessionId,
-      productId: args.productId,
-      orderId: args.orderId,
-      ipAddress: args.ipAddress,
-      userAgent: args.userAgent,
-      referrer: args.referrer,
-      country: args.country,
-      city: args.city,
-      timestamp: Date.now(),
-    })
-
-    // Update store statistics
     const store = await ctx.db.get(args.shelfStoreId)
-    if (store) {
-      const updates: any = {}
+    if (!store) return
 
-      if (args.eventType === "qr_scan") {
-        updates.totalScans = (store.totalScans || 0) + 1
-      } else if (args.eventType === "page_view") {
-        updates.totalViews = (store.totalViews || 0) + 1
-      }
+    const updates: any = {}
 
-      if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(args.shelfStoreId, updates)
+    if (args.statType === "scan") {
+      updates.totalScans = (store.totalScans || 0) + 1
+    } else if (args.statType === "view") {
+      updates.totalViews = (store.totalViews || 0) + 1
+    } else if (args.statType === "order") {
+      updates.totalOrders = (store.totalOrders || 0) + 1
+      if (args.revenue) {
+        updates.totalRevenue = (store.totalRevenue || 0) + args.revenue
       }
     }
+
+    await ctx.db.patch(args.shelfStoreId, updates)
   },
 })
 
-// Get analytics for a shelf store
-export const getShelfStoreAnalytics = query({
-  args: {
-    shelfStoreId: v.id("shelfStores"),
-    period: v.optional(v.union(
-      v.literal("day"),
-      v.literal("week"),
-      v.literal("month"),
-      v.literal("all")
-    )),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now()
-    let startTime = 0
-
-    switch (args.period) {
-      case "day":
-        startTime = now - 24 * 60 * 60 * 1000
-        break
-      case "week":
-        startTime = now - 7 * 24 * 60 * 60 * 1000
-        break
-      case "month":
-        startTime = now - 30 * 24 * 60 * 60 * 1000
-        break
-      default:
-        startTime = 0
-    }
-
-    const analytics = await ctx.db
-      .query("shelfStoreAnalytics")
-      .withIndex("by_shelf_store", (q) =>
-        q.eq("shelfStoreId", args.shelfStoreId)
-      )
-      .filter((q) => q.gte(q.field("timestamp"), startTime))
-      .collect()
-
-    // Aggregate analytics data
-    const summary = {
-      totalEvents: analytics.length,
-      qrScans: analytics.filter(a => a.eventType === "qr_scan").length,
-      pageViews: analytics.filter(a => a.eventType === "page_view").length,
-      productViews: analytics.filter(a => a.eventType === "product_view").length,
-      addToCarts: analytics.filter(a => a.eventType === "add_to_cart").length,
-      checkoutsStarted: analytics.filter(a => a.eventType === "checkout_started").length,
-      ordersCompleted: analytics.filter(a => a.eventType === "order_completed").length,
-      uniqueSessions: new Set(analytics.map(a => a.sessionId)).size,
-    }
-
-    // Calculate conversion rate
-    const conversionRate = summary.pageViews > 0
-      ? (summary.ordersCompleted / summary.pageViews) * 100
-      : 0
-
-    return {
-      ...summary,
-      conversionRate,
-      events: analytics,
-    }
-  },
-})

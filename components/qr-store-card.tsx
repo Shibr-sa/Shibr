@@ -48,11 +48,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
     { rentalRequestId }
   )
 
-  // Fetch analytics for the store
-  const analytics = useQuery(
-    api.shelfStores.getShelfStoreAnalytics,
-    shelfStore?._id ? { shelfStoreId: shelfStore._id, period: "all" } : "skip"
-  )
+  // Analytics are now directly on the shelfStore object
 
   // Generate QR code when store is loaded
   useEffect(() => {
@@ -207,7 +203,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
                   <span className="text-xs">{t("qr_stores.scans")}</span>
                 </div>
                 <p className="text-2xl font-bold">
-                  {analytics?.qrScans || shelfStore.totalScans || 0}
+                  {shelfStore.totalScans || 0}
                 </p>
               </div>
 
@@ -217,7 +213,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
                   <span className="text-xs">{t("qr_stores.views")}</span>
                 </div>
                 <p className="text-2xl font-bold">
-                  {analytics?.pageViews || shelfStore.totalViews || 0}
+                  {shelfStore.totalViews || 0}
                 </p>
               </div>
 
@@ -227,7 +223,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
                   <span className="text-xs">{t("qr_stores.orders")}</span>
                 </div>
                 <p className="text-2xl font-bold">
-                  {analytics?.ordersCompleted || shelfStore.totalOrders || 0}
+                  {shelfStore.totalOrders || 0}
                 </p>
               </div>
 

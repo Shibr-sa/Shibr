@@ -35,23 +35,12 @@ function StoreContent() {
   const { t, language, direction } = useLanguage()
   const { toast } = useToast()
   const cart = useCart()
-  const [sessionId] = useState(() => {
-    // Generate or retrieve session ID for analytics
-    if (typeof window !== "undefined") {
-      const existingId = sessionStorage.getItem("storeSessionId")
-      if (existingId) return existingId
-      const newId = `session-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      sessionStorage.setItem("storeSessionId", newId)
-      return newId
-    }
-    return `session-${Date.now()}-${Math.random().toString(36).substring(7)}`
-  })
 
   const slug = params.slug as string
 
   // Fetch store data
   const store = useQuery(api.shelfStores.getShelfStoreBySlug, { slug })
-  const trackAnalytics = useMutation(api.shelfStores.trackAnalytics)
+  const incrementStats = useMutation(api.shelfStores.incrementStats)
 
   // Track page view and QR scan
   useEffect(() => {
@@ -60,18 +49,15 @@ function StoreContent() {
       const isQrScan = document.referrer === "" || new URLSearchParams(window.location.search).has("qr")
 
       // Track appropriate event
-      trackAnalytics({
+      incrementStats({
         shelfStoreId: store._id,
-        eventType: isQrScan ? "qr_scan" : "page_view",
-        sessionId,
-        userAgent: navigator.userAgent,
-        referrer: document.referrer || undefined,
+        statType: isQrScan ? "scan" : "view",
       }).catch(console.error)
 
       // Set store slug in cart
       cart.setStoreSlug(slug)
     }
-  }, [store?._id, sessionId, slug])
+  }, [store?._id, slug])
 
   const handleAddToCart = (product: any) => {
     cart.addItem({
@@ -81,15 +67,7 @@ function StoreContent() {
       maxQuantity: product.shelfQuantity,
     })
 
-    // Track add to cart event
-    if (store?._id) {
-      trackAnalytics({
-        shelfStoreId: store._id,
-        eventType: "add_to_cart",
-        sessionId,
-        productId: product._id,
-      }).catch(console.error)
-    }
+    // No need to track add to cart anymore - only orders matter
 
     toast({
       title: t("store.added_to_cart"),

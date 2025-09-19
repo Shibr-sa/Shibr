@@ -109,14 +109,6 @@ export const createOrder = mutation({
       totalRevenue: (shelfStore.totalRevenue || 0) + total,
     })
 
-    // Track analytics
-    await ctx.runMutation(api.shelfStores.trackAnalytics, {
-      shelfStoreId: args.shelfStoreId,
-      eventType: "order_completed",
-      sessionId: `order-${orderId}`,
-      orderId,
-    })
-
     return {
       orderId,
       orderNumber,

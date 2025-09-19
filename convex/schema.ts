@@ -465,44 +465,6 @@ const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_payment_status", ["paymentStatus"])
     .index("by_ordered_at", ["orderedAt"]),
-
-  // Analytics for shelf stores
-  shelfStoreAnalytics: defineTable({
-    shelfStoreId: v.id("shelfStores"),
-
-    // Event type
-    eventType: v.union(
-      v.literal("qr_scan"), // QR code scanned
-      v.literal("page_view"), // Store page viewed
-      v.literal("product_view"), // Product clicked
-      v.literal("add_to_cart"), // Product added to cart
-      v.literal("checkout_started"), // Checkout initiated
-      v.literal("order_completed"), // Order placed
-    ),
-
-    // Event details
-    productId: v.optional(v.id("products")), // For product-specific events
-    orderId: v.optional(v.id("customerOrders")), // For order events
-
-    // Session info
-    sessionId: v.string(), // Browser session ID
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
-    referrer: v.optional(v.string()),
-
-    // Location (if available)
-    country: v.optional(v.string()),
-    city: v.optional(v.string()),
-
-    // Timestamp
-    timestamp: v.number(),
-  })
-    .index("by_shelf_store", ["shelfStoreId"])
-    .index("by_event_type", ["eventType"])
-    .index("by_session", ["sessionId"])
-    .index("by_timestamp", ["timestamp"])
-    .index("by_store_and_type", ["shelfStoreId", "eventType"]),
-
 })
 
 export default schema
