@@ -97,6 +97,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   // Fetch platform settings for dynamic fee percentage
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
+
+  // Fetch rental schedule for this shelf to show booked dates
+  const rentalSchedule = useQuery(api.rentalRequests.getShelfRentalSchedule, {
+    shelfId: resolvedParams.id as Id<"shelves">
+  })
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
@@ -110,7 +115,38 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     const daysDiff = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
     return Math.max(1, Math.ceil(daysDiff / 30))
   }
-  
+
+  // Calculate the first available date for booking
+  const getFirstAvailableDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+
+    const availableFrom = shelfDetails ? new Date(shelfDetails.availableFrom) : tomorrow
+    availableFrom.setHours(0, 0, 0, 0)
+
+    let firstAvailable = availableFrom > tomorrow ? availableFrom : tomorrow
+
+    // If there are active rentals, find the first available date after all rentals
+    if (rentalSchedule && rentalSchedule.length > 0) {
+      const activeRentals = rentalSchedule
+        .filter(r => r.status === "active" || r.status === "payment_pending")
+        .sort((a, b) => b.endDate - a.endDate) // Sort by end date, latest first
+
+      if (activeRentals.length > 0) {
+        const lastRentalEnd = new Date(activeRentals[0].endDate)
+        lastRentalEnd.setDate(lastRentalEnd.getDate() + 1) // Day after last rental ends
+        lastRentalEnd.setHours(0, 0, 0, 0)
+
+        if (lastRentalEnd > firstAvailable) {
+          firstAvailable = lastRentalEnd
+        }
+      }
+    }
+
+    return firstAvailable
+  }
+
   // Check if user has an existing rental request for this shelf
   const existingRequest = useQuery(api.rentalRequests.getUserRequestForShelf,
     userId && shelfDetails ? {
@@ -148,27 +184,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   )
   
   // Determine if form should be disabled based on request status
-  const isFormDisabled = activeRequest?.status === 'accepted' || 
-                         activeRequest?.status === 'rejected' || 
+  const isFormDisabled = activeRequest?.status === 'payment_pending' ||
                          activeRequest?.status === 'active' ||
-                         activeRequest?.status === 'payment_pending' ||
-                         activeRequest?.status === 'completed' ||
-                         (shelfAvailability && !shelfAvailability.available)
-  
-  // Check shelf availability periodically and show alert if it becomes unavailable
-  useEffect(() => {
-    if (shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther) {
-      // Only show alert once when shelf becomes unavailable
-      const hasAlerted = sessionStorage.getItem(`shelf-unavailable-${resolvedParams.id}`)
-      if (!hasAlerted) {
-        alert(language === "ar" 
-          ? "تنبيه: هذا الرف لم يعد متاحاً. تم قبول طلب إيجار من علامة تجارية أخرى."
-          : "Notice: This shelf is no longer available. A rental request from another brand has been accepted.")
-        sessionStorage.setItem(`shelf-unavailable-${resolvedParams.id}`, "true")
-      }
-    }
-  }, [shelfAvailability, resolvedParams.id, language])
-  
+                         activeRequest?.status === 'completed'
+
   // Set conversation and submission state if there's an existing request
   // Also restore the form data from the existing request
   useEffect(() => {
@@ -198,14 +217,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Check if shelf is still available
-    if (shelfAvailability && !shelfAvailability.available) {
-      alert(language === "ar" 
-        ? "عذراً، هذا الرف لم يعد متاحاً. تم قبول طلب إيجار آخر."
-        : "Sorry, this shelf is no longer available. Another rental request has been accepted.")
-      return
-    }
-    
+    // Note: Removed shelf availability check - users can now book future dates
+
     if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0) {
       alert(t("form.fill_required_fields"))
       return
@@ -528,15 +541,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </Card>
         </div>
 
-        {/* Note about approval - Between Shelf Details and Send your rental request */}
-        {(!shelfAvailability || shelfAvailability.available) && (
-          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-              {t("marketplace.details.approval_notice")}
-            </p>
-          </div>
-        )}
+        {/* Note about approval - Always shown */}
+        <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+            {t("marketplace.details.approval_notice")}
+          </p>
+        </div>
 
         {/* QR Store Section - Only for active rentals */}
         {activeRequest?.status === 'active' && activeRequest._id && (
@@ -722,6 +733,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       <Label htmlFor="booking-date" className="text-sm">
                         {t("marketplace.details.booking_duration")}*
                       </Label>
+
                       <div className="flex items-start gap-3">
                         <Popover>
                           <PopoverTrigger asChild>
@@ -732,7 +744,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                 "flex-1 justify-start text-left font-normal",
                                 !dateRange && "text-muted-foreground"
                               )}
-                              disabled={shelfAvailability && !shelfAvailability.available}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {dateRange?.from ? (
@@ -752,7 +763,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="range"
-                              defaultMonth={dateRange?.from || new Date()}
+                              defaultMonth={dateRange?.from || getFirstAvailableDate()}
                               selected={dateRange}
                               onSelect={setDateRange}
                               numberOfMonths={1}
@@ -767,7 +778,27 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
                                 const minDate = availableFrom > tomorrow ? availableFrom : tomorrow
 
-                                return date < minDate
+                                if (date < minDate) return true
+
+                                // Check if date falls within any rental period
+                                if (rentalSchedule) {
+                                  for (const rental of rentalSchedule) {
+                                    // Only block dates for active or payment_pending rentals
+                                    if (rental.status === "active" ||
+                                        rental.status === "payment_pending") {
+                                      const rentalStart = new Date(rental.startDate)
+                                      const rentalEnd = new Date(rental.endDate)
+                                      rentalStart.setHours(0, 0, 0, 0)
+                                      rentalEnd.setHours(23, 59, 59, 999)
+
+                                      if (date >= rentalStart && date <= rentalEnd) {
+                                        return true // Date is within a rental period
+                                      }
+                                    }
+                                  }
+                                }
+
+                                return false
                               }}
                             />
                           </PopoverContent>
@@ -803,6 +834,28 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         </div>
                       </div>
 
+                      {/* Rental Schedule Display */}
+                      {rentalSchedule && rentalSchedule.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">
+                            {language === "ar" ? "الحجوزات الحالية" : "Current Bookings"}
+                          </Label>
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                            {rentalSchedule
+                              .filter(r => r.status === "active" || r.status === "payment_pending")
+                              .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                              .map((rental, index) => (
+                                <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
+                                  <span className="font-medium">{rental.brandName}</span>
+                                  <span className="text-muted-foreground">
+                                    {new Date(rental.startDate).toLocaleDateString()} - {new Date(rental.endDate).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Price Display - Always Visible */}
                       <div
                         className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
@@ -837,14 +890,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
                       disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
                     >
-                      {shelfAvailability && !shelfAvailability.available ? (
-                        <span>
-                          {language === "ar" ? "الرف غير متاح" : "Shelf Unavailable"}
-                        </span>
-                      ) : activeRequest?.status === 'accepted' ? (
+                      {activeRequest?.status === 'payment_pending' ? (
                         <span className="flex items-center gap-2">
-                          <Check className="h-5 w-5" />
-                          {language === "ar" ? "الطلب مقبول" : "Request Accepted"}
+                          <Clock className="h-5 w-5" />
+                          {language === "ar" ? "في انتظار الدفع" : "Payment Pending"}
                         </span>
                       ) : activeRequest?.status === 'rejected' ? (
                         <span className="flex items-center gap-2">
@@ -855,11 +904,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         <span className="flex items-center gap-2">
                           <Check className="h-5 w-5" />
                           {language === "ar" ? "الإيجار نشط" : "Rental Active"}
-                        </span>
-                      ) : activeRequest?.status === 'payment_pending' ? (
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" />
-                          {language === "ar" ? "في انتظار الدفع" : "Payment Pending"}
                         </span>
                       ) : activeRequest?.status === 'pending' ? (
                         <span className="flex items-center gap-2">
@@ -895,25 +939,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             <CardContent className="flex-1 flex flex-col p-0 h-[calc(100%-60px)]">
               {/* Messages Area */}
               <div className="flex-1 relative h-full">
-                {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <div className="text-center p-6 space-y-3">
-                      <div className="h-12 w-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6 text-destructive" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">
-                          {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
-                        </p>
-                        <p className="text-sm mt-2 max-w-sm mx-auto">
-                          {language === "ar" 
-                            ? "لا يمكن بدء محادثة لأن هذا الرف تم حجزه لعلامة تجارية أخرى"
-                            : "Cannot start a conversation because this shelf has been reserved for another brand"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : hasSubmittedRequest && conversationId && userId ? (
+                {hasSubmittedRequest && conversationId && userId ? (
                   <ChatInterface
                     conversationId={conversationId}
                     currentUserId={userId}

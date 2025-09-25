@@ -109,8 +109,7 @@ const schema = defineSchema({
     storeCommission: v.number(), // Store commission percentage on sales
     
     // Availability
-    isAvailable: v.boolean(),
-    availableFrom: v.number(), // Unix timestamp
+    availableFrom: v.number(), // Unix timestamp when shelf was first listed
     
     // Images - consolidated into single array
     images: v.optional(v.array(v.object({
@@ -136,10 +135,8 @@ const schema = defineSchema({
     .index("by_store_profile", ["storeProfileId"])
     .index("by_status", ["status"])
     .index("by_city", ["city"])
-    .index("by_availability", ["isAvailable"])
     .index("by_price", ["monthlyPrice"])
-    .index("by_status_available", ["status", "isAvailable"])
-    .index("by_city_available", ["city", "isAvailable", "status"]),
+    .index("by_status_city", ["status", "city"]),
   
   // Rental requests
   rentalRequests: defineTable({

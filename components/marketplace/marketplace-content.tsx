@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, Store, Loader2, Package, Ruler, Calendar, Check } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, Loader2, Package, Ruler, Calendar, Check, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -59,6 +59,19 @@ interface Store {
   shelfImage?: string
   exteriorImage?: string
   interiorImage?: string
+  currentRental?: {
+    endDate: number
+    startDate: number
+    brandName: string
+    status: string
+  }
+  shelfSize?: {
+    width: number
+    height: number
+    depth: number
+    unit: string
+  }
+  storeBranch?: string
 }
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
@@ -434,7 +447,13 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                                   <h3 className="text-base font-semibold text-foreground">
                                     {store.shelfName}
                                   </h3>
-                                  {/* Verification badge - isVerified field not in schema yet */}
+                                  {/* Rental Status Badge */}
+                                  {store.currentRental && (
+                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                      <Clock className="h-3 w-3 me-1" />
+                                      {t("marketplace.rented_until")} {new Date(store.currentRental.endDate).toLocaleDateString()}
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                   <MapPin className="h-3.5 w-3.5" />

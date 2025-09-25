@@ -170,12 +170,16 @@ export const getAdminStats = query({
 
     // Get shelf statistics
     const allShelves = await ctx.db.query("shelves").collect()
-    const availableShelves = allShelves.filter(s => s.isAvailable && s.status === "active")
-    const approvedShelves = allShelves.filter(s => s.status === "active")
 
     // Get rental request statistics
     const rentalRequests = await ctx.db.query("rentalRequests").collect()
     const activeRentals = rentalRequests.filter(r => r.status === "active")
+    const paymentPendingRentals = rentalRequests.filter(r => r.status === "payment_pending")
+    const allActiveRentals = [...activeRentals, ...paymentPendingRentals]
+    const rentedShelfIds = new Set(allActiveRentals.map(r => r.shelfId))
+
+    const availableShelves = allShelves.filter(s => !rentedShelfIds.has(s._id) && s.status === "active")
+    const approvedShelves = allShelves.filter(s => s.status === "active")
     const pendingRequests = rentalRequests.filter(r => r.status === "pending")
 
     // Filter data based on time period
@@ -1395,10 +1399,23 @@ export const getStoreShelves = query({
       )
     }
     
+    // Get active/payment_pending rentals to determine shelf availability
+    const activeShelfRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect()
+    const paymentPendingShelfRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .collect()
+    const allActiveShelfRentals = [...activeShelfRentals, ...paymentPendingShelfRentals]
+    const rentedShelfIds = new Set(allActiveShelfRentals.map(r => r.shelfId))
+
     // Apply status filter
     if (statusFilter !== "all") {
       shelves = shelves.filter(shelf => {
-        const isAvailable = shelf.isAvailable ? "available" : "rented"
+        const isRented = rentedShelfIds.has(shelf._id)
+        const isAvailable = isRented ? "rented" : "available"
         return isAvailable === statusFilter
       })
     }

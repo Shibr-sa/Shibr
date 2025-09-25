@@ -50,12 +50,6 @@ export const checkRentalStatuses = internalMutation({
           status: "completed"
         })
         
-        // Release the shelf
-        await ctx.db.patch(rental.shelfId, {
-          isAvailable: true,
-          status: "active" as const,
-        })
-        
         // Send system message about rental completion
         if (rental.conversationId) {
           await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {

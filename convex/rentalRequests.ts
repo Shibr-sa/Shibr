@@ -45,6 +45,53 @@ export const createRentalRequest = mutation({
     
     // Get store owner profile from shelf's storeProfileId
     const storeOwnerProfile = shelf.storeProfileId ? await ctx.db.get(shelf.storeProfileId) : null
+
+    // Check for date overlaps with existing active/pending rentals
+    const requestedStartDate = new Date(args.startDate).getTime()
+    const requestedEndDate = new Date(args.endDate).getTime()
+
+    // Get all non-rejected/cancelled rentals for this shelf
+    const existingRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("status"), "rejected"),
+          q.neq(q.field("status"), "cancelled"),
+          q.neq(q.field("status"), "expired"),
+          q.neq(q.field("status"), "completed")
+        )
+      )
+      .collect()
+
+    // Check for overlaps
+    for (const rental of existingRentals) {
+      // Skip if it's the user's own pending request (will be updated)
+      if (rental.brandProfileId === brandOwnerProfile._id &&
+          (rental.status === "pending" || rental.status === "payment_pending")) {
+        continue
+      }
+
+      // Check if dates overlap
+      const rentalStart = rental.startDate
+      const rentalEnd = rental.endDate
+
+      // Overlap occurs if:
+      // 1. Requested period starts during existing rental
+      // 2. Requested period ends during existing rental
+      // 3. Requested period completely contains existing rental
+      // 4. Existing rental completely contains requested period
+      const hasOverlap =
+        (requestedStartDate >= rentalStart && requestedStartDate < rentalEnd) || // Start during existing
+        (requestedEndDate > rentalStart && requestedEndDate <= rentalEnd) || // End during existing
+        (requestedStartDate <= rentalStart && requestedEndDate >= rentalEnd) || // Contains existing
+        (rentalStart <= requestedStartDate && rentalEnd >= requestedEndDate) // Contained by existing
+
+      if (hasOverlap) {
+        const endDateStr = new Date(rental.endDate).toLocaleDateString()
+        throw new Error(`This shelf is already rented during the selected period. It will be available after ${endDateStr}`)
+      }
+    }
     
     // Check if there's an existing active request for the same shelf by the same brand
     const existingRequest = await ctx.db
@@ -59,7 +106,6 @@ export const createRentalRequest = mutation({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -678,7 +724,6 @@ export const getActiveRentalRequest = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -718,7 +763,6 @@ export const getUserActiveRentalRequest = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -754,7 +798,6 @@ export const getUserRequestForShelf = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending"),
           q.eq(q.field("status"), "active")
         )
@@ -765,6 +808,43 @@ export const getUserRequestForShelf = query({
   },
 })
 
+// Get all active/pending rentals for a shelf to show in calendar
+export const getShelfRentalSchedule = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Get all non-rejected/cancelled rentals for this shelf
+    const rentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "payment_pending"),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect()
+
+    // Get brand names for each rental
+    const rentalsWithBrands = await Promise.all(
+      rentals.map(async (rental) => {
+        const brandProfile = await ctx.db.get(rental.brandProfileId)
+        return {
+          startDate: rental.startDate,
+          endDate: rental.endDate,
+          status: rental.status,
+          brandName: brandProfile?.brandName || "Unknown",
+          brandProfileId: rental.brandProfileId,
+        }
+      })
+    )
+
+    return rentalsWithBrands
+  },
+})
+
 // Check if shelf is still available (no accepted/active requests from anyone)
 export const isShelfAvailable = query({
   args: {
@@ -772,9 +852,9 @@ export const isShelfAvailable = query({
     currentUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // Check if shelf exists and is available
+    // Check if shelf exists
     const shelf = await ctx.db.get(args.shelfId)
-    if (!shelf || !shelf.isAvailable) {
+    if (!shelf || shelf.status !== "active") {
       return { available: false, reason: "shelf_not_available" }
     }
     
@@ -785,7 +865,6 @@ export const isShelfAvailable = query({
       .filter((q) => q.eq(q.field("shelfId"), args.shelfId))
       .filter((q) =>
         q.or(
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending"),
           q.eq(q.field("status"), "active")
         )
@@ -967,11 +1046,6 @@ export const confirmPayment = mutation({
       status: "active",
     })
 
-    // Update shelf availability
-    await ctx.db.patch(request.shelfId, {
-      isAvailable: false,
-    })
-
     // Create shelf store for QR code functionality
     await ctx.runMutation(api.shelfStores.createShelfStore, {
       rentalRequestId: args.requestId,
@@ -987,7 +1061,6 @@ export const confirmPayment = mutation({
           q.neq(q.field("_id"), args.requestId),
           q.or(
             q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "accepted"),
             q.eq(q.field("status"), "payment_pending")
           )
         )

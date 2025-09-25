@@ -68,7 +68,6 @@ export const addShelf = mutation({
       description: args.description,
       monthlyPrice: args.monthlyPrice,
       storeCommission: args.storeCommission, // Add store commission
-      isAvailable: true,
       availableFrom: new Date(args.availableFrom).getTime(),
       images: args.images || [],
       status: "active" as const, // Directly active (no approval needed)
@@ -121,7 +120,7 @@ export const getOwnerShelves = query({
         
         // Convert image storage IDs to URLs
         const imagesWithUrls = await Promise.all(
-          (shelf.images || []).map(async (img) => ({
+          (shelf.images || []).map(async (img: any) => ({
             ...img,
             url: await ctx.storage.getUrl(img.storageId)
           }))
@@ -154,20 +153,45 @@ export const getAvailableShelves = query({
     
     const shelves = await query.collect()
     
-    // Filter by additional criteria
-    const filteredShelves = shelves.filter((shelf) => {
-      if (!shelf.isAvailable) return false
-      if (args.city && shelf.city !== args.city) return false
-      if (args.maxPrice && shelf.monthlyPrice && shelf.monthlyPrice > args.maxPrice) return false
-      if (args.minPrice && shelf.monthlyPrice && shelf.monthlyPrice < args.minPrice) return false
-      return true
-    })
+    // Get all active and payment_pending rentals to check availability
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect()
+    const paymentPendingRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .collect()
+    const allActiveRentals = [...activeRentals, ...paymentPendingRentals]
+
+    // Filter by additional criteria and add rental info
+    const filteredShelves = await Promise.all(
+      shelves.map(async (shelf) => {
+        if (args.city && shelf.city !== args.city) return null
+        if (args.maxPrice && shelf.monthlyPrice && shelf.monthlyPrice > args.maxPrice) return null
+        if (args.minPrice && shelf.monthlyPrice && shelf.monthlyPrice < args.minPrice) return null
+
+        // Find active rental for this shelf
+        const currentRental = allActiveRentals.find(r => r.shelfId === shelf._id)
+
+        return {
+          ...shelf,
+          currentRental: currentRental ? {
+            endDate: currentRental.endDate,
+            startDate: currentRental.startDate,
+            brandProfileId: currentRental.brandProfileId
+          } : null
+        }
+      })
+    )
+
+    const validShelves = filteredShelves.filter(Boolean) as any[]
     
     // Convert image storage IDs to URLs for filtered shelves
     return Promise.all(
-      filteredShelves.map(async (shelf) => {
+      validShelves.map(async (shelf) => {
         const imagesWithUrls = await Promise.all(
-          (shelf.images || []).map(async (img) => ({
+          (shelf.images || []).map(async (img: any) => ({
             ...img,
             url: await ctx.storage.getUrl(img.storageId)
           }))
@@ -192,7 +216,6 @@ export const updateShelf = mutation({
     monthlyPrice: v.optional(v.number()),
     storeCommission: v.optional(v.number()),
     availableFrom: v.optional(v.string()),
-    isAvailable: v.optional(v.boolean()),
     length: v.optional(v.string()),
     width: v.optional(v.string()),
     depth: v.optional(v.string()),
@@ -222,7 +245,6 @@ export const updateShelf = mutation({
     if (otherData.monthlyPrice !== undefined) patchData.monthlyPrice = otherData.monthlyPrice
     if (otherData.storeCommission !== undefined) patchData.storeCommission = otherData.storeCommission
     if (otherData.availableFrom !== undefined) patchData.availableFrom = new Date(otherData.availableFrom).getTime()
-    if (otherData.isAvailable !== undefined) patchData.isAvailable = otherData.isAvailable
     if (otherData.productTypes !== undefined) patchData.productTypes = otherData.productTypes
     if (otherData.description !== undefined) patchData.description = otherData.description
     
@@ -360,7 +382,12 @@ export const getShelfStats = query({
     
     const totalShelves = shelves.length
     const rentedShelves = activeRentals.length // Count by active rentals, not shelf status
-    const availableShelves = shelves.filter(s => s.status === "active" && s.isAvailable).length
+    // Count shelves without active rentals
+    const shelvesWithoutRentals = shelves.filter(shelf => {
+      const hasActiveRental = activeRentals.some(r => r.shelfId === shelf._id)
+      return shelf.status === "active" && !hasActiveRental
+    })
+    const availableShelves = shelvesWithoutRentals.length
     
     // Calculate total revenue from active rentals
     const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
@@ -428,7 +455,12 @@ export const getShelfStatsWithChanges = query({
     
     // Current stats
     const currentRented = currentActiveRentals.length
-    const currentAvailable = allShelves.filter(s => s.status === "active" && s.isAvailable).length
+    // Count shelves without active rentals
+    const shelvesWithoutRentals = allShelves.filter(shelf => {
+      const hasActiveRental = currentActiveRentals.some(r => r.shelfId === shelf._id)
+      return shelf.status === "active" && !hasActiveRental
+    })
+    const currentAvailable = shelvesWithoutRentals.length
     const currentRevenue = currentActiveRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
     
     // Get rental requests to analyze trends
@@ -629,12 +661,7 @@ export const deleteShelf = mutation({
       throw new Error("Shelf not found")
     }
     
-    // Check if shelf is rented (isAvailable = false means it's rented)
-    if (shelf.isAvailable === false) {
-      throw new Error("Cannot delete a rented shelf")
-    }
-    
-    // Also check for any active rental requests
+    // Check for any active rental requests
     const activeRentals = await ctx.db
       .query("rentalRequests")
       .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
