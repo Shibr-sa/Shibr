@@ -193,8 +193,8 @@ export const dateRangeSchema = z.object({
 // ============================================
 
 export const platformSettingsSchema = z.object({
-  platformFeePercentage: percentageSchema,
-  maximumDiscountPercentage: percentageSchema,
+  brandSalesCommission: percentageSchema,
+  storeRentCommission: percentageSchema,
   minimumRentalDuration: z.number().int().positive().max(365),
   maximumRentalDuration: z.number().int().positive().max(1825),
   maintenanceMode: z.boolean(),

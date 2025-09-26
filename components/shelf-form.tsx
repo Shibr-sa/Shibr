@@ -24,6 +24,7 @@ import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useToast } from "@/hooks/use-toast"
 import { Id } from "@/convex/_generated/dataModel"
+import { NUMERIC_LIMITS } from "@/lib/constants"
 
 interface ShelfFormProps {
   mode: "create" | "edit"
@@ -294,7 +295,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     
     // Validate discount percentage
     const discount = parseFloat(storeCommission)
-    const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
+    const maxDiscount = NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
     if (isNaN(discount) || discount > maxDiscount) {
       toast({
         title: t("common.error"),
@@ -542,7 +543,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                       <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{t("add_shelf.monthly_price_tooltip")}</p>
+                      <p>{t("add_shelf.monthly_price_tooltip").replace("{fee}", platformSettings?.storeRentCommission?.toString() || "0")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -576,7 +577,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                       <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{t("add_shelf.discount_percentage_tooltip")}</p>
+                      <p>{t("add_shelf.discount_percentage_tooltip").replace("{fee}", platformSettings?.brandSalesCommission?.toString() || "0")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -588,7 +589,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   value={storeCommission}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value)
-                    const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
+                    const maxDiscount = NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
 
                     // Allow empty value for user to clear and re-type
                     if (e.target.value === '') {
@@ -608,7 +609,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   onBlur={(e) => {
                     // On blur, ensure the value is within range
                     const value = parseFloat(e.target.value)
-                    const maxDiscount = platformSettings?.maximumDiscountPercentage || 22
+                    const maxDiscount = NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
 
                     if (isNaN(value) || value < 0) {
                       setStoreCommission('0')
@@ -619,7 +620,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   placeholder={t("add_shelf.discount_percentage_placeholder")}
                   className="text-start pe-8"
                   min="0"
-                  max={platformSettings?.maximumDiscountPercentage || 22}
+                  max={NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT}
                   step="0.1"
                   required
                 />

@@ -241,27 +241,14 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
               <h3 className="text-sm font-semibold text-red-600 mb-2">
                 {t("settings.missing_required_fields")}:
               </h3>
-              <div className="grid gap-2">
+              <div className="flex flex-wrap gap-2">
                 {missingFields.map((field) => (
                   <div
                     key={field.key}
-                    className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900"
                   >
-                    <div className="flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-medium">{field.label}</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                      asChild
-                    >
-                      <Link href={`/brand-dashboard/settings?tab=${getSectionFromField(field)}`}>
-                        {t("settings.add_now")}
-                        <ChevronRight className="h-3 w-3 ms-1" />
-                      </Link>
-                    </Button>
+                    <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <span className="text-sm font-medium">{field.label}</span>
                   </div>
                 ))}
               </div>
@@ -270,7 +257,7 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
 
           {/* Completed Fields Summary */}
           {completedFields.length > 0 && showDetails && (
-            <div className="pt-2">
+            <div className="space-y-2">
               <h3 className="text-sm font-semibold text-green-600 mb-2">
                 {t("settings.completed_fields")}:
               </h3>
@@ -278,10 +265,10 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
                 {completedFields.map((field) => (
                   <div
                     key={field.key}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-950/20"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900"
                   >
-                    <CheckCircle2 className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-700 dark:text-green-400">{field.label}</span>
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span className="text-sm font-medium">{field.label}</span>
                   </div>
                 ))}
               </div>

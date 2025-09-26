@@ -116,40 +116,55 @@ export const getPlatformSettings = query({
     // Verify admin access
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      // Return empty settings instead of throwing
+      // Return default settings when not authenticated
       return {
-        platformFeePercentage: 8,
-        minimumShelfPrice: 100,
-        maximumDiscountPercentage: 50,
+        brandSalesCommission: 8,
+        storeRentCommission: 10,
+        updatedAt: new Date().toISOString(),
       }
     }
-    
+
     const profileData = await getUserProfile(ctx, userId)
-    
+
     if (!profileData || profileData.type !== "admin") {
-      // Return empty settings instead of throwing
+      // Return default settings when not admin
       return {
-        platformFeePercentage: 8,
-        minimumShelfPrice: 100,
-        maximumDiscountPercentage: 50,
+        brandSalesCommission: 8,
+        storeRentCommission: 10,
+        updatedAt: new Date().toISOString(),
       }
     }
-    
+
     // Get all platform settings
-    const settings = await ctx.db.query("platformSettings").collect()
-    
-    // Convert to object format for easier access
-    const settingsObject: Record<string, any> = {}
-    settings.forEach(setting => {
-      settingsObject[setting.key] = setting.value
-    })
-    
-    return {
-      platformFeePercentage: settingsObject.platformFeePercentage || 8,
-      minimumShelfPrice: settingsObject.minimumShelfPrice || 100,
-      maximumDiscountPercentage: settingsObject.maximumDiscountPercentage || 50,
-      ...settingsObject
+    const allSettings = await ctx.db.query("platformSettings").collect()
+
+    // Return default values if database is empty
+    if (allSettings.length === 0) {
+      return {
+        brandSalesCommission: 8,
+        storeRentCommission: 10,
+        updatedAt: new Date().toISOString(),
+      }
     }
+
+    // Convert key-value pairs to object
+    const settings: any = {
+      brandSalesCommission: 8,
+      storeRentCommission: 10,
+      updatedAt: new Date().toISOString(),
+    }
+
+    for (const setting of allSettings) {
+      if (setting.key === "brandSalesCommission" ||
+          setting.key === "storeRentCommission") {
+        settings[setting.key] = setting.value
+      }
+      if (setting.updatedAt > settings.updatedAt) {
+        settings.updatedAt = setting.updatedAt
+      }
+    }
+
+    return settings
   },
 });
 

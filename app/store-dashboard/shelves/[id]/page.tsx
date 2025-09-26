@@ -68,22 +68,25 @@ export default function ShelfDetailsPage() {
   const [activeTab, setActiveTab] = useState("renter")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  
+
   // Pagination states
   const [productsPage, setProductsPage] = useState(1)
   const [paymentsPage, setPaymentsPage] = useState(1)
   const [previousPage, setPreviousPage] = useState(1)
   const [productsSearch, setProductsSearch] = useState("")
   const itemsPerPage = 5
-  
+
   // Track if we've loaded initial data
   const [hasInitialData, setHasInitialData] = useState(false)
-  
+
   // Fetch shelf data from Convex
   const shelfData = useQuery(
-    api.shelves.getShelfById, 
+    api.shelves.getShelfById,
     shelfIdParam ? { shelfId: shelfIdParam as Id<"shelves"> } : "skip"
   )
+
+  // Fetch platform settings for commission rates
+  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
   
   // Fetch real data from Convex - MUST be before any conditional returns
   const rentalRequests = useQuery(api.shelves.getShelfRentalRequests, 
@@ -300,7 +303,7 @@ export default function ShelfDetailsPage() {
     id: shelfData._id,
     name: shelfData.shelfName,
     price: shelfData.monthlyPrice,
-    storeCommission: shelfData.storeCommission || 10,
+    storeCommission: shelfData.storeCommission ?? 0,
     status: shelfData.status || "available",
     city: shelfData.city,
     branch: shelfData.storeBranch,
@@ -504,7 +507,7 @@ export default function ShelfDetailsPage() {
                           {formatCurrency(formattedData.price)}
                         </p>
                         <Badge variant="secondary" className="text-xs px-2 py-0">
-                          {`${formattedData.storeCommission + 8}%`}
+                          {`${formattedData.storeCommission + (platformSettings?.brandSalesCommission || 8)}%`}
                         </Badge>
                       </div>
                     </div>

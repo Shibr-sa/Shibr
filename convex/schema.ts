@@ -109,8 +109,7 @@ const schema = defineSchema({
     storeCommission: v.number(), // Store commission percentage on sales
     
     // Availability
-    isAvailable: v.boolean(),
-    availableFrom: v.number(), // Unix timestamp
+    availableFrom: v.number(), // Unix timestamp when shelf was first listed
     
     // Images - consolidated into single array
     images: v.optional(v.array(v.object({
@@ -136,10 +135,8 @@ const schema = defineSchema({
     .index("by_store_profile", ["storeProfileId"])
     .index("by_status", ["status"])
     .index("by_city", ["city"])
-    .index("by_availability", ["isAvailable"])
     .index("by_price", ["monthlyPrice"])
-    .index("by_status_available", ["status", "isAvailable"])
-    .index("by_city_available", ["city", "isAvailable", "status"]),
+    .index("by_status_city", ["status", "city"]),
   
   // Rental requests
   rentalRequests: defineTable({
@@ -253,22 +250,22 @@ const schema = defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_conversation_read", ["conversationId", "isRead"]),
   
-  // Payment methods (bank accounts for receiving payments)
-  paymentMethods: defineTable({
-    // Profile-based ownership (store owners receive payments)
+  // Bank accounts for receiving payouts from admin
+  bankAccounts: defineTable({
+    // Profile-based ownership (store and brand owners receive payouts)
     profileId: v.optional(v.union(
       v.id("storeProfiles"),
       v.id("brandProfiles")
     )),
-    
-    // Bank account details for receiving payments
+
+    // Bank account details for receiving payouts
     bankName: v.string(), // Name of the bank
     accountHolderName: v.string(), // Account holder's name
     iban: v.string(), // IBAN for international transfers
     accountNumber: v.optional(v.string()), // Local account number if needed
-    
+
     isDefault: v.boolean(),
-    isActive: v.boolean(), // Whether this payment method is active
+    isActive: v.boolean(), // Whether this bank account is active
   })
     .index("by_profile", ["profileId"])
     .index("by_profile_default", ["profileId", "isDefault"]),
@@ -297,14 +294,30 @@ const schema = defineSchema({
     
     // Amounts
     amount: v.number(), // Base amount
-    platformFee: v.optional(v.number()), // Platform commission (8%)
+    platformFee: v.optional(v.number()), // Platform commission
     netAmount: v.optional(v.number()), // Amount after platform fee
     
     // Payment details
     invoiceNumber: v.string(),
-    paymentMethod: v.optional(v.string()), // bank_transfer, credit_card, etc.
+    paymentMethod: v.optional(v.string()), // card, apple_pay
     transactionReference: v.optional(v.string()), // External payment reference
-    
+
+    // Tap specific fields
+    tapChargeId: v.optional(v.string()), // Tap charge ID for incoming payments
+    tapCustomerId: v.optional(v.string()), // Tap customer ID
+    tapRefundId: v.optional(v.string()), // Tap refund ID if refunded
+    tapTransferId: v.optional(v.string()), // Tap transfer ID for payouts
+    paymentGateway: v.optional(v.literal("tap")), // Only Tap gateway allowed
+
+    // Transfer/Payout tracking
+    transferStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
+    transferredAt: v.optional(v.number()), // Unix timestamp - when payout was initiated
+
     // Status
     status: v.union(
       v.literal("pending"),
@@ -360,6 +373,79 @@ const schema = defineSchema({
     .index("by_otp", ["otp"])
     .index("by_expires", ["expiresAt"]),
 
+  // Shelf Stores (QR code-enabled stores for active rentals)
+  shelfStores: defineTable({
+    rentalRequestId: v.id("rentalRequests"), // Link to active rental
+    shelfId: v.id("shelves"),
+    storeProfileId: v.id("storeProfiles"),
+    brandProfileId: v.id("brandProfiles"),
+
+    // Store details
+    storeName: v.string(), // Generated name for the store
+    storeSlug: v.string(), // URL-friendly identifier
+    description: v.optional(v.string()),
+
+    // QR Code data
+    qrCodeUrl: v.string(), // Full URL that QR code points to
+    qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
+
+    // Commission settings (inherited from rental)
+    storeCommissionRate: v.number(), // Store's commission percentage
+    platformFeeRate: v.number(), // Platform fee percentage
+
+    // Store status
+    isActive: v.boolean(),
+    activatedAt: v.number(), // When store was activated
+    deactivatedAt: v.optional(v.number()),
+
+    // Analytics
+    totalScans: v.number(),
+    totalOrders: v.number(),
+    totalRevenue: v.number(),
+  })
+    .index("by_rental", ["rentalRequestId"])
+    .index("by_shelf", ["shelfId"])
+    .index("by_store_profile", ["storeProfileId"])
+    .index("by_brand_profile", ["brandProfileId"])
+    .index("by_slug", ["storeSlug"])
+    .index("by_active", ["isActive"]),
+
+  // Customer Orders from shelf stores
+  customerOrders: defineTable({
+    shelfStoreId: v.id("shelfStores"),
+
+    // Customer information (guest checkout)
+    customerPhone: v.string(),
+
+    // Order items
+    items: v.array(v.object({
+      productId: v.id("products"),
+      productName: v.string(),
+      price: v.number(),
+      quantity: v.number(),
+      subtotal: v.number(),
+    })),
+
+    // Order totals
+    subtotal: v.number(),
+    storeCommission: v.number(), // Amount for store owner
+    platformFee: v.number(), // Platform commission
+    brandRevenue: v.number(), // Amount for brand owner
+    total: v.number(),
+
+    // Payment info
+    paymentMethod: v.union(
+      v.literal("card"),
+      v.literal("apple"), // Apple Pay
+    ),
+    paymentReference: v.optional(v.string()),
+
+    // Order tracking
+    orderNumber: v.string(), // Human-readable order number
+  })
+    .index("by_shelf_store", ["shelfStoreId"])
+    .index("by_customer_phone", ["customerPhone"])
+    .index("by_order_number", ["orderNumber"]),
 })
 
 export default schema

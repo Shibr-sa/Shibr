@@ -12,6 +12,10 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Pagination,
@@ -34,8 +38,15 @@ import {
   Eye,
   CreditCard,
   DollarSign,
+  Send,
+  AlertCircle,
+  Banknote,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAction, useMutation } from "convex/react"
+import { useToast } from "@/hooks/use-toast"
+import { Id } from "@/convex/_generated/dataModel"
 
 export default function PaymentsPage() {
   const { t, language } = useLanguage()
@@ -48,6 +59,18 @@ export default function PaymentsPage() {
   const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "all")
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1)
   const itemsPerPage = 5
+
+  // Payout dialog state
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
+  const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null)
+  const [isProcessingPayout, setIsProcessingPayout] = useState(false)
+
+  const { toast } = useToast()
+  const createTransfer = useAction(api.tapTransfers.createTransfer)
+  const getBankAccountsByProfile = useQuery(api.bankAccounts.getBankAccountsByProfile,
+    selectedPayment?.toProfileId ? { profileId: selectedPayment.toProfileId } : "skip"
+  )
   
   // Track if we've loaded initial data
   const [hasInitialData, setHasInitialData] = useState(false)
@@ -108,6 +131,11 @@ export default function PaymentsPage() {
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
+
+  // Watch for selectedPayment changes to reset bank account selection
+  useEffect(() => {
+    setSelectedBankAccount(null)
+  }, [selectedPayment])
 
   const totalPages = paymentsResult?.totalPages || 1
 
@@ -329,18 +357,46 @@ export default function PaymentsPage() {
                             </Badge>
                     </TableCell>
                     <TableCell className="py-3 w-[8%]">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{t("common.view_details")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <div className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{t("common.view_details")}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
+                              {/* Show payout button for completed payments without transfer */}
+                              {payment.paymentStatus === "completed" &&
+                               payment.type === "store_settlement" &&
+                               !payment.transferStatus && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-green-600 hover:text-green-700"
+                                        onClick={() => {
+                                          setSelectedPayment(payment)
+                                          setPayoutDialogOpen(true)
+                                        }}
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{t("payments.initiate_payout")}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -453,6 +509,140 @@ export default function PaymentsPage() {
           </PaginationItem>
         </PaginationContent>
       </Pagination>
+
+      {/* Payout Dialog */}
+      <Dialog open={payoutDialogOpen} onOpenChange={setPayoutDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t("payments.payout.title")}</DialogTitle>
+            <DialogDescription>
+              {t("payments.payout.description")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPayment && (
+            <div className="space-y-4 py-4">
+              {/* Payment Details */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t("payments.payout.invoice")}:</span>
+                  <span className="font-medium">{selectedPayment.invoiceNumber}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t("payments.payout.store")}:</span>
+                  <span className="font-medium">{selectedPayment.store}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t("payments.payout.amount")}:</span>
+                  <span className="font-medium">{formatCurrency(selectedPayment.netAmount)}</span>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Bank Account Selection */}
+              <div className="space-y-2">
+                <Label>{t("payments.payout.select_bank_account")}</Label>
+                {getBankAccountsByProfile && getBankAccountsByProfile.length > 0 ? (
+                  <div className="space-y-2">
+                    {getBankAccountsByProfile.map((account) => (
+                      <div
+                        key={account._id}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
+                          selectedBankAccount?._id === account._id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                        onClick={() => setSelectedBankAccount(account)}
+                      >
+                        <div className="space-y-1">
+                          <p className="font-medium">{account.bankName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {account.iban.slice(0, 4)}...{account.iban.slice(-4)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {account.accountHolderName}
+                          </p>
+                        </div>
+                        {account.isDefault && (
+                          <Badge variant="secondary">{t("payments.payout.default")}</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {t("payments.payout.no_bank_account")}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPayoutDialogOpen(false)
+                setSelectedPayment(null)
+                setSelectedBankAccount(null)
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedPayment || !selectedBankAccount) return
+
+                setIsProcessingPayout(true)
+                try {
+                  const result = await createTransfer({
+                    paymentId: selectedPayment.id,
+                    amount: selectedPayment.netAmount,
+                    currency: "SAR",
+                    description: `Payout for ${selectedPayment.invoiceNumber} to ${selectedPayment.store}`,
+                    bankAccountId: selectedBankAccount._id,
+                  })
+
+                  toast({
+                    title: t("payments.payout.success"),
+                    description: t("payments.payout.success_message"),
+                  })
+
+                  setPayoutDialogOpen(false)
+                  setSelectedPayment(null)
+                  setSelectedBankAccount(null)
+                } catch (error) {
+                  toast({
+                    title: t("payments.payout.error"),
+                    description: error.message || t("payments.payout.error_message"),
+                    variant: "destructive",
+                  })
+                } finally {
+                  setIsProcessingPayout(false)
+                }
+              }}
+              disabled={!selectedBankAccount || isProcessingPayout}
+            >
+              {isProcessingPayout ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("payments.payout.processing")}
+                </>
+              ) : (
+                <>
+                  <Banknote className="mr-2 h-4 w-4" />
+                  {t("payments.payout.confirm")}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

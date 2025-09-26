@@ -96,14 +96,14 @@ export default function TermsPage() {
       title: isArabic ? "المدفوعات والعمولات" : "Payments and Commissions",
       content: isArabic
         ? [
-            "تحصل المنصة على عمولة 8% من قيمة كل عملية تأجير",
+            "تحصل المنصة على عمولة من قيمة كل عملية تأجير (راجع الأسعار الحالية في الإعدادات)",
             "يتم دفع المبالغ المستحقة خلال 7 أيام عمل",
             "جميع الأسعار المعروضة لا تشمل ضريبة القيمة المضافة",
             "يحق للمنصة تعديل نسبة العمولة بإشعار مسبق 30 يوماً",
             "في حالة الإلغاء، تطبق سياسة الإلغاء المعتمدة"
           ]
         : [
-            "Platform receives 8% commission from each rental transaction",
+            "Platform receives commission from each rental transaction (see current rates in settings)",
             "Due amounts are paid within 7 business days",
             "All displayed prices exclude VAT",
             "Platform has the right to modify commission rate with 30 days notice",

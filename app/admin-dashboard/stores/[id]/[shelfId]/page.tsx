@@ -86,9 +86,12 @@ export default function ShelfDetailsPage() {
   )
   
   // Fetch products for this shelf
-  const shelfProducts = useQuery(api.shelves.getShelfProducts, 
+  const shelfProducts = useQuery(api.shelves.getShelfProducts,
     shelfData?._id ? { shelfId: shelfData._id as Id<"shelves"> } : "skip"
   )
+
+  // Fetch platform settings for commission rates
+  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
 
   // Track when we have initial data
   useEffect(() => {
@@ -183,7 +186,7 @@ export default function ShelfDetailsPage() {
     id: shelfData._id,
     name: shelfData.shelfName,
     price: shelfData.monthlyPrice,
-    storeCommission: shelfData.storeCommission || 10,
+    storeCommission: shelfData.storeCommission ?? 0,
     status: shelfData.status || "available",
     city: shelfData.city,
     branch: shelfData.storeBranch,
@@ -353,7 +356,7 @@ export default function ShelfDetailsPage() {
                         {formatCurrency(formattedData.price)}
                       </p>
                       <Badge variant="secondary" className="text-xs px-2 py-0">
-                        {`${formattedData.storeCommission + 8}%`}
+                        {`${formattedData.storeCommission + (platformSettings?.brandSalesCommission || 8)}%`}
                       </Badge>
                     </div>
                   </div>

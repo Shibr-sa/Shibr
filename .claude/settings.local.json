@@ -24,7 +24,12 @@
       "Bash(git merge:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(CONVEX_DEPLOYMENT=dev:warmhearted-capybara-335 bunx convex run platformSettings:getPlatformSettings)",
+      "WebFetch(domain:www.tap.company)",
+      "WebFetch(domain:developers.tap.company)",
+      "Bash(bunx convex logs:*)",
+      "Bash(CONVEX_DEPLOYMENT=dev:warmhearted-capybara-335 bunx convex env list)"
     ],
     "deny": [],
     "ask": []

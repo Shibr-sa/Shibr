@@ -1,10 +1,10 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalQuery } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { getImageUrlsFromArray } from "./helpers"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 
 // Create a new rental request
@@ -45,6 +45,53 @@ export const createRentalRequest = mutation({
     
     // Get store owner profile from shelf's storeProfileId
     const storeOwnerProfile = shelf.storeProfileId ? await ctx.db.get(shelf.storeProfileId) : null
+
+    // Check for date overlaps with existing active/pending rentals
+    const requestedStartDate = new Date(args.startDate).getTime()
+    const requestedEndDate = new Date(args.endDate).getTime()
+
+    // Get all non-rejected/cancelled rentals for this shelf
+    const existingRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("status"), "rejected"),
+          q.neq(q.field("status"), "cancelled"),
+          q.neq(q.field("status"), "expired"),
+          q.neq(q.field("status"), "completed")
+        )
+      )
+      .collect()
+
+    // Check for overlaps
+    for (const rental of existingRentals) {
+      // Skip if it's the user's own pending request (will be updated)
+      if (rental.brandProfileId === brandOwnerProfile._id &&
+          (rental.status === "pending" || rental.status === "payment_pending")) {
+        continue
+      }
+
+      // Check if dates overlap
+      const rentalStart = rental.startDate
+      const rentalEnd = rental.endDate
+
+      // Overlap occurs if:
+      // 1. Requested period starts during existing rental
+      // 2. Requested period ends during existing rental
+      // 3. Requested period completely contains existing rental
+      // 4. Existing rental completely contains requested period
+      const hasOverlap =
+        (requestedStartDate >= rentalStart && requestedStartDate < rentalEnd) || // Start during existing
+        (requestedEndDate > rentalStart && requestedEndDate <= rentalEnd) || // End during existing
+        (requestedStartDate <= rentalStart && requestedEndDate >= rentalEnd) || // Contains existing
+        (rentalStart <= requestedStartDate && rentalEnd >= requestedEndDate) // Contained by existing
+
+      if (hasOverlap) {
+        const endDateStr = new Date(rental.endDate).toLocaleDateString()
+        throw new Error(`This shelf is already rented during the selected period. It will be available after ${endDateStr}`)
+      }
+    }
     
     // Check if there's an existing active request for the same shelf by the same brand
     const existingRequest = await ctx.db
@@ -59,7 +106,6 @@ export const createRentalRequest = mutation({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -87,8 +133,10 @@ export const createRentalRequest = mutation({
         }
       }
       
-      // Calculate total commission (store + platform)
-      const platformFee = 8 // 8% platform fee
+      // Get platform settings for commission
+      const platformSettings = await ctx.db.query("platformSettings").collect()
+      const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+      const platformFee = brandSalesCommission
       const storeCommissionRate = shelf.storeCommission || 0
       const totalCommission = storeCommissionRate + platformFee
       
@@ -149,8 +197,10 @@ export const createRentalRequest = mutation({
       }
     }
     
-    // Calculate total commission (store + platform)
-    const platformFee = 8 // 8% platform fee
+    // Get platform settings for commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
+    const platformFee = brandSalesCommission
     const storeCommissionRate = shelf.storeCommission || 0
     const totalCommission = storeCommissionRate + platformFee
     
@@ -216,9 +266,12 @@ export const acceptRentalRequest = mutation({
     const invoiceCount = existingInvoices.length + 1
     const invoiceNumber = `INV-${currentYear}-${String(invoiceCount).padStart(4, '0')}`
     
-    // Calculate platform fee (8%)
-    const platformFeePercentage = 8
-    const platformFee = (request.totalAmount * platformFeePercentage) / 100
+    // Get platform settings for store rent commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
+
+    // Calculate platform fee based on store rent commission
+    const platformFee = (request.totalAmount * storeRentCommission) / 100
     const netAmount = request.totalAmount - platformFee
     
     // Create payment record (invoice)
@@ -504,6 +557,12 @@ export const getRentalRequestById = query({
       products = products.filter(p => p !== null)
     }
     
+    // Get shelf store if exists (for active rentals)
+    const shelfStore = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
+      .first()
+
     // Return enriched request data
     return {
       ...request,
@@ -519,8 +578,8 @@ export const getRentalRequestById = query({
       businessCategory: brandOwnerProfile?.businessCategory,
       website: brandOwnerProfile?.website,
       commercialRegisterNumber: brandOwnerProfile?.commercialRegisterNumber || brandOwnerProfile?.freelanceLicenseNumber,
-      commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument 
-        ? await ctx.storage.getUrl(brandOwnerProfile.commercialRegisterDocument) 
+      commercialRegisterFile: brandOwnerProfile?.commercialRegisterDocument
+        ? await ctx.storage.getUrl(brandOwnerProfile.commercialRegisterDocument)
         : brandOwnerProfile?.freelanceLicenseDocument
         ? await ctx.storage.getUrl(brandOwnerProfile.freelanceLicenseDocument)
         : undefined,
@@ -530,6 +589,16 @@ export const getRentalRequestById = query({
       brandTotalRatings: 0, // brandOwner?.totalRatings || 0,
       // Products
       products: products,
+      // Shelf store information
+      shelfStore: shelfStore ? {
+        _id: shelfStore._id,
+        storeSlug: shelfStore.storeSlug,
+        qrCodeUrl: shelfStore.qrCodeUrl,
+        isActive: shelfStore.isActive,
+        totalScans: shelfStore.totalScans,
+        totalOrders: shelfStore.totalOrders,
+        totalRevenue: shelfStore.totalRevenue,
+      } : null,
     }
   },
 })
@@ -584,7 +653,7 @@ export const getUserRentalRequests = query({
         
         // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
-        
+
         // For store owners viewing brand requests, include all brand details
         if (args.userType === "store" && otherUser && otherUserProfile) {
           return {
@@ -599,15 +668,15 @@ export const getUserRentalRequests = query({
             activityType: (otherUserProfile as any).brandType,
                   website: (otherUserProfile as any).website,
             commercialRegisterNumber: (otherUserProfile as any).commercialRegisterNumber || (otherUserProfile as any).freelanceLicenseNumber,
-            commercialRegisterFile: (otherUserProfile as any).commercialRegisterDocument 
-              ? await ctx.storage.getUrl((otherUserProfile as any).commercialRegisterDocument) 
+            commercialRegisterFile: (otherUserProfile as any).commercialRegisterDocument
+              ? await ctx.storage.getUrl((otherUserProfile as any).commercialRegisterDocument)
               : (otherUserProfile as any).freelanceLicenseDocument
               ? await ctx.storage.getUrl((otherUserProfile as any).freelanceLicenseDocument)
               : undefined,
             ownerName: (otherUserProfile as any).brandName
           }
         }
-        
+
         // For brand owners viewing store responses
         return {
           ...request,
@@ -655,7 +724,6 @@ export const getActiveRentalRequest = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -695,7 +763,6 @@ export const getUserActiveRentalRequest = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending")
         )
       )
@@ -731,7 +798,6 @@ export const getUserRequestForShelf = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending"),
           q.eq(q.field("status"), "active")
         )
@@ -742,6 +808,43 @@ export const getUserRequestForShelf = query({
   },
 })
 
+// Get all active/pending rentals for a shelf to show in calendar
+export const getShelfRentalSchedule = query({
+  args: {
+    shelfId: v.id("shelves"),
+  },
+  handler: async (ctx, args) => {
+    // Get all non-rejected/cancelled rentals for this shelf
+    const rentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_shelf", (q) => q.eq("shelfId", args.shelfId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "payment_pending"),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect()
+
+    // Get brand names for each rental
+    const rentalsWithBrands = await Promise.all(
+      rentals.map(async (rental) => {
+        const brandProfile = await ctx.db.get(rental.brandProfileId)
+        return {
+          startDate: rental.startDate,
+          endDate: rental.endDate,
+          status: rental.status,
+          brandName: brandProfile?.brandName || "Unknown",
+          brandProfileId: rental.brandProfileId,
+        }
+      })
+    )
+
+    return rentalsWithBrands
+  },
+})
+
 // Check if shelf is still available (no accepted/active requests from anyone)
 export const isShelfAvailable = query({
   args: {
@@ -749,9 +852,9 @@ export const isShelfAvailable = query({
     currentUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // Check if shelf exists and is available
+    // Check if shelf exists
     const shelf = await ctx.db.get(args.shelfId)
-    if (!shelf || !shelf.isAvailable) {
+    if (!shelf || shelf.status !== "active") {
       return { available: false, reason: "shelf_not_available" }
     }
     
@@ -762,7 +865,6 @@ export const isShelfAvailable = query({
       .filter((q) => q.eq(q.field("shelfId"), args.shelfId))
       .filter((q) =>
         q.or(
-          q.eq(q.field("status"), "accepted"),
           q.eq(q.field("status"), "payment_pending"),
           q.eq(q.field("status"), "active")
         )
@@ -934,19 +1036,21 @@ export const confirmPayment = mutation({
       throw new Error("Rental request not found")
     }
     
-    // Verify the request status is accepted or payment_pending
-    if (request.status !== "payment_pending") {
-      throw new Error("Invalid request status for payment confirmation")
+    // Verify the request status is valid for payment
+    // Allow payment from multiple states (for testing and flexibility)
+    const validStatuses = ["payment_pending", "pending", "approved"]
+    if (!validStatuses.includes(request.status)) {
+      throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
     }
     
     // Update the request status to active (since we'll have automated payment in future)
     await ctx.db.patch(args.requestId, {
       status: "active",
     })
-    
-    // Update shelf availability
-    await ctx.db.patch(request.shelfId, {
-      isAvailable: false,
+
+    // Create shelf store for QR code functionality
+    await ctx.runMutation(api.shelfStores.createShelfStore, {
+      rentalRequestId: args.requestId,
     })
     
     // Auto-reject any other accepted/pending requests for the same shelf
@@ -959,7 +1063,6 @@ export const confirmPayment = mutation({
           q.neq(q.field("_id"), args.requestId),
           q.or(
             q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "accepted"),
             q.eq(q.field("status"), "payment_pending")
           )
         )
@@ -1008,3 +1111,55 @@ export const confirmPayment = mutation({
 })
 
 
+
+// Get rental request details
+export const getRentalRequestDetails = query({
+  args: {
+    requestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      return null
+    }
+
+    // Get shelf details
+    const shelf = await ctx.db.get(request.shelfId)
+    if (!shelf) {
+      return null
+    }
+
+    // Get brand profile
+    const brandProfile = await ctx.db.get(request.brandProfileId)
+
+    // Get store profile
+    const storeProfile = await ctx.db.get(request.storeProfileId)
+
+    // Calculate rental months from dates
+    const startDate = new Date(request.startDate)
+    const endDate = new Date(request.endDate)
+    const monthDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+                      (endDate.getMonth() - startDate.getMonth())
+    const rentalMonths = Math.max(1, Math.ceil(monthDiff))
+
+    return {
+      ...request,
+      shelfName: shelf.shelfName,
+      city: shelf.city,
+      branch: shelf.storeBranch,
+      brandName: brandProfile?.brandName,
+      storeName: storeProfile?.storeName,
+      rentalMonths,
+    }
+  },
+})
+
+// Internal query to get rental request by ID (for Tap payment redirect)
+export const getById = internalQuery({
+  args: {
+    requestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.requestId)
+  },
+})

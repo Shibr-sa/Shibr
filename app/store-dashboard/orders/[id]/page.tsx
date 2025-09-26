@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ChatInterface } from "@/components/chat/chat-interface"
+import { QRStoreCard } from "@/components/qr-store-card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -524,7 +525,14 @@ export default function RequestDetailsPage() {
               </CardContent>
             </Card>
           )}
-          
+
+          {/* QR Store Section - Only for active rentals */}
+          {(rentalRequest.status === "active" || rentalRequest.shelfStore) && (
+            <div className="mt-6">
+              <QRStoreCard rentalRequestId={requestId} />
+            </div>
+          )}
+
           {/* Accept/Reject Buttons - Below Selected Products */}
           {rentalRequest.status === "pending" && (
             <div className="flex items-center gap-3 mt-6">

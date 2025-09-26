@@ -18,13 +18,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
-  Search, 
-  AlertCircle, 
+import {
+  Search,
+  AlertCircle,
   Inbox,
   Eye,
   Star,
-  Package
+  Package,
+  QrCode
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
