@@ -12,10 +12,10 @@ async function verifyAdminAccess(ctx: any) {
   if (!userId) {
     return { isAuthenticated: false, isAdmin: false, userId: null }
   }
-  
+
   const userProfile = await getUserProfile(ctx, userId)
   const isAdmin = userProfile?.type === "admin"
-  
+
   return { isAuthenticated: true, isAdmin, userId }
 }
 
@@ -35,9 +35,9 @@ export const getAdminChartData = query({
         revenueData: []
       }
     }
-    
+
     const userProfile = await getUserProfile(ctx, userId)
-    
+
     if (!userProfile || userProfile.type !== "admin") {
       // Return empty chart data for non-admin users
       return {
@@ -46,10 +46,10 @@ export const getAdminChartData = query({
         revenueData: []
       }
     }
-    
+
     const now = new Date()
     const currentYear = now.getFullYear()
-    
+
     // Get all data for charts
     const storeOwners = await ctx.db
       .query("storeProfiles")
@@ -58,35 +58,35 @@ export const getAdminChartData = query({
     const brandOwners = await ctx.db
       .query("brandProfiles")
       .collect()
-    
+
     const rentalRequests = await ctx.db.query("rentalRequests").collect()
     const activeRentals = rentalRequests.filter(r => r.status === "active")
-    
+
     // Calculate monthly revenue data for chart (current year - Jan to Dec)
     const revenueByMonth = []
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    
+
     for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
       const monthName = monthNames[monthIndex]
-      
+
       // Filter rentals for this month in the current year
       const monthRentals = activeRentals.filter(rental => {
         const rentalDate = new Date(rental._creationTime)
-        return rentalDate.getMonth() === monthIndex && 
-               rentalDate.getFullYear() === currentYear
+        return rentalDate.getMonth() === monthIndex &&
+          rentalDate.getFullYear() === currentYear
       })
-      
+
       const monthRevenue = monthRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
       const monthOrders = monthRentals.length
-      
+
       // Count new users for this month
       const monthUsers = [...storeOwners, ...brandOwners].filter(user => {
         if (!user._creationTime) return false
         const userDate = new Date(user._creationTime)
-        return userDate.getMonth() === monthIndex && 
-               userDate.getFullYear() === currentYear
+        return userDate.getMonth() === monthIndex &&
+          userDate.getFullYear() === currentYear
       }).length
-      
+
       revenueByMonth.push({
         month: monthName,
         revenue: monthRevenue,
@@ -103,16 +103,16 @@ export const getAdminChartData = query({
           .query("products")
           .filter(q => q.eq(q.field("brandProfileId"), brand._id))
           .collect();
-        
+
         // Calculate total revenue from product sales
         const brandRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-        
+
         // Calculate growth (return 0 for now as we don't have historical data tracking)
         const growth = 0
-        
+
         // Get the user from users table for name and image
         const user = await ctx.db.get(brand.userId)
-        
+
         return {
           id: brand._id,
           name: brand.brandName || user?.name,
@@ -126,7 +126,7 @@ export const getAdminChartData = query({
     // Sort by revenue and take top 5
     topBrands.sort((a, b) => b.revenue - a.revenue)
     const topStores = topBrands.slice(0, 5) // Keep variable name for now to avoid breaking frontend
-    
+
     return {
       revenueByMonth,
       topStores
@@ -157,7 +157,7 @@ export const getAdminStats = query({
         recentActivities: []
       }
     }
-    
+
     const timePeriod = args.timePeriod || "monthly"
     // Get counts for different user types
     const storeOwners = await ctx.db
@@ -186,25 +186,25 @@ export const getAdminStats = query({
     const now = new Date()
     const { startDate } = getDateRange(now, timePeriod)
     const { startDate: previousStart } = getDateRange(startDate, timePeriod)
-    
+
     // Filter users by time period
     const filteredStoreOwners = storeOwners.filter(u => new Date(u._creationTime) >= startDate)
     const filteredBrandOwners = brandOwners.filter(u => new Date(u._creationTime) >= startDate)
-    
+
     // Get users from previous period for comparison
     const previousStoreOwners = storeOwners.filter(u => new Date(u._creationTime) >= previousStart && new Date(u._creationTime) < startDate)
     const previousBrandOwners = brandOwners.filter(u => new Date(u._creationTime) >= previousStart && new Date(u._creationTime) < startDate)
-    
+
     // Filter shelves by time period
     const filteredShelves = allShelves.filter(s => new Date(s._creationTime) >= startDate)
     const filteredAvailableShelves = availableShelves.filter(s => new Date(s._creationTime) >= startDate)
     const filteredApprovedShelves = approvedShelves.filter(s => new Date(s._creationTime) >= startDate)
-    
+
     // Filter rental requests by time period
     const filteredRentalRequests = rentalRequests.filter(r => new Date(r._creationTime) >= startDate)
     const filteredActiveRentals = activeRentals.filter(r => new Date(r._creationTime) >= startDate)
     const filteredPendingRequests = pendingRequests.filter(r => new Date(r._creationTime) >= startDate)
-    
+
     // Get platform settings for commission
     const platformSettings = await ctx.db.query("platformSettings").collect()
     const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
@@ -222,28 +222,28 @@ export const getAdminStats = query({
     const revenueByMonth = []
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const currentYear = now.getFullYear()
-    
+
     for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
       const monthName = monthNames[monthIndex]
-      
+
       // Filter rentals for this month in the current year
       const monthRentals = activeRentals.filter(rental => {
         const rentalDate = new Date(rental._creationTime)
-        return rentalDate.getMonth() === monthIndex && 
-               rentalDate.getFullYear() === currentYear
+        return rentalDate.getMonth() === monthIndex &&
+          rentalDate.getFullYear() === currentYear
       })
-      
+
       const monthRevenue = monthRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
       const monthOrders = monthRentals.length
-      
+
       // Count new users for this month
       const monthUsers = [...storeOwners, ...brandOwners].filter(user => {
         if (!user._creationTime) return false
         const userDate = new Date(user._creationTime)
-        return userDate.getMonth() === monthIndex && 
-               userDate.getFullYear() === currentYear
+        return userDate.getMonth() === monthIndex &&
+          userDate.getFullYear() === currentYear
       }).length
-      
+
       revenueByMonth.push({
         month: monthName,
         revenue: monthRevenue,
@@ -260,16 +260,16 @@ export const getAdminStats = query({
           .query("products")
           .filter(q => q.eq(q.field("brandProfileId"), brand._id))
           .collect();
-        
+
         // Calculate total revenue from product sales
         const brandRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-        
+
         // Calculate growth (return 0 for now as we don't have historical data tracking)
         const growth = 0
-        
+
         // Get the user from users table for name and image
         const user = await ctx.db.get(brand.userId)
-        
+
         return {
           id: brand._id,
           name: brand.brandName || user?.name,
@@ -290,15 +290,15 @@ export const getAdminStats = query({
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
       const dayName = days[date.getDay()]
-      
+
       // Filter rentals for this day
       const dayRentals = activeRentals.filter(rental => {
         const rentalDate = new Date(rental._creationTime)
         return rentalDate.toDateString() === date.toDateString()
       })
-      
+
       const dayRevenue = dayRentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
-      
+
       recentRevenue.push({
         day: dayName,
         value: dayRevenue // Use actual revenue only
@@ -308,12 +308,12 @@ export const getAdminStats = query({
     // Category distribution from real products
     const allProducts = await ctx.db.query("products").collect()
     const categoryCount: Record<string, number> = {}
-    
+
     for (const product of allProducts) {
       const category = product.category || "Others"
       categoryCount[category] = (categoryCount[category] || 0) + 1
     }
-    
+
     const colors = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#6b7280", "#ef4444", "#06b6d4"]
     const categoryData = Object.entries(categoryCount)
       .map(([name, count], index) => ({
@@ -326,28 +326,28 @@ export const getAdminStats = query({
 
     // Get recent activities
     const recentActivities = []
-    
+
     // Add recent user registrations
     const recentUsers = [...storeOwners, ...brandOwners]
       .filter(u => u._creationTime)
       .sort((a, b) => b._creationTime - a._creationTime)
       .slice(0, 2)
-    
+
     for (const user of recentUsers) {
       if (!user._creationTime) continue
       const timeDiff = Date.now() - new Date(user._creationTime).getTime()
       const minutesAgo = Math.floor(timeDiff / (1000 * 60))
       const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60))
       const daysAgo = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
-      
+
       let timeString = "just now"
       if (daysAgo > 0) timeString = `${daysAgo} days ago`
       else if (hoursAgo > 0) timeString = `${hoursAgo} hours ago`
       else if (minutesAgo > 0) timeString = `${minutesAgo} minutes ago`
-      
+
       // Get the user from users table for name
       const userName = await ctx.db.get(user.userId)
-      
+
       recentActivities.push({
         id: user._id,
         type: "storeName" in user ? "new_store" : "new_user",
@@ -358,36 +358,36 @@ export const getAdminStats = query({
         color: "text-blue-600"
       })
     }
-    
+
     // Add recent rentals
     const recentRentals = activeRentals
       .sort((a, b) => b._creationTime - a._creationTime)
       .slice(0, 2)
-    
+
     for (const rental of recentRentals) {
       const timeDiff = Date.now() - new Date(rental._creationTime).getTime()
       const minutesAgo = Math.floor(timeDiff / (1000 * 60))
       const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60))
       const daysAgo = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
-      
+
       let timeString = "just now"
       if (daysAgo > 0) timeString = `${daysAgo} days ago`
       else if (hoursAgo > 0) timeString = `${hoursAgo} hours ago`
       else if (minutesAgo > 0) timeString = `${minutesAgo} minutes ago`
-      
+
       recentActivities.push({
         id: rental._id,
         type: "new_rental",
         title: "New shelf rental",
-        description: rental.selectedProducts && rental.selectedProducts.length > 0 
-          ? `Shelf rented for ${rental.selectedProducts[0].category}` 
+        description: rental.selectedProducts && rental.selectedProducts.length > 0
+          ? `Shelf rented for ${rental.selectedProducts[0].category}`
           : "Shelf rented",
         time: timeString,
         icon: "Package",
         color: "text-green-600"
       })
     }
-    
+
     // Sort by time and take top 4
     recentActivities.sort((a, b) => {
       const getMinutes = (timeStr: string) => {
@@ -403,7 +403,7 @@ export const getAdminStats = query({
 
     // Calculate percentage changes based on previous period
     const { startDate: prevPeriodStart } = getDateRange(startDate, timePeriod)
-    
+
     // Get counts for PREVIOUS period
     const prevPeriodStoreOwners = storeOwners.filter(u => {
       if (!u._creationTime) return false
@@ -416,52 +416,52 @@ export const getAdminStats = query({
       return date >= prevPeriodStart && date < startDate
     })
     const prevPeriodTotalUsers = prevPeriodStoreOwners.length + prevPeriodBrandOwners.length
-    
+
     const prevPeriodShelves = allShelves.filter(s => {
       const date = new Date(s._creationTime)
       return date >= prevPeriodStart && date < startDate
     })
-    
+
     const prevPeriodRentals = rentalRequests.filter(r => {
       const date = new Date(r._creationTime)
       return date >= prevPeriodStart && date < startDate
     })
-    
+
     const prevPeriodRevenue = activeRentals
       .filter(r => {
         const date = new Date(r._creationTime)
         return date >= prevPeriodStart && date < startDate
       })
       .reduce((sum, r) => sum + (r.totalAmount || 0), 0)
-    
+
     // Current period NEW additions (for calculating changes)
     const currentPeriodNewUsers = filteredStoreOwners.length + filteredBrandOwners.length
-    const currentPeriodNewShelves = filteredShelves.length  
+    const currentPeriodNewShelves = filteredShelves.length
     const currentPeriodNewRentals = filteredRentalRequests.length
-    
+
     // Total cumulative counts (all-time, not filtered by period)
     const totalUsers = storeOwners.length + brandOwners.length
     const totalShelves = allShelves.length
     const totalRentalsCount = rentalRequests.length
-    
+
     // Calculate percentage changes - comparing NEW additions period to period
-    const usersChange = prevPeriodTotalUsers > 0 ? 
-      ((currentPeriodNewUsers - prevPeriodTotalUsers) / prevPeriodTotalUsers * 100) : 
+    const usersChange = prevPeriodTotalUsers > 0 ?
+      ((currentPeriodNewUsers - prevPeriodTotalUsers) / prevPeriodTotalUsers * 100) :
       (currentPeriodNewUsers > 0 ? 100 : 0)
-    
-    const shelvesChange = prevPeriodShelves.length > 0 ? 
-      ((currentPeriodNewShelves - prevPeriodShelves.length) / prevPeriodShelves.length * 100) : 
+
+    const shelvesChange = prevPeriodShelves.length > 0 ?
+      ((currentPeriodNewShelves - prevPeriodShelves.length) / prevPeriodShelves.length * 100) :
       (currentPeriodNewShelves > 0 ? 100 : 0)
-    
-    const rentalsChange = prevPeriodRentals.length > 0 ? 
-      ((currentPeriodNewRentals - prevPeriodRentals.length) / prevPeriodRentals.length * 100) : 
+
+    const rentalsChange = prevPeriodRentals.length > 0 ?
+      ((currentPeriodNewRentals - prevPeriodRentals.length) / prevPeriodRentals.length * 100) :
       (currentPeriodNewRentals > 0 ? 100 : 0)
-    
+
     // For revenue, compare period revenues
-    const revenueChange = prevPeriodRevenue > 0 ? 
-      ((periodRevenue - prevPeriodRevenue) / prevPeriodRevenue * 100) : 
+    const revenueChange = prevPeriodRevenue > 0 ?
+      ((periodRevenue - prevPeriodRevenue) / prevPeriodRevenue * 100) :
       (periodRevenue > 0 ? 100 : 0)
-    
+
     return {
       users: {
         totalUsers: totalUsers, // Show cumulative total
@@ -516,9 +516,9 @@ export const updatePlatformSettings = mutation({
     if (!userId) {
       throw new Error("Not authenticated")
     }
-    
+
     const userProfile = await getUserProfile(ctx, userId)
-    
+
     if (!userProfile || userProfile.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
@@ -592,9 +592,9 @@ export const toggleUserStatus = mutation({
     if (!userId) {
       throw new Error("Not authenticated")
     }
-    
+
     const adminProfile = await getUserProfile(ctx, userId)
-    
+
     if (!adminProfile || adminProfile.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
@@ -608,10 +608,10 @@ export const toggleUserStatus = mutation({
     if (!targetUser) {
       throw new Error("User not found")
     }
-    
+
     // Check for profile in different tables
     const targetProfile = await getUserProfile(ctx, args.targetUserId)
-    
+
     if (!targetProfile) {
       throw new Error("User profile not found")
     }
@@ -622,10 +622,10 @@ export const toggleUserStatus = mutation({
       isActive: newStatus,
     })
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: `User ${newStatus ? "activated" : "deactivated"} successfully`,
-      newStatus 
+      newStatus
     }
   },
 })
@@ -650,7 +650,7 @@ export const getStores = query({
         currentPage: args.page
       }
     }
-    
+
     const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
 
     // Get all store owners with limit
@@ -672,9 +672,9 @@ export const getStores = query({
     // Filter by search query
     const filteredStoreOwners = searchQuery
       ? allStoreOwners.filter(store =>
-          store.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          store.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        store.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        store.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
       : allStoreOwners;
 
     // Get shelves for each store owner
@@ -702,16 +702,16 @@ export const getStores = query({
 
         // Get user from users table for name, phone, and image
         const user = await ctx.db.get(store.userId)
-        
+
         // Profile image is now stored in users.image field as URL string
         const profileImageUrl = user?.image || null;
-        
+
         // Convert commercial register document storage ID to URL if exists
         let businessRegistrationUrl = null;
         if (store.commercialRegisterDocument) {
           businessRegistrationUrl = await ctx.storage.getUrl(store.commercialRegisterDocument);
         }
-        
+
         return {
           id: store._id,
           name: store.storeName || user?.name,
@@ -736,7 +736,7 @@ export const getStores = query({
     );
 
     // Sort by creation date (newest first)
-    storesWithStats.sort((a, b) => 
+    storesWithStats.sort((a, b) =>
       new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime()
     );
 
@@ -770,33 +770,33 @@ export const getStores = query({
 
     // Calculate shelves for current and previous periods
     const allShelves = await ctx.db.query("shelves").collect();
-    
+
     const shelvesInPeriod = allShelves.filter(s => {
       const createdDate = new Date(s._creationTime);
       return createdDate >= periodStart;
     });
-    
+
     const shelvesUpToPreviousPeriod = allShelves.filter(s => {
       const createdDate = new Date(s._creationTime);
       return createdDate < periodStart;
     });
-    
+
     // Calculate rentals and revenue for current and previous periods
     const allRentals = await ctx.db
       .query("rentalRequests")
       .filter(q => q.eq(q.field("status"), "active"))
       .collect();
-    
+
     const rentalsInPeriod = allRentals.filter(r => {
       const createdDate = new Date(r._creationTime);
       return createdDate >= periodStart;
     });
-    
+
     const rentalsUpToPreviousPeriod = allRentals.filter(r => {
       const createdDate = new Date(r._creationTime);
       return createdDate < periodStart;
     });
-    
+
     // Calculate revenue from shelf rentals
     const revenueInPeriod = rentalsInPeriod.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
     const revenueInPreviousPeriod = allRentals.filter(r => {
@@ -809,23 +809,23 @@ export const getStores = query({
     const displayStores = storesInPeriod.length;
     const displayShelves = shelvesInPeriod.length;
     const displayRevenue = revenueInPeriod;
-    
+
     // Calculate percentage changes
     // Compare current period count to previous period count
     const totalChange = storesInPreviousPeriod.length > 0
       ? Math.round(((storesInPeriod.length - storesInPreviousPeriod.length) / storesInPreviousPeriod.length) * 100 * 10) / 10
       : storesInPeriod.length > 0 ? 100 : 0;
-    
+
     // For shelves: get shelves from previous period to compare
     const shelvesInPreviousPeriod = allShelves.filter(s => {
       const createdDate = new Date(s._creationTime);
       return createdDate >= previousStart && createdDate < periodStart;
     });
-    
+
     const shelvesChange = shelvesInPreviousPeriod.length > 0
       ? Math.round(((shelvesInPeriod.length - shelvesInPreviousPeriod.length) / shelvesInPreviousPeriod.length) * 100 * 10) / 10
       : shelvesInPeriod.length > 0 ? 100 : 0;
-    
+
     // Calculate revenue change percentage
     const revenueChange = revenueInPreviousPeriod > 0
       ? Math.round(((revenueInPeriod - revenueInPreviousPeriod) / revenueInPreviousPeriod) * 100 * 10) / 10
@@ -870,9 +870,9 @@ export const getBrands = query({
         currentPage: args.page
       }
     }
-    
+
     const userProfile = await getUserProfile(ctx, userId)
-    
+
     if (!userProfile || userProfile.type !== "admin") {
       // Return empty results for non-admin users
       return {
@@ -882,7 +882,7 @@ export const getBrands = query({
         currentPage: args.page
       }
     }
-    
+
     const { searchQuery = "", page, limit, timePeriod = "monthly" } = args;
 
     // Get all brand owners with limit
@@ -904,9 +904,9 @@ export const getBrands = query({
     // Filter by search query
     const filteredBrandOwners = searchQuery
       ? allBrandOwners.filter(brand =>
-          brand.brandName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          brand.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        brand.brandName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        brand.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
       : allBrandOwners;
 
     // Get stats for each brand owner
@@ -937,17 +937,17 @@ export const getBrands = query({
 
         // Get user from users table for name and phone
         const user = await ctx.db.get(brand.userId)
-        
+
         // Profile image is now stored in users.image field as URL string
         const profileImageUrl = user?.image || null;
-        
+
         // Convert business registration document storage ID to URL
         let businessRegistrationUrl = null;
         const docId = brand.commercialRegisterDocument || brand.freelanceLicenseDocument;
         if (docId) {
           businessRegistrationUrl = await ctx.storage.getUrl(docId);
         }
-        
+
         return {
           id: brand._id,
           name: brand.brandName,  // Use brand name only
@@ -1000,7 +1000,7 @@ export const getBrands = query({
     // Calculate products and revenue for current period brands
     const productsInPeriod = brandsInPeriod.reduce((sum, b) => sum + b.products, 0);
     const revenueInPeriod = brandsInPeriod.reduce((sum, b) => sum + b.revenue, 0);
-    
+
     // Calculate products and revenue for previous period brands
     const productsInPreviousPeriod = brandsInPreviousPeriod.reduce((sum, b) => sum + b.products, 0);
     const revenueInPreviousPeriod = brandsInPreviousPeriod.reduce((sum, b) => sum + b.revenue, 0);
@@ -1014,11 +1014,11 @@ export const getBrands = query({
     const brandsChange = brandsInPreviousPeriod.length > 0
       ? Math.round(((brandsInPeriod.length - brandsInPreviousPeriod.length) / brandsInPreviousPeriod.length) * 100 * 10) / 10
       : brandsInPeriod.length > 0 ? 100 : 0;
-    
+
     const productsChange = productsInPreviousPeriod > 0
       ? Math.round(((productsInPeriod - productsInPreviousPeriod) / productsInPreviousPeriod) * 100 * 10) / 10
       : productsInPeriod > 0 ? 100 : 0;
-    
+
     const revenueChange = revenueInPreviousPeriod > 0
       ? Math.round(((revenueInPeriod - revenueInPreviousPeriod) / revenueInPreviousPeriod) * 100 * 10) / 10
       : revenueInPeriod > 0 ? 100 : 0;
@@ -1058,7 +1058,7 @@ export const getPosts = query({
         currentPage: args.page
       }
     }
-    
+
     const { searchQuery = "", status = "all", page, limit } = args;
 
     // Get shelves with limit for performance
@@ -1068,26 +1068,26 @@ export const getPosts = query({
       .take(500); // Reasonable limit for admin
 
     // Filter by status
-    const filteredByStatus = status === "all" 
+    const filteredByStatus = status === "all"
       ? shelves
       : shelves.filter(shelf => {
-          if (status === "published") return shelf.status === "active";
-          if (status === "approved") return shelf.status === "active";
-          return false;
-        });
+        if (status === "published") return shelf.status === "active";
+        if (status === "approved") return shelf.status === "active";
+        return false;
+      });
 
     // Get owner details for each shelf
     const shelvesWithOwners = await Promise.all(
       filteredByStatus.map(async (shelf) => {
         const ownerProfile = await ctx.db.get(shelf.storeProfileId);
         if (!ownerProfile) return null;
-        
+
         // Get the owner's email from users table
         const authUser = await ctx.db.get(ownerProfile.userId)
 
         // Get user from users table for name and phone
         const ownerUser = await ctx.db.get(ownerProfile.userId)
-        
+
         return {
           id: shelf._id,
           storeId: shelf.storeProfileId, // Add storeId which is the profileId
@@ -1114,17 +1114,17 @@ export const getPosts = query({
 
     // Filter out null entries and apply search
     const validShelves = shelvesWithOwners.filter(Boolean) as NonNullable<typeof shelvesWithOwners[0]>[];
-    
+
     const filteredShelves = searchQuery
       ? validShelves.filter(post =>
-          post.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.shelfName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.storeBranch?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        post.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.shelfName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.storeBranch?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
       : validShelves;
 
     // Sort by date (newest first)
-    filteredShelves.sort((a, b) => 
+    filteredShelves.sort((a, b) =>
       new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime()
     );
 
@@ -1160,12 +1160,12 @@ export const getPayments = query({
         currentPage: args.page
       }
     }
-    
+
     const { searchQuery = "", status = "all", page, limit } = args;
 
     // Get payments from the payments table
     let payments = await ctx.db.query("payments").collect()
-    
+
     // Filter by status if specified
     if (status !== "all") {
       payments = payments.filter(payment => {
@@ -1177,28 +1177,28 @@ export const getPayments = query({
         return true
       })
     }
-    
+
     // Get payment details with related information
     const paymentsWithDetails = await Promise.all(
       payments.map(async (payment) => {
         // Get rental request details
         const rental = await ctx.db.get(payment.rentalRequestId)
         if (!rental) return null
-        
+
         // Get profiles
         const brandProfile = rental.brandProfileId ? await ctx.db.get(rental.brandProfileId) : null
         const storeProfile = rental.storeProfileId ? await ctx.db.get(rental.storeProfileId) : null
-        
+
         if (!brandProfile || !storeProfile) return null
-        
+
         // Get users
         const brandUser = await ctx.db.get(brandProfile.userId)
         const storeUser = await ctx.db.get(storeProfile.userId)
-        
+
         // Get shelf
         const shelf = await ctx.db.get(rental.shelfId)
         if (!shelf) return null
-        
+
         return {
           id: payment._id,
           invoiceNumber: payment.invoiceNumber,
@@ -1235,13 +1235,13 @@ export const getPayments = query({
     // Apply search filter
     const filteredPayments = searchQuery
       ? validPayments.filter(payment =>
-          payment.store?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          payment.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        payment.store?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        payment.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
       : validPayments;
 
     // Sort by date (newest first)
-    filteredPayments.sort((a, b) => 
+    filteredPayments.sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
@@ -1255,39 +1255,39 @@ export const getPayments = query({
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    
+
     // Get all payments (not just filtered) for stats
     const allPaymentsWithDetails = paymentsWithDetails.filter(Boolean) as NonNullable<typeof paymentsWithDetails[0]>[];
-    
+
     // Total received (all paid payments)
     const paidPayments = allPaymentsWithDetails.filter(p => p.status === "paid");
     const totalReceived = paidPayments.reduce((sum, p) => sum + p.amount, 0);
-    
+
     // Current month payments
     const currentMonthPaymentsList = paidPayments.filter(p => {
       const paymentDate = new Date(p.date);
       return paymentDate >= currentMonth;
     });
     const currentMonthTotal = currentMonthPaymentsList.reduce((sum, p) => sum + p.amount, 0);
-    
+
     // Previous month payments (for comparison)
     const previousMonthPaymentsList = paidPayments.filter(p => {
       const paymentDate = new Date(p.date);
       return paymentDate >= previousMonth && paymentDate <= previousMonthEnd;
     });
     const previousMonthTotal = previousMonthPaymentsList.reduce((sum, p) => sum + p.amount, 0);
-    
+
     // Pending payments
     const pendingPaymentsList = allPaymentsWithDetails.filter(p => p.status === "unpaid");
     const pendingTotal = pendingPaymentsList.reduce((sum, p) => sum + p.amount, 0);
-    
+
     // Previous month pending (for comparison)
     const previousPendingList = allPaymentsWithDetails.filter(p => {
       const paymentDate = new Date(p.date);
       return p.status === "unpaid" && paymentDate >= previousMonth && paymentDate <= previousMonthEnd;
     });
     const previousPendingTotal = previousPendingList.reduce((sum, p) => sum + p.amount, 0);
-    
+
     // Total invoices issued
     const totalInvoices = allPaymentsWithDetails.length;
     const currentMonthInvoices = allPaymentsWithDetails.filter(p => {
@@ -1298,20 +1298,20 @@ export const getPayments = query({
       const paymentDate = new Date(p.date);
       return paymentDate >= previousMonth && paymentDate <= previousMonthEnd;
     }).length;
-    
+
     // Calculate percentage changes
-    const totalReceivedChange = previousMonthTotal > 0 
+    const totalReceivedChange = previousMonthTotal > 0
       ? Math.round(((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100 * 10) / 10
       : currentMonthTotal > 0 ? 100 : 0;
-      
+
     const currentMonthChange = previousMonthTotal > 0
       ? Math.round(((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100 * 10) / 10
       : currentMonthTotal > 0 ? 100 : 0;
-      
+
     const pendingChange = previousPendingTotal > 0
       ? Math.round(((pendingTotal - previousPendingTotal) / previousPendingTotal) * 100 * 10) / 10
       : pendingTotal > 0 ? 100 : 0;
-      
+
     const invoicesChange = previousMonthInvoices > 0
       ? Math.round(((currentMonthInvoices - previousMonthInvoices) / previousMonthInvoices) * 100 * 10) / 10
       : currentMonthInvoices > 0 ? 100 : 0;
@@ -1341,22 +1341,22 @@ export const getRentalRequest = query({
     // Find active rental request for this shelf
     const rentalRequest = await ctx.db
       .query("rentalRequests")
-      .filter(q => 
+      .filter(q =>
         q.and(
           q.eq(q.field("shelfId"), args.shelfId),
           q.eq(q.field("status"), "active")
         )
       )
       .first()
-    
+
     if (!rentalRequest) {
       return null
     }
-    
+
     // Get the brand profile and user
     const requester = await ctx.db.get(rentalRequest.brandProfileId)
     const requesterUser = requester ? await ctx.db.get(requester.userId) : null
-    
+
     return {
       ...rentalRequest,
       renterName: requester?.brandName || requesterUser?.name || "-",
@@ -1387,25 +1387,25 @@ export const getStoreShelves = query({
         currentPage: args.page || 1
       }
     }
-    
+
     const page = args.page || 1
     const limit = args.limit || 5
     const searchQuery = args.searchQuery?.toLowerCase() || ""
     const statusFilter = args.status || "all"
-    
+
     let shelves = await ctx.db
       .query("shelves")
       .filter(q => q.eq(q.field("storeProfileId"), args.profileId))
       .collect()
-    
+
     // Apply search filter
     if (searchQuery) {
-      shelves = shelves.filter(shelf => 
+      shelves = shelves.filter(shelf =>
         shelf.shelfName?.toLowerCase().includes(searchQuery) ||
         shelf.storeBranch?.toLowerCase().includes(searchQuery)
       )
     }
-    
+
     // Get active/payment_pending rentals to determine shelf availability
     const activeShelfRentals = await ctx.db
       .query("rentalRequests")
@@ -1426,26 +1426,26 @@ export const getStoreShelves = query({
         return isAvailable === statusFilter
       })
     }
-    
+
     // Convert storage IDs to URLs for images
     const shelvesWithUrls = await Promise.all(
       shelves.map(async (shelf) => {
         const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
-        
+
         return {
           ...shelf,
           ...imageUrls
         }
       })
     )
-    
+
     // Pagination
     const totalItems = shelvesWithUrls.length
     const totalPages = Math.ceil(totalItems / limit)
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const paginatedShelves = shelvesWithUrls.slice(startIndex, endIndex)
-    
+
     return {
       items: paginatedShelves,
       totalItems,
@@ -1469,7 +1469,7 @@ export const getBrandProducts = query({
       // Return empty array when not authenticated or not admin
       return []
     }
-    
+
     // Get active rental requests for this brand
     const activeRentals = await ctx.db
       .query("rentalRequests")
@@ -1478,26 +1478,26 @@ export const getBrandProducts = query({
         q.eq(q.field("status"), "active")
       ))
       .collect()
-    
+
     // Collect all products that are currently being displayed
     const productsWithRentalQuantities = []
-    
+
     for (const rental of activeRentals) {
       if (rental.selectedProducts && rental.selectedProducts.length > 0) {
         for (const selectedProduct of rental.selectedProducts) {
           const productId = selectedProduct.productId
           const rentalQuantity = selectedProduct.quantity || 1
-          
+
           const product = await ctx.db.get(productId)
           if (product) {
             // Get product image URL - check both mainImage (storage) and imageUrl (external)
             let imageUrl = null
-            
+
             // Products use imageUrl directly (not storage ID)
             if (product && 'imageUrl' in product && product.imageUrl) {
               imageUrl = product.imageUrl
             }
-            
+
             productsWithRentalQuantities.push({
               id: product._id,
               name: product && 'name' in product ? product.name : selectedProduct.name,
@@ -1515,18 +1515,18 @@ export const getBrandProducts = query({
         }
       }
     }
-    
+
     // Apply search filter if provided
     let filteredProducts = productsWithRentalQuantities
     if (args.searchQuery && args.searchQuery.trim()) {
       const search = args.searchQuery.toLowerCase()
-      filteredProducts = productsWithRentalQuantities.filter(product => 
+      filteredProducts = productsWithRentalQuantities.filter(product =>
         product.name?.toLowerCase().includes(search) ||
         product.category?.toLowerCase().includes(search) ||
         product.sku?.toLowerCase().includes(search)
       )
     }
-    
+
     return filteredProducts
   },
 })
@@ -1545,18 +1545,18 @@ export const getBrandRentals = query({
       // Return empty array when not authenticated or not admin
       return []
     }
-    
+
     const rentals = await ctx.db
       .query("rentalRequests")
       .filter(q => q.eq(q.field("brandProfileId"), args.profileId))
       .collect()
-    
+
     // Get additional details for each rental
     const rentalsWithDetails = await Promise.all(
       rentals.map(async (rental) => {
         const shelf = await ctx.db.get(rental.shelfId)
         const ownerProfile = await ctx.db.get(rental.storeProfileId)
-        
+
         return {
           id: rental._id,
           shelfName: shelf?.shelfName || "-",
@@ -1569,17 +1569,17 @@ export const getBrandRentals = query({
         }
       })
     )
-    
+
     // Apply search filter if provided
     let filteredRentals = rentalsWithDetails
     if (args.searchQuery && args.searchQuery.trim()) {
       const search = args.searchQuery.toLowerCase()
-      filteredRentals = rentalsWithDetails.filter(rental => 
+      filteredRentals = rentalsWithDetails.filter(rental =>
         rental.shelfName?.toLowerCase().includes(search) ||
         rental.storeName?.toLowerCase().includes(search)
       )
     }
-    
+
     // Apply status filter if provided
     if (args.statusFilter && args.statusFilter !== "all") {
       const now = new Date()
@@ -1597,7 +1597,7 @@ export const getBrandRentals = query({
         return true
       })
     }
-    
+
     return filteredRentals
   },
 })
@@ -1614,19 +1614,19 @@ export const getStoreRentals = query({
       // Return empty array when not authenticated or not admin
       return []
     }
-    
+
     const rentals = await ctx.db
       .query("rentalRequests")
       .filter(q => q.eq(q.field("storeProfileId"), args.profileId))
       .collect()
-    
+
     // Get additional details for each rental
     const rentalsWithDetails = await Promise.all(
       rentals.map(async (rental) => {
         const shelf = rental.shelfId ? await ctx.db.get(rental.shelfId) : null
         const renterProfile = await ctx.db.get(rental.brandProfileId)
         const renter = renterProfile ? await ctx.db.get(renterProfile.userId) : null
-        
+
         return {
           ...rental,
           shelfName: shelf?.shelfName || "",
@@ -1635,7 +1635,7 @@ export const getStoreRentals = query({
         }
       })
     )
-    
+
     return rentalsWithDetails
   },
 })
@@ -1652,13 +1652,13 @@ export const getStorePayments = query({
       // Return empty array when not authenticated or not admin
       return []
     }
-    
+
     const rentals = await ctx.db
       .query("rentalRequests")
       .filter(q => q.eq(q.field("storeProfileId"), args.profileId))
       .filter(q => q.eq(q.field("status"), "active"))
       .collect()
-    
+
     // Group by month
     const paymentsByMonth: Record<string, {
       month: string,
@@ -1667,11 +1667,11 @@ export const getStorePayments = query({
       paymentMethod: string,
       status: string
     }> = {}
-    
+
     rentals.forEach(rental => {
       const date = new Date(rental._creationTime)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      
+
       if (!paymentsByMonth[monthKey]) {
         paymentsByMonth[monthKey] = {
           month: monthKey,
@@ -1681,11 +1681,11 @@ export const getStorePayments = query({
           status: "completed"
         }
       }
-      
+
       paymentsByMonth[monthKey].rentedShelves++
       paymentsByMonth[monthKey].totalIncome += rental.totalAmount || 0
     })
-    
+
     // Convert to array and sort by month
     return Object.values(paymentsByMonth).sort((a, b) => a.month.localeCompare(b.month))
   },

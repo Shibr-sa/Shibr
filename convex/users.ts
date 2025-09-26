@@ -192,7 +192,7 @@ export const createStoreProfile = mutation({
       .first();
     
     if (existingStore) {
-      throw new Error("Store profile already exists");
+      throw new Error("auth.profile_already_exists");
     }
     
     // Check if user has a brand profile (prevent multiple account types)
@@ -202,7 +202,7 @@ export const createStoreProfile = mutation({
       .first();
     
     if (existingBrand) {
-      throw new Error("User already has a brand profile. Cannot create multiple profile types");
+      throw new Error("auth.profile_already_exists");
     }
     
     // Create store profile
@@ -251,7 +251,7 @@ export const createBrandProfile = mutation({
       .first();
     
     if (existingBrand) {
-      throw new Error("Brand profile already exists");
+      throw new Error("auth.profile_already_exists");
     }
     
     // Check if user has a store profile (prevent multiple account types)
@@ -261,7 +261,7 @@ export const createBrandProfile = mutation({
       .first();
     
     if (existingStore) {
-      throw new Error("User already has a store profile. Cannot create multiple profile types");
+      throw new Error("auth.profile_already_exists");
     }
     
     // Create brand profile
@@ -310,7 +310,7 @@ export const updateStoreProfile = mutation({
       .first();
     
     if (!profile) {
-      throw new Error("Store profile not found");
+      throw new Error("auth.profile_not_found");
     }
     
     await ctx.db.patch(profile._id, args);
@@ -347,7 +347,7 @@ export const updateBrandProfile = mutation({
       .first();
     
     if (!profile) {
-      throw new Error("Brand profile not found");
+      throw new Error("auth.profile_not_found");
     }
     
     await ctx.db.patch(profile._id, args);
@@ -512,7 +512,7 @@ export const updateBrandData = mutation({
       .first();
 
     if (!brandProfile) {
-      throw new Error("Brand profile not found");
+      throw new Error("auth.profile_not_found");
     }
 
     const updates: any = {};
@@ -604,7 +604,7 @@ export const updateFreelanceDocument = mutation({
       .first();
 
     if (!brandProfile) {
-      throw new Error("Brand profile not found");
+      throw new Error("auth.profile_not_found");
     }
 
     await ctx.db.patch(brandProfile._id, {

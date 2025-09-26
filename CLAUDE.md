@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bunx convex run <function> <args>` - Run Convex functions directly (e.g., `bunx convex run users:getCurrentUserWithProfile {}`)
 - `bunx convex logs` - View real-time Convex function logs
 - `CONVEX_DEPLOYMENT=prod:enchanted-clam-269 bunx convex run <function>` - Run functions against production
+- `CONVEX_DEPLOYMENT=dev:warmhearted-capybara-335 bunx convex run <function>` - Run functions against development
 
 ### Database (Convex)
 - `bunx convex dev` - Start Convex dev server independently
@@ -43,7 +44,8 @@ This project uses Bun. Install dependencies with `bun install`.
 3. Brand owners browse marketplace and request rentals
 4. Real-time chat between parties
 5. Store owners approve/reject requests
-6. Approved rentals become active contracts
+6. Payment processing via Tap Payment Gateway
+7. Approved rentals become active contracts with QR-enabled stores
 
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
@@ -52,11 +54,13 @@ This project uses Bun. Install dependencies with `bun install`.
 - **Database**: Convex (real-time, reactive backend with WebSocket sync)
 - **Authentication**: Convex Auth (password-based with OTP verification)
 - **Email**: Resend API
+- **Payments**: Tap Payment Gateway integration
 - **UI Components**: 52 shadcn/ui components (Radix UI primitives)
 - **Styling**: Tailwind CSS with CSS variables for theming
 - **Forms**: React Hook Form + Zod validation
 - **Maps**: Google Maps API (for location selection)
 - **i18n**: Custom context-based implementation
+- **QR Codes**: react-qr-code for store generation
 
 ### Route Structure & User Roles
 
@@ -85,6 +89,7 @@ Three distinct user types with role-based access control:
 - `/marketplace` - Public shelf listings
 - `/signin`, `/signup`, `/verify-email` - Authentication flow
 - `/forgot-password`, `/reset-password` - Password recovery
+- `/store/[slug]/*` - QR store customer interface for active rentals
 
 ### Convex Database Schema
 
@@ -103,14 +108,18 @@ Three distinct user types with role-based access control:
   - Availability status
   - Multiple indexes for search optimization
 - **rentalRequests** - Booking workflow
-  - Status: pending → approved/rejected → active/completed
+  - Status: pending → payment_pending → active → completed/cancelled
   - Selected products
   - Commission rates
+  - Tap payment integration
 - **products** - Brand inventory with images
 - **conversations/messages** - Real-time chat with read receipts
 - **notifications** - User alerts for requests, messages
-- **payments** - Transaction records
+- **payments** - Transaction records with Tap gateway references
 - **platformSettings** - Global configuration (fees, terms)
+- **shelfStores** - QR-enabled stores for active rentals
+- **customerOrders** - Orders from QR store customers
+- **bankAccounts** - Store owner payout information
 
 #### Email Verification
 - **emailVerificationOTP** - Temporary OTP storage for signup only
@@ -208,6 +217,7 @@ RESEND_API_KEY=<resend-api-key>
 SITE_URL=<production-url>
 JWT_PRIVATE_KEY=<auth-private-key>
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<maps-key>
+NEXT_PUBLIC_TAP_PUBLISHABLE_KEY=<tap-public-key>
 ```
 
 #### Convex Environment (set via CLI)
@@ -215,6 +225,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<maps-key>
 RESEND_API_KEY=<resend-api-key>
 SITE_URL=<production-url>
 JWT_PRIVATE_KEY=<auth-private-key>
+TAP_SECRET_KEY=<tap-secret-key>
 ```
 
 ### Deployment

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { useQuery, useConvexAuth } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { parseAuthError } from "@/lib/auth-errors"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -38,8 +39,8 @@ export default function SignInPage() {
     if (isAuthenticated && userWithProfile) {
       const dashboardPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
-        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+          userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+            userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
 
       router.push(dashboardPath)
     }
@@ -57,8 +58,8 @@ export default function SignInPage() {
       // Determine the correct dashboard based on account type
       const dashboardPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
-        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+          userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+            userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
 
       // Redirecting to dashboard
       router.push(dashboardPath)
@@ -81,7 +82,7 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate required fields
     const newErrors: Record<string, string> = {}
     if (!formData.email.trim()) {
@@ -90,12 +91,12 @@ export default function SignInPage() {
     if (!formData.password) {
       newErrors.password = t("auth.password_required")
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    
+
     setIsLoading(true)
 
     try {
@@ -104,34 +105,34 @@ export default function SignInPage() {
       authFormData.append("email", formData.email)
       authFormData.append("password", formData.password)
       authFormData.append("flow", "signIn")
-      
+
       await signIn("password", authFormData)
-      
+
       toast({
         title: t("auth.success"),
         description: t("auth.signin_success"),
       })
-      
+
       // Set flag to check auth and redirect
       // The useEffect hook will handle the redirect once userWithProfile is loaded
       setIsCheckingAuth(true)
     } catch (error: any) {
-      // More specific error handling
-      let errorMessage = t("auth.invalid_credentials")
-      
-      if (error?.message?.includes("User not found")) {
-        errorMessage = t("auth.user_not_found")
-      } else if (error?.message?.includes("Invalid password")) {
-        errorMessage = t("auth.invalid_password")
-      } else if (error?.message?.includes("network")) {
-        errorMessage = t("auth.network_error")
-      }
-      
+      // Parse error using centralized error handler
+      const parsedError = parseAuthError(error)
+      const errorMessage = t(parsedError.translationKey as any) || parsedError.fallbackMessage
+
       toast({
         title: t("auth.error"),
         description: errorMessage,
         variant: "destructive",
       })
+
+      // Handle redirect if needed
+      if (parsedError.shouldRedirect && parsedError.redirectTo) {
+        setTimeout(() => {
+          router.push(parsedError.redirectTo!)
+        }, 2000)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -194,7 +195,7 @@ export default function SignInPage() {
                   </Label>
                   <div className="text-sm text-muted-foreground">
                     {t("auth.forgot_password")}{" "}
-                    <Link href="/forgot-password" className="text-primary hover:underline">
+                    <Link href="/forgot-password" className="text-primary hover:underline" tabIndex={-1}>
                       {t("auth.recover_here")}
                     </Link>
                   </div>
@@ -230,8 +231,8 @@ export default function SignInPage() {
               </div>
 
               {/* Sign In Button */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={isLoading}
               >

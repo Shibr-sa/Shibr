@@ -1,0 +1,62 @@
+---
+description: Performance optimization techniques and best practices
+globs: **/*.tsx, **/*.ts
+---
+
+# Performance Optimization
+
+## Image Optimization
+
+- Use WebP format for images when possible
+- Define proper `sizes` attributes for responsive images
+- Enable lazy loading with `loading="lazy"`
+- Implement proper image compression and optimization
+- Use Next.js `Image` component for automatic optimization
+
+## Bundle Optimization
+
+- Use dynamic imports for code splitting: `dynamic(() => import('./Component'))`
+- Implement route-based code splitting with Next.js
+- Minimize use of heavy third-party libraries
+- Use tree shaking to eliminate unused code
+- Implement proper chunk splitting strategies
+
+## React Performance
+
+- Minimize use of `useEffect` and `setState`
+- Favor Server Components (RSC) wherever possible
+- Use `React.memo()` for expensive components
+- Implement proper dependency arrays in hooks
+- Avoid unnecessary re-renders with memoization
+
+## Caching Strategies
+
+- Implement proper HTTP caching headers
+- Use `cache()` function for expensive computations
+- Implement proper revalidation strategies
+- Use `revalidate` for time-based cache invalidation
+- Handle cache invalidation for dynamic content
+
+## Database Optimization
+
+- Implement proper database indexing
+- Use efficient queries and avoid N+1 problems
+- Implement pagination for large datasets
+- Use database connection pooling
+- Optimize database schema design
+
+## Monitoring and Metrics
+
+- Implement performance monitoring
+- Track Core Web Vitals metrics
+- Monitor bundle size and loading times
+- Implement proper error tracking and reporting
+- Use performance budgets and alerts
+
+## Network Optimization
+
+- Minimize network requests with proper caching
+- Use HTTP/2 for better parallelization
+- Implement proper CDN usage
+- Compress responses with gzip/brotli
+- Minimize payload sizes with efficient data structures

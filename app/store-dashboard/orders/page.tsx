@@ -55,7 +55,7 @@ export default function StoreDashboardOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasInitialData, setHasInitialData] = useState(false)
   const itemsPerPage = 5
-  
+
   // Debounced search value for better performance
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
 
@@ -69,7 +69,7 @@ export default function StoreDashboardOrdersPage() {
       userType: "store" as const
     } : "skip"
   )
-  
+
   // Get unread message counts
   const unreadCounts = useQuery(
     api.chats.getUnreadMessageCounts,
@@ -86,7 +86,7 @@ export default function StoreDashboardOrdersPage() {
     { value: "rejected", label: t("orders.rejected") },
     { value: "expired", label: t("orders.expired") }
   ]
-  
+
   // Reverse for RTL to show "All" first from the right
   const orderedOrdersFilters = direction === "rtl" ? [...ordersFilterOptions].reverse() : ordersFilterOptions
 
@@ -94,7 +94,7 @@ export default function StoreDashboardOrdersPage() {
   const filteredRequests = useMemo(() => {
     return rentalRequests?.filter(request => {
       const matchesFilter = filter === "all" || request.status === filter
-      const matchesSearch = !debouncedSearchQuery || 
+      const matchesSearch = !debouncedSearchQuery ||
         request.otherUserName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         request.shelfBranch?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       return matchesFilter && matchesSearch
@@ -105,7 +105,7 @@ export default function StoreDashboardOrdersPage() {
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedRequests = useMemo(() => 
+  const paginatedRequests = useMemo(() =>
     filteredRequests.slice(startIndex, endIndex),
     [filteredRequests, startIndex, endIndex]
   )
@@ -224,10 +224,10 @@ export default function StoreDashboardOrdersPage() {
         <RadioGroup value={filter} onValueChange={setFilter} className="flex items-center gap-4">
           {orderedOrdersFilters.map((option) => (
             <div key={option.value} className="flex items-center gap-2">
-              <RadioGroupItem 
-                value={option.value} 
-                id={`orders-${option.value}`} 
-                className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
+              <RadioGroupItem
+                value={option.value}
+                id={`orders-${option.value}`}
+                className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
               />
               <Label htmlFor={`orders-${option.value}`} className="cursor-pointer">
                 {option.label}
@@ -239,7 +239,7 @@ export default function StoreDashboardOrdersPage() {
         {/* Search */}
         <div className="relative w-80 ms-auto">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
+          <Input
             placeholder={t("orders.search_placeholder")}
             className="ps-10"
             value={searchQuery}
@@ -296,7 +296,7 @@ export default function StoreDashboardOrdersPage() {
                       {request.shelfBranch || t("common.jeddah")}
                     </TableCell>
                     <TableCell className="py-3">
-                      {calculateDuration(request.startDate, request.endDate)}
+                      {calculateDuration(new Date(request.startDate).toISOString(), new Date(request.endDate).toISOString())}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(request.status)}
@@ -321,8 +321,8 @@ export default function StoreDashboardOrdersPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
-                                  <Badge 
-                                    variant="destructive" 
+                                  <Badge
+                                    variant="destructive"
                                     className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
                                   >
                                     {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
@@ -381,8 +381,8 @@ export default function StoreDashboardOrdersPage() {
                         {searchQuery || filter !== "all" ? t("store.try_different_search") : t("store.requests_will_appear_here")}
                       </p>
                       {searchQuery && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="mt-4"
                           onClick={() => {
@@ -406,7 +406,7 @@ export default function StoreDashboardOrdersPage() {
       <Pagination>
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious 
+            <PaginationPrevious
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               className={cn(
                 "cursor-pointer",
@@ -415,7 +415,7 @@ export default function StoreDashboardOrdersPage() {
               aria-disabled={currentPage === 1 || totalPages === 0}
             />
           </PaginationItem>
-          
+
           {totalPages > 0 ? (
             Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let page;
@@ -447,9 +447,9 @@ export default function StoreDashboardOrdersPage() {
               </PaginationLink>
             </PaginationItem>
           )}
-          
+
           <PaginationItem>
-            <PaginationNext 
+            <PaginationNext
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               className={cn(
                 "cursor-pointer",
