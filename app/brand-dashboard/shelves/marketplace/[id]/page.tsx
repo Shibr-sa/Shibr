@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard, CheckCircle, XCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -22,7 +23,7 @@ import { formatCurrency } from "@/lib/formatters"
 import { ar, enUS } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { useLanguage } from "@/contexts/localization-context"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { ChatInterface } from "@/components/chat/chat-interface"
@@ -82,6 +83,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   // Get conversation ID from URL if present
   const urlConversationId = searchParams.get('conversation') as Id<"conversations"> | null
+
+  // Get payment-related parameters from URL (for Tap redirect)
+  const chargeId = searchParams.get("tap_id") ||
+                   searchParams.get("charge_id") ||
+                   searchParams.get("id") ||
+                   searchParams.get("chargeId")
+  const rentalRequestIdFromUrl = searchParams.get("rentalRequestId") as Id<"rentalRequests"> | null
   
   // Get user ID and profile ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -108,6 +116,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Product type is now derived from selected products
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
+
+  // Payment-related state
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [paymentStatus, setPaymentStatus] = useState<"success" | "failed" | null>(null)
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState(false)
 
   // Helper function to calculate rental months
   const calculateRentalMonths = (from: Date | undefined, to: Date | undefined) => {
@@ -171,6 +185,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
   const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
+  const confirmPayment = useMutation(api.rentalRequests.confirmPayment)
+
+  // Actions
+  const getChargeDetails = useAction(api.tapPayments.getChargeDetails)
+  const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
   
   // Check for existing rental request (any status)
   const activeRequest = existingRequest
@@ -213,7 +232,109 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       }
     }
   }, [activeRequest])
-  
+
+  // Track if payment verification is in progress to prevent duplicates
+  const [verificationStarted, setVerificationStarted] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  // Check and verify payment if coming back from Tap
+  useEffect(() => {
+    const verifyPayment = async () => {
+      if (!chargeId || !rentalRequestIdFromUrl) {
+        return
+      }
+
+      // Prevent duplicate verification
+      if (verificationStarted) {
+        return
+      }
+
+      setVerificationStarted(true)
+      setIsVerifyingPayment(true)
+
+      try {
+        // Verify the charge with Tap
+        const chargeDetails = await getChargeDetails({ chargeId })
+
+        if (chargeDetails.status === "CAPTURED") {
+          // Payment successful
+          await confirmPayment({
+            requestId: rentalRequestIdFromUrl,
+            paymentAmount: chargeDetails.amount,
+          })
+
+          setPaymentStatus("success")
+          setShowPaymentDialog(true)
+
+          // Clear URL parameters
+          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
+          window.history.replaceState({}, "", newUrl)
+        } else {
+          // Payment failed or pending
+          const errorMessage = chargeDetails.response?.message ||
+                              chargeDetails.acquirer?.response?.message ||
+                              "Payment could not be completed"
+
+          setPaymentError(errorMessage)
+          setPaymentStatus("failed")
+          setShowPaymentDialog(true)
+
+          // Clear URL parameters
+          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
+          window.history.replaceState({}, "", newUrl)
+        }
+      } catch (error) {
+        setPaymentError(error instanceof Error ? error.message : "Payment verification failed")
+        setPaymentStatus("failed")
+        setShowPaymentDialog(true)
+      } finally {
+        setIsVerifyingPayment(false)
+      }
+    }
+
+    verifyPayment()
+  }, [chargeId, rentalRequestIdFromUrl, resolvedParams.id]) // Don't include verificationStarted to avoid re-triggers
+
+  // Handle payment for pending requests
+  // Test Cards for Tap Payments:
+  // Visa: 4508750015741019, 4440000009900010
+  // MasterCard: 5123450000000008
+  const handlePayment = async () => {
+    if (!user || !activeRequest || !userData) {
+      return
+    }
+
+    setProcessingPayment(true)
+
+    try {
+      const session = await createCheckoutSession({
+        amount: activeRequest.totalAmount,
+        description: `Shelf rental for ${shelfDetails?.shelfName || "Shelf"}`,
+        customerName: userData.profile?.brandName || userData.profile?.fullName || userData.name || "",
+        customerEmail: userData.email || "",
+        customerPhone: userData.phone || "",
+        rentalRequestId: activeRequest._id,
+        metadata: {
+          type: "rental"
+        }
+      })
+
+      if (session.success && session.checkoutUrl) {
+        window.location.href = session.checkoutUrl
+      } else {
+        setPaymentError("Failed to create payment session")
+        setPaymentStatus("failed")
+        setShowPaymentDialog(true)
+      }
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Payment failed")
+      setPaymentStatus("failed")
+      setShowPaymentDialog(true)
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -267,7 +388,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       // Mark that request has been submitted
       setHasSubmittedRequest(true)
     } catch (error) {
-      console.error("Failed to submit rental request:", error)
       alert(t("form.submit_error"))
     }
   }
@@ -884,18 +1004,31 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   </div>
                   
                   <div className="space-y-2">
-                    <Button 
-                      type="submit" 
-                      size="lg" 
-                      className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
-                    >
-                      {activeRequest?.status === 'payment_pending' ? (
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" />
-                          {language === "ar" ? "في انتظار الدفع" : "Payment Pending"}
-                        </span>
-                      ) : activeRequest?.status === 'rejected' ? (
+                    {activeRequest?.status === 'payment_pending' ? (
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                        onClick={handlePayment}
+                        disabled={processingPayment}
+                      >
+                        {processingPayment ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            {language === "ar" ? "ادفع الآن" : "Pay Now"}
+                          </span>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                        disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
+                      >
+                        {activeRequest?.status === 'rejected' ? (
                         <span className="flex items-center gap-2">
                           <X className="h-5 w-5" />
                           {language === "ar" ? "الطلب مرفوض" : "Request Rejected"}
@@ -917,6 +1050,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         </span>
                       )}
                     </Button>
+                    )}
                   </div>
               </CardContent>
             </form>
@@ -967,6 +1101,60 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </Card>
         </div>
       </div>
+
+      {/* Payment Verification Banner */}
+      {isVerifyingPayment && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 mt-6">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+              <p className="text-sm font-medium">
+                {language === "ar" ? "جاري التحقق من الدفع..." : "Verifying payment..."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment Status Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {paymentStatus === "success" ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  {language === "ar" ? "الدفع ناجح" : "Payment Successful"}
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  {language === "ar" ? "فشل الدفع" : "Payment Failed"}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="pt-3">
+              {paymentStatus === "success"
+                ? language === "ar"
+                  ? "تم تأكيد الدفع بنجاح. رفك نشط الآن."
+                  : "Your payment has been confirmed. Your shelf rental is now active."
+                : language === "ar"
+                  ? `لم يتم إكمال الدفع. ${paymentError ? `السبب: ${paymentError}` : "يرجى المحاولة مرة أخرى."}`
+                  : `Your payment could not be completed. ${paymentError ? `Reason: ${paymentError}` : "Please try again."}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => {
+                setShowPaymentDialog(false)
+                // No need to reload - Convex will update the data automatically
+              }}
+            >
+              {language === "ar" ? "حسناً" : "OK"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -17,7 +17,7 @@ import { Camera, Save, Plus, Trash2, Edit2, Eye, Upload, CheckCircle, AlertCircl
 import { useLanguage } from "@/contexts/localization-context"
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
-import { validateSaudiIBAN, SAUDI_BANKS, formatIBAN } from "@/lib/saudi-iban-validator"
+import { validateSaudiIBAN, SAUDI_BANKS } from "@/lib/saudi-iban-validator"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
@@ -80,15 +80,15 @@ export default function StoreDashboardSettingsPage() {
   // Convex mutations
   const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
   const updateStoreData = useMutation(api.users.updateStoreData)
-  const addPaymentMethod = useMutation(api.paymentMethods.addPaymentMethod)
-  const deletePaymentMethod = useMutation(api.paymentMethods.deletePaymentMethod)
+  const addBankAccount = useMutation(api.bankAccounts.addBankAccount)
+  const deleteBankAccount = useMutation(api.bankAccounts.deleteBankAccount)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
   const getFileUrl = useMutation(api.files.getFileUrl)
   const updateProfileImage = useMutation(api.users.updateProfileImage)
   const updateBusinessRegistrationDocument = useMutation(api.users.updateBusinessRegistrationDocument)
-  
-  // Convex queries - payment methods only (payment records query needs to be created for store owners)
-  const paymentMethods = useQuery(api.paymentMethods.getPaymentMethods, user ? {} : "skip")
+
+  // Convex queries - bank accounts only (payment records query needs to be created for store owners)
+  const bankAccounts = useQuery(api.bankAccounts.getBankAccounts, user ? {} : "skip")
   // TODO: Create a query for store owners to fetch their payment records
   const paymentRecords = null // Temporarily disabled until proper query is created
   
@@ -664,15 +664,15 @@ export default function StoreDashboardSettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paymentMethods?.map((method) => (
-                      <TableRow key={method._id}>
-                        <TableCell className="font-medium">{method.bankName}</TableCell>
+                    {bankAccounts?.map((account) => (
+                      <TableRow key={account._id}>
+                        <TableCell className="font-medium">{account.bankName}</TableCell>
                         <TableCell>
-                          {method.accountNumber || ''} - {method.accountNumber?.slice(-4).padStart(method.accountNumber.length, '*') || ''}
+                          {account.accountNumber || ''} - {account.accountNumber?.slice(-4).padStart(account.accountNumber.length, '*') || ''}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={method.isActive ? "default" : "secondary"}>
-                            {method.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
+                          <Badge variant={account.isActive ? "default" : "secondary"}>
+                            {account.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
                           </Badge>
                         </TableCell>
                         <TableCell>{t("settings.payment.physical")}</TableCell>
@@ -687,7 +687,7 @@ export default function StoreDashboardSettingsPage() {
                               className="h-8 w-8 text-destructive"
                               onClick={async () => {
                                 try {
-                                  await deletePaymentMethod({ paymentMethodId: method._id })
+                                  await deleteBankAccount({ bankAccountId: account._id })
                                   toast({
                                     title: t("settings.payment.deleted"),
                                     description: t("settings.payment.deleted_message"),
@@ -707,7 +707,7 @@ export default function StoreDashboardSettingsPage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {(!paymentMethods || paymentMethods.length === 0) && (
+                    {(!bankAccounts || bankAccounts.length === 0) && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           {t("settings.payment.no_payment_methods")}
@@ -746,7 +746,7 @@ export default function StoreDashboardSettingsPage() {
                              payment.type === "refund" ? t("settings.payment.refund") :
                              t("settings.payment.platform_fee")}
                           </TableCell>
-                          <TableCell>{payment.paymentMethod || t("settings.payment.bank_transfer")}</TableCell>
+                          <TableCell>{payment.paymentMethod || "card"}</TableCell>
                           <TableCell>
                             <Badge variant={
                               payment.status === "completed" ? "default" :
@@ -1081,7 +1081,7 @@ export default function StoreDashboardSettingsPage() {
                   const selectedBank = SAUDI_BANKS.find(b => b.code === bankCode)
                   const bankName = selectedBank ? selectedBank.name : ''
 
-                  await addPaymentMethod({
+                  await addBankAccount({
                     bankName,
                     accountHolderName,
                     accountNumber,

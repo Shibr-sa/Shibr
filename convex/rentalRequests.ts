@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalQuery } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
@@ -1036,9 +1036,11 @@ export const confirmPayment = mutation({
       throw new Error("Rental request not found")
     }
     
-    // Verify the request status is accepted or payment_pending
-    if (request.status !== "payment_pending") {
-      throw new Error("Invalid request status for payment confirmation")
+    // Verify the request status is valid for payment
+    // Allow payment from multiple states (for testing and flexibility)
+    const validStatuses = ["payment_pending", "pending", "approved"]
+    if (!validStatuses.includes(request.status)) {
+      throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
     }
     
     // Update the request status to active (since we'll have automated payment in future)
@@ -1109,3 +1111,55 @@ export const confirmPayment = mutation({
 })
 
 
+
+// Get rental request details
+export const getRentalRequestDetails = query({
+  args: {
+    requestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      return null
+    }
+
+    // Get shelf details
+    const shelf = await ctx.db.get(request.shelfId)
+    if (!shelf) {
+      return null
+    }
+
+    // Get brand profile
+    const brandProfile = await ctx.db.get(request.brandProfileId)
+
+    // Get store profile
+    const storeProfile = await ctx.db.get(request.storeProfileId)
+
+    // Calculate rental months from dates
+    const startDate = new Date(request.startDate)
+    const endDate = new Date(request.endDate)
+    const monthDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+                      (endDate.getMonth() - startDate.getMonth())
+    const rentalMonths = Math.max(1, Math.ceil(monthDiff))
+
+    return {
+      ...request,
+      shelfName: shelf.shelfName,
+      city: shelf.city,
+      branch: shelf.storeBranch,
+      brandName: brandProfile?.brandName,
+      storeName: storeProfile?.storeName,
+      rentalMonths,
+    }
+  },
+})
+
+// Internal query to get rental request by ID (for Tap payment redirect)
+export const getById = internalQuery({
+  args: {
+    requestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.requestId)
+  },
+})

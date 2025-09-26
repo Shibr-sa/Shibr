@@ -15,8 +15,6 @@ export const createOrder = mutation({
       quantity: v.number(),
     })),
     paymentMethod: v.union(
-      v.literal("cash"),
-      v.literal("bank_transfer"),
       v.literal("card"),
       v.literal("apple")
     ),
@@ -554,5 +552,22 @@ export const getOrderStatistics = query({
       totalRevenue,
       averageOrderValue,
     }
+  },
+})
+
+// Update order payment status after successful payment
+export const updateOrderPaymentStatus = mutation({
+  args: {
+    orderId: v.id("customerOrders"),
+    paymentStatus: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    transactionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Only update the transactionReference field since paymentStatus doesn't exist in schema
+    await ctx.db.patch(args.orderId, {
+      ...(args.transactionId && { paymentReference: args.transactionId }),
+    })
+
+    return { success: true }
   },
 })

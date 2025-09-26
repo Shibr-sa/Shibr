@@ -250,22 +250,22 @@ const schema = defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_conversation_read", ["conversationId", "isRead"]),
   
-  // Payment methods (bank accounts for receiving payments)
-  paymentMethods: defineTable({
-    // Profile-based ownership (store owners receive payments)
+  // Bank accounts for receiving payouts from admin
+  bankAccounts: defineTable({
+    // Profile-based ownership (store and brand owners receive payouts)
     profileId: v.optional(v.union(
       v.id("storeProfiles"),
       v.id("brandProfiles")
     )),
-    
-    // Bank account details for receiving payments
+
+    // Bank account details for receiving payouts
     bankName: v.string(), // Name of the bank
     accountHolderName: v.string(), // Account holder's name
     iban: v.string(), // IBAN for international transfers
     accountNumber: v.optional(v.string()), // Local account number if needed
-    
+
     isDefault: v.boolean(),
-    isActive: v.boolean(), // Whether this payment method is active
+    isActive: v.boolean(), // Whether this bank account is active
   })
     .index("by_profile", ["profileId"])
     .index("by_profile_default", ["profileId", "isDefault"]),
@@ -299,9 +299,25 @@ const schema = defineSchema({
     
     // Payment details
     invoiceNumber: v.string(),
-    paymentMethod: v.optional(v.string()), // bank_transfer, credit_card, etc.
+    paymentMethod: v.optional(v.string()), // card, apple_pay
     transactionReference: v.optional(v.string()), // External payment reference
-    
+
+    // Tap specific fields
+    tapChargeId: v.optional(v.string()), // Tap charge ID for incoming payments
+    tapCustomerId: v.optional(v.string()), // Tap customer ID
+    tapRefundId: v.optional(v.string()), // Tap refund ID if refunded
+    tapTransferId: v.optional(v.string()), // Tap transfer ID for payouts
+    paymentGateway: v.optional(v.literal("tap")), // Only Tap gateway allowed
+
+    // Transfer/Payout tracking
+    transferStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
+    transferredAt: v.optional(v.number()), // Unix timestamp - when payout was initiated
+
     // Status
     status: v.union(
       v.literal("pending"),
@@ -419,8 +435,6 @@ const schema = defineSchema({
 
     // Payment info
     paymentMethod: v.union(
-      v.literal("cash"),
-      v.literal("bank_transfer"),
       v.literal("card"),
       v.literal("apple"), // Apple Pay
     ),

@@ -17,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, CreditCard, Clock, Star, AlertCircle } from "lucide-react"
+import { Plus, Package, TrendingUp, TrendingDown, Lock, QrCode, Search, Eye, MessageSquare, BarChart3, Banknote, ScanLine, Store, Clock, Star, AlertCircle } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -29,8 +29,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { format } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { PaymentTransferDialog } from "@/components/dialogs/payment-transfer-dialog"
-import { useMutation } from "convex/react"
+// Removed PaymentTransferDialog - now using Tap payment gateway
 import React, { useMemo } from "react"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import BrandShelvesLoading from "./loading"
@@ -52,8 +51,8 @@ export default function BrandShelvesPage() {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<any>(null)
+
+  // Payment now redirects to Tap payment page instead of using dialog
   const itemsPerPage = 5
 
   // Get user ID from current user
@@ -164,67 +163,40 @@ export default function BrandShelvesPage() {
         )
     }
   }
-  
-  const handlePaymentClick = (request: any) => {
-    setSelectedPaymentRequest(request)
-    setPaymentDialogOpen(true)
-  }
-  
   const getActionButton = (request: any) => {
     switch (request.status) {
       case "payment_pending":
         return (
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="relative inline-block">
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      onClick={async () => {
-                        // Navigate to the shelf details page with conversation
-                        if (request.conversationId && request.shelfId) {
-                          router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}?conversation=${request.conversationId}`)
-                        }
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
-                      >
-                        {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
-                      </Badge>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{t("action.view_details")}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="relative inline-block">
+                  <Button
                     size="sm"
-                    variant="default"
-                    className="h-8 px-3"
-                    onClick={() => handlePaymentClick(request)}
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      // Navigate to the shelf details page where payment can be made
+                      router.push(`/brand-dashboard/shelves/marketplace/${request.shelfId}`)
+                    }}
                   >
-                    <CreditCard className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{t("action.pay_now")}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+                  {request.conversationId && unreadCounts?.byConversation?.[request.conversationId] && unreadCounts.byConversation[request.conversationId] > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -end-1 h-4 min-w-4 px-1 text-[10px] font-medium"
+                    >
+                      {unreadCounts.byConversation[request.conversationId] > 9 ? "9+" : unreadCounts.byConversation[request.conversationId]}
+                    </Badge>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("action.view_details")}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )
       
       case "active":
@@ -734,17 +706,6 @@ export default function BrandShelvesPage() {
             </PaginationContent>
           </Pagination>
       </div>
-      
-      {/* Payment Transfer Dialog */}
-      <PaymentTransferDialog
-        request={selectedPaymentRequest}
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        onPaymentConfirmed={() => {
-          // Refresh the data after payment confirmation
-          router.refresh()
-        }}
-      />
     </div>
   )
 }
