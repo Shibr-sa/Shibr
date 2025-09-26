@@ -425,7 +425,7 @@ export default function AddShelfPage() {
             <Alert className="border-yellow-500 bg-yellow-50">
               <Info className="h-4 w-4 text-yellow-600" />
               <AlertDescription className="text-yellow-900">
-                {t("add_shelf.platform_fee_notice").replace("{fee}", (platformSettings?.platformFeePercentage || NUMERIC_LIMITS.DEFAULT_PLATFORM_FEE).toString())}
+                {t("add_shelf.platform_fee_notice").replace("{fee}", (platformSettings?.storeRentCommission ?? 0).toString())}
               </AlertDescription>
             </Alert>
 

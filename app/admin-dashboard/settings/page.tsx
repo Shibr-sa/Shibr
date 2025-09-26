@@ -75,7 +75,23 @@ export default function SettingsPage() {
     currentPassword: "",
     newPassword: "",
   })
-  
+
+  // Form state for commission settings
+  const [commissionForm, setCommissionForm] = useState({
+    brandSalesCommission: 0,
+    storeRentCommission: 0,
+  })
+
+  // Initialize commission form when platform settings load
+  useEffect(() => {
+    if (platformSettings) {
+      setCommissionForm({
+        brandSalesCommission: platformSettings.brandSalesCommission,
+        storeRentCommission: platformSettings.storeRentCommission,
+      })
+    }
+  }, [platformSettings])
+
   // Initialize form when profile data loads
   useEffect(() => {
     if (adminProfile) {
@@ -114,7 +130,7 @@ export default function SettingsPage() {
         currentPassword: profileForm.currentPassword || undefined,
         newPassword: profileForm.newPassword || undefined,
       })
-      
+
       if (result.success) {
         toast({
           title: language === "ar" ? "تم الحفظ" : "Saved",
@@ -123,6 +139,27 @@ export default function SettingsPage() {
         // Clear password fields
         setProfileForm(prev => ({ ...prev, currentPassword: "", newPassword: "" }))
       }
+    } catch (error: any) {
+      toast({
+        title: language === "ar" ? "خطأ" : "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handle save commission settings
+  const handleSaveCommissions = async () => {
+    try {
+      await updatePlatformSettings({
+        brandSalesCommission: commissionForm.brandSalesCommission,
+        storeRentCommission: commissionForm.storeRentCommission,
+      })
+
+      toast({
+        title: language === "ar" ? "تم الحفظ" : "Saved",
+        description: language === "ar" ? "تم تحديث إعدادات العمولة بنجاح" : "Commission settings updated successfully",
+      })
     } catch (error: any) {
       toast({
         title: language === "ar" ? "خطأ" : "Error",
@@ -143,6 +180,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">{t("admin.settings.general")}</TabsTrigger>
+          <TabsTrigger value="commissions">{t("admin.settings.commission_settings")}</TabsTrigger>
           <TabsTrigger value="users">{t("admin.settings.users")}</TabsTrigger>
         </TabsList>
 
@@ -249,6 +287,83 @@ export default function SettingsPage() {
 
               <div className="flex justify-end">
                 <Button className="gap-2" onClick={handleSaveProfile}>
+                  <Save className="h-4 w-4" />
+                  {language === "ar" ? "حفظ التغييرات" : "Save Changes"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="commissions" className="space-y-6">
+          <Card>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">{t("admin.settings.commission_settings")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {language === "ar"
+                    ? "إدارة نسب العمولة على المنصة لمبيعات العلامات التجارية وإيجار الرفوف"
+                    : "Manage platform commission rates for brand sales and shelf rentals"
+                  }
+                </p>
+
+                <Separator />
+
+                {/* Brand Sales Commission */}
+                <div className="space-y-2">
+                  <Label htmlFor="brandSalesCommission" className="text-start block">
+                    {t("admin.brand_sales_commission")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("admin.brand_commission_desc")}
+                  </p>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <Input
+                      id="brandSalesCommission"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={commissionForm.brandSalesCommission}
+                      onChange={(e) => setCommissionForm({
+                        ...commissionForm,
+                        brandSalesCommission: parseFloat(e.target.value) || 0
+                      })}
+                      className="text-start"
+                    />
+                    <span className="text-lg font-medium">{t("admin.commission_percentage_symbol")}</span>
+                  </div>
+                </div>
+
+                {/* Store Rent Commission */}
+                <div className="space-y-2">
+                  <Label htmlFor="storeRentCommission" className="text-start block">
+                    {t("admin.store_rent_commission")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("admin.store_commission_desc")}
+                  </p>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <Input
+                      id="storeRentCommission"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={commissionForm.storeRentCommission}
+                      onChange={(e) => setCommissionForm({
+                        ...commissionForm,
+                        storeRentCommission: parseFloat(e.target.value) || 0
+                      })}
+                      className="text-start"
+                    />
+                    <span className="text-lg font-medium">{t("admin.commission_percentage_symbol")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button className="gap-2" onClick={handleSaveCommissions}>
                   <Save className="h-4 w-4" />
                   {language === "ar" ? "حفظ التغييرات" : "Save Changes"}
                 </Button>

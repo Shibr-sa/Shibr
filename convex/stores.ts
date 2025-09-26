@@ -15,16 +15,15 @@ export const getMarketplaceStores = query({
     month: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Start with all approved and available shelves
+    // Start with all active shelves (not just available ones)
     let shelvesQuery = ctx.db
       .query("shelves")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("isAvailable"), true))
 
     // Get all shelves first
     let shelves = await shelvesQuery.collect()
 
-    // Filter out shelves with active or accepted rental requests
+    // Get all active and payment_pending rentals to add rental info
     const [activeRequests, paymentPendingRequests] = await Promise.all([
       ctx.db
         .query("rentalRequests")
@@ -35,10 +34,8 @@ export const getMarketplaceStores = query({
         .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
         .collect(),
     ])
-    
-    const unavailableRequests = [...activeRequests, ...paymentPendingRequests]
-    const unavailableShelfIds = new Set(unavailableRequests.map(r => r.shelfId))
-    shelves = shelves.filter(shelf => !unavailableShelfIds.has(shelf._id))
+
+    const allActiveRentals = [...activeRequests, ...paymentPendingRequests]
 
     // Apply filters
     if (args.city && args.city !== "all") {
@@ -96,7 +93,21 @@ export const getMarketplaceStores = query({
         
         // Convert storage IDs to URLs using new structure
         const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
-        
+
+        // Find current rental for this shelf
+        const currentRental = allActiveRentals.find(r => r.shelfId === shelf._id)
+        let rentalInfo = null
+
+        if (currentRental) {
+          const brandProfile = await ctx.db.get(currentRental.brandProfileId)
+          rentalInfo = {
+            endDate: currentRental.endDate,
+            startDate: currentRental.startDate,
+            brandName: brandProfile?.brandName || "Unknown",
+            status: currentRental.status
+          }
+        }
+
         return {
           ...shelf,
           shelfImage: imageUrls.shelfImageUrl,
@@ -109,6 +120,8 @@ export const getMarketplaceStores = query({
           // Add latitude and longitude from location for map compatibility
           latitude: shelf.location?.lat,
           longitude: shelf.location?.lng,
+          // Add rental information
+          currentRental: rentalInfo,
         }
       })
     )
@@ -166,7 +179,6 @@ export const getAvailableCities = query({
     const shelves = await ctx.db
       .query("shelves")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
     const cities = [...new Set(shelves.map(shelf => shelf.city))]
@@ -181,7 +193,6 @@ export const getAvailableProductTypes = query({
     const shelves = await ctx.db
       .query("shelves")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
     // Extract all product types from the productTypes arrays
@@ -207,7 +218,6 @@ export const getPriceRange = query({
     let shelves = await ctx.db
       .query("shelves")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("isAvailable"), true))
       .collect()
 
     // Apply the same filters as getMarketplaceStores (except price)

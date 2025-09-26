@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard, CheckCircle, XCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -22,10 +23,11 @@ import { formatCurrency } from "@/lib/formatters"
 import { ar, enUS } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { useLanguage } from "@/contexts/localization-context"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { ChatInterface } from "@/components/chat/chat-interface"
+import { QRStoreCard } from "@/components/qr-store-card"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useBrandData } from "@/contexts/brand-data-context"
 
@@ -81,6 +83,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   // Get conversation ID from URL if present
   const urlConversationId = searchParams.get('conversation') as Id<"conversations"> | null
+
+  // Get payment-related parameters from URL (for Tap redirect)
+  const chargeId = searchParams.get("tap_id") ||
+                   searchParams.get("charge_id") ||
+                   searchParams.get("id") ||
+                   searchParams.get("chargeId")
+  const rentalRequestIdFromUrl = searchParams.get("rentalRequestId") as Id<"rentalRequests"> | null
   
   // Get user ID and profile ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
@@ -96,13 +105,62 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   
   // Fetch platform settings for dynamic fee percentage
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
+
+  // Fetch rental schedule for this shelf to show booked dates
+  const rentalSchedule = useQuery(api.rentalRequests.getShelfRentalSchedule, {
+    shelfId: resolvedParams.id as Id<"shelves">
+  })
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
   // Product type is now derived from selected products
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
-  
+
+  // Payment-related state
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [paymentStatus, setPaymentStatus] = useState<"success" | "failed" | null>(null)
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState(false)
+
+  // Helper function to calculate rental months
+  const calculateRentalMonths = (from: Date | undefined, to: Date | undefined) => {
+    if (!from || !to) return 0
+    const daysDiff = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
+    return Math.max(1, Math.ceil(daysDiff / 30))
+  }
+
+  // Calculate the first available date for booking
+  const getFirstAvailableDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+
+    const availableFrom = shelfDetails ? new Date(shelfDetails.availableFrom) : tomorrow
+    availableFrom.setHours(0, 0, 0, 0)
+
+    let firstAvailable = availableFrom > tomorrow ? availableFrom : tomorrow
+
+    // If there are active rentals, find the first available date after all rentals
+    if (rentalSchedule && rentalSchedule.length > 0) {
+      const activeRentals = rentalSchedule
+        .filter(r => r.status === "active" || r.status === "payment_pending")
+        .sort((a, b) => b.endDate - a.endDate) // Sort by end date, latest first
+
+      if (activeRentals.length > 0) {
+        const lastRentalEnd = new Date(activeRentals[0].endDate)
+        lastRentalEnd.setDate(lastRentalEnd.getDate() + 1) // Day after last rental ends
+        lastRentalEnd.setHours(0, 0, 0, 0)
+
+        if (lastRentalEnd > firstAvailable) {
+          firstAvailable = lastRentalEnd
+        }
+      }
+    }
+
+    return firstAvailable
+  }
+
   // Check if user has an existing rental request for this shelf
   const existingRequest = useQuery(api.rentalRequests.getUserRequestForShelf,
     userId && shelfDetails ? {
@@ -127,6 +185,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
   const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
+  const confirmPayment = useMutation(api.rentalRequests.confirmPayment)
+
+  // Actions
+  const getChargeDetails = useAction(api.tapPayments.getChargeDetails)
+  const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
   
   // Check for existing rental request (any status)
   const activeRequest = existingRequest
@@ -140,27 +203,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   )
   
   // Determine if form should be disabled based on request status
-  const isFormDisabled = activeRequest?.status === 'accepted' || 
-                         activeRequest?.status === 'rejected' || 
+  const isFormDisabled = activeRequest?.status === 'payment_pending' ||
                          activeRequest?.status === 'active' ||
-                         activeRequest?.status === 'payment_pending' ||
-                         activeRequest?.status === 'completed' ||
-                         (shelfAvailability && !shelfAvailability.available)
-  
-  // Check shelf availability periodically and show alert if it becomes unavailable
-  useEffect(() => {
-    if (shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther) {
-      // Only show alert once when shelf becomes unavailable
-      const hasAlerted = sessionStorage.getItem(`shelf-unavailable-${resolvedParams.id}`)
-      if (!hasAlerted) {
-        alert(language === "ar" 
-          ? "تنبيه: هذا الرف لم يعد متاحاً. تم قبول طلب إيجار من علامة تجارية أخرى."
-          : "Notice: This shelf is no longer available. A rental request from another brand has been accepted.")
-        sessionStorage.setItem(`shelf-unavailable-${resolvedParams.id}`, "true")
-      }
-    }
-  }, [shelfAvailability, resolvedParams.id, language])
-  
+                         activeRequest?.status === 'completed'
+
   // Set conversation and submission state if there's an existing request
   // Also restore the form data from the existing request
   useEffect(() => {
@@ -186,18 +232,114 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       }
     }
   }, [activeRequest])
-  
+
+  // Track if payment verification is in progress to prevent duplicates
+  const [verificationStarted, setVerificationStarted] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  // Check and verify payment if coming back from Tap
+  useEffect(() => {
+    const verifyPayment = async () => {
+      if (!chargeId || !rentalRequestIdFromUrl) {
+        return
+      }
+
+      // Prevent duplicate verification
+      if (verificationStarted) {
+        return
+      }
+
+      setVerificationStarted(true)
+      setIsVerifyingPayment(true)
+
+      try {
+        // Verify the charge with Tap
+        const chargeDetails = await getChargeDetails({ chargeId })
+
+        if (chargeDetails.status === "CAPTURED") {
+          // Payment successful
+          await confirmPayment({
+            requestId: rentalRequestIdFromUrl,
+            paymentAmount: chargeDetails.amount,
+          })
+
+          setPaymentStatus("success")
+          setShowPaymentDialog(true)
+
+          // Clear URL parameters
+          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
+          window.history.replaceState({}, "", newUrl)
+        } else {
+          // Payment failed or pending
+          const errorMessage = chargeDetails.response?.message ||
+                              chargeDetails.acquirer?.response?.message ||
+                              "Payment could not be completed"
+
+          setPaymentError(errorMessage)
+          setPaymentStatus("failed")
+          setShowPaymentDialog(true)
+
+          // Clear URL parameters
+          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
+          window.history.replaceState({}, "", newUrl)
+        }
+      } catch (error) {
+        setPaymentError(error instanceof Error ? error.message : "Payment verification failed")
+        setPaymentStatus("failed")
+        setShowPaymentDialog(true)
+      } finally {
+        setIsVerifyingPayment(false)
+      }
+    }
+
+    verifyPayment()
+  }, [chargeId, rentalRequestIdFromUrl, resolvedParams.id]) // Don't include verificationStarted to avoid re-triggers
+
+  // Handle payment for pending requests
+  // Test Cards for Tap Payments:
+  // Visa: 4508750015741019, 4440000009900010
+  // MasterCard: 5123450000000008
+  const handlePayment = async () => {
+    if (!user || !activeRequest || !userData) {
+      return
+    }
+
+    setProcessingPayment(true)
+
+    try {
+      const session = await createCheckoutSession({
+        amount: activeRequest.totalAmount,
+        description: `Shelf rental for ${shelfDetails?.shelfName || "Shelf"}`,
+        customerName: userData.profile?.brandName || userData.profile?.fullName || userData.name || "",
+        customerEmail: userData.email || "",
+        customerPhone: userData.phone || "",
+        rentalRequestId: activeRequest._id,
+        metadata: {
+          type: "rental"
+        }
+      })
+
+      if (session.success && session.checkoutUrl) {
+        window.location.href = session.checkoutUrl
+      } else {
+        setPaymentError("Failed to create payment session")
+        setPaymentStatus("failed")
+        setShowPaymentDialog(true)
+      }
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Payment failed")
+      setPaymentStatus("failed")
+      setShowPaymentDialog(true)
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Check if shelf is still available
-    if (shelfAvailability && !shelfAvailability.available) {
-      alert(language === "ar" 
-        ? "عذراً، هذا الرف لم يعد متاحاً. تم قبول طلب إيجار آخر."
-        : "Sorry, this shelf is no longer available. Another rental request has been accepted.")
-      return
-    }
-    
+    // Note: Removed shelf availability check - users can now book future dates
+
     if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0) {
       alert(t("form.fill_required_fields"))
       return
@@ -246,7 +388,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       // Mark that request has been submitted
       setHasSubmittedRequest(true)
     } catch (error) {
-      console.error("Failed to submit rental request:", error)
       alert(t("form.submit_error"))
     }
   }
@@ -376,7 +517,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           {formatCurrency(shelfDetails.monthlyPrice, language)}
                         </p>
                         <Badge variant="secondary" className="text-xs px-2 py-0">
-                          {`${(shelfDetails.storeCommission || 0) + 8}%`}
+                          {`${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%`}
                         </Badge>
                       </div>
                     </div>
@@ -520,13 +661,18 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </Card>
         </div>
 
-        {/* Note about approval - Between Shelf Details and Send your rental request */}
-        {(!shelfAvailability || shelfAvailability.available) && (
-          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-              {t("marketplace.details.approval_notice")}
-            </p>
+        {/* Note about approval - Always shown */}
+        <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+            {t("marketplace.details.approval_notice")}
+          </p>
+        </div>
+
+        {/* QR Store Section - Only for active rentals */}
+        {activeRequest?.status === 'active' && activeRequest._id && (
+          <div className="mb-6">
+            <QRStoreCard rentalRequestId={activeRequest._id as Id<"rentalRequests">} />
           </div>
         )}
 
@@ -702,73 +848,187 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   
                   {/* Booking Details */}
                   
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="booking-date" className="text-sm">
                         {t("marketplace.details.booking_duration")}*
                       </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="booking-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dateRange && "text-muted-foreground"
-                            )}
-                            disabled={shelfAvailability && !shelfAvailability.available}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} - 
-                                  {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
-                                </>
-                              ) : (
-                                format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
-                              )
-                            ) : (
-                              <span>{t("marketplace.details.pick_dates")}</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="range"
-                            defaultMonth={dateRange?.from || new Date()}
-                            selected={dateRange}
-                            onSelect={setDateRange}
-                            numberOfMonths={1}
-                            disabled={(date) => {
-                              const today = new Date()
-                              today.setHours(0, 0, 0, 0)
-                              return date < today
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
 
+                      <div className="flex items-start gap-3">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="booking-date"
+                              variant="outline"
+                              className={cn(
+                                "flex-1 justify-start text-left font-normal",
+                                !dateRange && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateRange?.from ? (
+                                dateRange.to ? (
+                                  <>
+                                    {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} -
+                                    {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
+                                  </>
+                                ) : (
+                                  format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
+                                )
+                              ) : (
+                                <span>{t("marketplace.details.pick_dates")}</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="range"
+                              defaultMonth={dateRange?.from || getFirstAvailableDate()}
+                              selected={dateRange}
+                              onSelect={setDateRange}
+                              numberOfMonths={1}
+                              disabled={(date) => {
+                                // Calculate minimum date (either availableFrom or tomorrow)
+                                const tomorrow = new Date()
+                                tomorrow.setDate(tomorrow.getDate() + 1)
+                                tomorrow.setHours(0, 0, 0, 0)
+
+                                const availableFrom = new Date(shelfDetails.availableFrom)
+                                availableFrom.setHours(0, 0, 0, 0)
+
+                                const minDate = availableFrom > tomorrow ? availableFrom : tomorrow
+
+                                if (date < minDate) return true
+
+                                // Check if date falls within any rental period
+                                if (rentalSchedule) {
+                                  for (const rental of rentalSchedule) {
+                                    // Only block dates for active or payment_pending rentals
+                                    if (rental.status === "active" ||
+                                        rental.status === "payment_pending") {
+                                      const rentalStart = new Date(rental.startDate)
+                                      const rentalEnd = new Date(rental.endDate)
+                                      rentalStart.setHours(0, 0, 0, 0)
+                                      rentalEnd.setHours(23, 59, 59, 999)
+
+                                      if (date >= rentalStart && date <= rentalEnd) {
+                                        return true // Date is within a rental period
+                                      }
+                                    }
+                                  }
+                                }
+
+                                return false
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Rental Duration Display - Always Visible */}
+                        <div
+                          className="flex flex-col items-center justify-center min-w-[100px] h-10 px-4 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                          data-selected={!!(dateRange?.from && dateRange?.to)}
+                        >
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-medium">
+                              {dateRange?.from && dateRange?.to
+                                ? calculateRentalMonths(dateRange.from, dateRange.to)
+                                : "1"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {dateRange?.from && dateRange?.to ? (
+                                language === "ar"
+                                  ? calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                    ? "شهر"
+                                    : calculateRentalMonths(dateRange.from, dateRange.to) === 2
+                                    ? "شهرين"
+                                    : "أشهر"
+                                  : calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                    ? "month"
+                                    : "months"
+                              ) : (
+                                language === "ar" ? "شهر كحد أدنى" : "month minimum"
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rental Schedule Display */}
+                      {rentalSchedule && rentalSchedule.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">
+                            {language === "ar" ? "الحجوزات الحالية" : "Current Bookings"}
+                          </Label>
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                            {rentalSchedule
+                              .filter(r => r.status === "active" || r.status === "payment_pending")
+                              .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                              .map((rental, index) => (
+                                <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
+                                  <span className="font-medium">{rental.brandName}</span>
+                                  <span className="text-muted-foreground">
+                                    {new Date(rental.startDate).toLocaleDateString()} - {new Date(rental.endDate).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price Display - Always Visible */}
+                      <div
+                        className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                        data-selected={!!(dateRange?.from && dateRange?.to)}
+                      >
+                        <span className="text-sm text-muted-foreground">
+                          {dateRange?.from && dateRange?.to
+                            ? t("rental.total_price")
+                            : t("marketplace.price_per_month")}
+                        </span>
+                        <span className="text-lg font-semibold flex items-baseline gap-1">
+                          {dateRange?.from && dateRange?.to ? (
+                            formatCurrency(
+                              shelfDetails.monthlyPrice * calculateRentalMonths(dateRange.from, dateRange.to),
+                              language
+                            )
+                          ) : (
+                            <>
+                              {formatCurrency(shelfDetails.monthlyPrice, language)}
+                              <span className="text-sm font-normal text-muted-foreground">/{language === "ar" ? "شهر" : "month"}</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Button 
-                      type="submit" 
-                      size="lg" 
-                      className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
-                    >
-                      {shelfAvailability && !shelfAvailability.available ? (
-                        <span>
-                          {language === "ar" ? "الرف غير متاح" : "Shelf Unavailable"}
-                        </span>
-                      ) : activeRequest?.status === 'accepted' ? (
-                        <span className="flex items-center gap-2">
-                          <Check className="h-5 w-5" />
-                          {language === "ar" ? "الطلب مقبول" : "Request Accepted"}
-                        </span>
-                      ) : activeRequest?.status === 'rejected' ? (
+                    {activeRequest?.status === 'payment_pending' ? (
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                        onClick={handlePayment}
+                        disabled={processingPayment}
+                      >
+                        {processingPayment ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            {language === "ar" ? "ادفع الآن" : "Pay Now"}
+                          </span>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                        disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
+                      >
+                        {activeRequest?.status === 'rejected' ? (
                         <span className="flex items-center gap-2">
                           <X className="h-5 w-5" />
                           {language === "ar" ? "الطلب مرفوض" : "Request Rejected"}
@@ -777,11 +1037,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         <span className="flex items-center gap-2">
                           <Check className="h-5 w-5" />
                           {language === "ar" ? "الإيجار نشط" : "Rental Active"}
-                        </span>
-                      ) : activeRequest?.status === 'payment_pending' ? (
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" />
-                          {language === "ar" ? "في انتظار الدفع" : "Payment Pending"}
                         </span>
                       ) : activeRequest?.status === 'pending' ? (
                         <span className="flex items-center gap-2">
@@ -795,6 +1050,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         </span>
                       )}
                     </Button>
+                    )}
                   </div>
               </CardContent>
             </form>
@@ -817,25 +1073,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
             <CardContent className="flex-1 flex flex-col p-0 h-[calc(100%-60px)]">
               {/* Messages Area */}
               <div className="flex-1 relative h-full">
-                {shelfAvailability && !shelfAvailability.available && shelfAvailability.acceptedByOther ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <div className="text-center p-6 space-y-3">
-                      <div className="h-12 w-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6 text-destructive" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">
-                          {language === "ar" ? "المحادثة غير متاحة" : "Chat Unavailable"}
-                        </p>
-                        <p className="text-sm mt-2 max-w-sm mx-auto">
-                          {language === "ar" 
-                            ? "لا يمكن بدء محادثة لأن هذا الرف تم حجزه لعلامة تجارية أخرى"
-                            : "Cannot start a conversation because this shelf has been reserved for another brand"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : hasSubmittedRequest && conversationId && userId ? (
+                {hasSubmittedRequest && conversationId && userId ? (
                   <ChatInterface
                     conversationId={conversationId}
                     currentUserId={userId}
@@ -863,6 +1101,60 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </Card>
         </div>
       </div>
+
+      {/* Payment Verification Banner */}
+      {isVerifyingPayment && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 mt-6">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+              <p className="text-sm font-medium">
+                {language === "ar" ? "جاري التحقق من الدفع..." : "Verifying payment..."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment Status Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {paymentStatus === "success" ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  {language === "ar" ? "الدفع ناجح" : "Payment Successful"}
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  {language === "ar" ? "فشل الدفع" : "Payment Failed"}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="pt-3">
+              {paymentStatus === "success"
+                ? language === "ar"
+                  ? "تم تأكيد الدفع بنجاح. رفك نشط الآن."
+                  : "Your payment has been confirmed. Your shelf rental is now active."
+                : language === "ar"
+                  ? `لم يتم إكمال الدفع. ${paymentError ? `السبب: ${paymentError}` : "يرجى المحاولة مرة أخرى."}`
+                  : `Your payment could not be completed. ${paymentError ? `Reason: ${paymentError}` : "Please try again."}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => {
+                setShowPaymentDialog(false)
+                // No need to reload - Convex will update the data automatically
+              }}
+            >
+              {language === "ar" ? "حسناً" : "OK"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

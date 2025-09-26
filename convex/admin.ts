@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { internal } from "./_generated/api"
 import { getImageUrlsFromArray, getDateRange } from "./helpers"
 
 // Helper function to verify admin access without throwing errors
@@ -169,12 +170,16 @@ export const getAdminStats = query({
 
     // Get shelf statistics
     const allShelves = await ctx.db.query("shelves").collect()
-    const availableShelves = allShelves.filter(s => s.isAvailable && s.status === "active")
-    const approvedShelves = allShelves.filter(s => s.status === "active")
 
     // Get rental request statistics
     const rentalRequests = await ctx.db.query("rentalRequests").collect()
     const activeRentals = rentalRequests.filter(r => r.status === "active")
+    const paymentPendingRentals = rentalRequests.filter(r => r.status === "payment_pending")
+    const allActiveRentals = [...activeRentals, ...paymentPendingRentals]
+    const rentedShelfIds = new Set(allActiveRentals.map(r => r.shelfId))
+
+    const availableShelves = allShelves.filter(s => !rentedShelfIds.has(s._id) && s.status === "active")
+    const approvedShelves = allShelves.filter(s => s.status === "active")
     const pendingRequests = rentalRequests.filter(r => r.status === "pending")
 
     // Filter data based on time period
@@ -200,13 +205,18 @@ export const getAdminStats = query({
     const filteredActiveRentals = activeRentals.filter(r => new Date(r._creationTime) >= startDate)
     const filteredPendingRequests = pendingRequests.filter(r => new Date(r._creationTime) >= startDate)
     
+    // Get platform settings for commission
+    const platformSettings = await ctx.db.query("platformSettings").collect()
+    const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
+    const platformCommissionRate = storeRentCommission / 100
+
     // Calculate revenue for the selected period
     const periodRevenue = filteredActiveRentals.reduce((sum, rental) => sum + (rental.totalAmount || 0), 0)
-    const periodPlatformFee = periodRevenue * 0.08 // 8% platform fee
-    
+    const periodPlatformFee = periodRevenue * platformCommissionRate
+
     // Calculate total revenue (all time) for comparison
     const totalRevenue = activeRentals.reduce((sum, rental) => sum + (rental.totalAmount || 0), 0)
-    const platformFee = totalRevenue * 0.08 // 8% platform fee
+    const platformFee = totalRevenue * platformCommissionRate
 
     // Calculate monthly revenue data for chart (current year - Jan to Dec)
     const revenueByMonth = []
@@ -497,9 +507,8 @@ export const getAdminStats = query({
 // Update platform settings (admin only)
 export const updatePlatformSettings = mutation({
   args: {
-    platformFeePercentage: v.optional(v.number()),
-    minimumShelfPrice: v.optional(v.number()),
-    maximumDiscountPercentage: v.optional(v.number()),
+    brandSalesCommission: v.optional(v.number()),
+    storeRentCommission: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Verify admin access
@@ -514,46 +523,54 @@ export const updatePlatformSettings = mutation({
       throw new Error("Unauthorized: Admin access required")
     }
 
+    // Validate commission percentages
+    if (args.brandSalesCommission !== undefined && (args.brandSalesCommission < 0 || args.brandSalesCommission > 100)) {
+      throw new Error("Brand sales commission must be between 0 and 100")
+    }
+    if (args.storeRentCommission !== undefined && (args.storeRentCommission < 0 || args.storeRentCommission > 100)) {
+      throw new Error("Store rent commission must be between 0 and 100")
+    }
+
     const settings = args
 
-    // Update or create platform fee setting
-    if (settings.platformFeePercentage !== undefined) {
-      const feeKey = "platformFeePercentage"
-      const existingFee = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", feeKey)).first()
-      
-      if (existingFee) {
-        await ctx.db.patch(existingFee._id, {
-          value: settings.platformFeePercentage,
+    // Update or create brand sales commission setting
+    if (settings.brandSalesCommission !== undefined) {
+      const key = "brandSalesCommission"
+      const existingSetting = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", key)).first()
+
+      if (existingSetting) {
+        await ctx.db.patch(existingSetting._id, {
+          value: settings.brandSalesCommission,
           updatedByAdminId: userProfile.profile._id as Id<"adminProfiles">,
           updatedAt: Date.now(),
         })
       } else {
         await ctx.db.insert("platformSettings", {
-          key: feeKey,
-          value: settings.platformFeePercentage,
-          description: "Platform fee percentage",
+          key: key,
+          value: settings.brandSalesCommission,
+          description: "Brand sales commission percentage",
           updatedByAdminId: userProfile.profile._id as Id<"adminProfiles">,
           updatedAt: Date.now(),
         })
       }
     }
-    
-    // Update or create minimum shelf price setting
-    if (settings.minimumShelfPrice !== undefined) {
-      const priceKey = "minimumShelfPrice"
-      const existingPrice = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", priceKey)).first()
-      
-      if (existingPrice) {
-        await ctx.db.patch(existingPrice._id, {
-          value: settings.minimumShelfPrice,
+
+    // Update or create store rent commission setting
+    if (settings.storeRentCommission !== undefined) {
+      const key = "storeRentCommission"
+      const existingSetting = await ctx.db.query("platformSettings").withIndex("by_key", q => q.eq("key", key)).first()
+
+      if (existingSetting) {
+        await ctx.db.patch(existingSetting._id, {
+          value: settings.storeRentCommission,
           updatedByAdminId: userProfile.profile._id as Id<"adminProfiles">,
           updatedAt: Date.now(),
         })
       } else {
         await ctx.db.insert("platformSettings", {
-          key: priceKey,
-          value: settings.minimumShelfPrice,
-          description: "Minimum shelf price",
+          key: key,
+          value: settings.storeRentCommission,
+          description: "Store rent commission percentage",
           updatedByAdminId: userProfile.profile._id as Id<"adminProfiles">,
           updatedAt: Date.now(),
         })
@@ -1081,7 +1098,7 @@ export const getPosts = query({
           businessRegistration: ownerProfile.commercialRegisterNumber,
           storeBranch: shelf.storeBranch || shelf.city,
           shelfName: shelf.shelfName,
-          percentage: shelf.storeCommission || 8, // Use store commission or default platform fee
+          percentage: shelf.storeCommission ?? 0, // Store commission
           price: shelf.monthlyPrice,
           addedDate: shelf._creationTime,
           status: shelf.status === "active" ? "published" : shelf.status,
@@ -1188,19 +1205,26 @@ export const getPayments = query({
           type: payment.type,
           merchant: brandUser?.name || brandProfile.brandName,
           merchantEmail: brandUser?.email,
+          merchantProfileId: brandProfile._id,
           store: storeProfile.storeName || storeUser?.name || "",
           storeEmail: storeUser?.email || "",
+          storeProfileId: storeProfile._id,
           shelfName: shelf.shelfName,
           date: payment.paymentDate,
           amount: payment.amount,
           platformFee: payment.platformFee || 0,
-          method: payment.paymentMethod || "bank_transfer",
+          netAmount: payment.netAmount || payment.amount,
+          method: payment.paymentMethod || "card",
           status: payment.status === "completed" ? "paid" : "unpaid",
+          paymentStatus: payment.status,
+          transferStatus: payment.transferStatus || null,
+          tapTransferId: payment.tapTransferId || null,
           startDate: rental.startDate,
           endDate: rental.endDate,
           description: payment.description || `Shelf rental payment from ${brandProfile.brandName} to شبر Platform`,
           transactionReference: payment.transactionReference,
           dueDate: payment.dueDate,
+          toProfileId: payment.toProfileId,
         }
       })
     );
@@ -1382,10 +1406,23 @@ export const getStoreShelves = query({
       )
     }
     
+    // Get active/payment_pending rentals to determine shelf availability
+    const activeShelfRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect()
+    const paymentPendingShelfRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .collect()
+    const allActiveShelfRentals = [...activeShelfRentals, ...paymentPendingShelfRentals]
+    const rentedShelfIds = new Set(allActiveShelfRentals.map(r => r.shelfId))
+
     // Apply status filter
     if (statusFilter !== "all") {
       shelves = shelves.filter(shelf => {
-        const isAvailable = shelf.isAvailable ? "available" : "rented"
+        const isRented = rentedShelfIds.has(shelf._id)
+        const isAvailable = isRented ? "rented" : "available"
         return isAvailable === statusFilter
       })
     }

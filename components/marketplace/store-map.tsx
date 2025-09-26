@@ -83,48 +83,8 @@ function StoreMapContent({
     googleMapsApiKey: googleMapsApiKey,
   })
 
-  // Request user's location on component mount
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          }
-          setUserLocation(location)
-          // If map is already loaded, center it on user location
-          if (map) {
-            map.setCenter(location)
-            map.setZoom(13)
-          }
-        },
-        (error) => {
-          console.error("Error getting location:", error)
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              setLocationError(t("marketplace.location_permission_denied") || "Location permission denied")
-              break
-            case error.POSITION_UNAVAILABLE:
-              setLocationError(t("marketplace.location_unavailable") || "Location information unavailable")
-              break
-            case error.TIMEOUT:
-              setLocationError(t("marketplace.location_timeout") || "Location request timed out")
-              break
-            default:
-              setLocationError(t("marketplace.location_error") || "An error occurred getting your location")
-          }
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      )
-    } else {
-      setLocationError(t("marketplace.geolocation_not_supported") || "Geolocation is not supported by your browser")
-    }
-  }, [map, t])
+  // Note: User location is not requested automatically in the marketplace
+  // This respects user privacy and avoids unnecessary permission prompts
 
   // Filter stores with valid coordinates
   const storesWithCoordinates = stores.filter(
