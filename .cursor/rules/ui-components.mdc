@@ -1,0 +1,62 @@
+---
+description: shadcn/ui component usage and UI development patterns
+globs: components/**/*.tsx, components/**/*.ts
+---
+
+# UI Components with shadcn/ui
+
+## Component Library Usage
+
+- Use [`shadcn/ui`](https://ui.shadcn.com) for consistent and accessible UI components
+- Follow the established design system and component patterns
+- Customize components through props and CSS variables
+- Maintain component consistency across the application
+
+## Component Customization
+
+- Override component styles using CSS variables
+- Extend components with additional props when needed
+- Maintain accessibility standards when customizing
+- Document component customizations and usage patterns
+
+## Component Organization
+
+- Place UI components in `components/ui/` directory
+- Group related components in subdirectories
+- Create wrapper components for complex UI patterns
+- Implement proper component composition patterns
+
+## Theming and Styling
+
+- Use CSS custom properties for theme customization
+- Implement dark/light mode support when needed
+- Maintain consistent color palette and typography
+- Use design tokens for spacing and sizing
+
+## Accessibility Standards
+
+- Ensure all components meet WCAG accessibility guidelines
+- Implement proper ARIA attributes and labels
+- Support keyboard navigation and screen readers
+- Test components with accessibility tools
+
+## Component Documentation
+
+- Document component props and usage examples
+- Provide Storybook stories for complex components
+- Include accessibility notes and keyboard shortcuts
+- Maintain up-to-date component documentation
+
+## Performance Considerations
+
+- Lazy load heavy UI components when possible
+- Optimize component re-renders with proper memoization
+- Use proper loading states for async components
+- Implement proper error boundaries for UI components
+
+## Component Testing
+
+- Write unit tests for component logic and interactions
+- Implement visual regression tests for UI components
+- Test accessibility features and keyboard navigation
+- Ensure components work across different browsers and devices

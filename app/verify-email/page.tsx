@@ -13,6 +13,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/comp
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuthActions } from "@convex-dev/auth/react"
+import { parseAuthError } from "@/lib/auth-errors"
 
 /**
  * Signup verification page - only handles new user signup flow
@@ -107,8 +108,30 @@ export default function VerifyEmailPage() {
         authFormData.append("name", signupData.fullName)
         authFormData.append("phone", signupData.phoneNumber)
 
-        // Sign up the user
-        await signIn("password", authFormData)
+        // Sign up the user with proper error handling
+        try {
+          await signIn("password", authFormData)
+        } catch (signUpError: any) {
+          // Check for duplicate user error using centralized error parser
+          const parsedError = parseAuthError(signUpError)
+
+          // Check for duplicate user error
+          if (parsedError.code === 'ACCOUNT_EXISTS') {
+            const errorMsg = t(parsedError.translationKey as any)
+            setErrorMessage(errorMsg)
+            toast.error(errorMsg)
+
+            // Clear session and redirect to signin after a delay
+            setTimeout(() => {
+              sessionStorage.removeItem('signupData')
+              router.push('/signin')
+            }, 3000)
+            return
+          }
+
+          // For other errors, show generic error message
+          throw signUpError
+        }
 
         // Create profile with retry logic
         let profileCreated = false
@@ -164,12 +187,21 @@ export default function VerifyEmailPage() {
         // Force redirect with window.location for clean navigation
         window.location.href = dashboardPath
       } else {
-        setErrorMessage(result.error || t("verification.invalid_code"))
+        // Check if error is a translation key
+        const errorMessage = result.error?.includes(".")
+          ? t(result.error as any)
+          : result.error || t("verification.invalid_code")
+        setErrorMessage(errorMessage)
         setOtp("")
       }
     } catch (error: any) {
-      console.error('Verification error:', error)
-      setErrorMessage(t("verification.error"))
+      // Parse and handle error using centralized error handler
+      const parsedError = parseAuthError(error)
+      const errorMessage = t(parsedError.translationKey as any) || t("verification.error")
+      setErrorMessage(errorMessage)
+
+      // Show toast for better UX
+      toast.error(errorMessage)
     } finally {
       setIsVerifying(false)
       setIsCreatingAccount(false)
@@ -197,10 +229,17 @@ export default function VerifyEmailPage() {
         setCountdown(60)
         setOtp("")
       } else {
-        setErrorMessage(result.error || t("verification.resend_error"))
+        // Check if error is a translation key
+        const errorMessage = result.error?.includes(".")
+          ? t(result.error as any)
+          : result.error || t("verification.resend_error")
+        setErrorMessage(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (error: any) {
-      setErrorMessage(t("verification.resend_error"))
+      const errorMessage = t("verification.resend_error")
+      setErrorMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
