@@ -261,16 +261,8 @@ export default function PaymentPage() {
 
                 <Separator />
 
-                {/* Totals */}
+                {/* Total */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("store.products")}</span>
-                    <span>{formatCurrency(orderData.subtotal, language)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("store.tax")} (15%)</span>
-                    <span>{formatCurrency(orderData.tax, language)}</span>
-                  </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>{t("store.total")}</span>
