@@ -143,7 +143,7 @@ class ErrorLogger {
   }
 
   /**
-   * Format error for logging
+   * Format error for logging (with security considerations)
    */
   private formatError(error: Error | unknown, context?: ErrorContext): any {
     let errorData: any = {
@@ -154,24 +154,51 @@ class ErrorLogger {
     if (error instanceof Error) {
       errorData = {
         ...errorData,
-        message: error.message,
+        message: this.sanitizeErrorMessage(error.message),
         name: error.name,
-        stack: error.stack,
+        // Only include stack trace in development
+        ...(this.isDevelopment && { stack: error.stack }),
       }
     } else if (typeof error === 'string') {
-      errorData.message = error
+      errorData.message = this.sanitizeErrorMessage(error)
     } else if (error && typeof error === 'object') {
       errorData = {
         ...errorData,
-        message: 'message' in error ? (error as any).message : 'Unknown error',
-        ...error
+        message: 'message' in error ? this.sanitizeErrorMessage((error as any).message) : 'Unknown error',
+        // Don't spread the entire error object in production
+        ...(this.isDevelopment && error)
       }
     } else {
       errorData.message = 'Unknown error'
-      errorData.raw = error
+      if (this.isDevelopment) {
+        errorData.raw = error
+      }
     }
 
     return errorData
+  }
+
+  /**
+   * Sanitize error messages to prevent information disclosure
+   */
+  private sanitizeErrorMessage(message: string): string {
+    // Remove sensitive patterns from error messages
+    const sensitivePatterns = [
+      /\/Users\/[^/]+/g, // File paths with usernames
+      /[a-zA-Z]:\\\\[^\\s]+/g, // Windows file paths
+      /Bearer [A-Za-z0-9\-._~+\/]+=*/g, // Bearer tokens
+      /[a-zA-Z0-9]{32,}/g, // API keys or tokens
+      /password['\"]?\s*[:=]\s*['\"]?[^'\"]+['\"]?/gi, // Passwords
+      /secret['\"]?\s*[:=]\s*['\"]?[^'\"]+['\"]?/gi, // Secrets
+      /key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9+\/=]+['\"]?/gi, // Keys
+    ]
+
+    let sanitized = message
+    for (const pattern of sensitivePatterns) {
+      sanitized = sanitized.replace(pattern, '[REDACTED]')
+    }
+
+    return sanitized
   }
 
   /**
