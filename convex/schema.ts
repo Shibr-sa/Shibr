@@ -418,6 +418,7 @@ const schema = defineSchema({
     customerName: v.string(),
     customerPhone: v.string(),
     wafeqContactId: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
 
     // Order items
     items: v.array(v.object({
