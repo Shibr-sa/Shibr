@@ -1035,12 +1035,31 @@ export const confirmPayment = mutation({
     if (!request) {
       throw new Error("Rental request not found")
     }
-    
-    // Verify the request status is valid for payment
-    // Allow payment from multiple states (for testing and flexibility)
-    const validStatuses = ["payment_pending", "pending", "approved"]
-    if (!validStatuses.includes(request.status)) {
-      throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
+
+    // Idempotency check: If already active, verify shelf store exists and return success
+    // This prevents errors when webhook is called multiple times (retries, duplicates, etc.)
+    if (request.status === "active") {
+      const existingShelfStore = await ctx.db
+        .query("shelfStores")
+        .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
+        .first()
+
+      if (existingShelfStore) {
+        // Already processed successfully, return success (idempotent behavior)
+        console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active, shelf store exists)`)
+        return { success: true, alreadyProcessed: true }
+      }
+
+      // Status is active but shelf store missing - this shouldn't happen, but let's log it
+      console.warn(`[confirmPayment] Request ${args.requestId} is active but shelf store missing - will attempt to create`)
+      // Continue with shelf store creation below
+    } else {
+      // Verify the request status is valid for payment confirmation
+      // Allow payment from multiple states (for testing and flexibility)
+      const validStatuses = ["payment_pending", "pending", "approved"]
+      if (!validStatuses.includes(request.status)) {
+        throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
+      }
     }
     
     // Update the request status to active (since we'll have automated payment in future)

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { useCart } from "@/contexts/cart-context"
-import { useAction, useMutation } from "convex/react"
+import { useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ import {
 interface OrderData {
   shelfStoreId: string
   storeName: string
+  customerName: string
   customerPhone: string
   items: Array<{
     productId: string
@@ -59,7 +60,7 @@ export default function PaymentPage() {
 
   // Actions
   const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
-  const createOrder = useMutation(api.customerOrders.createOrder)
+  const createOrder = useAction(api.customerOrders.createOrder)
 
   useEffect(() => {
     // If we have Tap redirect parameters, redirect to success page for verification
@@ -100,6 +101,7 @@ export default function PaymentPage() {
       // Create order in database first
       const orderResult = await createOrder({
         shelfStoreId: orderData.shelfStoreId as any,
+        customerName: orderData.customerName,
         customerPhone: orderData.customerPhone,
         items: orderData.items.map(item => ({
           productId: item.productId as any,

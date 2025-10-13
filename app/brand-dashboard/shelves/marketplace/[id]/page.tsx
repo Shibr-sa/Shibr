@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard, CheckCircle, XCircle } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -118,8 +118,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
 
   // Payment-related state
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
-  const [paymentStatus, setPaymentStatus] = useState<"success" | "failed" | null>(null)
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
 
@@ -185,11 +183,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
   const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
-  const confirmPayment = useMutation(api.rentalRequests.confirmPayment)
 
   // Actions
-  const getChargeDetails = useAction(api.tapPayments.getChargeDetails)
   const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
+  const verifyAndConfirmPayment = useAction(api.tapPayments.verifyAndConfirmPayment)
   
   // Check for existing rental request (any status)
   const activeRequest = existingRequest
@@ -233,67 +230,47 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     }
   }, [activeRequest])
 
-  // Track if payment verification is in progress to prevent duplicates
-  const [verificationStarted, setVerificationStarted] = useState(false)
-  const [paymentError, setPaymentError] = useState<string | null>(null)
-
-  // Check and verify payment if coming back from Tap
+  // Detect if user is returning from payment
+  // In local dev: manually verify payment (webhooks can't reach localhost)
+  // In production: webhook will handle it automatically
   useEffect(() => {
-    const verifyPayment = async () => {
-      if (!chargeId || !rentalRequestIdFromUrl) {
-        return
-      }
-
-      // Prevent duplicate verification
-      if (verificationStarted) {
-        return
-      }
-
-      setVerificationStarted(true)
+    if (chargeId && rentalRequestIdFromUrl) {
+      // User returned from Tap payment gateway
       setIsVerifyingPayment(true)
 
-      try {
-        // Verify the charge with Tap
-        const chargeDetails = await getChargeDetails({ chargeId })
+      // Clean URL parameters immediately
+      const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
+      window.history.replaceState({}, "", newUrl)
 
-        if (chargeDetails.status === "CAPTURED") {
-          // Payment successful
-          await confirmPayment({
-            requestId: rentalRequestIdFromUrl,
-            paymentAmount: chargeDetails.amount,
+      // Manual verification for local development (webhooks won't work on localhost)
+      // In production with proper webhook URL, this provides a fallback if webhook is delayed
+      const verifyPayment = async () => {
+        try {
+          console.log('Verifying payment...', { chargeId, rentalRequestIdFromUrl })
+          const result = await verifyAndConfirmPayment({
+            chargeId,
+            rentalRequestId: rentalRequestIdFromUrl,
           })
 
-          setPaymentStatus("success")
-          setShowPaymentDialog(true)
-
-          // Clear URL parameters
-          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
-          window.history.replaceState({}, "", newUrl)
-        } else {
-          // Payment failed or pending
-          const errorMessage = chargeDetails.response?.message ||
-                              chargeDetails.acquirer?.response?.message ||
-                              "Payment could not be completed"
-
-          setPaymentError(errorMessage)
-          setPaymentStatus("failed")
-          setShowPaymentDialog(true)
-
-          // Clear URL parameters
-          const newUrl = `/brand-dashboard/shelves/marketplace/${resolvedParams.id}`
-          window.history.replaceState({}, "", newUrl)
+          if (result.success) {
+            console.log('Payment verified successfully')
+            // Convex reactivity will update the UI automatically
+          } else {
+            console.error('Payment verification failed:', result.error)
+            alert(result.error || 'Payment verification failed')
+          }
+        } catch (error) {
+          console.error('Error verifying payment:', error)
+          // Don't show error to user - might be already processed by webhook
+        } finally {
+          setIsVerifyingPayment(false)
         }
-      } catch (error) {
-        setPaymentError(error instanceof Error ? error.message : "Payment verification failed")
-        setPaymentStatus("failed")
-        setShowPaymentDialog(true)
-      } finally {
-        setIsVerifyingPayment(false)
       }
-    }
 
-    verifyPayment()
-  }, [chargeId, rentalRequestIdFromUrl, resolvedParams.id]) // Don't include verificationStarted to avoid re-triggers
+      // Small delay to avoid race condition with webhook (if in production)
+      setTimeout(verifyPayment, 2000)
+    }
+  }, [chargeId, rentalRequestIdFromUrl, resolvedParams.id, verifyAndConfirmPayment])
 
   // Handle payment for pending requests
   // Test Cards for Tap Payments:
@@ -322,14 +299,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       if (session.success && session.checkoutUrl) {
         window.location.href = session.checkoutUrl
       } else {
-        setPaymentError("Failed to create payment session")
-        setPaymentStatus("failed")
-        setShowPaymentDialog(true)
+        alert(language === "ar" ? "فشل إنشاء جلسة الدفع" : "Failed to create payment session")
       }
     } catch (error) {
-      setPaymentError(error instanceof Error ? error.message : "Payment failed")
-      setPaymentStatus("failed")
-      setShowPaymentDialog(true)
+      alert(error instanceof Error ? error.message : (language === "ar" ? "فشل الدفع" : "Payment failed"))
     } finally {
       setProcessingPayment(false)
     }
@@ -1115,46 +1088,6 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
       )}
-
-      {/* Payment Status Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {paymentStatus === "success" ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  {language === "ar" ? "الدفع ناجح" : "Payment Successful"}
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-5 w-5 text-red-600" />
-                  {language === "ar" ? "فشل الدفع" : "Payment Failed"}
-                </>
-              )}
-            </DialogTitle>
-            <DialogDescription className="pt-3">
-              {paymentStatus === "success"
-                ? language === "ar"
-                  ? "تم تأكيد الدفع بنجاح. رفك نشط الآن."
-                  : "Your payment has been confirmed. Your shelf rental is now active."
-                : language === "ar"
-                  ? `لم يتم إكمال الدفع. ${paymentError ? `السبب: ${paymentError}` : "يرجى المحاولة مرة أخرى."}`
-                  : `Your payment could not be completed. ${paymentError ? `Reason: ${paymentError}` : "Please try again."}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end pt-4">
-            <Button
-              onClick={() => {
-                setShowPaymentDialog(false)
-                // No need to reload - Convex will update the data automatically
-              }}
-            >
-              {language === "ar" ? "حسناً" : "OK"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -1,15 +1,17 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, action, internalMutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
-// Create a new customer order
-export const createOrder = mutation({
+// Internal mutation to create order in database
+export const createOrderInternal = internalMutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
+    customerName: v.string(),
     customerPhone: v.string(),
+    wafeqContactId: v.optional(v.string()),
     items: v.array(v.object({
       productId: v.id("products"),
       quantity: v.number(),
@@ -19,7 +21,7 @@ export const createOrder = mutation({
       v.literal("apple")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, orderNumber: string }> => {
     // Get the shelf store
     const shelfStore = await ctx.db.get(args.shelfStoreId)
     if (!shelfStore || !shelfStore.isActive) {
@@ -70,7 +72,9 @@ export const createOrder = mutation({
     // Create the order
     const orderId = await ctx.db.insert("customerOrders", {
       shelfStoreId: args.shelfStoreId,
+      customerName: args.customerName,
       customerPhone: args.customerPhone,
+      wafeqContactId: args.wafeqContactId,
       items: orderItems,
       subtotal,
       storeCommission,
@@ -123,6 +127,75 @@ export const createOrder = mutation({
       orderId,
       orderNumber,
     }
+  },
+})
+
+// Create a new customer order (action that calls Wafeq API then creates order)
+export const createOrder = action({
+  args: {
+    shelfStoreId: v.id("shelfStores"),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    items: v.array(v.object({
+      productId: v.id("products"),
+      quantity: v.number(),
+    })),
+    paymentMethod: v.union(
+      v.literal("card"),
+      v.literal("apple")
+    ),
+  },
+  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, orderNumber: string }> => {
+    // Create contact in Wafeq (actions can use fetch)
+    let wafeqContactId: string | undefined
+    try {
+      const wafeqApiKey = process.env.WAFEQ_API_KEY
+      if (!wafeqApiKey) {
+        console.error("[Wafeq] WAFEQ_API_KEY not found in environment variables")
+      } else {
+        console.log("[Wafeq] Creating contact for:", args.customerName, args.customerPhone)
+
+        const wafeqResponse = await fetch("https://api.wafeq.com/v1/contacts/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Api-Key ${wafeqApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: args.customerName,
+            phone: args.customerPhone,
+          }),
+        })
+
+        console.log("[Wafeq] Response status:", wafeqResponse.status)
+
+        if (wafeqResponse.ok) {
+          const wafeqData = await wafeqResponse.json()
+          wafeqContactId = wafeqData.id?.toString()
+          console.log("[Wafeq] Successfully created contact with ID:", wafeqContactId)
+        } else {
+          const errorText = await wafeqResponse.text()
+          console.error("[Wafeq] Failed to create contact. Status:", wafeqResponse.status, "Response:", errorText)
+        }
+      }
+    } catch (error) {
+      console.error("[Wafeq] Error calling Wafeq API:", error)
+      // Continue with order creation even if Wafeq fails
+    }
+
+    console.log("[Wafeq] Final wafeqContactId:", wafeqContactId)
+
+    // Call internal mutation to create the order
+    const result = await ctx.runMutation(internal.customerOrders.createOrderInternal, {
+      shelfStoreId: args.shelfStoreId,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      wafeqContactId,
+      items: args.items,
+      paymentMethod: args.paymentMethod,
+    })
+
+    return result
   },
 })
 
@@ -569,5 +642,25 @@ export const updateOrderPaymentStatus = mutation({
     })
 
     return { success: true }
+  },
+})
+
+// Debug query to check Wafeq integration
+export const checkWafeqIntegration = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get the last 10 orders
+    const orders = await ctx.db
+      .query("customerOrders")
+      .order("desc")
+      .take(10)
+
+    return orders.map(order => ({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      wafeqContactId: order.wafeqContactId || "NOT SET",
+      createdAt: new Date(order._creationTime).toISOString(),
+    }))
   },
 })
