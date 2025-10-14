@@ -190,6 +190,69 @@ export const getChargeDetails = action({
   },
 })
 
+// Manual verification action for local development (when webhooks can't reach localhost)
+// This simulates what the webhook would do - verify charge with Tap and update status
+export const verifyAndConfirmPayment = action({
+  args: {
+    chargeId: v.string(),
+    rentalRequestId: v.id("rentalRequests"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
+
+    const tapSecretKey = getTapSecretKey()
+
+    console.log(`[verifyAndConfirmPayment] Manually verifying charge ${args.chargeId} for rental ${args.rentalRequestId}`)
+
+    try {
+      // Verify the charge with Tap API (same as webhook does)
+      const response = await fetch(`https://api.tap.company/v2/charges/${args.chargeId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${tapSecretKey}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to verify charge with Tap")
+      }
+
+      const charge = await response.json()
+
+      console.log(`[verifyAndConfirmPayment] Charge status: ${charge.status}`)
+
+      // Only proceed if payment was captured
+      if (charge.status !== "CAPTURED") {
+        return {
+          success: false,
+          error: `Payment not completed. Status: ${charge.status}`
+        }
+      }
+
+      // Update payment status (same as webhook does)
+      await ctx.runMutation(internal.tapPayments.updatePaymentStatus, {
+        rentalRequestId: args.rentalRequestId,
+        status: charge.status,
+        chargeId: charge.id,
+      })
+
+      console.log(`[verifyAndConfirmPayment] Successfully confirmed payment for rental ${args.rentalRequestId}`)
+
+      return {
+        success: true,
+        status: charge.status,
+        message: "Payment verified and rental activated"
+      }
+    } catch (error) {
+      console.error(`[verifyAndConfirmPayment] Error:`, error)
+      throw new Error(error instanceof Error ? error.message : "Failed to verify payment")
+    }
+  },
+})
+
 // Refund a charge
 export const refundCharge = action({
   args: {

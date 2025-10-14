@@ -23,10 +23,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { 
-  MapPin, 
+import {
+  MapPin,
   Download,
-  Edit,
   Ruler,
   Building2,
   Package2,
@@ -265,22 +264,12 @@ export default function ShelfDetailsPage() {
           <h3 className="text-base font-semibold">
             {t("shelf_details.shelf_information")}
           </h3>
-          <div className="flex items-center gap-2">
-            <Badge variant={getStatusVariant(shelfData.isAvailable === false ? "rented" : "available")}>
-              {shelfData.isAvailable === false 
-                ? t("shelf_details.rented")
-                : t("shelf_details.available")
-              }
-            </Badge>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => router.push(`/admin-dashboard/stores/${storeId}/${shelfId}/edit`)}
-            >
-              <Edit className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <Badge variant={getStatusVariant(shelfData.isAvailable === false ? "rented" : "available")}>
+            {shelfData.isAvailable === false
+              ? t("shelf_details.rented")
+              : t("shelf_details.available")
+            }
+          </Badge>
         </div>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
