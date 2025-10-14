@@ -31,7 +31,6 @@ interface OrderData {
     quantity: number
   }>
   subtotal: number
-  tax: number
   total: number
   timestamp: number
 }
@@ -106,8 +105,7 @@ export default function PaymentPage() {
         items: orderData.items.map(item => ({
           productId: item.productId as any,
           quantity: item.quantity
-        })),
-        paymentMethod: "card"
+        }))
       })
 
       // Create checkout session with Tap

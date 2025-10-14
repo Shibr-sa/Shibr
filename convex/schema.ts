@@ -418,7 +418,7 @@ const schema = defineSchema({
     customerName: v.optional(v.string()), // Made optional for backward compatibility with legacy orders
     customerPhone: v.string(),
     wafeqContactId: v.optional(v.string()),
-    invoiceNumber: v.optional(v.string()),
+    invoiceNumber: v.string(), // Wafeq invoice ID (required)
 
     // Order items
     items: v.array(v.object({
@@ -429,26 +429,15 @@ const schema = defineSchema({
       subtotal: v.number(),
     })),
 
-    // Order totals
-    subtotal: v.number(),
-    storeCommission: v.number(), // Amount for store owner
-    platformFee: v.number(), // Platform commission
-    brandRevenue: v.number(), // Amount for brand owner
+    // Order total
     total: v.number(),
 
     // Payment info
-    paymentMethod: v.union(
-      v.literal("card"),
-      v.literal("apple"), // Apple Pay
-    ),
-    paymentReference: v.optional(v.string()),
-
-    // Order tracking
-    orderNumber: v.string(), // Human-readable order number
+    paymentReference: v.optional(v.string()), // Tap charge ID
   })
     .index("by_shelf_store", ["shelfStoreId"])
     .index("by_customer_phone", ["customerPhone"])
-    .index("by_order_number", ["orderNumber"]),
+    .index("by_invoice_number", ["invoiceNumber"]),
 })
 
 export default schema

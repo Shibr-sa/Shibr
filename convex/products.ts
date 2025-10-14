@@ -481,7 +481,7 @@ export const getLatestSalesOperations = query({
         // Process each item in the order as a separate sale operation
         for (const item of order.items) {
           allSalesOperations.push({
-            orderNumber: order.orderNumber,
+            invoiceNumber: order.invoiceNumber,
             productName: item.productName,
             storeName: storeProfile?.storeName || "Unknown Store",
             city: shelf?.city || "Unknown",
