@@ -20,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
   "/terms",
   "/privacy",
   "/contact",
+  "/store/(.*)", // Public store pages for customer purchases
   "/api/auth", // Auth callback route
   "/api/auth/(.*)"
 ]);
