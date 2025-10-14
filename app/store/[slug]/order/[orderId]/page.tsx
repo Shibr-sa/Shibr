@@ -17,8 +17,6 @@ import {
   Phone,
   Building2,
   Calendar,
-  CreditCard,
-  Smartphone,
   ShoppingBag,
   Receipt
 } from "lucide-react"
@@ -45,21 +43,6 @@ export default function OrderConfirmationPage() {
     })
   }
 
-  // Get payment method icon
-  const getPaymentIcon = () => {
-    if (!order) return null
-    if (order.paymentMethod === "card") return <CreditCard className="h-5 w-5" />
-    if (order.paymentMethod === "apple") return <Smartphone className="h-5 w-5" />
-    return <CreditCard className="h-5 w-5" />
-  }
-
-  // Get payment method label
-  const getPaymentLabel = () => {
-    if (!order) return ""
-    if (order.paymentMethod === "card") return t("payment.card")
-    if (order.paymentMethod === "apple") return t("payment.apple_pay")
-    return t("payment.card")
-  }
 
   if (!order) {
     return (
@@ -96,8 +79,8 @@ export default function OrderConfirmationPage() {
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">{t("order.order_number")}</p>
-                  <p className="font-semibold">{order.orderNumber}</p>
+                  <p className="text-sm text-muted-foreground">{t("order.invoice_number")}</p>
+                  <p className="font-semibold">{order.invoiceNumber}</p>
                 </div>
               </div>
 
@@ -114,14 +97,6 @@ export default function OrderConfirmationPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("order.contact_phone")}</p>
                   <p className="font-semibold" dir="ltr">{order.customerPhone}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {getPaymentIcon()}
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("order.payment_method")}</p>
-                  <p className="font-semibold">{getPaymentLabel()}</p>
                 </div>
               </div>
             </div>
@@ -166,15 +141,6 @@ export default function OrderConfirmationPage() {
 
             {/* Price Breakdown */}
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("order.subtotal")}</span>
-                <span>{formatCurrency(order.subtotal, language)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("order.tax")} (15%)</span>
-                <span>{formatCurrency(order.subtotal * 0.15, language)}</span>
-              </div>
-              <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>{t("order.total")}</span>
                 <span>{formatCurrency(order.total, language)}</span>

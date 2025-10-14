@@ -484,9 +484,9 @@ export default function BrandDashboardPage() {
                   <>
                     {/* Show only first 3 sales operations */}
                     {salesOperations.slice(0, 3).map((sale, index) => (
-                      <TableRow key={sale.orderNumber} className="h-[52px]">
+                      <TableRow key={sale.invoiceNumber} className="h-[52px]">
                         <TableCell className="font-medium">
-                          {sale.orderNumber}
+                          {sale.invoiceNumber}
                         </TableCell>
                         <TableCell>
                           {sale.productName}
