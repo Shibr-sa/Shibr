@@ -329,8 +329,11 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
+
+    // For rental requests, authentication is required (brand owners only)
+    // For customer orders (purchases), authentication is optional (guest checkout)
+    if (args.rentalRequestId && !userId) {
+      throw new Error("Authentication required for rental payments")
     }
 
     const tapSecretKey = getTapSecretKey()
@@ -422,7 +425,7 @@ export const createCheckoutSession = action({
         order: orderRef
       },
       metadata: {
-        userId: userId,
+        ...(userId && { userId }), // Only include userId if authenticated
         rentalRequestId: args.rentalRequestId,
         orderId: args.orderId,
         ...args.metadata,
