@@ -408,13 +408,13 @@ export default function BrandDashboardPage() {
                           </TableCell>
                           <TableCell>
                             {formatNumber(
-                              rental.selectedProducts?.length || 
-                              rental.selectedProductIds?.length || 
+                              rental.selectedProducts?.length ||
+                              rental.selectedProductIds?.length ||
                               0
                             )}
                           </TableCell>
                           <TableCell>
-                            {formatNumber(0)}
+                            {formatNumber((rental as any).salesCount || 0)}
                           </TableCell>
                           <TableCell>
                             <Badge variant={rental.status === "active" ? "default" : "secondary"}>

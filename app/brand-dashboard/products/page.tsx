@@ -263,8 +263,8 @@ export default function BrandProductsPage() {
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>
                               </TableCell>
                               <TableCell className="py-3 w-[8%]">{product.quantity}</TableCell>
-                              <TableCell className="py-3 w-[10%]">{(product as any).totalSales || 0}</TableCell>
-                              <TableCell className="py-3 w-[10%]">{(product as any).shelfCount || 0}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{product.totalSales || 0}</TableCell>
+                              <TableCell className="py-3 w-[10%]">{product.shelfCount || 0}</TableCell>
                               <TableCell className="py-3 w-[9%]">
                                 <div className="flex gap-1">
                                   <Button 

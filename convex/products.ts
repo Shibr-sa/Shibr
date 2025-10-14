@@ -45,28 +45,74 @@ export const getUserProducts = query({
     if (!userId) {
       return [];
     }
-    
+
     // Get user profile first
     const userProfile = await getUserProfile(ctx, userId)
     if (!userProfile || userProfile.type !== "brand_owner") {
       return []
     }
-    
+
     const products = await ctx.db
       .query("products")
       .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
-    
-    return products.map(p => ({
-      _id: p._id,
-      name: p.name,
-      sku: p.sku,
-      category: p.category,
-      price: p.price,
-      quantity: p.stockQuantity,
-      imageUrl: p.imageUrl,
-      description: p.description
-    }))
+
+    // Get all customer orders to calculate real sales
+    const allOrders = await ctx.db.query("customerOrders").collect()
+
+    // Get all active shelf stores for this brand to count stores selling each product
+    const brandShelfStores = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect()
+
+    // Get rental requests for these shelf stores to know which products they're selling
+    const rentalRequestIds = brandShelfStores.map(ss => ss.rentalRequestId)
+    const rentalRequests = await Promise.all(
+      rentalRequestIds.map(id => ctx.db.get(id))
+    )
+
+    return products.map(p => {
+      // Calculate total sales for this product across all orders
+      let totalSalesCount = 0
+      let totalRevenueAmount = 0
+
+      for (const order of allOrders) {
+        for (const item of order.items) {
+          if (item.productId === p._id) {
+            totalSalesCount += item.quantity
+            totalRevenueAmount += item.subtotal
+          }
+        }
+      }
+
+      // Count how many active stores are selling this product
+      let storeCount = 0
+      for (let i = 0; i < rentalRequests.length; i++) {
+        const rental = rentalRequests[i]
+        if (rental && rental.selectedProducts) {
+          const hasProduct = rental.selectedProducts.some(sp => sp.productId === p._id)
+          if (hasProduct) {
+            storeCount++
+          }
+        }
+      }
+
+      return {
+        _id: p._id,
+        name: p.name,
+        sku: p.sku,
+        category: p.category,
+        price: p.price,
+        quantity: p.stockQuantity,
+        imageUrl: p.imageUrl,
+        description: p.description,
+        totalSales: totalSalesCount,
+        totalRevenue: totalRevenueAmount,
+        shelfCount: storeCount,
+      }
+    })
   },
 })
 
@@ -400,47 +446,58 @@ export const getLatestSalesOperations = query({
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 3
-    
+
     // Get the brand profile for this user
     const userProfile = await getUserProfile(ctx, args.ownerId)
-    
+
     if (!userProfile || userProfile.type !== "brand_owner") {
       return []
     }
-    
+
     const brandProfileId = userProfile.profile._id
-    
-    // Get all products for the owner
-    const products = await ctx.db
-      .query("products")
+
+    // Get all shelf stores for this brand
+    const brandShelfStores = await ctx.db
+      .query("shelfStores")
       .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
-    
-    // Get rental requests with full information
-    const rentalRequests = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_brand", (q) => q.eq("brandProfileId", brandProfileId))
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect()
-    
-    // Get store user information for each rental
-    const rentalsWithStoreInfo = await Promise.all(
-      rentalRequests.map(async (request) => {
-        if (!request.storeProfileId) return request
-        
-        const storeProfile = await ctx.db.get(request.storeProfileId)
-        const shelf = await ctx.db.get(request.shelfId)
-        
-        return {
-          ...request,
-          storeName: storeProfile?.storeName,
-          city: shelf?.city,
+
+    // Get all customer orders for these shelf stores
+    const allSalesOperations = []
+
+    for (const shelfStore of brandShelfStores) {
+      // Get orders for this shelf store
+      const orders = await ctx.db
+        .query("customerOrders")
+        .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", shelfStore._id))
+        .collect()
+
+      // Get store and shelf information
+      const storeProfile = await ctx.db.get(shelfStore.storeProfileId)
+      const shelf = await ctx.db.get(shelfStore.shelfId)
+
+      // Process each order
+      for (const order of orders) {
+        // Process each item in the order as a separate sale operation
+        for (const item of order.items) {
+          allSalesOperations.push({
+            orderNumber: order.orderNumber,
+            productName: item.productName,
+            storeName: storeProfile?.storeName || "Unknown Store",
+            city: shelf?.city || "Unknown",
+            price: item.subtotal, // Total price for this item (price * quantity)
+            date: order._creationTime,
+            quantity: item.quantity,
+          })
         }
-      })
-    )
-    
-    // Return empty array for now as we don't have real sales tracking yet
-    // In the future, this should query actual sales/order records
-    return []
+      }
+    }
+
+    // Sort by date (newest first) and limit
+    const sortedOperations = allSalesOperations
+      .sort((a, b) => b.date - a.date)
+      .slice(0, limit)
+
+    return sortedOperations
   },
 })
