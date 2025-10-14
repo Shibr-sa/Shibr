@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard } from "lucide-react"
+import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard, CheckCircle, XCircle } from "lucide-react"
+import Image from "next/image"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -77,32 +78,32 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const { t, language, direction } = useLanguage()
   const { user } = useCurrentUser()
   const { userData } = useBrandData()
-  
+
   // Unwrap params Promise
   const resolvedParams = use(params)
-  
+
   // Get conversation ID from URL if present
   const urlConversationId = searchParams.get('conversation') as Id<"conversations"> | null
 
   // Get payment-related parameters from URL (for Tap redirect)
   const chargeId = searchParams.get("tap_id") ||
-                   searchParams.get("charge_id") ||
-                   searchParams.get("id") ||
-                   searchParams.get("chargeId")
+    searchParams.get("charge_id") ||
+    searchParams.get("id") ||
+    searchParams.get("chargeId")
   const rentalRequestIdFromUrl = searchParams.get("rentalRequestId") as Id<"rentalRequests"> | null
-  
+
   // Get user ID and profile ID from current user
   const userId = user?.id ? (user.id as Id<"users">) : null
-  const userProfileId = userData?.profile?._id as Id<"userProfiles"> | undefined
-  
+  const userProfileId = userData?.profile?._id as Id<"brandProfiles"> | undefined
+
   // State for selected image
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  
+
   // Fetch shelf details from backend
-  const shelfDetails = useQuery(api.shelves.getShelfById, { 
-    shelfId: resolvedParams.id as Id<"shelves"> 
+  const shelfDetails = useQuery(api.shelves.getShelfById, {
+    shelfId: resolvedParams.id as Id<"shelves">
   }) as ShelfDetails | undefined
-  
+
   // Fetch platform settings for dynamic fee percentage
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
 
@@ -110,9 +111,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const rentalSchedule = useQuery(api.rentalRequests.getShelfRentalSchedule, {
     shelfId: resolvedParams.id as Id<"shelves">
   })
-  
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
-  const [selectedProducts, setSelectedProducts] = useState<{id: string, quantity: number}[]>([])
+  const [selectedProducts, setSelectedProducts] = useState<{ id: string, quantity: number }[]>([])
   // Product type is now derived from selected products
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(urlConversationId)
   const [hasSubmittedRequest, setHasSubmittedRequest] = useState(!!urlConversationId)
@@ -166,7 +167,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       shelfId: resolvedParams.id as Id<"shelves">
     } : "skip"
   )
-  
+
   // Set conversation ID from existing request if available
   useEffect(() => {
     if (existingRequest?.conversationId && !conversationId) {
@@ -174,12 +175,12 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       setHasSubmittedRequest(true)
     }
   }, [existingRequest, conversationId])
-  
+
   // Fetch user's products
-  const userProducts = useQuery(api.products.getUserProducts, 
+  const userProducts = useQuery(api.products.getUserProducts,
     userId ? {} : "skip"
   )
-  
+
   // Mutations
   const getOrCreateConversation = useMutation(api.chats.getOrCreateConversation)
   const createRentalRequest = useMutation(api.rentalRequests.createRentalRequest)
@@ -187,10 +188,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Actions
   const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
   const verifyAndConfirmPayment = useAction(api.tapPayments.verifyAndConfirmPayment)
-  
   // Check for existing rental request (any status)
   const activeRequest = existingRequest
-  
+
   // Check if shelf is still available for rental
   const shelfAvailability = useQuery(api.rentalRequests.isShelfAvailable,
     shelfDetails && userId ? {
@@ -198,11 +198,11 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       currentUserId: userId
     } : "skip"
   )
-  
+
   // Determine if form should be disabled based on request status
   const isFormDisabled = activeRequest?.status === 'payment_pending' ||
-                         activeRequest?.status === 'active' ||
-                         activeRequest?.status === 'completed'
+    activeRequest?.status === 'active' ||
+    activeRequest?.status === 'completed'
 
   // Set conversation and submission state if there's an existing request
   // Also restore the form data from the existing request
@@ -210,7 +210,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     if (activeRequest) {
       setConversationId(activeRequest.conversationId || null)
       setHasSubmittedRequest(true)
-      
+
       // Restore form data from existing request
       if (activeRequest.startDate && activeRequest.endDate) {
         setDateRange({
@@ -310,32 +310,32 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Note: Removed shelf availability check - users can now book future dates
 
     if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0) {
       alert(t("form.fill_required_fields"))
       return
     }
-    
+
     if (!userId || !userProfileId || !shelfDetails?.storeProfileId) {
       // Auth check failed - missing required data
       alert(t("form.login_first"))
       return
     }
-    
+
     try {
       // First, create or get conversation
       let convId = conversationId
       if (!convId) {
         convId = await getOrCreateConversation({
           brandProfileId: userProfileId,
-          storeProfileId: shelfDetails.storeProfileId as Id<"userProfiles">,
+          storeProfileId: shelfDetails.storeProfileId as Id<"storeProfiles">,
           shelfId: resolvedParams.id as Id<"shelves">,
         })
         setConversationId(convId)
       }
-      
+
       // Create or update rental request with new schema
       const result = await createRentalRequest({
         shelfId: resolvedParams.id as Id<"shelves">,
@@ -345,7 +345,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         selectedProductIds: selectedProducts.map(p => p.id) as Id<"products">[],
         selectedProductQuantities: selectedProducts.map(p => p.quantity),
       })
-      
+
       // Show success message based on whether it was created or updated
       if (result.isUpdate) {
         alert(t("form.request_updated_success"))
@@ -357,14 +357,14 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         setSelectedProducts([])
         // Product type is derived from selected products
       }
-      
+
       // Mark that request has been submitted
       setHasSubmittedRequest(true)
     } catch (error) {
       alert(t("form.submit_error"))
     }
   }
-  
+
   // Loading state
   if (!shelfDetails) {
     return (
@@ -412,216 +412,221 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 <div className="lg:col-span-2 space-y-4">
                   {/* First Row - Shelf Name, Branch, Address */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Tag className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.shelf_name")}
-                      </Label>
-                      <p className="text-sm font-medium truncate" title={shelfDetails.shelfName}>
-                        {shelfDetails.shelfName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Store className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.branch")}
-                      </Label>
-                      <p className="text-sm font-medium truncate" title={shelfDetails.storeBranch}>
-                        {shelfDetails.storeBranch}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <MapPin className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("common.address")}
-                      </Label>
-                      {shelfDetails.location ? (
-                        <a 
-                          href={`https://www.google.com/maps?q=${shelfDetails.location.lat},${shelfDetails.location.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-primary hover:underline block truncate"
-                          title={shelfDetails.location.address || shelfDetails.city}
-                        >
-                          {shelfDetails.location.address || shelfDetails.city || t("marketplace.view_on_map")}
-                        </a>
-                      ) : shelfDetails.coordinates ? (
-                        <a 
-                          href={`https://www.google.com/maps?q=${shelfDetails.coordinates.lat},${shelfDetails.coordinates.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-primary hover:underline block truncate"
-                          title={shelfDetails.address || shelfDetails.city}
-                        >
-                          {shelfDetails.address || shelfDetails.city || t("marketplace.view_on_map")}
-                        </a>
-                      ) : (
-                        <p className="text-sm font-medium">-</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Second Row - Price & Commission, Dimensions, Available From */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.price_and_commission")}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate" title={formatCurrency(shelfDetails.monthlyPrice, language)}>
-                          {formatCurrency(shelfDetails.monthlyPrice, language)}
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Tag className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("marketplace.shelf_name")}
+                        </Label>
+                        <p className="text-sm font-medium truncate" title={shelfDetails.shelfName}>
+                          {shelfDetails.shelfName}
                         </p>
-                        <Badge variant="secondary" className="text-xs px-2 py-0">
-                          {`${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%`}
-                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Store className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("marketplace.branch")}
+                        </Label>
+                        <p className="text-sm font-medium truncate" title={shelfDetails.storeBranch}>
+                          {shelfDetails.storeBranch}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <MapPin className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("common.address")}
+                        </Label>
+                        {shelfDetails.location ? (
+                          <a
+                            href={`https://www.google.com/maps?q=${shelfDetails.location.lat},${shelfDetails.location.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-primary hover:underline block truncate"
+                            title={shelfDetails.location.address || shelfDetails.city}
+                          >
+                            {shelfDetails.location.address || shelfDetails.city || t("marketplace.view_on_map")}
+                          </a>
+                        ) : shelfDetails.coordinates ? (
+                          <a
+                            href={`https://www.google.com/maps?q=${shelfDetails.coordinates.lat},${shelfDetails.coordinates.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-primary hover:underline block truncate"
+                            title={shelfDetails.address || shelfDetails.city}
+                          >
+                            {shelfDetails.address || shelfDetails.city || t("marketplace.view_on_map")}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-medium">-</p>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Ruler className="h-4 w-4 text-primary" />
+                  {/* Second Row - Price & Commission, Dimensions, Available From */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("marketplace.price_and_commission")}
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate" title={formatCurrency(shelfDetails.monthlyPrice, language)}>
+                            {formatCurrency(shelfDetails.monthlyPrice, language)}
+                          </p>
+                          <Badge variant="secondary" className="text-xs px-2 py-0">
+                            {`${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%`}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 space-y-1 min-w-0">
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Ruler className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("marketplace.dimensions")}
+                        </Label>
+                        <p className="text-sm font-medium truncate" title={`${shelfDetails.shelfSize.width}×${shelfDetails.shelfSize.height}×${shelfDetails.shelfSize.depth}${shelfDetails.shelfSize.unit}`}>
+                          {shelfDetails.shelfSize.width}×{shelfDetails.shelfSize.height}×{shelfDetails.shelfSize.depth}{shelfDetails.shelfSize.unit}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <Label className="text-xs text-muted-foreground font-normal">
+                          {t("marketplace.available_from")}
+                        </Label>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(shelfDetails.availableFrom).toLocaleDateString(
+                            "en-US",
+                            { month: 'short', day: 'numeric', year: 'numeric' }
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Store Description Section */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.dimensions")}
+                        {t("common.description")}
                       </Label>
-                      <p className="text-sm font-medium truncate" title={`${shelfDetails.shelfSize.width}×${shelfDetails.shelfSize.height}×${shelfDetails.shelfSize.depth}${shelfDetails.shelfSize.unit}`}>
-                        {shelfDetails.shelfSize.width}×{shelfDetails.shelfSize.height}×{shelfDetails.shelfSize.depth}{shelfDetails.shelfSize.unit}
+                      <p className="text-sm leading-relaxed">
+                        {shelfDetails.description || "-"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <CalendarDays className="h-4 w-4 text-primary" />
+                  {/* Product Types Section */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Package className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.available_from")}
+                        {t("marketplace.shelf_type")}
                       </Label>
-                      <p className="text-sm font-medium truncate">
-                        {new Date(shelfDetails.availableFrom).toLocaleDateString(
-                          "en-US",
-                          { month: 'short', day: 'numeric', year: 'numeric' }
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                      <div className="flex flex-wrap gap-2">
+                        {shelfDetails.productTypes && shelfDetails.productTypes.length > 0 ? (
+                          shelfDetails.productTypes.map((type, index) => {
+                            // Try product_categories translation first
+                            let translationKey = `product_categories.${type}`;
+                            let translation = t(translationKey as any);
 
-                {/* Store Description Section */}
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("common.description")}
-                    </Label>
-                    <p className="text-sm leading-relaxed">
-                      {shelfDetails.description || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Product Types Section */}
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      {t("marketplace.shelf_type")}
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {shelfDetails.productTypes && shelfDetails.productTypes.length > 0 ? (
-                        shelfDetails.productTypes.map((type, index) => {
-                          // Try product_categories translation first
-                          let translationKey = `product_categories.${type}`;
-                          let translation = t(translationKey as any);
-                          
-                          // If not found, format the type name
-                          const displayText = translation === translationKey
-                            ? type.split('_').map(word => 
+                            // If not found, format the type name
+                            const displayText = translation === translationKey
+                              ? type.split('_').map(word =>
                                 word.charAt(0).toUpperCase() + word.slice(1)
                               ).join(' ')
-                            : translation;
-                          
-                          return (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {displayText}
-                            </Badge>
-                          );
-                        })
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          {t("product_categories.other")}
-                        </Badge>
-                      )}
+                              : translation;
+
+                            return (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {displayText}
+                              </Badge>
+                            );
+                          })
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            {t("product_categories.other")}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 </div>
 
                 {/* Right side - Shelf Images */}
                 <div className="lg:col-span-1">
                   {shelfDetails.images && shelfDetails.images.length > 0 ? (
                     <div className="space-y-4">
-                  {/* Main Image */}
-                  <div className="relative">
-                    <img
-                      src={selectedImage || (shelfDetails.images[0]?.url) || "/placeholder.svg?height=400&width=600"}
-                      alt={shelfDetails.shelfName}
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                    {shelfDetails.images.length > 1 && (
-                      <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
-                        {shelfDetails.images.findIndex(img => img.url === (selectedImage || shelfDetails.images[0]?.url)) + 1} / {shelfDetails.images.length}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Thumbnail Images - Only show if multiple images exist */}
-                  {shelfDetails.images.length > 1 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {shelfDetails.images.slice(0, 3).map((image, index) => (
-                        <div 
-                          key={index}
-                          className="relative group cursor-pointer"
-                          onClick={() => setSelectedImage(image.url)}
-                        >
-                          <img
-                            src={image.url}
-                            alt={`${shelfDetails.shelfName} - ${image.type}`}
-                            className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${
-                              (selectedImage === image.url || (!selectedImage && index === 0))
-                                ? 'border-primary' : 'border-transparent hover:border-primary/50'
-                            }`}
-                          />
-                          <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                      {/* Main Image */}
+                      <div className="relative">
+                        <Image
+                          src={selectedImage || (shelfDetails.images?.[0]?.url) || "/placeholder.svg?height=400&width=600"}
+                          alt={shelfDetails.shelfName}
+                          width={600}
+                          height={400}
+                          className="w-full h-64 object-cover rounded-lg"
+                          unoptimized
+                        />
+                        {shelfDetails.images && shelfDetails.images.length > 1 && (
+                          <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
+                            {shelfDetails.images.findIndex(img => img.url === (selectedImage || shelfDetails.images![0]?.url)) + 1} / {shelfDetails.images!.length}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Thumbnail Images - Only show if multiple images exist */}
+                      {shelfDetails.images && shelfDetails.images.length > 1 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {shelfDetails.images.slice(0, 3).map((image, index) => (
+                            <div
+                              key={index}
+                              className="relative group cursor-pointer"
+                              onClick={() => setSelectedImage(image.url)}
+                            >
+                              <Image
+                                src={image.url}
+                                alt={`${shelfDetails.shelfName} - ${image.type}`}
+                                width={80}
+                                height={64}
+                                className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${(selectedImage === image.url || (!selectedImage && index === 0))
+                                  ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                                  }`}
+                                unoptimized
+                              />
+                              <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
                     </div>
                   ) : (
                     <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
@@ -693,54 +698,53 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                   {/* Product Selection List Inside Same Card */}
                   <div className="p-4 bg-background/30">
                     {!userProducts || userProducts.length === 0 ? (
-                    <div className="min-h-[320px] flex items-center justify-center px-6">
-                      <div className="text-center">
-                        <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                        <p className="text-muted-foreground">
-                          {language === "ar" 
-                            ? "لم تقم بإضافة منتجات بعد" 
-                            : "You haven't added any products yet"}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-4"
-                          onClick={() => router.push("/brand-dashboard/products")}
-                        >
-                          {t("products.add_product")}
-                        </Button>
+                      <div className="min-h-[320px] flex items-center justify-center px-6">
+                        <div className="text-center">
+                          <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                          <p className="text-muted-foreground">
+                            {language === "ar"
+                              ? "لم تقم بإضافة منتجات بعد"
+                              : "You haven't added any products yet"}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => router.push("/brand-dashboard/products")}
+                          >
+                            {t("products.add_product")}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className={`space-y-1.5 ${userProducts.length > 3 ? 'max-h-[200px] overflow-y-auto scrollbar-thin' : ''}`}>
+                    ) : (
+                      <div className={`space-y-1.5 ${userProducts.length > 3 ? 'max-h-[200px] overflow-y-auto scrollbar-thin' : ''}`}>
                         {userProducts.map((product) => {
                           const selectedProduct = selectedProducts.find(p => p.id === product._id)
                           const isSelected = !!selectedProduct
-                          
+
                           return (
-                            <div 
+                            <div
                               key={product._id}
-                              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                                isSelected 
-                                  ? 'bg-primary/5 border-primary/20' 
-                                  : 'border-transparent hover:bg-muted/30'
-                              }`}
+                              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isSelected
+                                ? 'bg-primary/5 border-primary/20'
+                                : 'border-transparent hover:bg-muted/30'
+                                }`}
                             >
-                              <Checkbox 
+                              <Checkbox
                                 id={product._id}
                                 checked={isSelected}
                                 disabled={isFormDisabled}
                                 onCheckedChange={(checked) => {
                                   if (checked) {
-                                    setSelectedProducts([...selectedProducts, {id: product._id, quantity: 1}])
+                                    setSelectedProducts([...selectedProducts, { id: product._id, quantity: 1 }])
                                   } else {
                                     setSelectedProducts(selectedProducts.filter(p => p.id !== product._id))
                                   }
                                 }}
                                 className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                               />
-                              <label 
+                              <label
                                 htmlFor={product._id}
                                 className="flex-1 cursor-pointer flex items-center justify-between gap-3"
                               >
@@ -764,9 +768,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                           e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
                                           if (currentQty > 1) {
-                                            setSelectedProducts(selectedProducts.map(p => 
-                                              p.id === product._id 
-                                                ? {...p, quantity: currentQty - 1}
+                                            setSelectedProducts(selectedProducts.map(p =>
+                                              p.id === product._id
+                                                ? { ...p, quantity: currentQty - 1 }
                                                 : p
                                             ))
                                           }
@@ -788,9 +792,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                           e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
                                           if (currentQty < (product.quantity || 0)) {
-                                            setSelectedProducts(selectedProducts.map(p => 
-                                              p.id === product._id 
-                                                ? {...p, quantity: currentQty + 1}
+                                            setSelectedProducts(selectedProducts.map(p =>
+                                              p.id === product._id
+                                                ? { ...p, quantity: currentQty + 1 }
                                                 : p
                                             ))
                                           }
@@ -814,194 +818,194 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                             </div>
                           )
                         })}
-                    </div>
-                  )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                  
-                  {/* Booking Details */}
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="booking-date" className="text-sm">
-                        {t("marketplace.details.booking_duration")}*
-                      </Label>
 
-                      <div className="flex items-start gap-3">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="booking-date"
-                              variant="outline"
-                              className={cn(
-                                "flex-1 justify-start text-left font-normal",
-                                !dateRange && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dateRange?.from ? (
-                                dateRange.to ? (
-                                  <>
-                                    {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} -
-                                    {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
-                                  </>
-                                ) : (
-                                  format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
-                                )
+                {/* Booking Details */}
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="booking-date" className="text-sm">
+                      {t("marketplace.details.booking_duration")}*
+                    </Label>
+
+                    <div className="flex items-start gap-3">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="booking-date"
+                            variant="outline"
+                            className={cn(
+                              "flex-1 justify-start text-left font-normal",
+                              !dateRange && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} -
+                                  {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
+                                </>
                               ) : (
-                                <span>{t("marketplace.details.pick_dates")}</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="range"
-                              defaultMonth={dateRange?.from || getFirstAvailableDate()}
-                              selected={dateRange}
-                              onSelect={setDateRange}
-                              numberOfMonths={1}
-                              disabled={(date) => {
-                                // Calculate minimum date (either availableFrom or tomorrow)
-                                const tomorrow = new Date()
-                                tomorrow.setDate(tomorrow.getDate() + 1)
-                                tomorrow.setHours(0, 0, 0, 0)
+                                format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
+                              )
+                            ) : (
+                              <span>{t("marketplace.details.pick_dates")}</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            defaultMonth={dateRange?.from || getFirstAvailableDate()}
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={1}
+                            disabled={(date) => {
+                              // Calculate minimum date (either availableFrom or tomorrow)
+                              const tomorrow = new Date()
+                              tomorrow.setDate(tomorrow.getDate() + 1)
+                              tomorrow.setHours(0, 0, 0, 0)
 
-                                const availableFrom = new Date(shelfDetails.availableFrom)
-                                availableFrom.setHours(0, 0, 0, 0)
+                              const availableFrom = new Date(shelfDetails.availableFrom)
+                              availableFrom.setHours(0, 0, 0, 0)
 
-                                const minDate = availableFrom > tomorrow ? availableFrom : tomorrow
+                              const minDate = availableFrom > tomorrow ? availableFrom : tomorrow
 
-                                if (date < minDate) return true
+                              if (date < minDate) return true
 
-                                // Check if date falls within any rental period
-                                if (rentalSchedule) {
-                                  for (const rental of rentalSchedule) {
-                                    // Only block dates for active or payment_pending rentals
-                                    if (rental.status === "active" ||
-                                        rental.status === "payment_pending") {
-                                      const rentalStart = new Date(rental.startDate)
-                                      const rentalEnd = new Date(rental.endDate)
-                                      rentalStart.setHours(0, 0, 0, 0)
-                                      rentalEnd.setHours(23, 59, 59, 999)
+                              // Check if date falls within any rental period
+                              if (rentalSchedule) {
+                                for (const rental of rentalSchedule) {
+                                  // Only block dates for active or payment_pending rentals
+                                  if (rental.status === "active" ||
+                                    rental.status === "payment_pending") {
+                                    const rentalStart = new Date(rental.startDate)
+                                    const rentalEnd = new Date(rental.endDate)
+                                    rentalStart.setHours(0, 0, 0, 0)
+                                    rentalEnd.setHours(23, 59, 59, 999)
 
-                                      if (date >= rentalStart && date <= rentalEnd) {
-                                        return true // Date is within a rental period
-                                      }
+                                    if (date >= rentalStart && date <= rentalEnd) {
+                                      return true // Date is within a rental period
                                     }
                                   }
                                 }
+                              }
 
-                                return false
-                              }}
-                            />
-                          </PopoverContent>
-                        </Popover>
+                              return false
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
 
-                        {/* Rental Duration Display - Always Visible */}
-                        <div
-                          className="flex flex-col items-center justify-center min-w-[100px] h-10 px-4 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
-                          data-selected={!!(dateRange?.from && dateRange?.to)}
-                        >
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-sm font-medium">
-                              {dateRange?.from && dateRange?.to
-                                ? calculateRentalMonths(dateRange.from, dateRange.to)
-                                : "1"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {dateRange?.from && dateRange?.to ? (
-                                language === "ar"
-                                  ? calculateRentalMonths(dateRange.from, dateRange.to) === 1
-                                    ? "شهر"
-                                    : calculateRentalMonths(dateRange.from, dateRange.to) === 2
-                                    ? "شهرين"
-                                    : "أشهر"
-                                  : calculateRentalMonths(dateRange.from, dateRange.to) === 1
-                                    ? "month"
-                                    : "months"
-                              ) : (
-                                language === "ar" ? "شهر كحد أدنى" : "month minimum"
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rental Schedule Display */}
-                      {rentalSchedule && rentalSchedule.length > 0 && (
-                        <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">
-                            {language === "ar" ? "الحجوزات الحالية" : "Current Bookings"}
-                          </Label>
-                          <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                            {rentalSchedule
-                              .filter(r => r.status === "active" || r.status === "payment_pending")
-                              .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-                              .map((rental, index) => (
-                                <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
-                                  <span className="font-medium">{rental.brandName}</span>
-                                  <span className="text-muted-foreground">
-                                    {new Date(rental.startDate).toLocaleDateString()} - {new Date(rental.endDate).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Price Display - Always Visible */}
+                      {/* Rental Duration Display - Always Visible */}
                       <div
-                        className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                        className="flex flex-col items-center justify-center min-w-[100px] h-10 px-4 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
                         data-selected={!!(dateRange?.from && dateRange?.to)}
                       >
-                        <span className="text-sm text-muted-foreground">
-                          {dateRange?.from && dateRange?.to
-                            ? t("rental.total_price")
-                            : t("marketplace.price_per_month")}
-                        </span>
-                        <span className="text-lg font-semibold flex items-baseline gap-1">
-                          {dateRange?.from && dateRange?.to ? (
-                            formatCurrency(
-                              shelfDetails.monthlyPrice * calculateRentalMonths(dateRange.from, dateRange.to),
-                              language
-                            )
-                          ) : (
-                            <>
-                              {formatCurrency(shelfDetails.monthlyPrice, language)}
-                              <span className="text-sm font-normal text-muted-foreground">/{language === "ar" ? "شهر" : "month"}</span>
-                            </>
-                          )}
-                        </span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-medium">
+                            {dateRange?.from && dateRange?.to
+                              ? calculateRentalMonths(dateRange.from, dateRange.to)
+                              : "1"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {dateRange?.from && dateRange?.to ? (
+                              language === "ar"
+                                ? calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                  ? "شهر"
+                                  : calculateRentalMonths(dateRange.from, dateRange.to) === 2
+                                    ? "شهرين"
+                                    : "أشهر"
+                                : calculateRentalMonths(dateRange.from, dateRange.to) === 1
+                                  ? "month"
+                                  : "months"
+                            ) : (
+                              language === "ar" ? "شهر كحد أدنى" : "month minimum"
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {activeRequest?.status === 'payment_pending' ? (
-                      <Button
-                        type="button"
-                        size="lg"
-                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                        onClick={handlePayment}
-                        disabled={processingPayment}
-                      >
-                        {processingPayment ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+
+                    {/* Rental Schedule Display */}
+                    {rentalSchedule && rentalSchedule.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          {language === "ar" ? "الحجوزات الحالية" : "Current Bookings"}
+                        </Label>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                          {rentalSchedule
+                            .filter(r => r.status === "active" || r.status === "payment_pending")
+                            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                            .map((rental, index) => (
+                              <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
+                                <span className="font-medium">{rental.brandName}</span>
+                                <span className="text-muted-foreground">
+                                  {new Date(rental.startDate).toLocaleDateString()} - {new Date(rental.endDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Price Display - Always Visible */}
+                    <div
+                      className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
+                      data-selected={!!(dateRange?.from && dateRange?.to)}
+                    >
+                      <span className="text-sm text-muted-foreground">
+                        {dateRange?.from && dateRange?.to
+                          ? t("rental.total_price")
+                          : t("marketplace.price_per_month")}
+                      </span>
+                      <span className="text-lg font-semibold flex items-baseline gap-1">
+                        {dateRange?.from && dateRange?.to ? (
+                          formatCurrency(
+                            shelfDetails.monthlyPrice * calculateRentalMonths(dateRange.from, dateRange.to),
+                            language
+                          )
                         ) : (
-                          <span className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5" />
-                            {language === "ar" ? "ادفع الآن" : "Pay Now"}
-                          </span>
+                          <>
+                            {formatCurrency(shelfDetails.monthlyPrice, language)}
+                            <span className="text-sm font-normal text-muted-foreground">/{language === "ar" ? "شهر" : "month"}</span>
+                          </>
                         )}
-                      </Button>
-                    ) : (
-                      <Button
-                        type="submit"
-                        size="lg"
-                        className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                        disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
-                      >
-                        {activeRequest?.status === 'rejected' ? (
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {activeRequest?.status === 'payment_pending' ? (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                      onClick={handlePayment}
+                      disabled={processingPayment}
+                    >
+                      {processingPayment ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="h-5 w-5" />
+                          {language === "ar" ? "ادفع الآن" : "Pay Now"}
+                        </span>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                      disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
+                    >
+                      {activeRequest?.status === 'rejected' ? (
                         <span className="flex items-center gap-2">
                           <X className="h-5 w-5" />
                           {language === "ar" ? "الطلب مرفوض" : "Request Rejected"}
@@ -1023,8 +1027,8 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         </span>
                       )}
                     </Button>
-                    )}
-                  </div>
+                  )}
+                </div>
               </CardContent>
             </form>
           </Card>
@@ -1059,10 +1063,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                     <div className="text-center">
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
                       <p className="text-sm">
-                        {!userId 
+                        {!userId
                           ? t("form.login_first")
-                          : (language === "ar" 
-                            ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر" 
+                          : (language === "ar"
+                            ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر"
                             : "Submit a rental request first to chat with the store owner")
                         }
                       </p>

@@ -1,0 +1,55 @@
+---
+description: State management patterns and client-side state handling
+globs: **/*.tsx, **/*.ts
+---
+
+# State Management
+
+## Minimize Client-Side State
+
+- Prefer Server Components and server state over client state
+- Only use client state when absolutely necessary
+- Implement proper state synchronization patterns
+- Avoid unnecessary state that can be derived from props
+
+## React Context Usage
+
+- Use **React Context** only when truly necessary
+- Create focused, single-purpose context providers
+- Implement proper context boundaries and memoization
+- Avoid overusing context for global state management
+
+## Server State Management
+
+- Use Convex for real-time, server-managed state
+- Implement proper subscription patterns
+- Handle connection states and error recovery
+- Use optimistic updates for immediate feedback
+
+## Local Component State
+
+- Use `useState` for simple component state
+- Implement proper state initialization
+- Avoid complex state objects - prefer multiple useState calls
+- Use `useReducer` for complex state transitions
+
+## State Synchronization
+
+- Implement proper loading and error states
+- Handle race conditions in async operations
+- Use proper cleanup in useEffect hooks
+- Implement state persistence when needed
+
+## Performance Considerations
+
+- Memoize expensive computations with `useMemo`
+- Use `useCallback` for stable function references
+- Implement proper dependency arrays
+- Avoid unnecessary re-renders with React.memo
+
+## Custom Hooks
+
+- Create reusable custom hooks for shared logic
+- Follow the "rules of hooks" strictly
+- Implement proper cleanup in custom hooks
+- Document custom hooks with clear usage examples

@@ -1,0 +1,51 @@
+---
+description: Data fetching patterns, Server Actions, and caching strategies
+globs: **/*.tsx, **/*.ts, convex/*.ts
+---
+
+# Data Fetching and Server Actions
+
+## Server Components for Data Fetching
+
+- Use Server Components for initial data fetching when possible
+- Fetch data at the component level, not in useEffect
+- Handle loading and error states appropriately
+- Implement proper error boundaries for data-dependent components
+
+## Server Actions
+
+- Prefer **Server Actions** for mutations and form handling
+- Use `'use server'` directive at the top of server action functions
+- Implement proper server-side validation with Zod schemas
+- Return typed results from server actions
+- Handle errors gracefully and provide user feedback
+
+## Caching Strategies
+
+- Use appropriate cache directives:
+  - `'no-store'` for dynamic, real-time data
+  - `'revalidate'` for time-based cache invalidation
+  - `'cache'` for static data that rarely changes
+- Implement proper cache invalidation patterns
+- Use `cache()` function for expensive computations
+
+## Convex Integration
+
+- Use Convex queries for real-time data requirements
+- Implement optimistic updates for better UX
+- Handle subscription cleanup properly
+- Use proper error handling for Convex mutations
+
+## Data Validation
+
+- Always validate inputs before database operations
+- Use Zod schemas for runtime type checking
+- Implement proper error messages and validation feedback
+- Handle edge cases and malformed data gracefully
+
+## API Design
+
+- Keep API functions focused and single-purpose
+- Use descriptive function names that indicate their purpose
+- Implement proper error handling and logging
+- Document API functions with JSDoc comments

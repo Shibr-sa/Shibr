@@ -15,7 +15,7 @@ export const STRING_LIMITS = {
   EMAIL_MAX: 100,
   PASSWORD_MIN: 8,
   PASSWORD_MAX: 100,
-  
+
   // Store & Business
   STORE_NAME_MIN: 2,
   STORE_NAME_MAX: 100,
@@ -23,7 +23,7 @@ export const STRING_LIMITS = {
   VAT_NUMBER_LENGTH: 15,
   ADDRESS_MIN: 5,
   ADDRESS_MAX: 200,
-  
+
   // Shelf & Product
   SHELF_NAME_MIN: 2,
   SHELF_NAME_MAX: 100,
@@ -31,12 +31,12 @@ export const STRING_LIMITS = {
   BRANCH_NAME_MAX: 100,
   PRODUCT_TYPE_MAX: 100,
   DESCRIPTION_MAX: 500,
-  
+
   // Messages & Content
   MESSAGE_MAX: 1000,
   SEARCH_QUERY_MAX: 100,
   FILE_NAME_MAX: 255,
-  
+
   // URLs & Technical
   URL_MAX: 2000,
   SLUG_MAX: 100,
@@ -50,27 +50,27 @@ export const NUMERIC_LIMITS = {
   // Prices (in SAR)
   PRICE_MIN: 0,
   PRICE_MAX: 1000000,
-  
+
   // Percentages
   PERCENTAGE_MIN: 0,
   PERCENTAGE_MAX: 100,
   DEFAULT_BRAND_SALES_COMMISSION: 8,
   DEFAULT_STORE_RENT_COMMISSION: 10,
   DEFAULT_MAX_DISCOUNT: 22,
-  
+
   // Dimensions (in cm)
   DIMENSION_MIN: 1,
   DIMENSION_MAX: 1000,
-  
+
   // Duration (in days)
   RENTAL_DURATION_MIN: 30,
   RENTAL_DURATION_MAX: 365,
-  
+
   // Pagination
   PAGE_SIZE_DEFAULT: 10,
   PAGE_SIZE_MIN: 1,
   PAGE_SIZE_MAX: 100,
-  
+
   // File Sizes (in bytes)
   FILE_SIZE_MAX: 10 * 1024 * 1024, // 10MB
   IMAGE_SIZE_MAX: 5 * 1024 * 1024, // 5MB
@@ -87,30 +87,30 @@ export const PATTERNS = {
   STORE_NAME: /^[a-zA-Z0-9\s\u0600-\u06FF\-\.]+$/, // Alphanumeric + Arabic + dash/dot
   ALPHANUMERIC: /^[a-zA-Z0-9]+$/,
   ALPHANUMERIC_WITH_SPACES: /^[a-zA-Z0-9\s]+$/,
-  
+
   // Numbers (English numerals only)
   DIGITS_ONLY: /^\d+$/,
   DECIMAL_NUMBER: /^\d+(\.\d{1,2})?$/, // Up to 2 decimal places
   PRICE: /^\d+(\.\d{1,2})?$/, // Price format
   PERCENTAGE: /^(100(\.0{1,2})?|\d{1,2}(\.\d{1,2})?)$/, // 0-100 with decimals
-  
+
   // Phone Numbers
   SAUDI_PHONE: /^(05\d{8}|5\d{8}|\+9665\d{8}|9665\d{8})$/,
   INTERNATIONAL_PHONE: /^\+?[\d\s\-\(\)]{10,20}$/,
-  
+
   // Business Identifiers
   COMMERCIAL_RECORD: /^\d{10}$/,
   VAT_NUMBER: /^\d{15}$/,
-  
+
   // Dates (Gregorian only, YYYY-MM-DD format)
   DATE_ISO: /^\d{4}-\d{2}-\d{2}$/,
   DATE_TIME_ISO: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/,
-  
+
   // Web & Technical
   EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   URL: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
   SLUG: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-  
+
   // Security
   STRONG_PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
   NO_SPECIAL_CHARS: /^[a-zA-Z0-9\s\u0600-\u06FF]*$/,
@@ -126,15 +126,15 @@ export const DATE_FORMATS = {
   DISPLAY_SHORT: 'dd/MM/yyyy', // 15/01/2024
   DISPLAY_LONG: 'd MMM yyyy', // 15 Jan 2024
   DISPLAY_FULL: 'd MMMM yyyy', // 15 January 2024
-  
+
   // Time formats
   TIME_12H: 'h:mm a', // 3:30 PM
   TIME_24H: 'HH:mm', // 15:30
-  
+
   // Combined formats
   DATETIME_SHORT: 'dd/MM/yyyy HH:mm',
   DATETIME_LONG: 'd MMM yyyy, h:mm a',
-  
+
   // ISO format for storage
   ISO: 'yyyy-MM-dd',
   ISO_DATETIME: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
@@ -207,6 +207,215 @@ export const PRODUCT_CATEGORIES = [
 ] as const
 
 // ============================================
+// Store Business Categories - Arabic
+// ============================================
+
+export const STORE_BUSINESS_CATEGORIES_AR = [
+  // Retail & Trade
+  'البقالات والسوبر ماركت', // Grocery stores and supermarkets
+  'المتاجر الإلكترونية', // Electronics stores
+  'متاجر الملابس والأزياء', // Clothing and fashion stores
+  'متاجر الأحذية', // Shoe stores
+  'متاجر الأدوات المنزلية', // Home appliances stores
+  'متاجر الأثاث', // Furniture stores
+  'متاجر الأدوات والمعدات', // Tools and equipment stores
+  'مكتبات وقرطاسية', // Bookstores and stationery
+
+  // Food & Beverages
+  'مطاعم ومقاهي', // Restaurants and cafes
+  'متاجر المواد الغذائية', // Food stores
+  'مخابز ومعجنات', // Bakeries and pastries
+  'جزارات ولحوم', // Butcher shops
+  'متاجر الخضار والفواكه', // Fruits and vegetables stores
+
+  // Health & Beauty
+  'صيدليات', // Pharmacies
+  'مراكز التجميل', // Beauty centers
+  'متاجر مستحضرات التجميل', // Cosmetics stores
+  'عيادات طبية', // Medical clinics
+  'مختبرات طبية', // Medical laboratories
+
+  // Services
+  'خدمات الصيانة والإصلاح', // Maintenance and repair services
+  'خدمات النظافة', // Cleaning services
+  'خدمات النقل والتوصيل', // Transportation and delivery services
+  'خدمات التعليم', // Education services
+  'مكاتب محاسبة', // Accounting offices
+
+  // Technology & Communication
+  'متاجر الهواتف والإكسسوارات', // Mobile phones and accessories stores
+  'مراكز صيانة الهواتف', // Mobile phone repair centers
+  'متاجر الحواسيب والأجهزة', // Computer and device stores
+  'شركات الاتصالات', // Telecommunications companies
+
+  // Automotive
+  'معارض السيارات', // Car showrooms
+  'ورش صيانة السيارات', // Car repair shops
+  'متاجر قطع غيار السيارات', // Auto parts stores
+  'محطات الوقود', // Gas stations
+
+  // Entertainment & Sports
+  'متاجر الألعاب والترفيه', // Toys and entertainment stores
+  'متاجر المعدات الرياضية', // Sports equipment stores
+  'صالات الألعاب الرياضية', // Sports halls
+  'مراكز الترفيه', // Entertainment centers
+
+  // Real Estate & Construction
+  'مكاتب عقارية', // Real estate offices
+  'متاجر مواد البناء', // Construction materials stores
+  'ورش البناء والمقاولات', // Construction and contracting workshops
+
+  // Other Services
+  'مكاتب استشارات', // Consulting offices
+  'مكاتب محاماة', // Law offices
+  'مكاتب تأمين', // Insurance offices
+  'متاجر الهدايا والهدايا التذكارية', // Gift and souvenir stores
+  'خدمات أخرى', // Other services
+] as const
+
+// ============================================
+// Store Business Categories - English
+// ============================================
+
+export const STORE_BUSINESS_CATEGORIES_EN = [
+  'Supermarket',
+  'Electronics Store',
+  'Clothing Store',
+  'Shoe Store',
+  'Home Appliances Store',
+  'Furniture Store',
+  'Hardware Store',
+  'Bookstore & Stationery',
+  'Restaurant & Cafe',
+  'Food Store',
+  'Bakery & Pastry',
+  'Butcher Shop',
+  'Fruits & Vegetables Store',
+  'Pharmacy',
+  'Beauty Center',
+  'Cosmetics Store',
+  'Medical Clinic',
+  'Medical Laboratory',
+  'Maintenance & Repair Services',
+  'Cleaning Services',
+  'Transportation & Delivery Services',
+  'Education Services',
+  'Accounting Office',
+  'Mobile Phones & Accessories Store',
+  'Mobile Phone Repair Center',
+  'Computer & Device Store',
+  'Telecommunications Company',
+  'Car Showroom',
+  'Car Repair Shop',
+  'Auto Parts Store',
+  'Gas Station',
+  'Toys & Entertainment Store',
+  'Sports Equipment Store',
+  'Sports Hall',
+  'Entertainment Center',
+  'Real Estate Office',
+  'Construction Materials Store',
+  'Construction & Contracting Workshop',
+  'Consulting Office',
+  'Law Office',
+  'Insurance Office',
+  'Gift & Souvenir Store',
+  'Other Services'
+] as const
+
+// ============================================
+// Brand Business Categories - Arabic
+// ============================================
+
+export const BRAND_BUSINESS_CATEGORIES_AR = [
+  // Consumer Products
+  'منتجات إلكترونية وتقنية', // Electronics and technology products
+  'ملابس وأزياء', // Clothing and fashion
+  'أحذية وإكسسوارات', // Shoes and accessories
+  'منتجات تجميل وصحة', // Beauty and health products
+  'منتجات منزلية وأدوات', // Home and tools products
+  'أثاث وديكور', // Furniture and decor
+  'ألعاب وترفيه', // Toys and entertainment
+  'منتجات رياضية', // Sports products
+
+  // Food & Beverages
+  'منتجات غذائية ومشروبات', // Food and beverages
+  'منتجات عضوية وبيئية', // Organic and eco-friendly products
+  'مكملات غذائية', // Dietary supplements
+  'منتجات أطفال', // Baby products
+
+  // Health & Wellness
+  'منتجات العناية الشخصية', // Personal care products
+  'مستحضرات تجميل', // Cosmetics
+  'منتجات العناية بالبشرة', // Skincare products
+  'منتجات العناية بالشعر', // Hair care products
+
+  // Technology & Gadgets
+  'هواتف وإكسسوارات', // Phones and accessories
+  'حواسيب وأجهزة', // Computers and devices
+  'أجهزة منزلية ذكية', // Smart home devices
+  'إكسسوارات تقنية', // Tech accessories
+
+  // Fashion & Lifestyle
+  'ملابس رياضية', // Sportswear
+  'إكسسوارات الموضة', // Fashion accessories
+  'منتجات العناية بالملابس', // Clothing care products
+  'منتجات الحرف اليدوية', // Handmade products
+
+  // Other Categories
+  'منتجات موسمية', // Seasonal products
+  'منتجات خاصة', // Niche products
+  'منتجات مستدامة', // Sustainable products
+  'منتجات أخرى' // Other products
+] as const
+
+// ============================================
+// Brand Business Categories - English
+// ============================================
+
+export const BRAND_BUSINESS_CATEGORIES_EN = [
+  'Electronics & Technology',
+  'Clothing & Fashion',
+  'Shoes & Accessories',
+  'Beauty & Health Products',
+  'Home & Tools',
+  'Furniture & Decor',
+  'Toys & Entertainment',
+  'Sports Products',
+  'Food & Beverages',
+  'Organic & Eco-friendly Products',
+  'Dietary Supplements',
+  'Baby Products',
+  'Personal Care Products',
+  'Cosmetics',
+  'Skincare Products',
+  'Hair Care Products',
+  'Phones & Accessories',
+  'Computers & Devices',
+  'Smart Home Devices',
+  'Tech Accessories',
+  'Sportswear',
+  'Fashion Accessories',
+  'Clothing Care Products',
+  'Handmade Products',
+  'Seasonal Products',
+  'Niche Products',
+  'Sustainable Products',
+  'Other Products'
+] as const
+
+// ============================================
+// Combined Business Categories (for backward compatibility)
+// ============================================
+
+export const SAUDI_BUSINESS_CATEGORIES = [
+  ...STORE_BUSINESS_CATEGORIES_AR,
+  ...STORE_BUSINESS_CATEGORIES_EN,
+  ...BRAND_BUSINESS_CATEGORIES_AR,
+  ...BRAND_BUSINESS_CATEGORIES_EN
+] as const
+
+// ============================================
 // Status Types
 // ============================================
 
@@ -251,20 +460,20 @@ export const ERROR_MESSAGES = {
   INVALID_FORMAT: 'Invalid format',
   TOO_SHORT: 'Too short',
   TOO_LONG: 'Too long',
-  
+
   // Authentication
   INVALID_CREDENTIALS: 'Invalid email or password',
   PASSWORD_MISMATCH: 'Passwords do not match',
   WEAK_PASSWORD: 'Password must contain uppercase, lowercase, number, and special character',
-  
+
   // Files
   FILE_TOO_LARGE: 'File size exceeds limit',
   INVALID_FILE_TYPE: 'Invalid file type',
-  
+
   // Network
   NETWORK_ERROR: 'Network error. Please try again',
   SERVER_ERROR: 'Server error. Please try again later',
-  
+
   // Validation
   INVALID_EMAIL: 'Invalid email address',
   INVALID_PHONE: 'Invalid phone number',

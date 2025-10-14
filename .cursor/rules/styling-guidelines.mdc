@@ -1,0 +1,56 @@
+---
+description: Styling patterns, Tailwind CSS usage, and design system guidelines
+globs: **/*.tsx, **/*.ts, **/*.css
+---
+
+# Styling Guidelines
+
+## Tailwind CSS Best Practices
+
+- Use **Tailwind CSS** utility classes for styling
+- Follow mobile-first responsive design approach
+- Keep class names short and meaningful
+- Use consistent spacing and color patterns
+
+## Component-Level Styling
+
+- Prefer component-level styling via Tailwind classes
+- Avoid global CSS when possible
+- Use CSS modules or styled-components only when necessary
+- Implement consistent design tokens and variables
+
+## Responsive Design
+
+- Implement **mobile-first** approach with responsive breakpoints
+- Use Tailwind's responsive prefixes: `sm:`, `md:`, `lg:`, `xl:`
+- Test designs across different screen sizes
+- Implement proper touch targets for mobile devices
+
+## Design System Consistency
+
+- Use shadcn/ui components for consistent UI patterns
+- Follow established color palette and typography
+- Maintain consistent spacing and sizing scales
+- Implement proper focus and hover states
+
+## CSS Organization
+
+- Place shared styles in `globals.css` or `components/ui`
+- Use CSS custom properties for theme variables
+- Implement proper CSS cascade and specificity
+- Avoid !important declarations when possible
+
+## Performance Optimization
+
+- Minimize CSS bundle size with purging unused styles
+- Implement critical CSS loading for above-the-fold content
+- Use CSS containment for better performance
+- Optimize font loading and icon delivery
+
+## Accessibility
+
+- Implement proper color contrast ratios
+- Use semantic color names and accessible color combinations
+- Ensure focus indicators are visible and accessible
+- Support reduced motion preferences
+- Implement proper ARIA attributes for custom UI components

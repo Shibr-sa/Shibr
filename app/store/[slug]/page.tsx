@@ -78,12 +78,15 @@ export default function StorePage() {
       incrementStats({
         shelfStoreId: store._id,
         statType: isQrScan ? "scan" : "view",
-      }).catch(console.error)
+      }).catch(() => {
+        // Silently ignore stats tracking errors
+        // These are not critical to the user experience
+      })
 
       // Set store slug in cart
       cart.setStoreSlug(slug)
     }
-  }, [store?._id, slug])
+  }, [store?._id, slug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddToCart = (product: any, customQuantity?: number) => {
     const quantityToAdd = customQuantity || 1
@@ -278,53 +281,53 @@ export default function StorePage() {
                 (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()))
               )
               .map((product: any) => (
-              <Card
-                key={product._id}
-                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleProductClick(product)}
-              >
-                {product.imageUrl && (
-                  <div className="aspect-square relative bg-muted">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="text-lg line-clamp-2">
-                    {product.name}
-                  </CardTitle>
-                  <CardDescription className="text-sm mt-2 line-clamp-2 min-h-[2.5rem]">
-                    {product.description || "\u00A0"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-lg sm:text-xl font-bold">
-                      {formatCurrency(product.price, language)}
-                    </p>
-                    <Button
-                      className="min-w-fit"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAddToCart(product)
-                      }}
-                      disabled={!product.available || product.shelfQuantity === 0}
-                    >
-                      <ShoppingCart className="h-4 w-4 sm:me-2" />
-                      <span className="hidden sm:inline">
-                        {product.available && product.shelfQuantity > 0
-                          ? t("store.add_to_cart")
-                          : t("store.out_of_stock")}
-                      </span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                <Card
+                  key={product._id}
+                  className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => handleProductClick(product)}
+                >
+                  {product.imageUrl && (
+                    <div className="aspect-square relative bg-muted">
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-lg line-clamp-2">
+                      {product.name}
+                    </CardTitle>
+                    <CardDescription className="text-sm mt-2 line-clamp-2 min-h-[2.5rem]">
+                      {product.description || "\u00A0"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-lg sm:text-xl font-bold">
+                        {formatCurrency(product.price, language)}
+                      </p>
+                      <Button
+                        className="min-w-fit"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddToCart(product)
+                        }}
+                        disabled={!product.available || product.shelfQuantity === 0}
+                      >
+                        <ShoppingCart className="h-4 w-4 sm:me-2" />
+                        <span className="hidden sm:inline">
+                          {product.available && product.shelfQuantity > 0
+                            ? t("store.add_to_cart")
+                            : t("store.out_of_stock")}
+                        </span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
           </div>
         ) : (
           <Card>

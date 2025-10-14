@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 // FAQ items will be created dynamically using translations
 
-export default function شبرLandingPage() {
+export default function ShibrLandingPage() {
   const { t, direction } = useLanguage()
   const [activeServiceType, setActiveServiceType] = useState<"stores" | "centers">("stores")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -31,8 +31,8 @@ export default function شبرLandingPage() {
   const getDashboardPath = () => {
     if (!user) return "/"
     return user.accountType === "store_owner" ? "/store-dashboard" :
-           user.accountType === "brand_owner" ? "/brand-dashboard" :
-           user.accountType === "admin" ? "/admin-dashboard" : "/"
+      user.accountType === "brand_owner" ? "/brand-dashboard" :
+        user.accountType === "admin" ? "/admin-dashboard" : "/"
   }
 
   // Handle smooth scrolling for hash links

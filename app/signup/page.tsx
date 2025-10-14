@@ -136,11 +136,23 @@ export default function SignUpPage() {
         sessionStorage.setItem('signupData', JSON.stringify(signupData))
         router.push('/verify-email')
       } else {
+        // Check if error is a translation key or actual message
+        const errorMessage = result.error?.includes(".")
+          ? t(result.error as any)
+          : result.error || t("auth.signup_failed")
+
         toast({
           title: t("auth.error"),
-          description: result.error || t("auth.signup_failed"),
+          description: errorMessage,
           variant: "destructive",
         })
+
+        // If account already exists, redirect to signin after showing error
+        if (result.error === "auth.account_already_exists") {
+          setTimeout(() => {
+            router.push('/signin')
+          }, 3000)
+        }
       }
     } catch (error: any) {
       toast({

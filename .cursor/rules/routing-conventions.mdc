@@ -1,0 +1,62 @@
+---
+description: Next.js App Router conventions and routing patterns
+globs: app/**/*.tsx, app/**/*.ts
+---
+
+# Routing Conventions
+
+## App Router Structure
+
+- Use Next.js App Router directory structure
+- Implement proper route segmentation with folders
+- Use `page.tsx` files for route components
+- Use `layout.tsx` files for shared layouts
+- Implement `loading.tsx` and `error.tsx` for route states
+
+## Route Organization
+
+- Group related routes in logical directory structures
+- Use dynamic routes with `[slug]` or `[id]` patterns
+- Implement nested routes for complex UIs
+- Use parallel routes and intercepting routes when needed
+- Keep route logic thin and focused
+
+## Route-Level States
+
+- Implement `loading.tsx` for route-level loading states
+- Use `error.tsx` for route-level error boundaries
+- Implement `not-found.tsx` for 404 states
+- Use `layout.tsx` for shared UI and state management
+- Handle route transitions gracefully
+
+## Dynamic Routes
+
+- Use descriptive parameter names: `[userId]`, `[productSlug]`
+- Implement proper parameter validation
+- Handle invalid route parameters gracefully
+- Generate static params for better performance
+- Use proper fallback strategies for dynamic routes
+
+## Route Protection
+
+- Implement authentication checks in layouts
+- Use middleware for route-level protection
+- Handle unauthorized access gracefully
+- Implement proper redirects for authentication flows
+- Cache protected route data appropriately
+
+## SEO and Metadata
+
+- Implement proper metadata for each route
+- Use `generateMetadata` for dynamic metadata
+- Implement Open Graph and Twitter Card tags
+- Handle canonical URLs and redirects
+- Optimize meta descriptions and titles
+
+## Navigation Patterns
+
+- Use Next.js `Link` component for client-side navigation
+- Implement proper loading states for navigation
+- Handle navigation errors gracefully
+- Implement breadcrumb navigation for complex routes
+- Use programmatic navigation when needed

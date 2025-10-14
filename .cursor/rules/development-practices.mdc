@@ -1,0 +1,68 @@
+---
+description: Development workflow, tooling, and code quality practices
+globs: **/*.tsx, **/*.ts, **/*.js, **/*.json
+---
+
+# Development Practices
+
+## Package Management
+
+- Use **Yarn** as the package manager
+- Keep dependencies updated and secure
+- Use `yarn.lock` for reproducible builds
+- Audit dependencies regularly for security vulnerabilities
+
+## Code Quality
+
+- Enforce consistent linting with ESLint
+- Use Prettier for code formatting
+- Implement strict TypeScript configuration
+- Write comprehensive unit and integration tests
+- Maintain high code coverage standards
+
+## Git Workflow
+
+- Maintain a clear and clean git history
+- Use descriptive commit messages
+- Implement proper branching strategy
+- Use pull requests for code reviews
+- Follow conventional commit message format
+
+## Environment Management
+
+- Use environment variables via `.env.local`
+- Never commit sensitive data to version control
+- Implement proper environment separation
+- Use different configurations for development/staging/production
+
+## TypeScript Best Practices
+
+- Write type-safe code with strict TypeScript config
+- Use proper type annotations and interfaces
+- Implement generic types for reusable components
+- Avoid `any` type usage - use proper type definitions
+- Leverage TypeScript's type inference capabilities
+
+## Error Handling
+
+- Implement comprehensive error boundaries
+- Use proper error logging and monitoring
+- Provide meaningful error messages to users
+- Handle both client-side and server-side errors
+- Implement graceful degradation for error states
+
+## Documentation
+
+- Document complex business logic with comments
+- Use JSDoc for public API functions
+- Maintain up-to-date README files
+- Document environment setup and deployment processes
+- Keep API documentation current and accurate
+
+## Security Practices
+
+- Validate all user inputs on server side
+- Implement proper authentication and authorization
+- Use HTTPS for all production deployments
+- Implement Content Security Policy (CSP) headers
+- Regularly update dependencies for security patches

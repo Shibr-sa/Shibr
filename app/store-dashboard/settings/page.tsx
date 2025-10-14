@@ -19,6 +19,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { validateSaudiIBAN, SAUDI_BANKS } from "@/lib/saudi-iban-validator"
 import { cn } from "@/lib/utils"
+import { STORE_BUSINESS_CATEGORIES_AR, STORE_BUSINESS_CATEGORIES_EN } from "@/lib/constants"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -27,6 +28,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useStoreData } from "@/contexts/store-data-context"
 import { ImageCropper } from "@/components/image-cropper"
 import { StoreProfileCompletionProgress } from "@/components/store-profile-completion-progress"
+import { Combobox } from "@/components/ui/combobox"
+import { logError, logApiError, logValidation } from "@/lib/error-logger"
 
 export default function StoreDashboardSettingsPage() {
   const { t, direction, language } = useLanguage()
@@ -51,13 +54,17 @@ export default function StoreDashboardSettingsPage() {
   const [hasInitialized, setHasInitialized] = useState(false)
   const [isStoreDataLocked, setIsStoreDataLocked] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
-  
+
+  // Validation states
+  const [websiteError, setWebsiteError] = useState<string>("")
+  const [crNumberError, setCrNumberError] = useState<string>("")
+
   // Form states for General tab
   const [ownerName, setOwnerName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  
+
   // Form states for Store Data tab
   const [storeName, setStoreName] = useState("")
   const [businessCategory, setBusinessCategory] = useState("")
@@ -66,17 +73,17 @@ export default function StoreDashboardSettingsPage() {
   const [city, setCity] = useState("")
   const [area, setArea] = useState("")
   const [address, setAddress] = useState("")
-  
+
   // Form states for Payment dialog
   const [bankCode, setBankCode] = useState("")
   const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
-  const [ibanValidation, setIbanValidation] = useState<{isValid: boolean; error?: string; bankName?: string}>({isValid: false})
+  const [ibanValidation, setIbanValidation] = useState<{ isValid: boolean; error?: string; bankName?: string; formattedIBAN?: string }>({ isValid: false })
   const [ibanCertificateFile, setIbanCertificateFile] = useState<File | null>(null)
   const [ibanCertificateUrl, setIbanCertificateUrl] = useState<string | null>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Convex mutations
   const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
   const updateStoreData = useMutation(api.users.updateStoreData)
@@ -91,7 +98,7 @@ export default function StoreDashboardSettingsPage() {
   const bankAccounts = useQuery(api.bankAccounts.getBankAccounts, user ? {} : "skip")
   // TODO: Create a query for store owners to fetch their payment records
   const paymentRecords = null // Temporarily disabled until proper query is created
-  
+
   // Update tab when URL parameter changes
   useEffect(() => {
     const tabParam = searchParams.get("tab")
@@ -105,12 +112,12 @@ export default function StoreDashboardSettingsPage() {
     if (storeUserData && !hasInitialized) {
       // Profile data is nested under the profile property
       const profile = storeUserData.profile
-      
+
       // Load basic user data (always available)
       setOwnerName(profile?.fullName || storeUserData.name || "")
       setPhoneNumber(profile?.phoneNumber || storeUserData.phone || "")
       setEmail(profile?.email || storeUserData.email || "")
-      
+
       // Load store-specific data (only if profile exists)
       setStoreName(profile?.storeName || "")
       setBusinessCategory(profile?.businessCategory || "")
@@ -125,7 +132,7 @@ export default function StoreDashboardSettingsPage() {
       if (profile?.storeName && profile?.businessCategory && profile?.commercialRegisterNumber) {
         setIsStoreDataLocked(true)
       }
-      
+
       // Handle initial document URL loading
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
       if (backendDocumentUrl) {
@@ -137,17 +144,17 @@ export default function StoreDashboardSettingsPage() {
           setDocumentUrl(tempUrl)
         }
       }
-      
+
       setHasInitialized(true)
     }
   }, [storeUserData, hasInitialized])
-  
+
   // Separate effect for handling document URL updates after initialization
   useEffect(() => {
     if (storeUserData && hasInitialized) {
       const profile = storeUserData.profile
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
-      
+
       if (backendDocumentUrl && !pendingDocumentFile) {
         // Update document URL if backend has a new one and we're not in the middle of selecting a new file
         setDocumentUrl(backendDocumentUrl)
@@ -156,6 +163,48 @@ export default function StoreDashboardSettingsPage() {
     }
   }, [storeUserData, hasInitialized, pendingDocumentFile])
 
+  // Validation functions
+  const validateWebsite = (url: string): boolean => {
+    if (!url.trim()) {
+      setWebsiteError("")
+      return true // Optional field
+    }
+
+    try {
+      const urlPattern = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+      if (!urlPattern.test(url)) {
+        setWebsiteError(language === 'ar' ? 'يرجى إدخال رابط صحيح (مثال: https://example.com)' : 'Please enter a valid URL (e.g., https://example.com)')
+        return false
+      }
+      setWebsiteError("")
+      return true
+    } catch (error) {
+      setWebsiteError(language === 'ar' ? 'يرجى إدخال رابط صحيح' : 'Please enter a valid URL')
+      return false
+    }
+  }
+
+  const validateSaudiCRNumber = (crNumber: string): boolean => {
+    if (!crNumber.trim()) {
+      setCrNumberError("")
+      return true // Will be validated as required in save function
+    }
+
+    const cleanNumber = crNumber.replace(/[^0-9]/g, '')
+    if (cleanNumber.length !== 10) {
+      setCrNumberError(language === 'ar' ? 'يجب أن يتكون رقم السجل التجاري السعودي من 10 أرقام' : 'Saudi Commercial Registration number must be exactly 10 digits')
+      return false
+    }
+
+    if (!cleanNumber.startsWith('1') && !cleanNumber.startsWith('2')) {
+      setCrNumberError(language === 'ar' ? 'يجب أن يبدأ رقم السجل التجاري السعودي بالرقم 1 أو 2' : 'Saudi Commercial Registration number must start with 1 or 2')
+      return false
+    }
+
+    setCrNumberError("")
+    return true
+  }
+
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -163,6 +212,12 @@ export default function StoreDashboardSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
+      logValidation("profileImage", "Invalid image type", {
+        userId: user?.id,
+        page: "store-dashboard/settings",
+        component: "file-upload",
+        metadata: { fileType: file.type }
+      })
       toast({
         title: t("settings.general.error"),
         description: t("settings.general.invalid_image_type"),
@@ -173,6 +228,12 @@ export default function StoreDashboardSettingsPage() {
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      logValidation("profileImage", "File size too large", {
+        userId: user?.id,
+        page: "store-dashboard/settings",
+        component: "file-upload",
+        metadata: { fileSize: file.size }
+      })
       toast({
         title: t("settings.general.error"),
         description: t("settings.general.image_too_large"),
@@ -193,29 +254,39 @@ export default function StoreDashboardSettingsPage() {
     try {
       // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl()
-      
+
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": croppedBlob.type },
         body: croppedBlob,
       })
-      
+
       const { storageId } = await result.json()
-      
+
       // Get the URL for the uploaded file
-      const imageUrl = await updateProfileImage({
-        profileImageId: storageId,
-      })
-      
+      const imageUrl = await getFileUrl({ storageId })
+
+      // Update the profile image
+      if (imageUrl) {
+        await updateProfileImage({
+          imageUrl: imageUrl,
+        })
+      }
+
       setProfileImageUrl(typeof imageUrl === 'string' ? imageUrl : null)
-      
+
       toast({
         title: t("settings.general.success"),
         description: t("settings.general.image_updated"),
       })
     } catch (error) {
-      console.error("Error uploading image:", error)
+      logApiError("updateProfileImage", error, {
+        userId: user?.id,
+        page: "store-dashboard/settings",
+        action: "upload-profile-image",
+        component: "profile-image-upload"
+      })
       toast({
         title: t("settings.general.error"),
         description: t("settings.general.image_upload_error"),
@@ -277,9 +348,9 @@ export default function StoreDashboardSettingsPage() {
                     className="hidden"
                     onChange={handleFileSelect}
                   />
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="gap-2"
                     disabled={isLoading}
                     onClick={() => fileInputRef.current?.click()}
@@ -353,14 +424,15 @@ export default function StoreDashboardSettingsPage() {
                       {t("settings.store_data.store_type")} *
                       {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                     </Label>
-                    <Input
-                      id="businessCategory"
+                    <Combobox
                       value={businessCategory}
-                      onChange={(e) => !isStoreDataLocked && setBusinessCategory(e.target.value)}
+                      onChange={(value) => !isStoreDataLocked && setBusinessCategory(value)}
+                      options={language === 'ar' ? [...STORE_BUSINESS_CATEGORIES_AR] : [...STORE_BUSINESS_CATEGORIES_EN]}
                       placeholder={t("settings.store_data.store_type_placeholder")}
+                      searchPlaceholder={language === 'ar' ? 'ابحث عن فئة الأعمال...' : 'Search business categories...'}
+                      emptyMessage={language === 'ar' ? 'لا توجد فئات مطابقة' : 'No matching categories found'}
                       disabled={isStoreDataLocked}
                       className={isStoreDataLocked ? "bg-muted" : ""}
-                      required
                     />
                   </div>
                 </div>
@@ -375,11 +447,22 @@ export default function StoreDashboardSettingsPage() {
                     id="website"
                     type="url"
                     value={website}
-                    onChange={(e) => !isStoreDataLocked && setWebsite(e.target.value)}
+                    onChange={(e) => {
+                      if (!isStoreDataLocked) {
+                        setWebsite(e.target.value)
+                        validateWebsite(e.target.value)
+                      }
+                    }}
                     placeholder={t("settings.store_data.website_placeholder")}
                     disabled={isStoreDataLocked}
-                    className={isStoreDataLocked ? "bg-muted" : ""}
+                    className={cn(
+                      isStoreDataLocked ? "bg-muted" : "",
+                      websiteError ? "border-red-500 focus:border-red-500" : ""
+                    )}
                   />
+                  {websiteError && (
+                    <p className="text-xs text-red-500">{websiteError}</p>
+                  )}
                 </div>
 
                 {/* Commercial Registration Number */}
@@ -395,15 +478,22 @@ export default function StoreDashboardSettingsPage() {
                       if (!isStoreDataLocked) {
                         const value = e.target.value.replace(/[^0-9]/g, '')
                         setCommercialRegisterNumber(value)
+                        validateSaudiCRNumber(value)
                       }
                     }}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
                     disabled={isStoreDataLocked}
-                    className={isStoreDataLocked ? "bg-muted" : ""}
+                    className={cn(
+                      isStoreDataLocked ? "bg-muted" : "",
+                      crNumberError ? "border-red-500 focus:border-red-500" : ""
+                    )}
                     pattern="[0-9]*"
                     inputMode="numeric"
                     required
                   />
+                  {crNumberError && (
+                    <p className="text-xs text-red-500">{crNumberError}</p>
+                  )}
                 </div>
 
                 {/* Commercial Register Document Upload Section */}
@@ -471,6 +561,12 @@ export default function StoreDashboardSettingsPage() {
                             if (!file) return
 
                             if (file.size > 10 * 1024 * 1024) {
+                              logValidation("commercialRegisterDocument", "File size too large", {
+                                userId: user?.id,
+                                page: "store-dashboard/settings",
+                                component: "document-upload",
+                                metadata: { fileSize: file.size }
+                              })
                               toast({
                                 title: t("settings.general.error"),
                                 description: t("settings.store_data.file_too_large"),
@@ -502,9 +598,9 @@ export default function StoreDashboardSettingsPage() {
                             {t("settings.store_data.accepted_formats")}
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="outline" 
+                          variant="outline"
                           size="sm"
                           onClick={() => documentInputRef.current?.click()}
                           disabled={isLoading}
@@ -525,115 +621,146 @@ export default function StoreDashboardSettingsPage() {
               {/* Save Button - Hide when data is locked */}
               {!isStoreDataLocked && (
                 <div className="flex justify-end">
-                  <Button 
-                  className="gap-2"
-                  disabled={isLoading || !user?.id}
-                  onClick={async () => {
-                    if (!user?.id) return
-                    
-                    // Validate required fields
-                    if (!ownerName || !email || !phoneNumber) {
-                      toast({
-                        title: t("settings.store_data.validation_error"),
-                        description: t("settings.store_data.basic_info_required"),
-                        variant: "destructive",
-                      })
-                      return
-                    }
-                    
-                    if (!storeName || !businessCategory || !commercialRegisterNumber) {
-                      toast({
-                        title: t("settings.store_data.validation_error"),
-                        description: t("settings.store_data.fill_required_fields"),
-                        variant: "destructive",
-                      })
-                      return
-                    }
-                    
-                    // Validate document upload
-                    if (!documentUrl) {
-                      toast({
-                        title: t("settings.store_data.validation_error"),
-                        description: t("settings.store_data.document_required"),
-                        variant: "destructive",
-                      })
-                      return
-                    }
-                    
-                    setIsLoading(true)
-                    try {
-                      // First, upload the document if there's a pending one
-                      let documentStorageId = null
-                      if (pendingDocumentFile) {
-                        // Get upload URL from Convex
-                        const uploadUrl = await generateUploadUrl()
-                        
-                        // Upload file to Convex storage
-                        const result = await fetch(uploadUrl, {
-                          method: "POST",
-                          headers: { "Content-Type": pendingDocumentFile.type },
-                          body: pendingDocumentFile,
+                  <Button
+                    className="gap-2"
+                    disabled={isLoading || !user?.id}
+                    onClick={async () => {
+                      if (!user?.id) return
+
+                      // Validate required fields
+                      if (!ownerName || !email || !phoneNumber) {
+                        toast({
+                          title: t("settings.store_data.validation_error"),
+                          description: t("settings.store_data.basic_info_required"),
+                          variant: "destructive",
                         })
-                        
-                        const { storageId } = await result.json()
-                        documentStorageId = storageId
-                        
-                        // Update the document in the database
-                        await updateBusinessRegistrationDocument({
-                          storageId: storageId,
-                        })
-                        
-                        // Get the actual URL for the uploaded file
-                        const fileUrl = await getFileUrl({ storageId })
-                        setDocumentUrl(fileUrl)
-                        setPendingDocumentFile(null) // Clear pending file after successful upload
-                        
-                        // Store the URL temporarily to prevent it from being cleared
-                        sessionStorage.setItem('temp_store_document_url', fileUrl || '')
+                        return
                       }
-                      
-                      // First update general settings with basic info
-                      await updateGeneralSettings({
-                        name: ownerName,
-                        email,
-                        phone: phoneNumber,
-                      })
-                      
-                      // Then update store-specific data
-                      await updateStoreData({
-                        storeName,
-                        businessCategory,
-                        commercialRegisterNumber,
-                        website: website || undefined,
-                      })
-                      
-                      toast({
-                        title: t("settings.store_data.success"),
-                        description: t("settings.store_data.success_message"),
-                      })
-                      
-                      // Update session storage for dashboard
-                      const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}')
-                      sessionStorage.setItem('currentUser', JSON.stringify({
-                        ...currentUser,
-                        storeName,
-                        businessCategory,
-                        commercialRegisterNumber,
-                        phoneNumber,
-                      }))
-                    } catch (error) {
-                      toast({
-                        title: t("settings.store_data.error"),
-                        description: t("settings.store_data.error_message"),
-                        variant: "destructive",
-                      })
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
-                >
-                  <Save className="h-4 w-4" />
-                  {isLoading ? t("settings.store_data.saving") : t("settings.store_data.save_changes")}
+
+                      if (!storeName || !businessCategory || !commercialRegisterNumber) {
+                        toast({
+                          title: t("settings.store_data.validation_error"),
+                          description: t("settings.store_data.fill_required_fields"),
+                          variant: "destructive",
+                        })
+                        return
+                      }
+
+                      // Validate document upload
+                      if (!documentUrl) {
+                        toast({
+                          title: t("settings.store_data.validation_error"),
+                          description: t("settings.store_data.document_required"),
+                          variant: "destructive",
+                        })
+                        return
+                      }
+
+                      // Validate website URL if provided
+                      if (website && !validateWebsite(website)) {
+                        toast({
+                          title: t("settings.store_data.validation_error"),
+                          description: websiteError,
+                          variant: "destructive",
+                        })
+                        return
+                      }
+
+                      // Validate CR number
+                      if (!validateSaudiCRNumber(commercialRegisterNumber)) {
+                        toast({
+                          title: t("settings.store_data.validation_error"),
+                          description: crNumberError,
+                          variant: "destructive",
+                        })
+                        return
+                      }
+
+                      setIsLoading(true)
+                      try {
+                        // First, upload the document if there's a pending one
+                        let documentStorageId = null
+                        if (pendingDocumentFile) {
+                          // Get upload URL from Convex
+                          const uploadUrl = await generateUploadUrl()
+
+                          // Upload file to Convex storage
+                          const result = await fetch(uploadUrl, {
+                            method: "POST",
+                            headers: { "Content-Type": pendingDocumentFile.type },
+                            body: pendingDocumentFile,
+                          })
+
+                          const { storageId } = await result.json()
+                          documentStorageId = storageId
+
+                          // Update the document in the database
+                          await updateBusinessRegistrationDocument({
+                            storageId: storageId,
+                          })
+
+                          // Get the actual URL for the uploaded file
+                          const fileUrl = await getFileUrl({ storageId })
+                          setDocumentUrl(fileUrl)
+                          setPendingDocumentFile(null) // Clear pending file after successful upload
+
+                          // Store the URL temporarily to prevent it from being cleared
+                          sessionStorage.setItem('temp_store_document_url', fileUrl || '')
+                        }
+
+                        // First update general settings with basic info
+                        await updateGeneralSettings({
+                          name: ownerName,
+                          email,
+                          phone: phoneNumber,
+                        })
+
+                        // Then update store-specific data
+                        await updateStoreData({
+                          storeName,
+                          businessCategory,
+                          commercialRegisterNumber,
+                          website: website || undefined,
+                        })
+
+                        toast({
+                          title: t("settings.store_data.success"),
+                          description: t("settings.store_data.success_message"),
+                        })
+
+                        // Update session storage for dashboard
+                        const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}')
+                        sessionStorage.setItem('currentUser', JSON.stringify({
+                          ...currentUser,
+                          storeName,
+                          businessCategory,
+                          commercialRegisterNumber,
+                          phoneNumber,
+                        }))
+                      } catch (error) {
+                        logApiError("updateStoreData", error, {
+                          userId: user?.id,
+                          page: "store-dashboard/settings",
+                          action: "save-store-data",
+                          component: "store-data-form",
+                          metadata: {
+                            hasDocument: !!pendingDocumentFile,
+                            storeName,
+                            businessCategory
+                          }
+                        })
+                        toast({
+                          title: t("settings.store_data.error"),
+                          description: t("settings.store_data.error_message"),
+                          variant: "destructive",
+                        })
+                      } finally {
+                        setIsLoading(false)
+                      }
+                    }}
+                  >
+                    <Save className="h-4 w-4" />
+                    {isLoading ? t("settings.store_data.saving") : t("settings.store_data.save_changes")}
                   </Button>
                 </div>
               )}
@@ -654,68 +781,75 @@ export default function StoreDashboardSettingsPage() {
             </div>
             <div className="rounded-md border">
               <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-medium">{t("settings.payment.table.method")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.table.details")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.table.status")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.table.type")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.table.actions")}</TableHead>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-medium">{t("settings.payment.table.method")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.table.details")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.table.status")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.table.type")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.table.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bankAccounts?.map((account) => (
+                    <TableRow key={account._id}>
+                      <TableCell className="font-medium">{account.bankName}</TableCell>
+                      <TableCell>
+                        {account.accountNumber || ''} - {account.accountNumber?.slice(-4).padStart(account.accountNumber.length, '*') || ''}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={account.isActive ? "default" : "secondary"}>
+                          {account.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{t("settings.payment.physical")}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={async () => {
+                              try {
+                                await deleteBankAccount({ bankAccountId: account._id })
+                                toast({
+                                  title: t("settings.payment.deleted"),
+                                  description: t("settings.payment.deleted_message"),
+                                })
+                              } catch (error) {
+                                logApiError("deleteBankAccount", error, {
+                                  userId: user?.id,
+                                  page: "store-dashboard/settings",
+                                  action: "delete-bank-account",
+                                  component: "bank-account-table",
+                                  metadata: { bankAccountId: account._id }
+                                })
+                                toast({
+                                  title: t("settings.payment.error"),
+                                  description: t("settings.payment.error_message"),
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bankAccounts?.map((account) => (
-                      <TableRow key={account._id}>
-                        <TableCell className="font-medium">{account.bankName}</TableCell>
-                        <TableCell>
-                          {account.accountNumber || ''} - {account.accountNumber?.slice(-4).padStart(account.accountNumber.length, '*') || ''}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={account.isActive ? "default" : "secondary"}>
-                            {account.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{t("settings.payment.physical")}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive"
-                              onClick={async () => {
-                                try {
-                                  await deleteBankAccount({ bankAccountId: account._id })
-                                  toast({
-                                    title: t("settings.payment.deleted"),
-                                    description: t("settings.payment.deleted_message"),
-                                  })
-                                } catch (error) {
-                                  toast({
-                                    title: t("settings.payment.error"),
-                                    description: t("settings.payment.error_message"),
-                                    variant: "destructive",
-                                  })
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!bankAccounts || bankAccounts.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          {t("settings.payment.no_payment_methods")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                  ))}
+                  {(!bankAccounts || bankAccounts.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        {t("settings.payment.no_payment_methods")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
@@ -724,63 +858,23 @@ export default function StoreDashboardSettingsPage() {
             <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
             <div className="rounded-md border">
               <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-medium">{t("settings.payment.summary.date")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.summary.type")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.summary.status")}</TableHead>
-                      <TableHead className="font-medium">{t("settings.payment.summary.actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paymentRecords?.payments && paymentRecords.payments.length > 0 ? (
-                      paymentRecords.payments.map((payment) => (
-                        <TableRow key={payment._id}>
-                          <TableCell className="font-medium">
-                            {new Date(payment.paymentDate).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            {payment.type === "brand_payment" ? t("settings.payment.brand_payment") :
-                             payment.type === "store_settlement" ? t("settings.payment.store_settlement") :
-                             payment.type === "refund" ? t("settings.payment.refund") :
-                             t("settings.payment.platform_fee")}
-                          </TableCell>
-                          <TableCell>{payment.paymentMethod || "card"}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              payment.status === "completed" ? "default" :
-                              payment.status === "pending" ? "secondary" :
-                              payment.status === "failed" ? "destructive" :
-                              "outline"
-                            }>
-                              {payment.status === "completed" ? t("settings.payment.completed") :
-                               payment.status === "pending" ? t("settings.payment.pending") :
-                               payment.status === "failed" ? t("settings.payment.failed") :
-                               payment.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {payment.invoiceNumber && (
-                                <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                                  <Eye className="w-4 h-4" />
-                                  {t("settings.payment.view_invoice")}
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          {t("settings.payment.no_payment_records")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-medium">{t("settings.payment.summary.date")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.summary.type")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.summary.status")}</TableHead>
+                    <TableHead className="font-medium">{t("settings.payment.summary.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      {t("settings.payment.no_payment_records")}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </TabsContent>
@@ -794,7 +888,7 @@ export default function StoreDashboardSettingsPage() {
               {t("settings.payment.dialog.title")}
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Bank Selection */}
             <div className="space-y-2">
@@ -874,7 +968,7 @@ export default function StoreDashboardSettingsPage() {
                         setBankCode(validation.bankCode)
                       }
                     } else {
-                      setIbanValidation({isValid: false})
+                      setIbanValidation({ isValid: false })
                     }
                   }}
                   placeholder="SA00 0000 0000 0000 0000 0000"
@@ -897,7 +991,7 @@ export default function StoreDashboardSettingsPage() {
               {iban.length > 2 && !ibanValidation.isValid && ibanValidation.error && (
                 <p className="text-xs text-red-500">
                   {(() => {
-                    switch(ibanValidation.error) {
+                    switch (ibanValidation.error) {
                       case 'IBAN must start with SA for Saudi Arabia':
                         return language === 'ar' ? 'يجب أن يبدأ رقم الآيبان بـ SA للمملكة العربية السعودية' : 'IBAN must start with SA for Saudi Arabia'
                       case 'Saudi IBAN must be exactly 24 characters':
@@ -981,6 +1075,12 @@ export default function StoreDashboardSettingsPage() {
                         if (!file) return
 
                         if (file.size > 5 * 1024 * 1024) {
+                          logValidation("ibanCertificate", "File size too large", {
+                            userId: user?.id,
+                            page: "store-dashboard/settings",
+                            component: "iban-certificate-upload",
+                            metadata: { fileSize: file.size }
+                          })
                           toast({
                             title: t("settings.general.error"),
                             description: t("settings.payment.dialog.file_too_large"),
@@ -1019,13 +1119,13 @@ export default function StoreDashboardSettingsPage() {
 
             {/* Virtual Checkbox */}
             <div className="flex items-center gap-2">
-              <Checkbox 
-                id="virtual" 
+              <Checkbox
+                id="virtual"
                 checked={isDefault}
                 onCheckedChange={(checked) => setIsDefault(checked as boolean)}
               />
-              <Label 
-                htmlFor="virtual" 
+              <Label
+                htmlFor="virtual"
                 className="text-sm font-normal cursor-pointer"
               >
                 {t("settings.payment.dialog.virtual")}
@@ -1074,7 +1174,7 @@ export default function StoreDashboardSettingsPage() {
                   })
                   return
                 }
-                
+
                 setIsLoading(true)
                 try {
                   // Get the bank name from the code
@@ -1088,18 +1188,18 @@ export default function StoreDashboardSettingsPage() {
                     iban,
                     isDefault,
                   })
-                  
+
                   toast({
                     title: t("settings.payment.success"),
                     description: t("settings.payment.added_message"),
                   })
-                  
+
                   // Reset form
                   setBankCode("")
                   setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIbanValidation({isValid: false})
+                  setIbanValidation({ isValid: false })
                   setIbanCertificateFile(null)
                   setIbanCertificateUrl(null)
                   if (certificateInputRef.current) {
@@ -1108,6 +1208,16 @@ export default function StoreDashboardSettingsPage() {
                   setIsDefault(false)
                   setIsPaymentDialogOpen(false)
                 } catch (error) {
+                  logApiError("addBankAccount", error, {
+                    userId: user?.id,
+                    page: "store-dashboard/settings",
+                    action: "add-bank-account",
+                    component: "payment-dialog",
+                    metadata: {
+                      bankName: SAUDI_BANKS.find(b => b.code === bankCode)?.name,
+                      hasIbanCertificate: !!ibanCertificateFile
+                    }
+                  })
                   toast({
                     title: t("settings.payment.error"),
                     description: t("settings.payment.error_message"),

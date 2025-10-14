@@ -1,0 +1,50 @@
+---
+description: Form handling, validation, and user interaction patterns
+globs: **/*.tsx, **/*.ts
+---
+
+# Forms and Validation
+
+## Form Handling with Server Actions
+
+- Prefer **Server Actions** for form submissions over client-side handling
+- Use `'use server'` directive for server action functions
+- Implement optimistic updates for better user experience
+- Handle form state and validation on the server side
+
+## Schema Validation with Zod
+
+- Use **Zod** for runtime type validation and schema definition
+- Define schemas for all form inputs and API endpoints
+- Implement proper error handling and validation messages
+- Use schema inference for TypeScript types
+
+## Form UX Best Practices
+
+- Show clear, actionable error messages
+- Implement inline validation feedback
+- Display loading states during form submission
+- Prevent duplicate submissions with proper state management
+- Use optimistic feedback for immediate user response
+
+## Input Validation
+
+- Validate inputs on both client and server sides
+- Implement real-time validation for better UX
+- Show validation errors near the relevant input fields
+- Handle edge cases and special characters properly
+
+## Form State Management
+
+- Use React Hook Form for complex forms when needed
+- Implement proper form reset after successful submission
+- Handle form state persistence for multi-step forms
+- Clear validation errors when inputs change
+
+## Accessibility
+
+- Implement proper ARIA labels and descriptions
+- Ensure keyboard navigation works correctly
+- Provide screen reader support for form errors
+- Use semantic HTML form elements
+- Implement focus management for form interactions
