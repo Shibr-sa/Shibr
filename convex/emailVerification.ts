@@ -55,6 +55,19 @@ export const sendSignupOTP = mutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim()
 
+    // Check if user with this email already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), email))
+      .first()
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "auth.account_already_exists"  // Return translation key instead of hardcoded message
+      }
+    }
+
     // Clean up expired OTPs for this email
     await cleanupExpiredOTPs(ctx, email)
 
@@ -69,7 +82,7 @@ export const sendSignupOTP = mutation({
     if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
       return {
         success: false,
-        error: "Too many verification attempts. Please try again later."
+        error: "auth.rate_limit_exceeded"
       }
     }
 
@@ -138,7 +151,7 @@ export const verifySignupAndCreateAccount = mutation({
     if (!otpRecord) {
       return {
         success: false,
-        error: "Invalid verification code"
+        error: "verification.invalid_code"
       }
     }
 
@@ -147,7 +160,7 @@ export const verifySignupAndCreateAccount = mutation({
       await ctx.db.delete(otpRecord._id)
       return {
         success: false,
-        error: "Verification code has expired"
+        error: "verification.code_expired"
       }
     }
 
@@ -156,7 +169,7 @@ export const verifySignupAndCreateAccount = mutation({
       await ctx.db.delete(otpRecord._id)
       return {
         success: false,
-        error: "Too many failed attempts. Please request a new code"
+        error: "auth.rate_limit_exceeded"
       }
     }
 
@@ -169,7 +182,7 @@ export const verifySignupAndCreateAccount = mutation({
     if (otpRecord.otp !== args.otp) {
       return {
         success: false,
-        error: "Invalid verification code"
+        error: "verification.invalid_code"
       }
     }
 
@@ -208,7 +221,7 @@ export const resendSignupOTP = mutation({
     if (recentOTP && (Date.now() - recentOTP.createdAt < 60000)) {
       return {
         success: false,
-        error: "Please wait before requesting a new code"
+        error: "verification.wait_before_resend"
       }
     }
 

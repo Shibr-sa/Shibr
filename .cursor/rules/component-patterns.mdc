@@ -1,0 +1,44 @@
+---
+description: React component development patterns and best practices
+globs: **/*.tsx, **/*.ts
+---
+
+# Component Development Patterns
+
+## Server vs Client Components
+
+- Use **Server Components** by default for better performance
+- Mark client components explicitly with `'use client'` directive
+- Only use client components when you need:
+  - Browser APIs (localStorage, geolocation)
+  - Event handlers (onClick, onSubmit)
+  - React hooks (useState, useEffect)
+  - Custom hooks that require client-side execution
+
+## Component Composition
+
+- Favor composition over inheritance
+- Create reusable, focused components
+- Use props for configuration and customization
+- Implement proper TypeScript interfaces for props
+
+## Error Boundaries and Loading States
+
+- Implement error boundaries for critical components
+- Use `loading.tsx` files for route-level loading states
+- Wrap client components in `Suspense` with appropriate fallbacks
+- Handle loading and error states gracefully
+
+## Performance Optimization
+
+- Use `dynamic()` imports for non-critical components
+- Implement proper memoization with `React.memo()` when needed
+- Avoid unnecessary re-renders by optimizing dependencies
+- Use lazy loading for images and heavy components
+
+## Component Structure
+
+- Place static content and interfaces at the end of the file
+- Keep component logic at the top, JSX at the bottom
+- Export components as named exports, not default exports
+- Use descriptive variable names and clear component hierarchy

@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+description: Overview of all Cursor rules for this Next.js project
+---
+
+# Cursor Rules Overview
+
+This directory contains Cursor rules that guide development practices for the Shibr Next.js application. These rules are automatically applied based on file patterns and help maintain code quality and consistency.
+
+## Available Rules
+
+### Core Development Rules (Always Applied)
+
+- **[Project Structure](project-structure.mdc)**: Directory organization and file naming conventions
+- **[Component Patterns](component-patterns.mdc)**: React component development best practices
+- **[Data Fetching](data-fetching.mdc)**: Server Actions, caching, and Convex integration patterns
+- **[Forms & Validation](forms-validation.mdc)**: Form handling with Zod and Server Actions
+- **[State Management](state-management.mdc)**: Client and server state management patterns
+- **[Performance](performance-optimization.mdc)**: Bundle optimization and React performance tips
+- **[Development Practices](development-practices.mdc)**: Tooling, TypeScript, and code quality standards
+
+### Specialized Rules
+
+- **[Routing Conventions](routing-conventions.mdc)**: Next.js App Router patterns and organization
+- **[Styling Guidelines](styling-guidelines.mdc)**: Tailwind CSS and responsive design practices
+- **[UI Components](ui-components.mdc)**: shadcn/ui usage and component development
+- **[Database Schema](database-schema.mdc)**: Prisma/Convex schema design and data integrity
+
+## Technology Stack
+
+- **Framework**: Next.js 14+ with App Router
+- **Language**: TypeScript with strict configuration
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Backend**: Convex for real-time data and Server Actions
+- **Validation**: Zod for schema validation
+- **Package Manager**: Yarn
+
+## Key Principles
+
+1. **Server-First**: Prefer Server Components and Server Actions
+2. **Type Safety**: Strict TypeScript usage throughout
+3. **Performance**: Optimize for Core Web Vitals and bundle size
+4. **Accessibility**: WCAG compliant components and interactions
+5. **Consistency**: Follow established patterns and conventions
+6. **Maintainability**: Clean, documented, and testable code
+
+## Usage
+
+Rules are automatically applied based on file patterns defined in each rule's frontmatter. You can also manually reference specific rules by mentioning them in queries or using the "Apply Rule" feature in Cursor.
+
+For questions about specific patterns or when in doubt, refer to the relevant rule file for detailed guidance.

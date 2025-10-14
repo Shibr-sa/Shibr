@@ -115,6 +115,10 @@ export default function CartPage() {
 
     try {
       // Prepare order data for payment page
+      // Calculate total without tax
+      const cartSubtotal = cart.getTotalPrice()
+      const totalAmount = cartSubtotal // No tax added
+
       const orderData = {
         shelfStoreId: store._id,
         storeName: store.storeName,
@@ -126,9 +130,8 @@ export default function CartPage() {
           price: item.price,
           quantity: item.quantity
         })),
-        subtotal: cart.getTotalPrice(),
-        tax: cart.getTotalPrice() * 0.15,
-        total: cart.getTotalPrice() * 1.15,
+        subtotal: cartSubtotal,
+        total: totalAmount,
         timestamp: Date.now()
       }
 
@@ -277,18 +280,9 @@ export default function CartPage() {
               <Card className="lg:sticky lg:top-4">
                 <CardContent className="space-y-4 pt-6">
                   <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t("store.products")}</span>
-                      <span>{formatCurrency(cart.getTotalPrice(), language)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t("store.tax")} (15%)</span>
-                      <span>{formatCurrency(cart.getTotalPrice() * 0.15, language)}</span>
-                    </div>
-                    <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>{t("store.total")}</span>
-                      <span>{formatCurrency(cart.getTotalPrice() * 1.15, language)}</span>
+                      <span>{formatCurrency(cart.getTotalPrice(), language)}</span>
                     </div>
                   </div>
 
@@ -318,18 +312,9 @@ export default function CartPage() {
           <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10 shadow-lg">
             <div className="container mx-auto space-y-3">
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t("store.products")}</span>
-                  <span>{formatCurrency(cart.getTotalPrice(), language)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t("store.tax")} (15%)</span>
-                  <span>{formatCurrency(cart.getTotalPrice() * 0.15, language)}</span>
-                </div>
-                <Separator className="my-2" />
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg">{t("store.total")}</span>
-                  <span className="font-bold text-lg">{formatCurrency(cart.getTotalPrice() * 1.15, language)}</span>
+                  <span className="font-bold text-lg">{formatCurrency(cart.getTotalPrice(), language)}</span>
                 </div>
               </div>
               <Button

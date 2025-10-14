@@ -23,7 +23,7 @@ const translations = {
     "common.coming_soon": "قريباً",
     "common.error": "خطأ",
     "common.success": "نجاح",
-    
+
     // Error pages
     "error.title": "حدث خطأ",
     "error.description": "نعتذر، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
@@ -38,7 +38,7 @@ const translations = {
     "error.brand_dashboard_description": "حدث خطأ أثناء تحميل لوحة تحكم العلامة التجارية",
     "error.store_dashboard_title": "خطأ في لوحة تحكم المتجر",
     "error.store_dashboard_description": "حدث خطأ أثناء تحميل لوحة تحكم المتجر",
-    
+
     // 404 Page
     "404.title": "404",
     "404.subtitle": "الصفحة غير موجودة",
@@ -414,7 +414,7 @@ const translations = {
     "shelves.showing": "عرض",
     "shelves.of": "من",
     "shelves.shelves": "رفوف",
-    
+
     // Add Shelf
     "add_shelf.title": "أضف رفًا جديدًا لفرع من فروع محلك",
     "add_shelf.description": "🍊 قم بتسجيل مساحة عرض جديدة لتكون متاحة للعلامات التجارية على شبر، وحدد موقعها، وسعرها، وطريقة تأجيرها",
@@ -440,7 +440,7 @@ const translations = {
     "add_shelf.product_type": "نوع المنتجات المناسبة ( اختياري )",
     "add_shelf.suitable_product_types": "فئات المنتجات المناسبة (اختياري)",
     "add_shelf.select_all_categories": "اختر جميع الفئات التي يمكن عرضها على هذا الرف",
-    
+
     // Product Categories - Simplified
     "product_categories.food_beverages": "أطعمة ومشروبات",
     "product_categories.health_beauty": "صحة وجمال",
@@ -550,7 +550,7 @@ const translations = {
     "dashboard.your_shelves": "رفوفك",
     "dashboard.no_shelves_displayed": "ليس لديك رفوف معروضه في الوقت الحالي",
     "dashboard.shelves_will_appear_here": "ستظهر الرفوف هنا عند إضافتها",
-    
+
     // Admin Dashboard
     "dashboard.control_panel": "لوحة التحكم",
     "dashboard.platform_overview": "نظرة شاملة على أداء شبر وإحصائياتها",
@@ -1020,8 +1020,7 @@ const translations = {
     "settings.tabs.branches": "الفروع",
     "settings.tabs.financial": "المالية",
     "settings.tabs.notifications": "الإشعارات",
-    "settings.tabs.security": "الأمان",
-    
+
     // General Settings
     "settings.general.title": "الإعدادات العامة",
     "settings.general.description": "معلومات أساسية عن متجرك",
@@ -1070,7 +1069,6 @@ const translations = {
     "settings.general.types.other": "أخرى",
     "settings.general.establishment_date": "تاريخ التأسيس",
     "settings.general.contact_info": "معلومات الاتصال",
-    "settings.general.basic_info": "المعلومات الأساسية",
     "settings.general.owner_name": "اسم المالك",
     "settings.general.cannot_change": "لا يمكن تغييره",
     "settings.general.phone_number": "رقم الهاتف",
@@ -1130,7 +1128,7 @@ const translations = {
     "settings.general.closing_time": "وقت الإغلاق",
     "settings.general.open_24_hours": "مفتوح 24 ساعة",
     "settings.general.save_changes": "حفظ التغييرات",
-    
+
     // Store Data Settings
     "settings.store_data.store_name": "اسم المتجر",
     "settings.store_data.store_name_placeholder": "أدخل اسم المتجر",
@@ -1156,7 +1154,7 @@ const translations = {
     "settings.store_data.preview_document": "معاينة الوثيقة",
     "settings.store_data.choose_file": "اختر الملف",
     "settings.store_data.save_changes": "حفظ التغييرات",
-    
+
     // Payment Settings
     "settings.payment.payment_methods_title": "إعدادات الدفع والتحصيل المالي",
     "settings.payment.brand_name": "اسم العلامة التجارية",
@@ -1201,7 +1199,7 @@ const translations = {
     "settings.payment.dialog.account_name": "اسم صاحب الحساب",
     "settings.payment.dialog.account_name_placeholder": "محمد احمد عادل",
     "settings.payment.dialog.account_number": "Bank Card/Account Number",
-    "settings.payment.dialog.account_number_placeholder": "من مفضلك أدخل رقم الحساب",
+    "settings.payment.dialog.account_number_placeholder": "رقم الحساب",
     "settings.payment.dialog.iban": "IBAN",
     "settings.payment.dialog.iban_placeholder": "SA00 0000 0000 0000 0000 0000",
     "settings.payment.dialog.detected_bank": "البنك المكتشف",
@@ -1269,7 +1267,7 @@ const translations = {
     "settings.general.image_upload_error": "حدث خطأ أثناء رفع الصورة",
     "image_cropper.title": "قص الصورة",
     "image_cropper.save": "حفظ الصورة",
-    
+
     // Shelf Details
     "shelf_details.not_found": "الرف غير موجود",
     "shelf_details.not_found_description": "لم نتمكن من العثور على الرف المطلوب",
@@ -1365,7 +1363,7 @@ const translations = {
     "settings.store_data.success": "نجاح",
     "settings.store_data.success_message": "تم حفظ بيانات المتجر بنجاح",
     "settings.store_data.locked_title": "بيانات المتجر محمية",
-    "settings.store_data.locked_description": "لا يمكن تعديل بيانات المتجر بعد التسجيل الأولي لأسباب أمنية وقانونية. إذا كنت بحاجة إلى تحديث هذه المعلومات، يرجى الاتصال بالدعم.",
+    "settings.store_data.locked_description": "لا يمكن تعديل بيانات المتجر بعد التسجيل الأولي لأسباب  . إذا كنت بحاجة إلى تحديث هذه المعلومات، يرجى الاتصال بالدعم.",
     "settings.store_data.document_locked": "المستند محمي ولا يمكن تغييره",
     "settings.store_data.error": "خطأ",
     "settings.store_data.error_message": "حدث خطأ أثناء حفظ بيانات المتجر",
@@ -1375,7 +1373,7 @@ const translations = {
     "settings.store_data.basic_info_required": "يرجى إكمال المعلومات الأساسية (الاسم، البريد الإلكتروني، رقم الهاتف)",
     "settings.store_data.document_required": "يرجى رفع وثيقة السجل التجاري",
     "settings.store_data.logo_uploaded": "تم رفع الشعار بنجاح",
-    
+
     // Brand Data Settings
     "settings.brand_data.brand_name": "اسم العلامة التجارية",
     "settings.brand_data.brand_name_placeholder": "أدخل اسم علامتك التجارية",
@@ -1426,7 +1424,7 @@ const translations = {
     "settings.brand_data.preview_document": "معاينة الوثيقة",
     "settings.brand_data.remove_document": "إزالة الوثيقة",
     "settings.brand_data.accepted_formats": "PDF, JPG, PNG, DOC, DOCX - حجم الملف لا يزيد عن 10 ميقابايت",
-    
+
     // Branches Settings
     "settings.branches.title": "إدارة الفروع",
     "settings.branches.description": "إدارة فروع متجرك",
@@ -1434,12 +1432,12 @@ const translations = {
     "settings.branches.empty_title": "لا توجد فروع حتى الآن",
     "settings.branches.empty_description": "أضف فروعًا لمتجرك لتوسيع نطاق عملك وإدارة مواقع متعددة",
     "settings.branches.add_branch": "إضافة فرع",
-    
+
     // Financial Settings
     "settings.financial.title": "الإعدادات المالية",
     "settings.financial.description": "إدارة الحسابات البنكية والمدفوعات",
     "settings.financial.coming_soon": "قريباً - سيتم إضافة الإعدادات المالية",
-    
+
     // Notifications Settings
     "settings.notifications.title": "إعدادات الإشعارات",
     "settings.notifications.description": "تحكم في الإشعارات التي تتلقاها",
@@ -1452,17 +1450,17 @@ const translations = {
     "settings.notifications.weekly_reports": "تقارير أسبوعية",
     "settings.notifications.weekly_reports_desc": "احصل على تقرير أسبوعي عن أداء متجرك",
     "settings.notifications.save_changes": "حفظ إعدادات الإشعارات",
-    
-    // Security Settings
-    "settings.security.title": "الأمان وكلمة المرور",
-    "settings.security.description": "إدارة أمان حسابك",
-    "settings.security.current_password": "كلمة المرور الحالية",
-    "settings.security.new_password": "كلمة المرور الجديدة",
-    "settings.security.confirm_password": "تأكيد كلمة المرور الجديدة",
-    "settings.security.two_factor": "المصادقة الثنائية",
-    "settings.security.enable_two_factor": "تفعيل المصادقة الثنائية",
-    "settings.security.two_factor_desc": "أضف طبقة حماية إضافية لحسابك",
-    "settings.security.save_changes": "حفظ إعدادات الأمان",
+
+    // Password Settings
+    "settings.password.title": "الأمان وكلمة المرور",
+    "settings.password.description": "إدارة أمان حسابك",
+    "settings.password.current_password": "كلمة المرور الحالية",
+    "settings.password.new_password": "كلمة المرور الجديدة",
+    "settings.password.confirm_password": "تأكيد كلمة المرور الجديدة",
+    "settings.password.two_factor": "المصادقة الثنائية",
+    "settings.password.enable_two_factor": "تفعيل المصادقة الثنائية",
+    "settings.password.two_factor_desc": "أضف طبقة حماية إضافية لحسابك",
+    "settings.password.save_changes": "حفظ إعدادات الأمان",
 
     // Shelves Page
     "shelves.title": "إدارة الرفوف",
@@ -1517,7 +1515,7 @@ const translations = {
     "hero.go_to_dashboard": "انتقل إلى لوحة التحكم",
     "hero.verify_email_now": "تحقق من بريدك الإلكتروني الآن",
     "hero.learn_more": "تعلم المزيد",
-    
+
     // Features
     "features.title": "ميزاتنا",
     "features.subtitle": "اكتشف كيف تساعدك شبر في تحقيق أهدافك التجارية",
@@ -1529,7 +1527,7 @@ const translations = {
     "features.real_reach.description": "لأصحاب المتاجر الإلكترونية، تقدر تحط منتجاتك في أحياء ومدن مختلفة بدون ما تفتح فرع أو توظف أحد.",
     "features.flexible_rental.title": "نظام تأجير مرن",
     "features.flexible_rental.description": "اختر طريقة الدفع المناسبة لك: مبلغ شهري، نسبة من المبيعات، أو مزيج بينهم.. وأنت المتحكم في الشروط.",
-    
+
     // FAQ
     "faq.title": "أسئلتك المهمة…",
     "faq.subtitle": "إجابات على أكثر الأسئلة شيوعاً حول منصة شبر",
@@ -1553,7 +1551,7 @@ const translations = {
     "faq.a9": "العقد الإلكتروني يحدد المسؤوليات بوضوح. عادة، صاحب المحل مسؤول عن المنتجات الموجودة في محله. ننصح جميع الأطراف بالحصول على تأمين مناسب. المنصة توفر نظام لتسجيل الشكاوى وحل النزاعات.",
     "faq.q10": "هل توفر المنصة دعم فني وخدمة عملاء؟",
     "faq.a10": "نعم، نوفر دعم فني على مدار الساعة عبر الدردشة المباشرة، البريد الإلكتروني، والهاتف. فريقنا جاهز لمساعدتك في أي استفسارات تقنية أو تجارية تتعلق باستخدام المنصة.",
-    
+
     // Footer
     "footer.contact": "تواصل معنا",
     "footer.phone": "+966 50 123 4567",
@@ -1574,7 +1572,7 @@ const translations = {
     "shibr.fast_service_desc": "حدّد طريقة الإيجار: شهري ثابت، نسبة من المبيعات، أو مزيج",
     "shibr.integrated_service": "الخطوة الثالثة",
     "shibr.integrated_service_desc": "استقبل الطلبات وابدأ الكسب",
-    
+
     // Commercial Centers
     "shibr.centers.premium_locations": "الخطوة الأولى",
     "shibr.centers.premium_locations_desc": "تصفح المحلات والأرفف، حسب المدينة والموقع",
@@ -1591,7 +1589,7 @@ const translations = {
     "video.start_journey": "تصفح المتاجر المتاحة",
     "video.jeddah_stores": "جدة - مواقع المتاجر المتاحة",
     "video.riyadh_stores": "الرياض - مواقع المتاجر المتاحة",
-    
+
     // Why Choose Section
     "why_choose.title": "ليش تختار شبر؟",
     "why_choose.subtitle": "شبر تجمع بين التجارة الواقعية والرقمية في مكان واحد",
@@ -1702,6 +1700,13 @@ const translations = {
     "auth.user_not_found": "المستخدم غير موجود",
     "auth.invalid_password": "كلمة المرور غير صحيحة",
     "auth.network_error": "خطأ في الشبكة. يرجى التحقق من اتصالك",
+    "auth.email_not_verified": "يرجى التحقق من بريدك الإلكتروني",
+    "auth.rate_limit_exceeded": "محاولات كثيرة جداً. يرجى المحاولة لاحقاً",
+    "auth.not_authenticated": "يرجى تسجيل الدخول للمتابعة",
+    "auth.session_expired": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى",
+    "auth.profile_already_exists": "الملف الشخصي موجود بالفعل",
+    "auth.profile_not_found": "لم يتم العثور على الملف الشخصي",
+    "auth.unknown_error": "حدث خطأ غير متوقع",
     "auth.creating_account": "جاري إنشاء الحساب",
     "auth.please_wait": "يرجى الانتظار",
 
@@ -1745,6 +1750,7 @@ const translations = {
     "verification.email_verified": "تم التحقق من البريد الإلكتروني",
     "verification.enter_code": "أدخل رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني",
     "verification.invalid_code": "رمز التحقق غير صحيح",
+    "verification.code_expired": "انتهت صلاحية رمز التحقق",
     "verification.user_not_found": "المستخدم غير موجود",
     "verification.success": "تم التحقق من البريد الإلكتروني بنجاح",
     "verification.error": "حدث خطأ أثناء التحقق",
@@ -1754,6 +1760,7 @@ const translations = {
     "verification.sending": "جاري الإرسال...",
     "verification.resend_in": "إعادة الإرسال خلال",
     "verification.resend_code": "إعادة إرسال الرمز",
+    "verification.wait_before_resend": "يرجى الانتظار قبل طلب رمز جديد",
     "verification.code_sent": "تم إرسال رمز التحقق",
     "verification.resend_error": "فشل إعادة إرسال الرمز",
     "verification.redirecting": "جاري التوجيه إلى لوحة التحكم...",
@@ -1957,7 +1964,7 @@ const translations = {
     "brand.dashboard.sales_count": "المبيعات",
     "brand.dashboard.stores_count": "المتاجر",
     "brand.dashboard.actions": "الإجراءات",
-    
+
     // Product Dialog
     "brand.products.add_new_product": "إضافة منتج جديد",
     "brand.products.edit_product": "تعديل المنتج",
@@ -2076,7 +2083,7 @@ const translations = {
     "marketplace.october": "أكتوبر",
     "marketplace.november": "نوفمبر",
     "marketplace.december": "ديسمبر",
-    
+
     // Marketplace Details Page
     "marketplace.details.send_request_title": "أرسل طلبك لاستئجار هذا الرف",
     "marketplace.details.send_request_description": "ادخل بياناتك وحدد مدة الحجز. وسوف يتم إرسال الطلب لصاحب المحل للمراجعة والموافقة خلال وقت قصير.",
@@ -2127,7 +2134,7 @@ const translations = {
     "product.categories.food": "أغذية",
     "product.categories.other": "أخرى",
     "product.categories.multiple": "متعددة",
-    
+
     // Brand Shelves Page
     "brand.shelves.page_description": "تابع جميع المساحات التي حجزتها داخل المحلات الواقعية",
     "brand.shelves.total_qr_scans": "عدد مسحات QR الإجمالية",
@@ -2193,7 +2200,7 @@ const translations = {
     // Common Actions
     "actions.accept_rental_request": "قبول طلب الإيجار",
     "actions.reject_rental_request": "رفض طلب الإيجار",
-    
+
     // Action Buttons
     "action.pay_now": "ادفع الآن",
     "action.verifying": "جاري التحقق",
@@ -2201,7 +2208,7 @@ const translations = {
     "action.view_details": "عرض التفاصيل",
     "action.manage": "إدارة",
     "action.waiting": "بانتظار الموافقة",
-    
+
     // Payment Dialog
     "payment.bank_transfer_title": "التحويل البنكي",
     "payment.transfer_instructions": "يرجى تحويل المبلغ إلى الحساب البنكي أدناه",
@@ -2359,7 +2366,7 @@ const translations = {
     "common.coming_soon": "Coming Soon",
     "common.error": "Error",
     "common.success": "Success",
-    
+
     // Error pages
     "error.title": "Something went wrong",
     "error.description": "We're sorry, an unexpected error occurred. Please try again.",
@@ -2374,7 +2381,7 @@ const translations = {
     "error.brand_dashboard_description": "An error occurred while loading the brand dashboard",
     "error.store_dashboard_title": "Store Dashboard Error",
     "error.store_dashboard_description": "An error occurred while loading the store dashboard",
-    
+
     // 404 Page
     "404.title": "404",
     "404.subtitle": "Page Not Found",
@@ -2749,7 +2756,7 @@ const translations = {
     "shelves.showing": "Showing",
     "shelves.of": "of",
     "shelves.shelves": "shelves",
-    
+
     // Add Shelf
     "add_shelf.title": "Add a new shelf for one of your store branches",
     "add_shelf.description": "🍊 Register a new display space to be available for brands on the platform, and specify its location, price, and rental method",
@@ -2775,7 +2782,7 @@ const translations = {
     "add_shelf.product_type": "Suitable Product Types (Optional)",
     "add_shelf.suitable_product_types": "Suitable Product Categories (Optional)",
     "add_shelf.select_all_categories": "Select all categories that can be displayed on this shelf",
-    
+
     // Product Categories - Simplified
     "product_categories.food_beverages": "Food & Beverages",
     "product_categories.health_beauty": "Health & Beauty",
@@ -2886,7 +2893,7 @@ const translations = {
     "dashboard.your_shelves": "Your shelves",
     "dashboard.no_shelves_displayed": "You have no shelves displayed at the moment",
     "dashboard.shelves_will_appear_here": "Shelves will appear here when added",
-    
+
     // Admin Dashboard
     "dashboard.control_panel": "Control Panel",
     "dashboard.platform_overview": "Comprehensive overview of platform performance and statistics",
@@ -3351,8 +3358,7 @@ const translations = {
     "settings.tabs.branches": "Branches",
     "settings.tabs.financial": "Financial",
     "settings.tabs.notifications": "Notifications",
-    "settings.tabs.security": "Security",
-    
+
     // General Settings
     "settings.general.title": "General Settings",
     "settings.general.description": "Basic information about your store",
@@ -3401,7 +3407,6 @@ const translations = {
     "settings.general.types.other": "Other",
     "settings.general.establishment_date": "Establishment Date",
     "settings.general.contact_info": "Contact Information",
-    "settings.general.basic_info": "Basic Information",
     "settings.general.owner_name": "Owner Name",
     "settings.general.cannot_change": "Cannot be changed",
     "settings.general.phone_number": "Phone Number",
@@ -3461,7 +3466,7 @@ const translations = {
     "settings.general.closing_time": "Closing Time",
     "settings.general.open_24_hours": "Open 24 Hours",
     "settings.general.save_changes": "Save Changes",
-    
+
     // Store Data Settings
     "settings.store_data.store_name": "Store Name",
     "settings.store_data.store_name_placeholder": "Enter store name",
@@ -3487,7 +3492,7 @@ const translations = {
     "settings.store_data.preview_document": "Preview Document",
     "settings.store_data.choose_file": "Choose File",
     "settings.store_data.save_changes": "Save Changes",
-    
+
     // Payment Settings
     "settings.payment.payment_methods_title": "Payment and Collection Settings",
     "settings.payment.brand_name": "Brand Name",
@@ -3600,7 +3605,7 @@ const translations = {
     "settings.general.image_upload_error": "Error uploading image",
     "image_cropper.title": "Crop Image",
     "image_cropper.save": "Save Image",
-    
+
     // Shelf Details
     "shelf_details.not_found": "Shelf Not Found",
     "shelf_details.not_found_description": "We couldn't find the requested shelf",
@@ -3706,7 +3711,7 @@ const translations = {
     "settings.store_data.basic_info_required": "Please complete basic information (Name, Email, Phone Number)",
     "settings.store_data.document_required": "Please upload your Commercial Registration document",
     "settings.store_data.logo_uploaded": "Logo uploaded successfully",
-    
+
     // Brand Data Settings
     "settings.brand_data.brand_name": "Brand Name",
     "settings.brand_data.brand_name_placeholder": "Enter your brand name",
@@ -3756,7 +3761,7 @@ const translations = {
     "settings.brand_data.preview_document": "Preview Document",
     "settings.brand_data.remove_document": "Remove Document",
     "settings.brand_data.accepted_formats": "PDF, JPG, PNG, DOC, DOCX - Max 10MB",
-    
+
     // Branches Settings
     "settings.branches.title": "Branches Management",
     "settings.branches.description": "Manage your store branches",
@@ -3764,12 +3769,12 @@ const translations = {
     "settings.branches.empty_title": "No branches yet",
     "settings.branches.empty_description": "Add branches to your store to expand your business and manage multiple locations",
     "settings.branches.add_branch": "Add Branch",
-    
+
     // Financial Settings
     "settings.financial.title": "Financial Settings",
     "settings.financial.description": "Manage bank accounts and payments",
     "settings.financial.coming_soon": "Coming Soon - Financial settings will be added",
-    
+
     // Notifications Settings
     "settings.notifications.title": "Notification Settings",
     "settings.notifications.description": "Control the notifications you receive",
@@ -3782,17 +3787,17 @@ const translations = {
     "settings.notifications.weekly_reports": "Weekly Reports",
     "settings.notifications.weekly_reports_desc": "Receive a weekly report about your store performance",
     "settings.notifications.save_changes": "Save Notification Settings",
-    
-    // Security Settings
-    "settings.security.title": "Security & Password",
-    "settings.security.description": "Manage your account security",
-    "settings.security.current_password": "Current Password",
-    "settings.security.new_password": "New Password",
-    "settings.security.confirm_password": "Confirm New Password",
-    "settings.security.two_factor": "Two-Factor Authentication",
-    "settings.security.enable_two_factor": "Enable Two-Factor Authentication",
-    "settings.security.two_factor_desc": "Add an extra layer of protection to your account",
-    "settings.security.save_changes": "Save Security Settings",
+
+    // Password Settings
+    "settings.password.title": "Security & Password",
+    "settings.password.description": "Manage your account security",
+    "settings.password.current_password": "Current Password",
+    "settings.password.new_password": "New Password",
+    "settings.password.confirm_password": "Confirm New Password",
+    "settings.password.two_factor": "Two-Factor Authentication",
+    "settings.password.enable_two_factor": "Enable Two-Factor Authentication",
+    "settings.password.two_factor_desc": "Add an extra layer of protection to your account",
+    "settings.password.save_changes": "Save Security Settings",
 
     // Shelves Page
     "shelves.title": "Shelf Management",
@@ -3847,7 +3852,7 @@ const translations = {
     "hero.go_to_dashboard": "Go to Dashboard",
     "hero.verify_email_now": "Verify Your Email Now",
     "hero.learn_more": "Learn More",
-    
+
     // Features
     "features.title": "Our Features",
     "features.subtitle": "Discover how Shibr helps you achieve your business goals",
@@ -3859,7 +3864,7 @@ const translations = {
     "features.real_reach.description": "For online store owners, you can place your products in different neighborhoods and cities without opening a branch or hiring anyone.",
     "features.flexible_rental.title": "Flexible Rental System",
     "features.flexible_rental.description": "Choose the payment method that suits you: monthly amount, percentage of sales, or a mix of both. You're in control of the terms.",
-    
+
     // FAQ
     "faq.title": "Your Important Questions",
     "faq.subtitle": "Answers to the most common questions about Shibr platform",
@@ -3883,7 +3888,7 @@ const translations = {
     "faq.a9": "The electronic contract clearly defines responsibilities. Usually, the store owner is responsible for products in their store. We advise all parties to obtain appropriate insurance. The platform provides a system for complaint registration and dispute resolution.",
     "faq.q10": "Does the platform provide technical support and customer service?",
     "faq.a10": "Yes, we provide 24/7 technical support via live chat, email, and phone. Our team is ready to help with any technical or business inquiries related to platform usage.",
-    
+
     // Footer
     "footer.contact": "Contact Us",
     "footer.phone": "+966 50 123 4567",
@@ -3904,7 +3909,7 @@ const translations = {
     "shibr.fast_service_desc": "Set rental method: fixed monthly, percentage of sales, or mixed",
     "shibr.integrated_service": "Step Three",
     "shibr.integrated_service_desc": "Receive orders and start earning",
-    
+
     // Commercial Centers
     "shibr.centers.premium_locations": "Step One",
     "shibr.centers.premium_locations_desc": "Browse stores and shelves by city and location",
@@ -3921,7 +3926,7 @@ const translations = {
     "video.start_journey": "Browse Available Stores",
     "video.jeddah_stores": "Jeddah - Available store locations",
     "video.riyadh_stores": "Riyadh - Available store locations",
-    
+
     // Why Choose Section
     "why_choose.title": "Why choose Shibr?",
     "why_choose.subtitle": "The platform that brings together physical and digital commerce in one place",
@@ -4033,6 +4038,13 @@ const translations = {
     "auth.user_not_found": "User not found",
     "auth.invalid_password": "Invalid password",
     "auth.network_error": "Network error. Please check your connection",
+    "auth.email_not_verified": "Please verify your email",
+    "auth.rate_limit_exceeded": "Too many attempts. Please try again later",
+    "auth.not_authenticated": "Please sign in to continue",
+    "auth.session_expired": "Your session has expired. Please sign in again",
+    "auth.profile_already_exists": "Profile already exists",
+    "auth.profile_not_found": "Profile not found",
+    "auth.unknown_error": "An unexpected error occurred",
     "auth.creating_account": "Creating Account",
     "auth.please_wait": "Please wait",
 
@@ -4075,6 +4087,7 @@ const translations = {
     "verification.email_verified": "Email Verified",
     "verification.enter_code": "Enter the 6-digit verification code sent to your email",
     "verification.invalid_code": "Invalid verification code",
+    "verification.code_expired": "Verification code has expired",
     "verification.user_not_found": "User not found",
     "verification.success": "Email verified successfully",
     "verification.error": "An error occurred during verification",
@@ -4084,6 +4097,7 @@ const translations = {
     "verification.sending": "Sending...",
     "verification.resend_in": "Resend in",
     "verification.resend_code": "Resend Code",
+    "verification.wait_before_resend": "Please wait before requesting a new code",
     "verification.code_sent": "Verification code sent",
     "verification.resend_error": "Failed to resend code",
     "verification.redirecting": "Redirecting to dashboard...",
@@ -4291,7 +4305,7 @@ const translations = {
     "brand.dashboard.sales_count": "Sales",
     "brand.dashboard.stores_count": "Stores",
     "brand.dashboard.actions": "Actions",
-    
+
     // Product Dialog
     "brand.products.add_new_product": "Add New Product",
     "brand.products.edit_product": "Edit Product",
@@ -4410,7 +4424,7 @@ const translations = {
     "marketplace.october": "October",
     "marketplace.november": "November",
     "marketplace.december": "December",
-    
+
     // Marketplace Details Page
     "marketplace.details.send_request_title": "Send your rental request",
     "marketplace.details.send_request_description": "Enter your details and specify the booking duration. The request will be sent to the store owner for review and approval within a short time.",
@@ -4461,7 +4475,7 @@ const translations = {
     "product.categories.food": "Food",
     "product.categories.other": "Other",
     "product.categories.multiple": "Multiple",
-    
+
     // Brand Shelves Page
     "brand.shelves.page_description": "Track all the spaces you have reserved inside physical stores",
     "brand.shelves.total_qr_scans": "Total QR Scans",
@@ -4527,7 +4541,7 @@ const translations = {
     // Common Actions
     "actions.accept_rental_request": "Accept Rental Request",
     "actions.reject_rental_request": "Reject Rental Request",
-    
+
     // Action Buttons
     "action.pay_now": "Pay Now",
     "action.verifying": "Verifying",
@@ -4535,7 +4549,7 @@ const translations = {
     "action.view_details": "View Details",
     "action.manage": "Manage",
     "action.waiting": "Waiting",
-    
+
     // Payment Dialog
     "payment.bank_transfer_title": "Bank Transfer",
     "payment.transfer_instructions": "Please transfer the amount to the bank account below",
@@ -4686,9 +4700,9 @@ const translations = {
   },
 }
 
-export function LanguageProvider({ 
+export function LanguageProvider({
   children,
-  initialLanguage 
+  initialLanguage
 }: {
   children: ReactNode
   initialLanguage?: Language
@@ -4701,7 +4715,7 @@ export function LanguageProvider({
     }
     return 'ar'
   }
-  
+
   const [language, setLanguageState] = useState<Language>(getInitialLanguage)
   const direction: Direction = language === "ar" ? "rtl" : "ltr"
 
@@ -4721,9 +4735,9 @@ export function LanguageProvider({
   useEffect(() => {
     // Only sync if we're on the client and haven't received initialLanguage from server
     if (typeof window === 'undefined') return
-    
+
     const savedLang = localStorage.getItem('language') as Language
-    
+
     if (savedLang && (savedLang === 'ar' || savedLang === 'en')) {
       if (savedLang !== language) {
         // Only update if there's a real mismatch (shouldn't happen with proper cookie sync)
@@ -4736,18 +4750,18 @@ export function LanguageProvider({
       document.cookie = `language=${language};path=/;max-age=31536000;SameSite=Lax`
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  
+
   useEffect(() => {
     document.documentElement.lang = language
     document.documentElement.dir = direction
-    
+
     document.body.classList.remove("font-cairo", "font-inter")
     const fontClass = direction === "rtl" ? "font-cairo" : "font-inter"
     document.body.classList.add(fontClass)
-    
+
     document.body.classList.remove("dir-rtl", "dir-ltr")
     document.body.classList.add(`dir-${direction}`)
-    
+
     // Mark as hydrated after first render to enable transitions
     requestAnimationFrame(() => {
       document.documentElement.classList.add('hydrated')

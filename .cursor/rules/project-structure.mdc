@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+description: Next.js project structure and organization guidelines
+globs: **/*.tsx, **/*.ts
+---
+
+# Next.js Project Structure
+
+## App Router Directory Structure
+
+- Use the App Router directory structure under `app/`
+- Place route-specific components in `app/` directory
+- Place shared components in `components/` directory
+- Place utilities and helpers in `lib/` directory
+- Use lowercase with dashes for directories (e.g., `components/auth-wizard`)
+
+## Component Organization
+
+- Server Components go in `app/` for route-specific components
+- Shared components belong in `components/` directory
+- UI components from shadcn/ui go in `components/ui/`
+- Context providers go in `contexts/` directory
+- Custom hooks go in `hooks/` directory
+
+## File Naming Conventions
+
+- Use kebab-case for directories: `admin-dashboard`, `brand-profile`
+- Use camelCase for component files: `userProfile.tsx`, `productCard.tsx`
+- Use descriptive names that indicate component purpose
+- Group related components in subdirectories
+
+## Import Organization
+
+- Group imports by type: React, third-party libraries, internal modules
+- Use absolute imports from workspace root
+- Prefer named imports over default imports
+- Keep import statements at the top of files

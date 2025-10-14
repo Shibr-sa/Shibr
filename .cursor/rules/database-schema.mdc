@@ -1,0 +1,70 @@
+---
+description: Database design, schema management, and data integrity practices
+globs: convex/*.ts, convex/schema.ts
+---
+
+# Database and Schema Management
+
+## Prisma/Convex Schema Design
+
+- Use **Prisma** or Convex for database ORM abstraction
+- Design normalized database schemas
+- Implement proper relationships and constraints
+- Use appropriate data types for each field
+- Document schema changes and migrations
+
+## Schema Updates
+
+- Keep schema updated and well-documented
+- Use migrations to manage schema changes safely
+- Test schema changes in development environment first
+- Implement proper rollback strategies for migrations
+- Update seed files when schema changes occur
+
+## Data Integrity
+
+- Validate all inputs before persisting to database
+- Implement database-level constraints and validations
+- Use transactions for multi-step operations
+- Implement proper error handling for database operations
+- Handle race conditions and concurrent updates
+
+## Query Optimization
+
+- Implement proper database indexing strategies
+- Avoid N+1 query problems with proper joins
+- Use efficient query patterns and pagination
+- Monitor query performance and optimize slow queries
+- Implement database connection pooling
+
+## Data Security
+
+- Implement proper access controls and permissions
+- Use parameterized queries to prevent SQL injection
+- Encrypt sensitive data at rest and in transit
+- Implement proper data retention policies
+- Audit database access and changes
+
+## Migration Management
+
+- Create descriptive migration files with timestamps
+- Test migrations on staging environment before production
+- Implement proper migration rollback capabilities
+- Document breaking changes in migration notes
+- Keep migration history clean and organized
+
+## Seed Data Management
+
+- **Always update the seed file when schema is updated**
+- Use realistic test data for development
+- Implement proper data relationships in seed files
+- Keep seed data version-controlled
+- Document seed data usage and purpose
+
+## Backup and Recovery
+
+- Implement regular database backups
+- Test backup restoration procedures
+- Implement proper disaster recovery plans
+- Monitor database health and performance
+- Plan for database scaling and maintenance

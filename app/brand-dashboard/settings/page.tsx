@@ -19,6 +19,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { validateSaudiIBAN, SAUDI_BANKS } from "@/lib/saudi-iban-validator"
 import { cn } from "@/lib/utils"
+import { BRAND_BUSINESS_CATEGORIES_AR, BRAND_BUSINESS_CATEGORIES_EN } from "@/lib/constants"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -27,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ImageCropper } from "@/components/image-cropper"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { BrandProfileCompletionProgress } from "@/components/brand-profile-completion-progress"
+import { Combobox } from "@/components/ui/combobox"
 
 export default function BrandDashboardSettingsPage() {
   const { t, direction, language } = useLanguage()
@@ -48,13 +50,13 @@ export default function BrandDashboardSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
   const [showLogoCropper, setShowLogoCropper] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Form states for General tab
   const [ownerName, setOwnerName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  
+
   // Form states for Brand Data tab
   const [brandName, setBrandName] = useState("")
   const [businessCategory, setBusinessCategory] = useState("")
@@ -68,16 +70,20 @@ export default function BrandDashboardSettingsPage() {
   const [isBrandDataLocked, setIsBrandDataLocked] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
 
+  // Validation states
+  const [websiteError, setWebsiteError] = useState<string>("")
+  const [crNumberError, setCrNumberError] = useState<string>("")
+
   // Form states for Payment dialog
   const [bankCode, setBankCode] = useState("")
   const [accountHolderName, setAccountHolderName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [iban, setIban] = useState("")
-  const [ibanValidation, setIbanValidation] = useState<{isValid: boolean; error?: string; bankName?: string}>({isValid: false})
+  const [ibanValidation, setIbanValidation] = useState<{ isValid: boolean; error?: string; bankName?: string; formattedIBAN?: string }>({ isValid: false })
   const [ibanCertificateFile, setIbanCertificateFile] = useState<File | null>(null)
   const [ibanCertificateUrl, setIbanCertificateUrl] = useState<string | null>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Convex mutations
   const updateGeneralSettings = useMutation(api.users.updateGeneralSettings)
   const updateBrandData = useMutation(api.users.updateBrandData)
@@ -132,17 +138,17 @@ export default function BrandDashboardSettingsPage() {
           setDocumentUrl(tempUrl)
         }
       }
-      
+
       setHasInitialized(true)
     }
   }, [brandUserData, hasInitialized])
-  
+
   // Separate effect for handling document URL updates after initialization
   useEffect(() => {
     if (brandUserData && hasInitialized) {
       const profile = brandUserData.profile
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
-      
+
       if (backendDocumentUrl && !pendingDocumentFile) {
         // Update document URL if backend has a new one and we're not in the middle of selecting a new file
         setDocumentUrl(backendDocumentUrl)
@@ -150,6 +156,48 @@ export default function BrandDashboardSettingsPage() {
       }
     }
   }, [brandUserData, hasInitialized, pendingDocumentFile])
+
+  // Validation functions
+  const validateWebsite = (url: string): boolean => {
+    if (!url.trim()) {
+      setWebsiteError("")
+      return true // Optional field
+    }
+
+    try {
+      const urlPattern = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+      if (!urlPattern.test(url)) {
+        setWebsiteError(language === 'ar' ? 'يرجى إدخال رابط صحيح (مثال: https://example.com)' : 'Please enter a valid URL (e.g., https://example.com)')
+        return false
+      }
+      setWebsiteError("")
+      return true
+    } catch (error) {
+      setWebsiteError(language === 'ar' ? 'يرجى إدخال رابط صحيح' : 'Please enter a valid URL')
+      return false
+    }
+  }
+
+  const validateSaudiCRNumber = (crNumber: string): boolean => {
+    if (!crNumber.trim()) {
+      setCrNumberError("")
+      return true // Will be validated as required in save function if not freelance
+    }
+
+    const cleanNumber = crNumber.replace(/[^0-9]/g, '')
+    if (cleanNumber.length !== 10) {
+      setCrNumberError(language === 'ar' ? 'يجب أن يتكون رقم السجل التجاري السعودي من 10 أرقام' : 'Saudi Commercial Registration number must be exactly 10 digits')
+      return false
+    }
+
+    if (!cleanNumber.startsWith('1') && !cleanNumber.startsWith('2')) {
+      setCrNumberError(language === 'ar' ? 'يجب أن يبدأ رقم السجل التجاري السعودي بالرقم 1 أو 2' : 'Saudi Commercial Registration number must start with 1 or 2')
+      return false
+    }
+
+    setCrNumberError("")
+    return true
+  }
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,23 +236,28 @@ export default function BrandDashboardSettingsPage() {
     try {
       // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl()
-      
+
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": croppedBlob.type },
         body: croppedBlob,
       })
-      
+
       const { storageId } = await result.json()
-      
+
       // Get the URL for the uploaded file
-      const imageUrl = await updateProfileImage({
-        profileImageId: storageId,
-      })
-      
+      const imageUrl = await getFileUrl({ storageId })
+
+      // Update the profile image
+      if (imageUrl) {
+        await updateProfileImage({
+          imageUrl: imageUrl,
+        })
+      }
+
       setProfileImageUrl(typeof imageUrl === 'string' ? imageUrl : null)
-      
+
       toast({
         title: t("settings.general.success"),
         description: t("settings.general.image_updated"),
@@ -233,24 +286,24 @@ export default function BrandDashboardSettingsPage() {
     try {
       // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl()
-      
+
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type || 'application/octet-stream' },
         body: file,
       })
-      
+
       const { storageId } = await result.json()
-      
+
       // Update the document URL in the user record
       await updateBusinessRegistrationDocument({
-        documentId: storageId,
+        storageId: storageId,
       })
-      
+
       toast({
         title: t("settings.brand_data.success"),
-        description: isFreelance 
+        description: isFreelance
           ? t("settings.brand_data.freelance_document_uploaded")
           : t("settings.brand_data.commercial_registration_uploaded"),
       })
@@ -317,9 +370,9 @@ export default function BrandDashboardSettingsPage() {
                     className="hidden"
                     onChange={handleFileSelect}
                   />
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="gap-2"
                     disabled={isLoading}
                     onClick={() => fileInputRef.current?.click()}
@@ -338,57 +391,57 @@ export default function BrandDashboardSettingsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
-                    <Input 
-                      id="ownerName" 
+                    <Input
+                      id="ownerName"
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
-                      className="text-start" 
+                      className="text-start"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phoneNumber" className="text-start block">{t("settings.general.phone_number")}</Label>
-                    <Input 
-                      id="phoneNumber" 
-                      type="tel" 
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+966 5X XXX XXXX" 
-                      className="text-start" 
-                       
+                      placeholder="+966 5X XXX XXXX"
+                      className="text-start"
+
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-start block">{t("settings.general.email")}</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
+                    <Input
+                      id="email"
+                      type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="text-start" 
-                       
+                      className="text-start"
+
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-start block">{t("settings.general.password")}</Label>
-                    <Input 
-                      id="password" 
-                      type="password" 
+                    <Input
+                      id="password"
+                      type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••" 
-                      className="text-start" 
+                      placeholder="••••••••"
+                      className="text-start"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button 
+                <Button
                   className="gap-2"
                   disabled={isLoading || !user?.id}
                   onClick={async () => {
                     if (!user?.id) return
-                    
+
                     setIsLoading(true)
                     try {
                       const updateData: any = {}
@@ -396,11 +449,11 @@ export default function BrandDashboardSettingsPage() {
                       if (phoneNumber) updateData.phone = phoneNumber
                       if (email) updateData.email = email
                       if (password) updateData.password = password
-                      
+
                       await updateGeneralSettings({
                         ...updateData
                       })
-                      
+
                       toast({
                         title: t("settings.general.success"),
                         description: t("settings.general.success_message"),
@@ -435,12 +488,12 @@ export default function BrandDashboardSettingsPage() {
                     <Label htmlFor="brandName" className="text-start block">
                       {t("settings.brand_data.brand_name")} *
                     </Label>
-                    <Input 
-                      id="brandName" 
+                    <Input
+                      id="brandName"
                       value={brandName}
                       onChange={(e) => setBrandName(e.target.value)}
                       placeholder={t("settings.brand_data.brand_name_placeholder")}
-                      className="text-start" 
+                      className="text-start"
                       required
                     />
                   </div>
@@ -448,13 +501,13 @@ export default function BrandDashboardSettingsPage() {
                     <Label htmlFor="businessCategory" className="text-start block">
                       {t("settings.brand_data.business_category")} *
                     </Label>
-                    <Input 
-                      id="businessCategory" 
+                    <Combobox
                       value={businessCategory}
-                      onChange={(e) => setBusinessCategory(e.target.value)}
+                      onChange={setBusinessCategory}
+                      options={language === 'ar' ? [...BRAND_BUSINESS_CATEGORIES_AR] : [...BRAND_BUSINESS_CATEGORIES_EN]}
                       placeholder={t("settings.brand_data.business_category_placeholder")}
-                      className="text-start" 
-                      required
+                      searchPlaceholder={language === 'ar' ? 'ابحث عن فئة الأعمال...' : 'Search business categories...'}
+                      emptyMessage={language === 'ar' ? 'لا توجد فئات مطابقة' : 'No matching categories found'}
                     />
                   </div>
                 </div>
@@ -464,14 +517,23 @@ export default function BrandDashboardSettingsPage() {
                   <Label htmlFor="website" className="text-start block">
                     {t("settings.brand_data.website")}
                   </Label>
-                  <Input 
-                    id="website" 
-                    type="url" 
+                  <Input
+                    id="website"
+                    type="url"
                     value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
+                    onChange={(e) => {
+                      setWebsite(e.target.value)
+                      validateWebsite(e.target.value)
+                    }}
                     placeholder={t("settings.brand_data.website_placeholder")}
-                    className="text-start" 
-                                     />
+                    className={cn(
+                      "text-start",
+                      websiteError ? "border-red-500 focus:border-red-500" : ""
+                    )}
+                  />
+                  {websiteError && (
+                    <p className="text-xs text-red-500">{websiteError}</p>
+                  )}
                 </div>
 
                 {/* Commercial Registration Number / Freelance Document */}
@@ -479,27 +541,44 @@ export default function BrandDashboardSettingsPage() {
                   <Label htmlFor="registration" className="text-start block">
                     {isFreelance ? t("settings.brand_data.freelance_document_number") : t("settings.brand_data.commercial_reg")} *
                   </Label>
-                  <Input 
-                    id="registration" 
+                  <Input
+                    id="registration"
                     value={isFreelance ? freelanceLicenseNumber : commercialRegisterNumber}
-                    onChange={(e) => isFreelance ? setFreelanceLicenseNumber(e.target.value) : setCommercialRegisterNumber(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (isFreelance) {
+                        setFreelanceLicenseNumber(value)
+                      } else {
+                        const numericValue = value.replace(/[^0-9]/g, '')
+                        setCommercialRegisterNumber(numericValue)
+                        validateSaudiCRNumber(numericValue)
+                      }
+                    }}
                     placeholder={isFreelance ? t("settings.brand_data.freelance_document_placeholder") : t("settings.brand_data.commercial_reg_placeholder")}
-                    className="text-start" 
+                    className={cn(
+                      "text-start",
+                      !isFreelance && crNumberError ? "border-red-500 focus:border-red-500" : ""
+                    )}
+                    pattern={isFreelance ? undefined : "[0-9]*"}
+                    inputMode={isFreelance ? "text" : "numeric"}
                     required
                   />
+                  {!isFreelance && crNumberError && (
+                    <p className="text-xs text-red-500">{crNumberError}</p>
+                  )}
                 </div>
 
                 {/* No Commercial Registration Checkbox */}
                 <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="noCommercialReg" 
+                  <Checkbox
+                    id="noCommercialReg"
                     checked={isFreelance}
                     onCheckedChange={(checked) => {
                       setIsFreelance(checked as boolean)
                     }}
                   />
-                  <Label 
-                    htmlFor="noCommercialReg" 
+                  <Label
+                    htmlFor="noCommercialReg"
                     className="text-sm font-normal cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     {t("settings.brand_data.no_commercial_reg")}
@@ -566,7 +645,7 @@ export default function BrandDashboardSettingsPage() {
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
-                            
+
                             if (file.size > 10 * 1024 * 1024) {
                               toast({
                                 title: t("settings.general.error"),
@@ -575,13 +654,13 @@ export default function BrandDashboardSettingsPage() {
                               })
                               return
                             }
-                            
+
                             // Just store the file locally, don't upload yet
                             setPendingDocumentFile(file)
                             // Create a local URL for preview
                             const localUrl = URL.createObjectURL(file)
                             setDocumentUrl(localUrl)
-                            
+
                             toast({
                               title: t("settings.general.info"),
                               description: t("settings.brand_data.document_ready_to_save"),
@@ -595,7 +674,7 @@ export default function BrandDashboardSettingsPage() {
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium">
-                            {isFreelance 
+                            {isFreelance
                               ? t("settings.brand_data.upload_freelance_document")
                               : t("settings.brand_data.upload_commercial_registration")}
                           </p>
@@ -603,9 +682,9 @@ export default function BrandDashboardSettingsPage() {
                             {t("settings.brand_data.accepted_formats")}
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="outline" 
+                          variant="outline"
                           size="sm"
                           onClick={() => documentInputRef.current?.click()}
                           disabled={isLoading}
@@ -620,12 +699,12 @@ export default function BrandDashboardSettingsPage() {
 
               {/* Save Button */}
               <div className="flex justify-end">
-                <Button 
+                <Button
                   className="gap-2"
                   disabled={isLoading || !user?.id}
                   onClick={async () => {
                     if (!user?.id) return
-                    
+
                     // Validate required fields
                     const registrationNumber = isFreelance ? freelanceLicenseNumber : commercialRegisterNumber;
                     if (!brandName || !businessCategory || !registrationNumber || !phoneNumber) {
@@ -636,7 +715,7 @@ export default function BrandDashboardSettingsPage() {
                       })
                       return
                     }
-                    
+
                     // Validate document upload
                     if (!documentUrl) {
                       toast({
@@ -646,7 +725,27 @@ export default function BrandDashboardSettingsPage() {
                       })
                       return
                     }
-                    
+
+                    // Validate website URL if provided
+                    if (website && !validateWebsite(website)) {
+                      toast({
+                        title: t("settings.brand_data.validation_error"),
+                        description: websiteError,
+                        variant: "destructive",
+                      })
+                      return
+                    }
+
+                    // Validate CR number if not freelance
+                    if (!isFreelance && !validateSaudiCRNumber(commercialRegisterNumber)) {
+                      toast({
+                        title: t("settings.brand_data.validation_error"),
+                        description: crNumberError,
+                        variant: "destructive",
+                      })
+                      return
+                    }
+
                     setIsLoading(true)
                     try {
                       // First, upload the document if there's a pending one
@@ -654,17 +753,17 @@ export default function BrandDashboardSettingsPage() {
                       if (pendingDocumentFile) {
                         // Get upload URL from Convex
                         const uploadUrl = await generateUploadUrl()
-                        
+
                         // Upload file to Convex storage
                         const result = await fetch(uploadUrl, {
                           method: "POST",
                           headers: { "Content-Type": pendingDocumentFile.type },
                           body: pendingDocumentFile,
                         })
-                        
+
                         const { storageId } = await result.json()
                         documentStorageId = storageId
-                        
+
                         // Update brand with the document storage ID
                         if (isFreelance) {
                           await updateFreelanceDocument({
@@ -675,16 +774,16 @@ export default function BrandDashboardSettingsPage() {
                             storageId: storageId,
                           })
                         }
-                        
+
                         // Get the actual URL for the uploaded file
                         const fileUrl = await getFileUrl({ storageId })
                         setDocumentUrl(fileUrl)
                         setPendingDocumentFile(null) // Clear pending file after successful upload
-                        
+
                         // Store the URL to prevent it from being cleared
                         sessionStorage.setItem('temp_document_url', fileUrl || '')
                       }
-                      
+
                       // Then update the brand data
                       await updateBrandData({
                         brandName,
@@ -694,12 +793,12 @@ export default function BrandDashboardSettingsPage() {
                         freelanceLicenseNumber: isFreelance ? freelanceLicenseNumber : undefined,
                         website: website || undefined,
                       })
-                      
+
                       toast({
                         title: t("settings.brand_data.success"),
                         description: t("settings.brand_data.success_message"),
                       })
-                      
+
                       // Update session storage for dashboard
                       const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}')
                       sessionStorage.setItem('currentUser', JSON.stringify({
@@ -742,69 +841,69 @@ export default function BrandDashboardSettingsPage() {
               </Button>
             </div>
             <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.details")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.table.actions")}</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-start font-medium">{t("settings.payment.table.method")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.table.details")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.table.status")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.table.type")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.table.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bankAccounts?.map((account) => (
+                    <TableRow key={account._id}>
+                      <TableCell className="font-medium">{account.bankName}</TableCell>
+                      <TableCell>
+                        {account.accountNumber || ''} - {account.accountNumber?.slice(-4).padStart(account.accountNumber.length, '*') || ''}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={account.isActive ? "default" : "secondary"}>
+                          {account.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{t("settings.payment.physical")}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={async () => {
+                              try {
+                                await deleteBankAccount({ bankAccountId: account._id })
+                                toast({
+                                  title: t("settings.payment.deleted"),
+                                  description: t("settings.payment.deleted_message"),
+                                })
+                              } catch (error) {
+                                toast({
+                                  title: t("settings.payment.error"),
+                                  description: t("settings.payment.error_message"),
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bankAccounts?.map((account) => (
-                      <TableRow key={account._id}>
-                        <TableCell className="font-medium">{account.bankName}</TableCell>
-                        <TableCell>
-                          {account.accountNumber || ''} - {account.accountNumber?.slice(-4).padStart(account.accountNumber.length, '*') || ''}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={account.isActive ? "default" : "secondary"}>
-                            {account.isActive ? t("settings.payment.active") : t("settings.payment.inactive")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{t("settings.payment.physical")}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive"
-                              onClick={async () => {
-                                try {
-                                  await deleteBankAccount({ bankAccountId: account._id })
-                                  toast({
-                                    title: t("settings.payment.deleted"),
-                                    description: t("settings.payment.deleted_message"),
-                                  })
-                                } catch (error) {
-                                  toast({
-                                    title: t("settings.payment.error"),
-                                    description: t("settings.payment.error_message"),
-                                    variant: "destructive",
-                                  })
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!bankAccounts || bankAccounts.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          {t("settings.payment.no_payment_methods")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                  ))}
+                  {(!bankAccounts || bankAccounts.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        {t("settings.payment.no_payment_methods")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
@@ -812,24 +911,24 @@ export default function BrandDashboardSettingsPage() {
           <div className="space-y-4">
             <h3 className="text-xl font-semibold">{t("settings.payment.payment_records_summary")}</h3>
             <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.date")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.type")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.status")}</TableHead>
-                      <TableHead className="text-start font-medium">{t("settings.payment.summary.actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        {t("settings.payment.no_payment_records")}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-start font-medium">{t("settings.payment.summary.date")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.summary.type")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.summary.payment_method")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.summary.status")}</TableHead>
+                    <TableHead className="text-start font-medium">{t("settings.payment.summary.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      {t("settings.payment.no_payment_records")}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </TabsContent>
@@ -843,7 +942,7 @@ export default function BrandDashboardSettingsPage() {
               {t("settings.payment.dialog.title")}
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Bank Selection */}
             <div className="space-y-2">
@@ -918,7 +1017,7 @@ export default function BrandDashboardSettingsPage() {
                         setBankCode(validation.bankCode)
                       }
                     } else {
-                      setIbanValidation({isValid: false})
+                      setIbanValidation({ isValid: false })
                     }
                   }}
                   placeholder="SA00 0000 0000 0000 0000 0000"
@@ -941,7 +1040,7 @@ export default function BrandDashboardSettingsPage() {
               {iban.length > 2 && !ibanValidation.isValid && ibanValidation.error && (
                 <p className="text-xs text-red-500">
                   {(() => {
-                    switch(ibanValidation.error) {
+                    switch (ibanValidation.error) {
                       case 'IBAN must start with SA for Saudi Arabia':
                         return language === 'ar' ? 'يجب أن يبدأ رقم الآيبان بـ SA للمملكة العربية السعودية' : 'IBAN must start with SA for Saudi Arabia'
                       case 'Saudi IBAN must be exactly 24 characters':
@@ -1057,7 +1156,7 @@ export default function BrandDashboardSettingsPage() {
             >
               {t("settings.payment.dialog.cancel")}
             </Button>
-            <Button 
+            <Button
               disabled={isLoading || !user?.id}
               onClick={async () => {
                 if (!user?.id) return
@@ -1123,7 +1222,6 @@ export default function BrandDashboardSettingsPage() {
                     accountNumber,
                     iban: ibanValidation.formattedIBAN || iban,
                     isDefault,
-                    certificateUrl,
                   })
 
                   toast({
@@ -1136,7 +1234,7 @@ export default function BrandDashboardSettingsPage() {
                   setAccountHolderName("")
                   setAccountNumber("")
                   setIban("")
-                  setIbanValidation({isValid: false})
+                  setIbanValidation({ isValid: false })
                   setIbanCertificateFile(null)
                   setIbanCertificateUrl(null)
                   setIsDefault(false)
@@ -1189,7 +1287,7 @@ export default function BrandDashboardSettingsPage() {
           setShowLogoCropper(false)
           await handleDocumentUpload(croppedBlob)
         }}
-        aspectRatio={16/9}
+        aspectRatio={16 / 9}
         cropShape="rect"
       />
     </div>

@@ -32,12 +32,12 @@ export default function AddShelfPage() {
   const router = useRouter()
   const { user } = useCurrentUser()
   const { toast } = useToast()
-  
+
   // Convex mutations and queries
   const addShelf = useMutation(api.shelves.addShelf)
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
-  
+
   // Form states
   const [shelfName, setShelfName] = useState("")
   const [city, setCity] = useState("")
@@ -50,14 +50,14 @@ export default function AddShelfPage() {
   const [depth, setDepth] = useState("")
   const [productType, setProductType] = useState("")
   const [description, setDescription] = useState("")
-  
+
   // Location states - default to Riyadh
   const [selectedLocation, setSelectedLocation] = useState({
     address: "",
     latitude: 24.7136,
     longitude: 46.6753
   })
-  
+
   // Get city coordinates from constants
   const cityCoordinates = SAUDI_CITIES.reduce((acc, city) => {
     acc[city.value] = { lat: city.lat, lng: city.lng }
@@ -73,8 +73,8 @@ export default function AddShelfPage() {
         longitude: cityCoordinates[city].lng
       }))
     }
-  }, [city])
-  
+  }, [city, cityCoordinates])
+
   // File states
   const [exteriorImage, setExteriorImage] = useState<File | null>(null)
   const [interiorImage, setInteriorImage] = useState<File | null>(null)
@@ -84,19 +84,19 @@ export default function AddShelfPage() {
   const [shelfPreview, setShelfPreview] = useState<string | null>(null)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  
+
   // File input refs
   const exteriorInputRef = useRef<HTMLInputElement>(null)
   const interiorInputRef = useRef<HTMLInputElement>(null)
   const shelfInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Memoized values for MapPicker
   const defaultLocation = useMemo(() => ({
     lat: selectedLocation.latitude,
     lng: selectedLocation.longitude,
     address: selectedLocation.address
   }), [selectedLocation.latitude, selectedLocation.longitude, selectedLocation.address])
-  
+
   const handleLocationSelect = useCallback((location: { lat: number; lng: number; address: string }) => {
     setSelectedLocation({
       latitude: location.lat,
@@ -110,7 +110,7 @@ export default function AddShelfPage() {
     router.push("/store-dashboard/settings")
     return null
   }
-  
+
   // Upload file to Convex storage
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
@@ -127,11 +127,11 @@ export default function AddShelfPage() {
       return null
     }
   }
-  
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user) {
       toast({
         title: t("common.error"),
@@ -140,7 +140,7 @@ export default function AddShelfPage() {
       })
       return
     }
-    
+
     // Validate required fields
     if (!shelfName || !city || !branch || !monthlyPrice || !discountPercentage || !availableFrom || !length || !width || !depth) {
       toast({
@@ -150,7 +150,7 @@ export default function AddShelfPage() {
       })
       return
     }
-    
+
     // Validate discount percentage
     const discountValidation = validateData(percentageSchema, discountPercentage)
     if (!discountValidation.success) {
@@ -171,18 +171,18 @@ export default function AddShelfPage() {
       })
       return
     }
-    
+
     setSubmitting(true)
-    
+
     try {
       // Upload images if they exist
       let exteriorImageId: string | null = null
       let interiorImageId: string | null = null
       let shelfImageId: string | null = null
-      
+
       if (exteriorImage || interiorImage || shelfImage) {
         setUploadingImages(true)
-        
+
         if (exteriorImage) {
           exteriorImageId = await uploadFile(exteriorImage)
         }
@@ -192,10 +192,10 @@ export default function AddShelfPage() {
         if (shelfImage) {
           shelfImageId = await uploadFile(shelfImage)
         }
-        
+
         setUploadingImages(false)
       }
-      
+
       // Create shelf in database
       await addShelf({
         shelfName,
@@ -216,12 +216,12 @@ export default function AddShelfPage() {
         interiorImage: interiorImageId || undefined,
         shelfImage: shelfImageId || undefined,
       })
-      
+
       toast({
         title: t("common.success"),
         description: t("add_shelf.success_message"),
       })
-      
+
       // Redirect to shelves page
       router.push("/store-dashboard/shelves")
     } catch (error) {
@@ -236,7 +236,7 @@ export default function AddShelfPage() {
       setUploadingImages(false)
     }
   }
-  
+
   // Handle file selection
   const handleFileSelect = (type: 'exterior' | 'interior' | 'shelf', file: File | null) => {
     if (file && file.size > NUMERIC_LIMITS.FILE_SIZE_MAX) {
@@ -247,7 +247,7 @@ export default function AddShelfPage() {
       })
       return
     }
-    
+
     // Create preview URL for images
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader()
@@ -280,7 +280,7 @@ export default function AddShelfPage() {
           break
       }
     }
-    
+
     switch (type) {
       case 'exterior':
         setExteriorImage(file)
@@ -323,7 +323,7 @@ export default function AddShelfPage() {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="city" className="text-start block">
                   {t("add_shelf.city")} *
@@ -508,7 +508,7 @@ export default function AddShelfPage() {
                     height="200px"
                     zoom={15}
                   />
-                  
+
                   {/* Selected location display */}
                   <div className="border rounded-lg p-3 bg-muted/30">
                     <div className="flex items-start gap-2">
@@ -529,7 +529,7 @@ export default function AddShelfPage() {
               <Label className="text-start block font-semibold">
                 {t("add_shelf.shelf_images")} *
               </Label>
-              
+
               <div className="grid gap-4 md:grid-cols-3">
                 {/* Exterior Image Upload */}
                 <div className="space-y-2">
@@ -545,17 +545,17 @@ export default function AddShelfPage() {
                       {exteriorImage ? (
                         <>
                           {exteriorPreview ? (
-                            <img 
-                              src={exteriorPreview} 
-                              alt="Exterior preview" 
+                            <img
+                              src={exteriorPreview}
+                              alt="Exterior preview"
                               className="w-full h-32 object-cover rounded-md mb-2"
                             />
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{exteriorImage.name}</p>
                           )}
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               setExteriorImage(null)
@@ -573,9 +573,9 @@ export default function AddShelfPage() {
                           <p className="text-xs text-muted-foreground text-center">
                             {t("add_shelf.upload_exterior_image_desc")}
                           </p>
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => exteriorInputRef.current?.click()}
                           >
@@ -601,17 +601,17 @@ export default function AddShelfPage() {
                       {interiorImage ? (
                         <>
                           {interiorPreview ? (
-                            <img 
-                              src={interiorPreview} 
-                              alt="Interior preview" 
+                            <img
+                              src={interiorPreview}
+                              alt="Interior preview"
                               className="w-full h-32 object-cover rounded-md mb-2"
                             />
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{interiorImage.name}</p>
                           )}
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               setInteriorImage(null)
@@ -629,9 +629,9 @@ export default function AddShelfPage() {
                           <p className="text-xs text-muted-foreground text-center">
                             {t("add_shelf.upload_interior_image_desc")}
                           </p>
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => interiorInputRef.current?.click()}
                           >
@@ -657,17 +657,17 @@ export default function AddShelfPage() {
                       {shelfImage ? (
                         <>
                           {shelfPreview ? (
-                            <img 
-                              src={shelfPreview} 
-                              alt="Shelf preview" 
+                            <img
+                              src={shelfPreview}
+                              alt="Shelf preview"
                               className="w-full h-32 object-cover rounded-md mb-2"
                             />
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{shelfImage.name}</p>
                           )}
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               setShelfImage(null)
@@ -685,9 +685,9 @@ export default function AddShelfPage() {
                           <p className="text-xs text-muted-foreground text-center">
                             {t("add_shelf.upload_shelf_image_desc")}
                           </p>
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             size="sm"
                             onClick={() => shelfInputRef.current?.click()}
                           >
@@ -703,7 +703,7 @@ export default function AddShelfPage() {
 
             {/* Submit Button */}
             <div className="flex justify-center pt-4">
-              <Button 
+              <Button
                 type="submit"
                 className="px-8 py-6 text-base bg-primary hover:bg-primary/90"
                 disabled={isLoading || submitting || uploadingImages}

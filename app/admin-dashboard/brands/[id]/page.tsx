@@ -58,9 +58,9 @@ export default function BrandDetailsPage() {
   const router = useRouter()
   const params = useParams()
   const brandId = params.id as string
-  
+
   const itemsPerPage = 5
-  
+
   const [activeTab, setActiveTab] = useState("payments")
   const [paymentPage, setPaymentPage] = useState(1)
   const [productPage, setProductPage] = useState(1)
@@ -69,59 +69,60 @@ export default function BrandDetailsPage() {
   const [productSearch, setProductSearch] = useState("")
   const [hasInitialRentalsData, setHasInitialRentalsData] = useState(false)
   const [hasInitialProductsData, setHasInitialProductsData] = useState(false)
-  
+
   // Debounced search values for server-side filtering
   const debouncedPaymentSearch = useDebouncedValue(paymentSearch, 300)
   const debouncedProductSearch = useDebouncedValue(productSearch, 300)
-  
+
   // Check if search is in progress (user typed but debounce hasn't fired yet)
   const isPaymentSearching = paymentSearch !== debouncedPaymentSearch
   const isProductSearching = productSearch !== debouncedProductSearch
-  
+
   // Fetch brand data from Convex
   const brandsResult = useQuery(api.admin.getBrands, {
     searchQuery: "",
     page: 1,
     limit: 100,
   })
-  
+
   const brand = brandsResult?.items?.find((b: any) => b.id === brandId)
-  
+
   // Fetch products currently displayed on shelves for this brand
   // Note: This shows products that are actively displayed on rented shelves,
   // not all products owned by the brand
-  const products = useQuery(api.admin.getBrandProducts,
-    brand?.id ? { 
+  const productsQuery = useQuery(api.admin.getBrandProducts,
+    brand?.id ? {
       profileId: brand.id as Id<"userProfiles">,
       searchQuery: debouncedProductSearch,
     } : "skip"
-  ) || []
-  
+  )
+  const products = useMemo(() => productsQuery || [], [productsQuery])
+
   // Fetch rental requests for this brand
   const rentalsResult = useQuery(api.admin.getBrandRentals,
-    brand?.id ? { 
+    brand?.id ? {
       profileId: brand.id as Id<"userProfiles">,
       searchQuery: debouncedPaymentSearch,
       statusFilter: paymentFilter,
     } : "skip"
   )
-  
+
   const rentals = rentalsResult || []
-  
+
   // Track when we have initial rentals data
   useEffect(() => {
     if (rentalsResult !== undefined && !hasInitialRentalsData) {
       setHasInitialRentalsData(true)
     }
   }, [rentalsResult, hasInitialRentalsData])
-  
+
   // Track when we have initial products data
   useEffect(() => {
     if (products !== undefined && !hasInitialProductsData) {
       setHasInitialProductsData(true)
     }
   }, [products, hasInitialProductsData])
-  
+
   if (!brand) {
     return (
       <div className="space-y-6">
@@ -259,9 +260,9 @@ export default function BrandDetailsPage() {
                   </Label>
                   <div className="flex items-center gap-2">
                     {brand.businessRegistrationUrl ? (
-                      <a 
-                        href={brand.businessRegistrationUrl} 
-                        target="_blank" 
+                      <a
+                        href={brand.businessRegistrationUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm font-medium text-primary cursor-pointer hover:underline"
                       >
@@ -312,7 +313,7 @@ export default function BrandDetailsPage() {
             <TabsTrigger value="payments">{t("brands.payment_collection_log")}</TabsTrigger>
             <TabsTrigger value="products">{t("brands.displayed_products")}</TabsTrigger>
           </TabsList>
-          
+
           <div className="flex flex-col md:flex-row items-start md:items-center gap-3 flex-1 justify-end">
             {/* Filter Toggles for Payment Tab */}
             {activeTab === "payments" && (
@@ -351,7 +352,7 @@ export default function BrandDetailsPage() {
                 </Button>
               </div>
             )}
-            
+
             {/* Search Bar - Changes based on active tab */}
             <div className="relative w-full md:w-96">
               <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -419,8 +420,8 @@ export default function BrandDetailsPage() {
                             {paymentSearch ? t("brands.try_different_search") : t("brands.payments_will_appear_here")}
                           </p>
                           {paymentSearch && (
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               className="mt-4"
                               onClick={() => setPaymentSearch("")}
@@ -447,9 +448,9 @@ export default function BrandDetailsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3" style={{ width: '60px' }}>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8"
                             onClick={() => {
                               // Generate and download receipt
@@ -498,7 +499,7 @@ export default function BrandDetailsPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => setPaymentPage(Math.max(1, paymentPage - 1))}
                   className={paymentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
@@ -515,7 +516,7 @@ export default function BrandDetailsPage() {
                 </PaginationItem>
               ))}
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => setPaymentPage(Math.min(Math.max(1, Math.ceil(rentals.length / itemsPerPage)), paymentPage + 1))}
                   className={paymentPage === Math.max(1, Math.ceil(rentals.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
@@ -577,8 +578,8 @@ export default function BrandDetailsPage() {
                             {productSearch ? t("brands.try_different_search") : t("brands.products_will_appear_here")}
                           </p>
                           {productSearch && (
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               className="mt-4"
                               onClick={() => setProductSearch("")}
@@ -598,8 +599,8 @@ export default function BrandDetailsPage() {
                         <TableCell className="py-3" style={{ width: '80px' }}>
                           <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden">
                             {product.imageUrl ? (
-                              <img 
-                                src={product.imageUrl} 
+                              <img
+                                src={product.imageUrl}
                                 alt={product.name}
                                 className="h-full w-full object-cover"
                               />
@@ -636,7 +637,7 @@ export default function BrandDetailsPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => setProductPage(Math.max(1, productPage - 1))}
                   className={productPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
@@ -653,7 +654,7 @@ export default function BrandDetailsPage() {
                 </PaginationItem>
               ))}
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => setProductPage(Math.min(Math.max(1, Math.ceil(products.length / itemsPerPage)), productPage + 1))}
                   className={productPage === Math.max(1, Math.ceil(products.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
