@@ -415,7 +415,7 @@ const schema = defineSchema({
     shelfStoreId: v.id("shelfStores"),
 
     // Customer information (guest checkout)
-    customerName: v.string(),
+    customerName: v.optional(v.string()), // Made optional for backward compatibility with legacy orders
     customerPhone: v.string(),
     wafeqContactId: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
