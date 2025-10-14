@@ -40,7 +40,9 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false)
+  const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
+  const [nameError, setNameError] = useState("")
   const [phoneError, setPhoneError] = useState("")
 
   // Fetch store data to get current stock levels
@@ -78,17 +80,27 @@ export default function CartPage() {
   }
 
   const handlePhoneSubmit = () => {
+    let hasError = false
+
+    if (!customerName.trim()) {
+      setNameError(t("store.name_required"))
+      hasError = true
+    } else {
+      setNameError("")
+    }
+
     if (!customerPhone) {
       setPhoneError(t("store.phone_required"))
-      return
-    }
-
-    if (!validatePhoneNumber(customerPhone)) {
+      hasError = true
+    } else if (!validatePhoneNumber(customerPhone)) {
       setPhoneError(t("store.invalid_phone_format"))
-      return
+      hasError = true
+    } else {
+      setPhoneError("")
     }
 
-    setPhoneError("")
+    if (hasError) return
+
     handleCheckoutWithPhone()
   }
 
@@ -110,6 +122,7 @@ export default function CartPage() {
       const orderData = {
         shelfStoreId: store._id,
         storeName: store.storeName,
+        customerName: customerName,
         customerPhone: customerPhone,
         items: cart.items.map(item => ({
           productId: item.productId,
@@ -323,7 +336,7 @@ export default function CartPage() {
           </div>
         )}
 
-        {/* Phone Number Dialog */}
+        {/* Customer Information Dialog */}
         <Dialog open={phoneDialogOpen} onOpenChange={setPhoneDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -333,6 +346,23 @@ export default function CartPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">{t("store.name_label")}</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder={t("store.name_placeholder")}
+                  value={customerName}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value)
+                    setNameError("")
+                  }}
+                  className={nameError ? "border-destructive" : ""}
+                />
+                {nameError && (
+                  <p className="text-sm text-destructive">{nameError}</p>
+                )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">{t("store.phone_label")}</Label>
                 <Input

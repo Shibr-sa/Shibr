@@ -636,7 +636,7 @@ export const getUserRentalRequests = query({
       requests.map(async (request) => {
         // Get the other party's details based on user type
         let otherUserId, otherUser, otherUserProfile
-        
+
         if (args.userType === "brand") {
           // For brand viewing store responses
           const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
@@ -650,9 +650,29 @@ export const getUserRentalRequests = query({
           otherUser = otherUserId ? await ctx.db.get(otherUserId) : null
           otherUserProfile = brandProfile
         }
-        
+
         // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
+
+        // Get shelf store for this rental to calculate sales count
+        const shelfStore = await ctx.db
+          .query("shelfStores")
+          .withIndex("by_rental", (q) => q.eq("rentalRequestId", request._id))
+          .first()
+
+        // Calculate total sales count from customer orders
+        let salesCount = 0
+        if (shelfStore) {
+          const orders = await ctx.db
+            .query("customerOrders")
+            .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", shelfStore._id))
+            .collect()
+
+          // Sum up all item quantities from all orders
+          salesCount = orders.reduce((total, order) => {
+            return total + order.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0)
+          }, 0)
+        }
 
         // For store owners viewing brand requests, include all brand details
         if (args.userType === "store" && otherUser && otherUserProfile) {
@@ -673,7 +693,8 @@ export const getUserRentalRequests = query({
               : (otherUserProfile as any).freelanceLicenseDocument
               ? await ctx.storage.getUrl((otherUserProfile as any).freelanceLicenseDocument)
               : undefined,
-            ownerName: (otherUserProfile as any).brandName
+            ownerName: (otherUserProfile as any).brandName,
+            salesCount, // Add real sales count
           }
         }
 
@@ -686,6 +707,7 @@ export const getUserRentalRequests = query({
           city: shelf?.city,
           shelfName: shelf?.shelfName,
           shelfBranch: shelf?.storeBranch,
+          salesCount, // Add real sales count
         }
       })
     )
@@ -1035,12 +1057,31 @@ export const confirmPayment = mutation({
     if (!request) {
       throw new Error("Rental request not found")
     }
-    
-    // Verify the request status is valid for payment
-    // Allow payment from multiple states (for testing and flexibility)
-    const validStatuses = ["payment_pending", "pending", "approved"]
-    if (!validStatuses.includes(request.status)) {
-      throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
+
+    // Idempotency check: If already active, verify shelf store exists and return success
+    // This prevents errors when webhook is called multiple times (retries, duplicates, etc.)
+    if (request.status === "active") {
+      const existingShelfStore = await ctx.db
+        .query("shelfStores")
+        .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
+        .first()
+
+      if (existingShelfStore) {
+        // Already processed successfully, return success (idempotent behavior)
+        console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active, shelf store exists)`)
+        return { success: true, alreadyProcessed: true }
+      }
+
+      // Status is active but shelf store missing - this shouldn't happen, but let's log it
+      console.warn(`[confirmPayment] Request ${args.requestId} is active but shelf store missing - will attempt to create`)
+      // Continue with shelf store creation below
+    } else {
+      // Verify the request status is valid for payment confirmation
+      // Allow payment from multiple states (for testing and flexibility)
+      const validStatuses = ["payment_pending", "pending", "approved"]
+      if (!validStatuses.includes(request.status)) {
+        throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
+      }
     }
     
     // Update the request status to active (since we'll have automated payment in future)

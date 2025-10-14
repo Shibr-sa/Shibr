@@ -1,15 +1,18 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
-// Create a new customer order
-export const createOrder = mutation({
+// Internal mutation to create order in database
+export const createOrderInternal = internalMutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
+    customerName: v.string(),
     customerPhone: v.string(),
+    wafeqContactId: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
     items: v.array(v.object({
       productId: v.id("products"),
       quantity: v.number(),
@@ -19,7 +22,7 @@ export const createOrder = mutation({
       v.literal("apple")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, orderNumber: string }> => {
     // Get the shelf store
     const shelfStore = await ctx.db.get(args.shelfStoreId)
     if (!shelfStore || !shelfStore.isActive) {
@@ -70,7 +73,10 @@ export const createOrder = mutation({
     // Create the order
     const orderId = await ctx.db.insert("customerOrders", {
       shelfStoreId: args.shelfStoreId,
+      customerName: args.customerName,
       customerPhone: args.customerPhone,
+      wafeqContactId: args.wafeqContactId,
+      invoiceNumber: args.invoiceNumber,
       items: orderItems,
       subtotal,
       storeCommission,
@@ -123,6 +129,153 @@ export const createOrder = mutation({
       orderId,
       orderNumber,
     }
+  },
+})
+
+// Create a new customer order (action that calls Wafeq API then creates order)
+export const createOrder = action({
+  args: {
+    shelfStoreId: v.id("shelfStores"),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    items: v.array(v.object({
+      productId: v.id("products"),
+      quantity: v.number(),
+    })),
+    paymentMethod: v.union(
+      v.literal("card"),
+      v.literal("apple")
+    ),
+  },
+  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, orderNumber: string }> => {
+    const wafeqApiKey = process.env.WAFEQ_API_KEY
+
+    // Create contact in Wafeq (actions can use fetch)
+    let wafeqContactId: string | undefined
+    try {
+      if (!wafeqApiKey) {
+        console.error("[Wafeq] WAFEQ_API_KEY not found in environment variables")
+      } else {
+        console.log("[Wafeq] Creating contact for:", args.customerName, args.customerPhone)
+
+        const wafeqResponse = await fetch("https://api.wafeq.com/v1/contacts/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Api-Key ${wafeqApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: args.customerName,
+            phone: args.customerPhone,
+          }),
+        })
+
+        console.log("[Wafeq] Contact response status:", wafeqResponse.status)
+
+        if (wafeqResponse.ok) {
+          const wafeqData = await wafeqResponse.json()
+          wafeqContactId = wafeqData.id?.toString()
+          console.log("[Wafeq] Successfully created contact with ID:", wafeqContactId)
+        } else {
+          const errorText = await wafeqResponse.text()
+          console.error("[Wafeq] Failed to create contact. Status:", wafeqResponse.status, "Response:", errorText)
+        }
+      }
+    } catch (error) {
+      console.error("[Wafeq] Error calling Wafeq contact API:", error)
+      // Continue with order creation even if Wafeq fails
+    }
+
+    console.log("[Wafeq] Final wafeqContactId:", wafeqContactId)
+
+    // Get product details for invoice line items
+    const products = await Promise.all(
+      args.items.map(item => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
+    )
+
+    // Create invoice in Wafeq if contact was created
+    let invoiceNumber: string | undefined
+    if (wafeqContactId && wafeqApiKey) {
+      try {
+        console.log("[Wafeq] Creating invoice for contact:", wafeqContactId)
+
+        // Get Wafeq configuration from environment variables
+        const wafeqAccountId = process.env.WAFEQ_ACCOUNT_ID
+        const wafeqTaxRateId = process.env.WAFEQ_TAX_RATE_ID
+
+        if (!wafeqAccountId || !wafeqTaxRateId) {
+          console.error("[Wafeq] Missing required environment variables for invoice creation")
+          console.error("[Wafeq] Required: WAFEQ_ACCOUNT_ID, WAFEQ_TAX_RATE_ID")
+          throw new Error("Wafeq configuration incomplete. Please set WAFEQ_ACCOUNT_ID and WAFEQ_TAX_RATE_ID environment variables.")
+        }
+
+        // Calculate line items with products (matching Wafeq structure exactly)
+        const lineItems = args.items.map((item, index) => {
+          const product = products[index]
+          return {
+            description: product?.name || `Product ${item.productId}`,
+            quantity: item.quantity,
+            unit_amount: product?.price || 0,
+            account: wafeqAccountId,
+            tax_rate: wafeqTaxRateId,
+          }
+        })
+
+        const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+        const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
+        const timestamp = Date.now()
+        const invoiceRef = `INV-${timestamp}`
+
+        const invoicePayload = {
+          contact: wafeqContactId,
+          currency: "SAR",
+          invoice_number: invoiceRef,
+          invoice_date: today,
+          invoice_due_date: dueDate,
+          line_items: lineItems,
+        }
+
+        console.log("[Wafeq] Invoice payload:", JSON.stringify(invoicePayload, null, 2))
+
+        const invoiceResponse = await fetch("https://api.wafeq.com/v1/invoices/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Api-Key ${wafeqApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(invoicePayload),
+        })
+
+        console.log("[Wafeq] Invoice response status:", invoiceResponse.status)
+
+        if (invoiceResponse.ok) {
+          const invoiceData = await invoiceResponse.json()
+          // Store the invoice ID (not invoice_number) for downloading PDFs
+          invoiceNumber = invoiceData.id?.toString() || invoiceData.invoice_number
+          console.log("[Wafeq] Successfully created invoice with ID:", invoiceNumber)
+          console.log("[Wafeq] Invoice data:", JSON.stringify(invoiceData, null, 2))
+        } else {
+          const errorText = await invoiceResponse.text()
+          console.error("[Wafeq] Failed to create invoice. Status:", invoiceResponse.status, "Response:", errorText)
+        }
+      } catch (error) {
+        console.error("[Wafeq] Error calling Wafeq invoice API:", error)
+        // Continue with order creation even if invoice creation fails
+      }
+    }
+
+    // Call internal mutation to create the order
+    const result = await ctx.runMutation(internal.customerOrders.createOrderInternal, {
+      shelfStoreId: args.shelfStoreId,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      wafeqContactId,
+      invoiceNumber,
+      items: args.items,
+      paymentMethod: args.paymentMethod,
+    })
+
+    return result
   },
 })
 
@@ -569,5 +722,118 @@ export const updateOrderPaymentStatus = mutation({
     })
 
     return { success: true }
+  },
+})
+
+// Debug query to check Wafeq integration
+export const checkWafeqIntegration = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get the last 10 orders
+    const orders = await ctx.db
+      .query("customerOrders")
+      .order("desc")
+      .take(10)
+
+    return orders.map(order => ({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      wafeqContactId: order.wafeqContactId || "NOT SET",
+      invoiceNumber: order.invoiceNumber || "NOT SET",
+      createdAt: new Date(order._creationTime).toISOString(),
+    }))
+  },
+})
+
+// Internal query to get product details for invoice
+export const getProductForInvoice = internalQuery({
+  args: {
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId)
+    if (!product) {
+      return null
+    }
+    return {
+      name: product.name,
+      description: product.description,
+      price: product.price,
+    }
+  },
+})
+
+// Download invoice PDF from Wafeq
+export const downloadInvoicePDF = action({
+  args: {
+    orderId: v.id("customerOrders"),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean
+    invoiceNumber: string
+    pdfBase64: string
+    contentType: string
+  }> => {
+    // Get the order to retrieve invoice number
+    const order = await ctx.runQuery(api.customerOrders.getOrderById, {
+      orderId: args.orderId,
+    })
+
+    if (!order) {
+      throw new Error("Order not found")
+    }
+
+    if (!order.invoiceNumber) {
+      throw new Error("No invoice found for this order")
+    }
+
+    const wafeqApiKey = process.env.WAFEQ_API_KEY
+    if (!wafeqApiKey) {
+      throw new Error("WAFEQ_API_KEY not configured")
+    }
+
+    try {
+      console.log(`[Wafeq] Downloading invoice PDF for: ${order.invoiceNumber}`)
+
+      const response = await fetch(
+        `https://api.wafeq.com/v1/invoices/${order.invoiceNumber}/download/`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Api-Key ${wafeqApiKey}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[Wafeq] Failed to download invoice. Status:", response.status, "Response:", errorText)
+        throw new Error(`Failed to download invoice: ${response.status} ${response.statusText}`)
+      }
+
+      // Get the PDF as array buffer
+      const pdfBuffer = await response.arrayBuffer()
+
+      // Convert ArrayBuffer to base64 (without using Node.js Buffer)
+      const bytes = new Uint8Array(pdfBuffer)
+      let binary = ''
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64Pdf = btoa(binary)
+
+      console.log(`[Wafeq] Successfully downloaded invoice PDF (${pdfBuffer.byteLength} bytes)`)
+
+      return {
+        success: true,
+        invoiceNumber: order.invoiceNumber,
+        pdfBase64: base64Pdf,
+        contentType: "application/pdf",
+      }
+    } catch (error) {
+      console.error("[Wafeq] Error downloading invoice:", error)
+      throw new Error(error instanceof Error ? error.message : "Failed to download invoice PDF")
+    }
   },
 })
