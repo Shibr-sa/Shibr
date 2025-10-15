@@ -346,12 +346,12 @@ export const sendPhoneOTPViaKarzoun = internalAction({
   handler: async (ctx, args) => {
     const karzounToken = process.env.KARZOUN_API_TOKEN
     const karzounSenderId = process.env.KARZOUN_SENDER_ID
-    const templateName = process.env.KARZOUN_TEMPLATE_NAME
+    const templateName = process.env.KARZOUN_OTP_TEMPLATE_NAME
 
     console.log('Sending WhatsApp OTP to:', args.phoneNumber)
 
     if (!karzounToken || !karzounSenderId || !templateName) {
-      throw new Error('Karzoun API credentials are not configured. Please set KARZOUN_API_TOKEN, KARZOUN_SENDER_ID, and KARZOUN_TEMPLATE_NAME in environment variables.')
+      throw new Error('Karzoun API credentials are not configured. Please set KARZOUN_API_TOKEN, KARZOUN_SENDER_ID, and KARZOUN_OTP_TEMPLATE_NAME in environment variables.')
     }
 
     try {

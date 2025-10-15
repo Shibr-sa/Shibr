@@ -261,8 +261,16 @@ export default function PaymentPage() {
 
                 <Separator />
 
-                {/* Total */}
+                {/* Totals with Tax Breakdown */}
                 <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>{t("store.subtotal")}</span>
+                    <span>{formatCurrency(orderData.subtotal, language)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{t("store.tax")} (15%)</span>
+                    <span>{formatCurrency(orderData.total - orderData.subtotal, language)}</span>
+                  </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>{t("store.total")}</span>

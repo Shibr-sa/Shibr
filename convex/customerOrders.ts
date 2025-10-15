@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server"
+import { mutation, query, action, internalMutation, internalQuery, internalAction } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
@@ -50,8 +50,11 @@ export const createOrderInternal = internalMutation({
       })
     )
 
-    // Calculate total (sum of all items)
-    const total = orderItems.reduce((sum, item) => sum + item.subtotal, 0)
+    // Calculate subtotal (sum of all items before tax)
+    const subtotal = orderItems.reduce((sum, item) => sum + item.subtotal, 0)
+
+    // Calculate total with 15% VAT
+    const total = subtotal * 1.15
 
     // Create the order
     const orderId = await ctx.db.insert("customerOrders", {
@@ -61,6 +64,7 @@ export const createOrderInternal = internalMutation({
       wafeqContactId: args.wafeqContactId,
       invoiceNumber: args.invoiceNumber,
       items: orderItems,
+      subtotal,
       total,
     })
 
@@ -236,6 +240,18 @@ export const createOrder = action({
       invoiceNumber,
       items: args.items,
     })
+
+    // Send invoice via WhatsApp in the background (don't wait for it)
+    try {
+      // Schedule WhatsApp invoice sending
+      await ctx.scheduler.runAfter(0, internal.customerOrders.sendInvoiceToCustomer, {
+        orderId: result.orderId,
+        brandName: await ctx.runQuery(internal.customerOrders.getBrandName, { shelfStoreId: args.shelfStoreId }),
+      })
+    } catch (error) {
+      console.error('[Order] Failed to schedule WhatsApp invoice:', error)
+      // Don't fail the order creation if WhatsApp sending fails
+    }
 
     return result
   },
@@ -721,6 +737,141 @@ export const getProductForInvoice = internalQuery({
       name: product.name,
       description: product.description,
       price: product.price,
+    }
+  },
+})
+
+// Internal query to get brand name
+export const getBrandName = internalQuery({
+  args: {
+    shelfStoreId: v.id("shelfStores"),
+  },
+  handler: async (ctx, args) => {
+    const shelfStore = await ctx.db.get(args.shelfStoreId)
+    if (!shelfStore?.brandProfileId) {
+      return "Brand"
+    }
+
+    const brandProfile = await ctx.db.get(shelfStore.brandProfileId)
+    return brandProfile?.brandName || "Brand"
+  },
+})
+
+// Internal action to send invoice to customer via WhatsApp
+export const sendInvoiceToCustomer = internalAction({
+  args: {
+    orderId: v.id("customerOrders"),
+    brandName: v.string(), // Changed from storeName to brandName
+  },
+  handler: async (ctx, args) => {
+    try {
+      console.log('[Order] Starting WhatsApp invoice send for order:', args.orderId)
+
+      // Get the order details
+      const order = await ctx.runQuery(api.customerOrders.getOrderById, {
+        orderId: args.orderId,
+      })
+
+      if (!order) {
+        throw new Error("Order not found")
+      }
+
+      // Download the invoice PDF from Wafeq
+      console.log('[Order] Downloading invoice PDF from Wafeq')
+      const pdfData = await ctx.runAction(api.customerOrders.downloadInvoicePDF, {
+        orderId: args.orderId,
+      })
+
+      // Convert base64 to blob and store temporarily in Convex storage
+      console.log('[Order] Storing PDF temporarily in Convex storage')
+
+      // Convert base64 string to Uint8Array (without using fetch with data: URLs)
+      const binaryString = atob(pdfData.pdfBase64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+
+      // Create blob from Uint8Array
+      const pdfBlob = new Blob([bytes], { type: 'application/pdf' })
+      const storageId = await ctx.storage.store(pdfBlob)
+
+      // Get public URL for the PDF
+      const pdfUrl = await ctx.storage.getUrl(storageId)
+
+      if (!pdfUrl) {
+        throw new Error("Failed to get public URL for PDF")
+      }
+
+      console.log('[Order] PDF stored temporarily, public URL generated')
+
+      // Format invoice date
+      const invoiceDate = new Date(order._creationTime).toLocaleDateString('en-GB')
+
+      // Calculate tax amount from stored values
+      const taxAmount = order.total - order.subtotal
+
+      // Format total with tax breakdown
+      const invoiceTotal = `Subtotal: ${order.subtotal.toFixed(2)} SAR | Tax (15%): ${taxAmount.toFixed(2)} SAR | Total: ${order.total.toFixed(2)} SAR`
+
+      try {
+        // Send invoice via WhatsApp
+        console.log('[Order] Sending invoice via WhatsApp')
+        await ctx.runAction(internal.whatsappInvoice.sendInvoiceViaWhatsApp, {
+          customerName: order.customerName || "Customer",
+          customerPhone: order.customerPhone,
+          brandName: args.brandName,
+          invoiceNumber: order.invoiceNumber,
+          invoiceDate,
+          invoiceTotal,
+          pdfUrl,
+        })
+
+        console.log('[Order] Invoice sent successfully via WhatsApp')
+
+        // Schedule PDF deletion after 5 minutes to give WhatsApp time to download it
+        console.log('[Order] Scheduling PDF deletion in 5 minutes')
+        await ctx.scheduler.runAfter(
+          5 * 60 * 1000, // 5 minutes in milliseconds
+          internal.customerOrders.deletePdfFromStorage,
+          { storageId }
+        )
+        console.log('[Order] PDF will be automatically deleted in 5 minutes')
+
+        return { success: true }
+      } catch (whatsappError) {
+        // If WhatsApp sending fails, delete the PDF immediately to avoid storage buildup
+        console.error('[Order] WhatsApp sending failed, cleaning up temporary PDF:', whatsappError)
+        try {
+          await ctx.storage.delete(storageId)
+          console.log('[Order] Temporary PDF deleted after failed send')
+        } catch (deleteError) {
+          console.error('[Order] Failed to delete temporary PDF:', deleteError)
+        }
+        // Re-throw the original WhatsApp error
+        throw whatsappError
+      }
+    } catch (error) {
+      console.error('[Order] Error sending invoice via WhatsApp:', error)
+      // Don't throw - we don't want to fail the order if WhatsApp fails
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  },
+})
+
+// Internal action to delete PDF from storage (scheduled after WhatsApp has time to download)
+export const deletePdfFromStorage = internalAction({
+  args: {
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      console.log('[Order] Deleting scheduled PDF from storage:', args.storageId)
+      await ctx.storage.delete(args.storageId as any)
+      console.log('[Order] Scheduled PDF deleted successfully')
+    } catch (error) {
+      console.error('[Order] Failed to delete scheduled PDF:', error)
+      // Don't throw - this is a cleanup operation
     }
   },
 })

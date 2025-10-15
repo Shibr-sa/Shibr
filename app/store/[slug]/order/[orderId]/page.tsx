@@ -141,6 +141,15 @@ export default function OrderConfirmationPage() {
 
             {/* Price Breakdown */}
             <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>{t("order.subtotal")}</span>
+                <span>{formatCurrency(order.subtotal, language)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{t("order.tax")} (15%)</span>
+                <span>{formatCurrency(order.total - order.subtotal, language)}</span>
+              </div>
+              <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>{t("order.total")}</span>
                 <span>{formatCurrency(order.total, language)}</span>

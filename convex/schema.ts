@@ -427,8 +427,9 @@ const schema = defineSchema({
       subtotal: v.number(),
     })),
 
-    // Order total
-    total: v.number(),
+    // Order totals
+    subtotal: v.number(), // Total before tax
+    total: v.number(), // Final total with tax (subtotal + 15% VAT)
 
     // Payment info
     paymentReference: v.optional(v.string()), // Tap charge ID
