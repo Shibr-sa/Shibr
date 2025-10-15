@@ -1623,6 +1623,7 @@ const translations = {
     "footer.home": "الرئيسية",
     "footer.contact_us": "تواصل معنا",
     "footer.why_us": "لماذا نحن",
+    "footer.follow_us": "تابعنا",
     "footer.description":
       "شبر هي منصة تقنية تربط بين المتاجر الإلكترونية والمحلات التجارية الواقعية من خلال عرض وتأجير مساحات رفوف مخصصة داخل المحلات، بهدف تحويل المساحات غير المستغلة إلى نقاط بيع فورية.",
     "footer.social.twitter": "تويتر",
@@ -3989,6 +3990,7 @@ const translations = {
     "footer.home": "Home",
     "footer.contact_us": "Contact Us",
     "footer.why_us": "Why Us",
+    "footer.follow_us": "Follow Us",
     "footer.description":
       "Shibr is a technology platform that connects online stores and physical retail shops through displaying and renting dedicated shelf spaces inside stores, aiming to transform unused spaces into instant sales points.",
     "footer.social.twitter": "Twitter",
