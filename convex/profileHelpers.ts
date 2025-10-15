@@ -1,6 +1,26 @@
 import { QueryCtx, MutationCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 
+// Helper to ensure no profile exists for a user (prevents duplicate accounts)
+export async function ensureNoProfileExists(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">
+) {
+  const existingStore = await ctx.db
+    .query("storeProfiles")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first()
+
+  const existingBrand = await ctx.db
+    .query("brandProfiles")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first()
+
+  if (existingStore || existingBrand) {
+    throw new Error("auth.profile_already_exists")
+  }
+}
+
 // Helper to get user's profile based on their role
 export async function getUserProfile(
   ctx: QueryCtx | MutationCtx,

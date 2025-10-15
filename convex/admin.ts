@@ -4,7 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { internal } from "./_generated/api"
-import { getImageUrlsFromArray, getDateRange } from "./helpers"
+import { getImageUrlsFromArray, getDateRange, requireAuthWithProfile } from "./helpers"
 
 // Helper function to verify admin access without throwing errors
 async function verifyAdminAccess(ctx: any) {
@@ -512,14 +512,9 @@ export const updatePlatformSettings = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const { profileData: userProfile } = await requireAuthWithProfile(ctx)
 
-    const userProfile = await getUserProfile(ctx, userId)
-
-    if (!userProfile || userProfile.type !== "admin") {
+    if (userProfile.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -588,14 +583,9 @@ export const toggleUserStatus = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const { userId, profileData: adminProfile } = await requireAuthWithProfile(ctx)
 
-    const adminProfile = await getUserProfile(ctx, userId)
-
-    if (!adminProfile || adminProfile.type !== "admin") {
+    if (adminProfile.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -1172,7 +1162,9 @@ export const getPayments = query({
         if (status === "paid") {
           return payment.status === "completed"
         } else if (status === "unpaid") {
-          return payment.status === "pending"
+          // "unpaid" filter no longer makes sense since payments are only created after success
+          // Return payments that failed or were refunded
+          return payment.status === "failed" || payment.status === "refunded"
         }
         return true
       })
@@ -1201,7 +1193,7 @@ export const getPayments = query({
 
         return {
           id: payment._id,
-          invoiceNumber: payment.invoiceNumber,
+          transactionReference: payment.transactionReference,
           type: payment.type,
           merchant: brandUser?.name || brandProfile.brandName,
           merchantEmail: brandUser?.email,
@@ -1222,8 +1214,6 @@ export const getPayments = query({
           startDate: rental.startDate,
           endDate: rental.endDate,
           description: payment.description || `Shelf rental payment from ${brandProfile.brandName} to شبر Platform`,
-          transactionReference: payment.transactionReference,
-          dueDate: payment.dueDate,
           toProfileId: payment.toProfileId,
         }
       })
@@ -1236,7 +1226,7 @@ export const getPayments = query({
     const filteredPayments = searchQuery
       ? validPayments.filter(payment =>
         payment.store?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        payment.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+        payment.transactionReference?.toLowerCase().includes(searchQuery.toLowerCase())
       )
       : validPayments;
 

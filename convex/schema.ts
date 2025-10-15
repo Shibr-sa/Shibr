@@ -278,8 +278,7 @@ const schema = defineSchema({
     type: v.union(
       v.literal("brand_payment"), // Brand paying for shelf rental
       v.literal("store_settlement"), // Payment to store after rental completion
-      v.literal("refund"), // Refund to brand
-      v.literal("platform_fee") // Platform commission
+      v.literal("refund") // Refund to brand
     ),
 
     // Parties involved (using profile IDs)
@@ -298,18 +297,13 @@ const schema = defineSchema({
     netAmount: v.optional(v.number()), // Amount after platform fee
 
     // Payment details
-    invoiceNumber: v.string(),
-    paymentMethod: v.optional(v.string()), // card, apple_pay
-    transactionReference: v.optional(v.string()), // External payment reference
+    transactionReference: v.string(), // Tap charge/refund ID (unique payment identifier)
+    paymentMethod: v.optional(v.string()), // card, apple_pay, etc
 
-    // Tap specific fields
-    tapChargeId: v.optional(v.string()), // Tap charge ID for incoming payments
-    tapCustomerId: v.optional(v.string()), // Tap customer ID
-    tapRefundId: v.optional(v.string()), // Tap refund ID if refunded
-    tapTransferId: v.optional(v.string()), // Tap transfer ID for payouts
-    paymentGateway: v.optional(v.literal("tap")), // Only Tap gateway allowed
+    // Tap transfer ID for payouts (store settlements)
+    tapTransferId: v.optional(v.string()),
 
-    // Transfer/Payout tracking
+    // Transfer/Payout tracking (for store settlements)
     transferStatus: v.optional(v.union(
       v.literal("pending"),
       v.literal("processing"),
@@ -318,31 +312,26 @@ const schema = defineSchema({
     )),
     transferredAt: v.optional(v.number()), // Unix timestamp - when payout was initiated
 
-    // Status
+    // Payment status (simplified - only created after success)
     status: v.union(
-      v.literal("pending"),
-      v.literal("processing"),
-      v.literal("completed"),
-      v.literal("failed"),
-      v.literal("cancelled"),
-      v.literal("refunded")
+      v.literal("completed"), // Payment succeeded
+      v.literal("failed"), // Payment failed
+      v.literal("refunded") // Payment was refunded
     ),
 
     // Dates
-    paymentDate: v.number(), // Unix timestamp - when payment was initiated
+    paymentDate: v.number(), // Unix timestamp - when payment was completed
     processedDate: v.optional(v.number()), // Unix timestamp - when payment was processed
     settlementDate: v.optional(v.number()), // Unix timestamp - when funds were settled
-    dueDate: v.optional(v.number()), // Unix timestamp - payment due date
 
     // Additional info
     description: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    failureReason: v.optional(v.string()),
+    failureReason: v.optional(v.string()), // Error message if status is "failed"
   })
     .index("by_rental", ["rentalRequestId"])
     .index("by_type", ["type"])
     .index("by_status", ["status"])
-    .index("by_invoice", ["invoiceNumber"])
+    .index("by_transaction", ["transactionReference"])
     .index("by_payment_date", ["paymentDate"])
     .index("by_type_status", ["type", "status"])
     .index("by_from_profile", ["fromProfileId"])

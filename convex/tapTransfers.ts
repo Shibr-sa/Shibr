@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { action, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { api } from "./_generated/api"
+import { requireAuth } from "./helpers"
 
 // Tap Transfer API endpoint
 const TAP_TRANSFER_API = "https://api.tap.company/v2/transfers"
@@ -26,10 +27,7 @@ export const createTransfer = action({
   },
   handler: async (ctx, args): Promise<{ success: boolean; transferId?: string; status?: string }> => {
     // Verify admin user
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    await requireAuth(ctx)
 
     // Note: getUserProfile requires db context, which actions don't have
     // For now, we'll skip the admin check here since this is called from admin dashboard

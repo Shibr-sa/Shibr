@@ -2,7 +2,8 @@ import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
-import { getUserProfile as getUserProfileHelper } from "./profileHelpers"
+import { getUserProfile as getUserProfileHelper, ensureNoProfileExists } from "./profileHelpers"
+import { requireAuth, getDocumentUrls } from "./helpers"
 
 // Helper query to verify auth is ready
 export const verifyAuthReady = query({
@@ -50,29 +51,8 @@ export const getCurrentUserWithProfile = query({
     }
     
     // Convert document storage IDs to URLs if they exist
-    let documentUrls: any = {};
-    
-    if (profileData.type === "store_owner") {
-      const profile = profileData.profile as any;
-      if (profile.commercialRegisterDocument) {
-        documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
-      }
-      if (profile.vatCertificate) {
-        documentUrls.vatCertificateUrl = await ctx.storage.getUrl(profile.vatCertificate);
-      }
-    } else if (profileData.type === "brand_owner") {
-      const profile = profileData.profile as any;
-      if (profile.commercialRegisterDocument) {
-        documentUrls.commercialRegisterDocumentUrl = await ctx.storage.getUrl(profile.commercialRegisterDocument);
-      }
-      if (profile.freelanceLicenseDocument) {
-        documentUrls.freelanceLicenseDocumentUrl = await ctx.storage.getUrl(profile.freelanceLicenseDocument);
-      }
-      if (profile.vatCertificate) {
-        documentUrls.vatCertificateUrl = await ctx.storage.getUrl(profile.vatCertificate);
-      }
-    }
-    
+    const documentUrls = await getDocumentUrls(ctx, profileData);
+
     return {
       ...user,
       accountType: profileData.type,
@@ -180,31 +160,11 @@ export const createStoreProfile = mutation({
     vatCertificate: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
+    const userId = await requireAuth(ctx);
+
     // Check if any profile already exists for this user
-    const existingStore = await ctx.db
-      .query("storeProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (existingStore) {
-      throw new Error("auth.profile_already_exists");
-    }
-    
-    // Check if user has a brand profile (prevent multiple account types)
-    const existingBrand = await ctx.db
-      .query("brandProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (existingBrand) {
-      throw new Error("auth.profile_already_exists");
-    }
-    
+    await ensureNoProfileExists(ctx, userId);
+
     // Create store profile
     const profileId = await ctx.db.insert("storeProfiles", {
       userId,
@@ -239,31 +199,11 @@ export const createBrandProfile = mutation({
     website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
+    const userId = await requireAuth(ctx);
+
     // Check if any profile already exists for this user
-    const existingBrand = await ctx.db
-      .query("brandProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (existingBrand) {
-      throw new Error("auth.profile_already_exists");
-    }
-    
-    // Check if user has a store profile (prevent multiple account types)
-    const existingStore = await ctx.db
-      .query("storeProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    
-    if (existingStore) {
-      throw new Error("auth.profile_already_exists");
-    }
-    
+    await ensureNoProfileExists(ctx, userId);
+
     // Create brand profile
     const profileId = await ctx.db.insert("brandProfiles", {
       userId,
@@ -299,22 +239,19 @@ export const updateStoreProfile = mutation({
     vatCertificate: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
+    const userId = await requireAuth(ctx);
+
     const profile = await ctx.db
       .query("storeProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    
+
     if (!profile) {
       throw new Error("auth.profile_not_found");
     }
-    
+
     await ctx.db.patch(profile._id, args);
-    
+
     return profile._id;
   },
 })
@@ -336,22 +273,19 @@ export const updateBrandProfile = mutation({
     vatCertificate: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-    
+    const userId = await requireAuth(ctx);
+
     const profile = await ctx.db
       .query("brandProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    
+
     if (!profile) {
       throw new Error("auth.profile_not_found");
     }
-    
+
     await ctx.db.patch(profile._id, args);
-    
+
     return profile._id;
   },
 })
@@ -414,20 +348,17 @@ export const updateGeneralSettings = mutation({
     password: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     // Prepare update data
     const updateData: any = {};
     if (args.name !== undefined) updateData.name = args.name;
     if (args.email !== undefined) updateData.email = args.email;
     if (args.phone !== undefined) updateData.phone = args.phone;
-    
+
     // Note: Password update would need special handling through auth system
     // For now, we'll just update the other fields
-    
+
     // Update the auth user record
     await ctx.db.patch(userId, updateData);
 
@@ -447,10 +378,7 @@ export const updateStoreData = mutation({
     website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     const storeProfile = await ctx.db
       .query("storeProfiles")
@@ -479,7 +407,7 @@ export const updateStoreData = mutation({
     if (args.businessCategory !== undefined) updates.businessCategory = args.businessCategory;
     if (args.commercialRegisterNumber !== undefined) updates.commercialRegisterNumber = args.commercialRegisterNumber;
     if (args.website !== undefined) updates.website = args.website;
-    
+
     // Location is now stored per shelf, not in profile
 
     await ctx.db.patch(storeProfile._id, updates);
@@ -501,10 +429,7 @@ export const updateBrandData = mutation({
     website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     const brandProfile = await ctx.db
       .query("brandProfiles")
@@ -534,10 +459,7 @@ export const updateProfileImage = mutation({
     imageUrl: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     // Update the auth user's image field
     await ctx.db.patch(userId, {
@@ -554,10 +476,7 @@ export const updateBusinessRegistrationDocument = mutation({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     const storeProfile = await ctx.db
       .query("storeProfiles")
@@ -593,10 +512,7 @@ export const updateFreelanceDocument = mutation({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
     const brandProfile = await ctx.db
       .query("brandProfiles")
