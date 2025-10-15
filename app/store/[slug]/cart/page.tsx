@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useCart } from "@/contexts/cart-context"
 import { useLanguage } from "@/contexts/localization-context"
@@ -45,8 +45,20 @@ export default function CartPage() {
   const [nameError, setNameError] = useState("")
   const [phoneError, setPhoneError] = useState("")
 
+  // OTP verification states
+  const [otp, setOtp] = useState("")
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [isSendingOTP, setIsSendingOTP] = useState(false)
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false)
+  const [otpError, setOtpError] = useState("")
+
   // Fetch store data to get current stock levels
   const store = useQuery(api.shelfStores.getShelfStoreBySlug, { slug })
+
+  // OTP mutations
+  const sendCheckoutOTP = useMutation(api.phoneVerification.sendCheckoutOTP)
+  const verifyCheckoutOTP = useMutation(api.phoneVerification.verifyCheckoutOTP)
 
   // Get product with current stock
   const getProductStock = (productId: string) => {
@@ -79,6 +91,90 @@ export default function CartPage() {
     return saudiPhoneRegex.test(phone)
   }
 
+  const handleSendOTP = async () => {
+    // Validate phone first
+    if (!customerPhone) {
+      setPhoneError(t("store.phone_required"))
+      return
+    }
+    if (!validatePhoneNumber(customerPhone)) {
+      setPhoneError(t("store.invalid_phone_format"))
+      return
+    }
+
+    setIsSendingOTP(true)
+    setOtpError("")
+
+    try {
+      const result = await sendCheckoutOTP({ phoneNumber: customerPhone })
+
+      if (result.success) {
+        setOtpSent(true)
+        toast({
+          title: t("common.success"),
+          description: t("store.otp_sent"),
+        })
+      } else {
+        setOtpError(result.error || t("common.error"))
+        toast({
+          title: t("common.error"),
+          description: result.error || t("store.otp_rate_limit"),
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      setOtpError(error.message || t("common.error"))
+      toast({
+        title: t("common.error"),
+        description: error.message || t("common.error"),
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingOTP(false)
+    }
+  }
+
+  const handleVerifyOTP = async () => {
+    if (!otp || otp.length !== 6) {
+      setOtpError(t("store.otp_placeholder"))
+      return
+    }
+
+    setIsVerifyingOTP(true)
+    setOtpError("")
+
+    try {
+      const result = await verifyCheckoutOTP({
+        phoneNumber: customerPhone,
+        otp: otp,
+      })
+
+      if (result.success) {
+        setOtpVerified(true)
+        toast({
+          title: t("common.success"),
+          description: t("store.otp_verified"),
+        })
+      } else {
+        setOtpError(result.error || t("store.invalid_otp"))
+        toast({
+          title: t("common.error"),
+          description: result.error || t("store.invalid_otp"),
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      setOtpError(error.message || t("store.invalid_otp"))
+      toast({
+        title: t("common.error"),
+        description: error.message || t("store.invalid_otp"),
+        variant: "destructive",
+      })
+    } finally {
+      setIsVerifyingOTP(false)
+    }
+  }
+
   const handlePhoneSubmit = () => {
     let hasError = false
 
@@ -99,13 +195,47 @@ export default function CartPage() {
       setPhoneError("")
     }
 
+    // Check if phone is verified
+    if (!otpVerified) {
+      toast({
+        title: t("common.error"),
+        description: t("store.otp_required"),
+        variant: "destructive",
+      })
+      hasError = true
+    }
+
     if (hasError) return
 
     handleCheckoutWithPhone()
   }
 
   const handleCheckout = () => {
+    // Reset all states when opening dialog
+    setCustomerName("")
+    setCustomerPhone("")
+    setNameError("")
+    setPhoneError("")
+    setOtp("")
+    setOtpSent(false)
+    setOtpVerified(false)
+    setOtpError("")
     setPhoneDialogOpen(true)
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    setPhoneDialogOpen(open)
+    if (!open) {
+      // Reset all states when closing dialog
+      setCustomerName("")
+      setCustomerPhone("")
+      setNameError("")
+      setPhoneError("")
+      setOtp("")
+      setOtpSent(false)
+      setOtpVerified(false)
+      setOtpError("")
+    }
   }
 
   const handleCheckoutWithPhone = async () => {
@@ -355,7 +485,7 @@ export default function CartPage() {
         )}
 
         {/* Customer Information Dialog */}
-        <Dialog open={phoneDialogOpen} onOpenChange={setPhoneDialogOpen}>
+        <Dialog open={phoneDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t("store.enter_phone_title")}</DialogTitle>
@@ -383,33 +513,109 @@ export default function CartPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">{t("store.phone_label")}</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="05XXXXXXXX"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    setCustomerPhone(e.target.value)
-                    setPhoneError("")
-                  }}
-                  className={phoneError ? "border-destructive" : ""}
-                  dir="ltr"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="05XXXXXXXX"
+                    value={customerPhone}
+                    onChange={(e) => {
+                      setCustomerPhone(e.target.value)
+                      setPhoneError("")
+                      // Reset OTP states when phone changes
+                      setOtp("")
+                      setOtpSent(false)
+                      setOtpVerified(false)
+                      setOtpError("")
+                    }}
+                    className={phoneError ? "border-destructive" : ""}
+                    dir="ltr"
+                    disabled={otpVerified}
+                  />
+                  {!otpVerified && (
+                    <Button
+                      type="button"
+                      onClick={handleSendOTP}
+                      disabled={isSendingOTP || !customerPhone}
+                      variant={otpSent ? "secondary" : "default"}
+                      className="whitespace-nowrap"
+                    >
+                      {isSendingOTP ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : otpSent ? (
+                        t("store.resend_otp")
+                      ) : (
+                        t("store.send_otp")
+                      )}
+                    </Button>
+                  )}
+                  {otpVerified && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled
+                      className="whitespace-nowrap"
+                    >
+                      ✓ {t("store.phone_verified")}
+                    </Button>
+                  )}
+                </div>
                 {phoneError && (
                   <p className="text-sm text-destructive">{phoneError}</p>
                 )}
               </div>
+
+              {/* OTP Verification Section - Shows after OTP is sent */}
+              {otpSent && !otpVerified && (
+                <div className="space-y-2">
+                  <Label htmlFor="otp">{t("store.otp_label")}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="otp"
+                      type="text"
+                      placeholder={t("store.otp_placeholder")}
+                      value={otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "").slice(0, 6)
+                        setOtp(value)
+                        setOtpError("")
+                      }}
+                      className={otpError ? "border-destructive" : ""}
+                      dir="ltr"
+                      maxLength={6}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleVerifyOTP}
+                      disabled={isVerifyingOTP || !otp || otp.length !== 6}
+                      className="whitespace-nowrap"
+                    >
+                      {isVerifyingOTP ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        t("store.verify_otp")
+                      )}
+                    </Button>
+                  </div>
+                  {otpError && (
+                    <p className="text-sm text-destructive">{otpError}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {t("store.otp_sent")}
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setPhoneDialogOpen(false)}
+                onClick={() => handleDialogClose(false)}
               >
                 {t("common.cancel")}
               </Button>
               <Button
                 onClick={handlePhoneSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !otpVerified}
               >
                 {isSubmitting ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -405,3 +405,170 @@ export const sendPhoneOTPViaKarzoun = internalAction({
     }
   }
 })
+
+// ============================================
+// MUTATIONS - PHONE VERIFICATION FOR CHECKOUT
+// ============================================
+
+/**
+ * Send OTP for customer checkout phone verification
+ * No email required - simpler flow for guest checkout
+ */
+export const sendCheckoutOTP = mutation({
+  args: {
+    phoneNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const formattedPhone = formatPhoneNumber(args.phoneNumber)
+
+    // Clean up expired OTPs for this phone
+    await cleanupExpiredOTPs(ctx, formattedPhone)
+
+    // Check rate limiting
+    const oneHourAgo = Date.now() - (60 * 60 * 1000)
+    const recentOTPs = await ctx.db
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "phone").eq("identifier", formattedPhone))
+      .filter((q) => q.gt(q.field("createdAt"), oneHourAgo))
+      .collect()
+
+    if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
+      return {
+        success: false,
+        error: "Too many verification attempts. Please try again later."
+      }
+    }
+
+    // Delete any existing OTPs for this phone
+    const existingOTPs = await ctx.db
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "phone").eq("identifier", formattedPhone))
+      .collect()
+
+    for (const oldOTP of existingOTPs) {
+      await ctx.db.delete(oldOTP._id)
+    }
+
+    // Generate new OTP
+    const otp = generateOTP()
+    const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
+
+    // Store OTP (no email field for checkout)
+    await ctx.db.insert("verificationOTP", {
+      type: "phone",
+      identifier: formattedPhone,
+      otp,
+      expiresAt,
+      attempts: 0,
+      createdAt: Date.now(),
+      verified: false,
+    })
+
+    console.log('[Checkout OTP] Sending OTP to:', formattedPhone)
+
+    // Schedule WhatsApp OTP sending via Karzoun API
+    await ctx.scheduler.runAfter(0, internal.phoneVerification.sendPhoneOTPViaKarzoun, {
+      phoneNumber: formattedPhone,
+      otp,
+      userName: "Customer", // Generic name for checkout
+    })
+
+    return {
+      success: true,
+      message: "Verification code sent to your WhatsApp"
+    }
+  }
+})
+
+/**
+ * Verify checkout OTP
+ */
+export const verifyCheckoutOTP = mutation({
+  args: {
+    phoneNumber: v.string(),
+    otp: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const formattedPhone = formatPhoneNumber(args.phoneNumber)
+
+    // Find the OTP record
+    const otpRecord = await ctx.db
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "phone").eq("identifier", formattedPhone))
+      .filter((q) => q.eq(q.field("otp"), args.otp))
+      .first()
+
+    if (!otpRecord) {
+      // Try to find record to update attempts
+      const phoneRecord = await ctx.db
+        .query("verificationOTP")
+        .withIndex("by_type_identifier", (q) => q.eq("type", "phone").eq("identifier", formattedPhone))
+        .first()
+
+      if (phoneRecord) {
+        // Update attempts
+        await ctx.db.patch(phoneRecord._id, {
+          attempts: phoneRecord.attempts + 1
+        })
+
+        // Check if too many attempts
+        if (phoneRecord.attempts + 1 >= MAX_VERIFICATION_ATTEMPTS) {
+          await ctx.db.delete(phoneRecord._id)
+          return {
+            success: false,
+            error: "Too many failed attempts. Please request a new code"
+          }
+        }
+      }
+
+      return {
+        success: false,
+        error: "Invalid verification code"
+      }
+    }
+
+    // Check if expired
+    if (otpRecord.expiresAt < Date.now()) {
+      await ctx.db.delete(otpRecord._id)
+      return {
+        success: false,
+        error: "Verification code has expired"
+      }
+    }
+
+    // Mark as verified
+    await ctx.db.patch(otpRecord._id, {
+      verified: true
+    })
+
+    console.log('[Checkout OTP] Phone number verified successfully:', formattedPhone)
+
+    return {
+      success: true,
+      message: "Phone number verified successfully"
+    }
+  }
+})
+
+/**
+ * Check if phone is verified for checkout
+ */
+export const isCheckoutPhoneVerified = mutation({
+  args: {
+    phoneNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const formattedPhone = formatPhoneNumber(args.phoneNumber)
+
+    const otpRecord = await ctx.db
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "phone").eq("identifier", formattedPhone))
+      .filter((q) => q.eq(q.field("verified"), true))
+      .first()
+
+    return {
+      verified: !!otpRecord,
+      phoneNumber: formattedPhone
+    }
+  }
+})

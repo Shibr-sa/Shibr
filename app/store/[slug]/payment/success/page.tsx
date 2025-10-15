@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, use, useState } from "react"
+import { useEffect, use, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAction, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -24,7 +24,8 @@ export default function PaymentSuccessPage({ params }: PageProps) {
   const cart = useCart()
 
   const getChargeDetails = useAction(api.tapPayments.getChargeDetails)
-  const updateOrderPaymentStatus = useMutation(api.customerOrders.updateOrderPaymentStatus)
+  const createOrderFromPayment = useMutation(api.customerOrders.createOrderFromPayment)
+  const processOrderAfterPayment = useAction(api.customerOrders.processOrderAfterPayment)
 
   // Get charge ID and status from URL params - check multiple possible parameter names
   const chargeId = searchParams.get("tap_id") ||
@@ -36,27 +37,30 @@ export default function PaymentSuccessPage({ params }: PageProps) {
                  searchParams.get("payment_status") ||
                  searchParams.get("result")
 
-  // Initialize orderId from URL params, will check sessionStorage in useEffect
-  const [orderId, setOrderId] = useState<string | null>(searchParams.get("order_id"))
+  // State for order creation
+  const [isProcessing, setIsProcessing] = useState(true)
+
+  // CRITICAL: Use ref to prevent duplicate order creation
+  const hasProcessed = useRef(false)
 
   useEffect(() => {
-    // Check sessionStorage for orderId if not found in URL params
-    if (!orderId && typeof window !== 'undefined') {
-      const storedOrderId = sessionStorage.getItem("orderId")
-      if (storedOrderId) {
-        setOrderId(storedOrderId)
-        return // Wait for next render with updated orderId
-      }
+    // GUARD: Prevent duplicate execution
+    if (hasProcessed.current) {
+      console.log('[Payment Success] Already processed, skipping...')
+      return
     }
 
-    const verifyPayment = async () => {
+    const verifyPaymentAndCreateOrder = async () => {
+      // Mark as processing to prevent duplicate execution
+      hasProcessed.current = true
+
       // Check if status indicates failure first
       if (status === "FAILED" || status === "DECLINED" || status === "CANCELLED") {
         router.push(`/store/${resolvedParams.slug}/payment/failed?status=${status}&tap_id=${chargeId}`)
         return
       }
 
-      if (!chargeId || !orderId) {
+      if (!chargeId) {
         toast({
           title: t("payment.error_title"),
           description: t("payment.missing_payment_info"),
@@ -73,24 +77,51 @@ export default function PaymentSuccessPage({ params }: PageProps) {
         })
 
         if (chargeDetails.status === "CAPTURED" || chargeDetails.status === "AUTHORIZED") {
-          // Payment successful - update order status
-          if (orderId) {
-            await updateOrderPaymentStatus({
-              orderId: orderId as any,
-              paymentStatus: "completed",
-              transactionId: chargeId
-            })
+          // Payment successful - follow standard flow
+          console.log('[Payment Success] Payment verified, starting order flow...')
+
+          // Get order data from sessionStorage
+          const pendingOrderData = sessionStorage.getItem("pendingOrderData")
+          if (!pendingOrderData) {
+            throw new Error("Order data not found")
           }
+
+          const orderData = JSON.parse(pendingOrderData)
+
+          // STEP 1: Create order record with payment reference
+          // This will automatically check for duplicates and return existing order if found
+          console.log('[Payment Success] Step 1: Creating order record...')
+          const orderResult = await createOrderFromPayment({
+            shelfStoreId: orderData.shelfStoreId as any,
+            customerName: orderData.customerName,
+            customerPhone: orderData.customerPhone,
+            paymentReference: chargeId, // This prevents duplicates
+            items: orderData.items.map((item: any) => ({
+              productId: item.productId as any,
+              quantity: item.quantity
+            }))
+          })
+
+          console.log('[Payment Success] Step 1 complete: Order record created:', orderResult.orderId)
+
+          // STEPS 2-4: Process Wafeq and send invoice (runs in background)
+          console.log('[Payment Success] Steps 2-4: Processing Wafeq and invoice...')
+          processOrderAfterPayment({
+            orderId: orderResult.orderId
+          }).catch(error => {
+            console.error('[Payment Success] Error processing Wafeq/invoice:', error)
+            // Don't fail the order - it already exists
+          })
 
           // Clear cart and session
           cart.clearCart()
           sessionStorage.removeItem("pendingOrder")
-          sessionStorage.removeItem("orderId")
+          sessionStorage.removeItem("pendingOrderData")
 
-          // Show success and redirect
-          setTimeout(() => {
-            router.push(`/store/${resolvedParams.slug}`)
-          }, 3000)
+          console.log('[Payment Success] Redirecting to order confirmation...')
+
+          // Redirect to order confirmation page
+          router.push(`/store/${resolvedParams.slug}/order/${orderResult.orderId}`)
         } else {
           // Payment failed or pending
           toast({
@@ -101,17 +132,21 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           router.push(`/store/${resolvedParams.slug}/payment`)
         }
       } catch (error) {
+        console.error('[Payment Success] Error:', error)
         toast({
           title: t("payment.error_title"),
-          description: t("payment.verification_failed"),
+          description: error instanceof Error ? error.message : t("payment.verification_failed"),
           variant: "destructive",
         })
         router.push(`/store/${resolvedParams.slug}/payment`)
+      } finally {
+        setIsProcessing(false)
       }
     }
 
-    verifyPayment()
-  }, [chargeId, orderId, resolvedParams.slug, router, t, toast, cart, getChargeDetails, updateOrderPaymentStatus, status, searchParams, setOrderId])
+    verifyPaymentAndCreateOrder()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chargeId, status]) // Only run when chargeId or status changes
 
   // Show success or failure based on initial status
   if (status === "failed") {
