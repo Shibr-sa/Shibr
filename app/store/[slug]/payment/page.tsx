@@ -59,7 +59,6 @@ export default function PaymentPage() {
 
   // Actions
   const createCheckoutSession = useAction(api.tapPayments.createCheckoutSession)
-  const createOrder = useAction(api.customerOrders.createOrder)
 
   useEffect(() => {
     // If we have Tap redirect parameters, redirect to success page for verification
@@ -97,34 +96,31 @@ export default function PaymentPage() {
     setIsProcessing(true)
 
     try {
-      // Create order in database first
-      const orderResult = await createOrder({
-        shelfStoreId: orderData.shelfStoreId as any,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
-        items: orderData.items.map(item => ({
-          productId: item.productId as any,
-          quantity: item.quantity
-        }))
-      })
-
-      // Create checkout session with Tap
+      // Create checkout session with Tap (WITHOUT creating order yet)
+      // Order will be created AFTER payment is confirmed
       const session = await createCheckoutSession({
         amount: orderData.total,
         description: `Order from ${orderData.storeName}`,
-        customerName: "Customer",
+        customerName: orderData.customerName,
         customerEmail: `${orderData.customerPhone}@shibr.io`,
         customerPhone: orderData.customerPhone,
-        orderId: orderResult.orderId,
         metadata: {
           type: "purchase",
-          storeSlug: slug
+          storeSlug: slug,
         }
       })
 
       if (session.success && session.checkoutUrl) {
-        // Store order ID for success page
-        sessionStorage.setItem("orderId", orderResult.orderId as string)
+        // Keep order data in session for success page
+        sessionStorage.setItem("pendingOrderData", JSON.stringify({
+          shelfStoreId: orderData.shelfStoreId,
+          customerName: orderData.customerName,
+          customerPhone: orderData.customerPhone,
+          items: orderData.items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity
+          }))
+        }))
         // Redirect to Tap checkout page
         window.location.href = session.checkoutUrl
       } else {

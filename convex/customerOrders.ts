@@ -5,20 +5,32 @@ import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { api, internal } from "./_generated/api"
 
-// Internal mutation to create order in database
-export const createOrderInternal = internalMutation({
+// STEP 1: Create order record immediately after payment (with payment reference to prevent duplicates)
+export const createOrderFromPayment = mutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
     customerName: v.string(),
     customerPhone: v.string(),
-    wafeqContactId: v.optional(v.string()),
-    invoiceNumber: v.string(), // Required - must be provided from Wafeq
+    paymentReference: v.string(), // Tap charge ID
     items: v.array(v.object({
       productId: v.id("products"),
       quantity: v.number(),
     })),
   },
-  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, invoiceNumber: string }> => {
+  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders"> }> => {
+    console.log('[Order] Step 1: Creating order record with payment reference:', args.paymentReference)
+
+    // Check if order already exists for this payment reference (duplicate prevention)
+    const existingOrders = await ctx.db
+      .query("customerOrders")
+      .collect()
+
+    const existingOrder = existingOrders.find(o => o.paymentReference === args.paymentReference)
+    if (existingOrder) {
+      console.log('[Order] Order already exists for this payment:', existingOrder._id)
+      return { orderId: existingOrder._id }
+    }
+
     // Get the shelf store
     const shelfStore = await ctx.db.get(args.shelfStoreId)
     if (!shelfStore || !shelfStore.isActive) {
@@ -50,19 +62,17 @@ export const createOrderInternal = internalMutation({
       })
     )
 
-    // Calculate subtotal (sum of all items before tax)
+    // Calculate subtotal and total with 15% VAT
     const subtotal = orderItems.reduce((sum, item) => sum + item.subtotal, 0)
-
-    // Calculate total with 15% VAT
     const total = subtotal * 1.15
 
-    // Create the order
+    // Create the order record with payment reference (prevents duplicates)
     const orderId = await ctx.db.insert("customerOrders", {
       shelfStoreId: args.shelfStoreId,
       customerName: args.customerName,
       customerPhone: args.customerPhone,
-      wafeqContactId: args.wafeqContactId,
-      invoiceNumber: args.invoiceNumber,
+      paymentReference: args.paymentReference,
+      invoiceNumber: `PENDING-${Date.now()}`, // Temporary, will be updated with Wafeq invoice
       items: orderItems,
       subtotal,
       total,
@@ -86,7 +96,6 @@ export const createOrderInternal = internalMutation({
       const updatedProducts = rental.selectedProducts.map(prod => {
         const orderedItem = args.items.find(item => item.productId === prod.productId)
         if (orderedItem) {
-          // Reduce the quantity available on the shelf
           return {
             ...prod,
             quantity: Math.max(0, prod.quantity - orderedItem.quantity)
@@ -106,33 +115,35 @@ export const createOrderInternal = internalMutation({
       totalRevenue: (shelfStore.totalRevenue || 0) + total,
     })
 
-    return {
-      orderId,
-      invoiceNumber: args.invoiceNumber,
-    }
+    console.log('[Order] Step 1 complete: Order record created:', orderId)
+    return { orderId }
   },
 })
 
-// Create a new customer order (action that calls Wafeq API then creates order)
-export const createOrder = action({
+// STEP 2-4: Process Wafeq and send invoice (called after order record is created)
+export const processOrderAfterPayment = action({
   args: {
-    shelfStoreId: v.id("shelfStores"),
-    customerName: v.string(),
-    customerPhone: v.string(),
-    items: v.array(v.object({
-      productId: v.id("products"),
-      quantity: v.number(),
-    })),
+    orderId: v.id("customerOrders"),
   },
-  handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders">, invoiceNumber: string }> => {
-    const wafeqApiKey = process.env.WAFEQ_API_KEY
-    if (!wafeqApiKey) {
-      throw new Error("WAFEQ_API_KEY not configured. Cannot create order without invoice.")
+  handler: async (ctx, args): Promise<{ success: boolean, invoiceNumber: string }> => {
+    console.log('[Order] Steps 2-4: Processing Wafeq and invoice for order:', args.orderId)
+
+    // Get the order
+    const order = await ctx.runQuery(api.customerOrders.getOrderById, {
+      orderId: args.orderId,
+    })
+
+    if (!order) {
+      throw new Error("Order not found")
     }
 
-    // Create contact in Wafeq (required)
-    let wafeqContactId: string
-    console.log("[Wafeq] Creating contact for:", args.customerName, args.customerPhone)
+    const wafeqApiKey = process.env.WAFEQ_API_KEY
+    if (!wafeqApiKey) {
+      throw new Error("WAFEQ_API_KEY not configured")
+    }
+
+    // STEP 2: Create Wafeq contact
+    console.log('[Order] Step 2: Creating Wafeq contact for:', order.customerName)
 
     const wafeqResponse = await fetch("https://api.wafeq.com/v1/contacts/", {
       method: "POST",
@@ -141,69 +152,67 @@ export const createOrder = action({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: args.customerName,
-        phone: args.customerPhone,
+        name: order.customerName,
+        phone: order.customerPhone,
       }),
     })
 
-    console.log("[Wafeq] Contact response status:", wafeqResponse.status)
-
     if (!wafeqResponse.ok) {
       const errorText = await wafeqResponse.text()
-      console.error("[Wafeq] Failed to create contact. Status:", wafeqResponse.status, "Response:", errorText)
       throw new Error(`Failed to create Wafeq contact: ${wafeqResponse.status} ${errorText}`)
     }
 
     const wafeqData = await wafeqResponse.json()
-    wafeqContactId = wafeqData.id?.toString()
+    const wafeqContactId = wafeqData.id?.toString()
     if (!wafeqContactId) {
       throw new Error("Wafeq contact created but no ID returned")
     }
-    console.log("[Wafeq] Successfully created contact with ID:", wafeqContactId)
 
-    // Get product details for invoice line items
-    const products = await Promise.all(
-      args.items.map(item => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
-    )
+    // Update order with Wafeq contact ID
+    await ctx.runMutation(api.customerOrders.updateOrderWafeqContact, {
+      orderId: args.orderId,
+      wafeqContactId,
+    })
 
-    // Create invoice in Wafeq (required)
-    console.log("[Wafeq] Creating invoice for contact:", wafeqContactId)
+    console.log('[Order] Step 2 complete: Wafeq contact created:', wafeqContactId)
 
-    // Get Wafeq configuration from environment variables
+    // STEP 3: Create Wafeq invoice
+    console.log('[Order] Step 3: Creating Wafeq invoice')
+
     const wafeqAccountId = process.env.WAFEQ_ACCOUNT_ID
     const wafeqTaxRateId = process.env.WAFEQ_TAX_RATE_ID
 
     if (!wafeqAccountId || !wafeqTaxRateId) {
-      throw new Error("Wafeq configuration incomplete. Please set WAFEQ_ACCOUNT_ID and WAFEQ_TAX_RATE_ID environment variables.")
+      throw new Error("Wafeq configuration incomplete")
     }
 
-    // Calculate line items with products (matching Wafeq structure exactly)
-    const lineItems = args.items.map((item, index) => {
+    // Get product details for invoice line items
+    const products = await Promise.all(
+      order.items.map(item => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
+    )
+
+    const lineItems = order.items.map((item, index) => {
       const product = products[index]
       return {
-        description: product?.name || `Product ${item.productId}`,
+        description: product?.name || item.productName,
         quantity: item.quantity,
-        unit_amount: product?.price || 0,
+        unit_amount: item.price,
         account: wafeqAccountId,
         tax_rate: wafeqTaxRateId,
       }
     })
 
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
-    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
-    const timestamp = Date.now()
-    const invoiceRef = `INV-${timestamp}`
+    const today = new Date().toISOString().split('T')[0]
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     const invoicePayload = {
       contact: wafeqContactId,
       currency: "SAR",
-      invoice_number: invoiceRef,
+      invoice_number: `INV-${args.orderId}`,
       invoice_date: today,
       invoice_due_date: dueDate,
       line_items: lineItems,
     }
-
-    console.log("[Wafeq] Invoice payload:", JSON.stringify(invoicePayload, null, 2))
 
     const invoiceResponse = await fetch("https://api.wafeq.com/v1/invoices/", {
       method: "POST",
@@ -214,46 +223,70 @@ export const createOrder = action({
       body: JSON.stringify(invoicePayload),
     })
 
-    console.log("[Wafeq] Invoice response status:", invoiceResponse.status)
-
     if (!invoiceResponse.ok) {
       const errorText = await invoiceResponse.text()
-      console.error("[Wafeq] Failed to create invoice. Status:", invoiceResponse.status, "Response:", errorText)
       throw new Error(`Failed to create Wafeq invoice: ${invoiceResponse.status} ${errorText}`)
     }
 
     const invoiceData = await invoiceResponse.json()
-    // Store the invoice ID (not invoice_number) for downloading PDFs
     const invoiceNumber = invoiceData.id?.toString() || invoiceData.invoice_number
     if (!invoiceNumber) {
       throw new Error("Wafeq invoice created but no ID returned")
     }
-    console.log("[Wafeq] Successfully created invoice with ID:", invoiceNumber)
-    console.log("[Wafeq] Invoice data:", JSON.stringify(invoiceData, null, 2))
 
-    // Call internal mutation to create the order
-    const result = await ctx.runMutation(internal.customerOrders.createOrderInternal, {
-      shelfStoreId: args.shelfStoreId,
-      customerName: args.customerName,
-      customerPhone: args.customerPhone,
-      wafeqContactId,
+    // Update order with Wafeq invoice number
+    await ctx.runMutation(api.customerOrders.updateOrderInvoiceNumber, {
+      orderId: args.orderId,
       invoiceNumber,
-      items: args.items,
     })
 
-    // Send invoice via WhatsApp in the background (don't wait for it)
-    try {
-      // Schedule WhatsApp invoice sending
-      await ctx.scheduler.runAfter(0, internal.customerOrders.sendInvoiceToCustomer, {
-        orderId: result.orderId,
-        brandName: await ctx.runQuery(internal.customerOrders.getBrandName, { shelfStoreId: args.shelfStoreId }),
-      })
-    } catch (error) {
-      console.error('[Order] Failed to schedule WhatsApp invoice:', error)
-      // Don't fail the order creation if WhatsApp sending fails
-    }
+    console.log('[Order] Step 3 complete: Wafeq invoice created:', invoiceNumber)
 
-    return result
+    // STEP 4: Send invoice via WhatsApp
+    console.log('[Order] Step 4: Sending invoice via WhatsApp')
+
+    const brandName = await ctx.runQuery(internal.customerOrders.getBrandName, {
+      shelfStoreId: order.shelfStoreId,
+    })
+
+    // Schedule WhatsApp sending (don't wait for it to avoid blocking)
+    await ctx.scheduler.runAfter(0, internal.customerOrders.sendInvoiceToCustomer, {
+      orderId: args.orderId,
+      brandName,
+    })
+
+    console.log('[Order] Step 4: WhatsApp invoice scheduled')
+
+    return {
+      success: true,
+      invoiceNumber,
+    }
+  },
+})
+
+// Helper mutation: Update order with Wafeq contact ID
+export const updateOrderWafeqContact = mutation({
+  args: {
+    orderId: v.id("customerOrders"),
+    wafeqContactId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, {
+      wafeqContactId: args.wafeqContactId,
+    })
+  },
+})
+
+// Helper mutation: Update order with Wafeq invoice number
+export const updateOrderInvoiceNumber = mutation({
+  args: {
+    orderId: v.id("customerOrders"),
+    invoiceNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, {
+      invoiceNumber: args.invoiceNumber,
+    })
   },
 })
 

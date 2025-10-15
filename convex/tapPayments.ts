@@ -398,8 +398,8 @@ export const createCheckoutSession = action({
       if (rentalRequest?.shelfId) {
         redirectUrl = `${siteUrl}/brand-dashboard/shelves/marketplace/${rentalRequest.shelfId}?rentalRequestId=${args.rentalRequestId}`
       }
-    } else if (args.orderId && storeSlug) {
-      // Redirect to success page which will verify the payment status
+    } else if (storeSlug && args.metadata?.type === "purchase") {
+      // For guest checkout purchases, redirect to store-specific success page
       redirectUrl = `${siteUrl}/store/${storeSlug}/payment/success`
     }
 
