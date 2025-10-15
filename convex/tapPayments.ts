@@ -3,6 +3,7 @@ import { mutation, action, internalMutation, internalQuery } from "./_generated/
 import { api, internal } from "./_generated/api"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
+import { requireAuth } from "./helpers"
 
 // Get the Tap secret key
 function getTapSecretKey(): string {
@@ -14,43 +15,6 @@ function getSiteUrl(): string {
   return process.env.SITE_URL || "http://localhost:3000"
 }
 
-
-// Internal mutation to store charge information
-export const storeChargeInfo = internalMutation({
-  args: {
-    chargeId: v.string(),
-    rentalRequestId: v.id("rentalRequests"),
-    amount: v.number(),
-    status: v.string(),
-    transactionUrl: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Get the rental request
-    const rentalRequest = await ctx.db.get(args.rentalRequestId)
-    if (!rentalRequest) {
-      throw new Error("Rental request not found")
-    }
-
-    // Find the payment record
-    const payment = await ctx.db
-      .query("payments")
-      .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.rentalRequestId))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .first()
-
-    if (payment) {
-      // Update payment with Tap charge info
-      await ctx.db.patch(payment._id, {
-        transactionReference: args.chargeId,
-        paymentMethod: "card",
-        status: args.status === "CAPTURED" ? "completed" : "processing",
-        processedDate: Date.now(),
-      })
-    }
-
-    return { success: true }
-  },
-})
 
 // Handle webhook from Tap for payment status updates
 export const handleWebhook = action({
@@ -94,7 +58,7 @@ export const handleWebhook = action({
   },
 })
 
-// Internal mutation to update payment status
+// Internal mutation to create or update payment status after Tap payment
 export const updatePaymentStatus = internalMutation({
   args: {
     rentalRequestId: v.id("rentalRequests"),
@@ -102,14 +66,10 @@ export const updatePaymentStatus = internalMutation({
     chargeId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Find the payment record
-    const payment = await ctx.db
-      .query("payments")
-      .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.rentalRequestId))
-      .filter((q) => q.eq(q.field("transactionReference"), args.chargeId))
-      .first()
-
-    if (!payment) {
+    // Get rental request details
+    const rentalRequest = await ctx.db.get(args.rentalRequestId)
+    if (!rentalRequest) {
+      console.error(`[updatePaymentStatus] Rental request not found: ${args.rentalRequestId}`)
       return { success: false }
     }
 
@@ -137,16 +97,53 @@ export const updatePaymentStatus = internalMutation({
         rentalStatus = "payment_pending"
     }
 
-    // Update payment status
-    await ctx.db.patch(payment._id, {
-      status: paymentStatus,
-      processedDate: Date.now(),
-      ...(paymentStatus === "completed" && { settlementDate: Date.now() }),
-    })
+    // Only create payment record if payment was successful
+    if (paymentStatus === "completed") {
+      // Check if payment already exists to avoid duplicates
+      const existingPayment = await ctx.db
+        .query("payments")
+        .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.rentalRequestId))
+        .filter((q) => q.eq(q.field("transactionReference"), args.chargeId))
+        .first()
 
-    // Update rental request status
-    const rentalRequest = await ctx.db.get(args.rentalRequestId)
-    if (rentalRequest && paymentStatus === "completed") {
+      if (existingPayment) {
+        // Payment already exists, just update status
+        await ctx.db.patch(existingPayment._id, {
+          status: paymentStatus,
+          processedDate: Date.now(),
+          // Only set settlementDate if it doesn't already exist
+          ...(existingPayment.settlementDate ? {} : { settlementDate: Date.now() }),
+        })
+      } else {
+        // Create new payment record after successful payment
+        // Get platform settings for store rent commission
+        const platformSettings = await ctx.db.query("platformSettings").collect()
+        const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
+
+        // Calculate platform fee based on store rent commission
+        const platformFee = (rentalRequest.totalAmount * storeRentCommission) / 100
+        const netAmount = rentalRequest.totalAmount - platformFee
+
+        // Create payment record
+        await ctx.db.insert("payments", {
+          rentalRequestId: args.rentalRequestId,
+          type: "brand_payment",
+          fromProfileId: rentalRequest.brandProfileId,
+          toProfileId: undefined, // Platform (no specific profile)
+          amount: rentalRequest.totalAmount,
+          platformFee: platformFee,
+          netAmount: netAmount,
+          transactionReference: args.chargeId,
+          paymentMethod: "card",
+          status: "completed",
+          paymentDate: Date.now(),
+          processedDate: Date.now(),
+          settlementDate: Date.now(),
+          description: `Shelf rental payment for ${Math.ceil((rentalRequest.endDate - rentalRequest.startDate) / (30 * 24 * 60 * 60 * 1000)) || 1} month(s)`,
+        })
+      }
+
+      // Update rental request status to active
       await ctx.db.patch(args.rentalRequestId, {
         status: "active" as any,
       })
@@ -198,10 +195,7 @@ export const verifyAndConfirmPayment = action({
     rentalRequestId: v.id("rentalRequests"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    await requireAuth(ctx)
 
     const tapSecretKey = getTapSecretKey()
 
@@ -261,10 +255,7 @@ export const refundCharge = action({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const userId = await requireAuth(ctx)
 
     const tapSecretKey = getTapSecretKey()
 
@@ -464,16 +455,8 @@ export const createCheckoutSession = action({
 
       const charge = await response.json()
 
-      // Store charge info if it's for a rental
-      if (args.rentalRequestId) {
-        await ctx.runMutation(internal.tapPayments.storeChargeInfo, {
-          chargeId: charge.id,
-          rentalRequestId: args.rentalRequestId,
-          amount: args.amount,
-          status: charge.status,
-          transactionUrl: charge.transaction?.url,
-        })
-      }
+      // Payment record will be created after successful payment verification via webhook
+      // No need to create/update payment record here
 
       return {
         success: true,

@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { getUserProfile } from "./profileHelpers"
 import { Doc } from "./_generated/dataModel"
+import { requireAuth } from "./helpers"
 
 // Get payment by rental request ID
 export const getPaymentByRental = query({
@@ -41,14 +42,14 @@ export const getUserPayments = query({
       // Get payments made by brand
       payments = await ctx.db
         .query("payments")
-        .filter((q) => q.eq(q.field("fromProfileId"), profileData.profile._id))
+        .withIndex("by_from_profile", (q) => q.eq("fromProfileId", profileData.profile._id))
         .order("desc")
         .collect()
     } else if (profileData.type === "store_owner") {
       // Get payments received by store
       payments = await ctx.db
         .query("payments")
-        .filter((q) => q.eq(q.field("toProfileId"), profileData.profile._id))
+        .withIndex("by_to_profile", (q) => q.eq("toProfileId", profileData.profile._id))
         .order("desc")
         .collect()
     }
@@ -73,34 +74,29 @@ export const getPaymentStats = query({
 
     let totalPaid = 0
     let totalReceived = 0
-    let pendingPayments = 0
 
     if (profileData.type === "brand_owner") {
       // Get brand payment stats
       const payments = await ctx.db
         .query("payments")
-        .filter((q) => q.eq(q.field("fromProfileId"), profileData.profile._id))
+        .withIndex("by_from_profile", (q) => q.eq("fromProfileId", profileData.profile._id))
         .collect()
 
       for (const payment of payments) {
         if (payment.status === "completed") {
           totalPaid += payment.amount
-        } else if (payment.status === "pending") {
-          pendingPayments += payment.amount
         }
       }
     } else if (profileData.type === "store_owner") {
       // Get store payment stats
       const payments = await ctx.db
         .query("payments")
-        .filter((q) => q.eq(q.field("toProfileId"), profileData.profile._id))
+        .withIndex("by_to_profile", (q) => q.eq("toProfileId", profileData.profile._id))
         .collect()
 
       for (const payment of payments) {
         if (payment.status === "completed") {
           totalReceived += payment.netAmount || payment.amount
-        } else if (payment.status === "pending") {
-          pendingPayments += payment.netAmount || payment.amount
         }
       }
     }
@@ -108,7 +104,6 @@ export const getPaymentStats = query({
     return {
       totalPaid,
       totalReceived,
-      pendingPayments,
       accountType: profileData.type,
     }
   },
@@ -122,10 +117,7 @@ export const updatePaymentMethod = mutation({
     transactionReference: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    await requireAuth(ctx)
 
     const payment = await ctx.db.get(args.paymentId)
     if (!payment) {
