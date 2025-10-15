@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { requireAuth } from "./helpers"
 
 // Get products for a brand owner
 export const getOwnerProducts = query({
@@ -358,11 +359,8 @@ export const createProduct = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
-    
+    const userId = await requireAuth(ctx)
+
     // Get or create brand profile
     let brandProfile = await ctx.db
       .query("brandProfiles")

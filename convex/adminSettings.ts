@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { getUserProfile } from "./profileHelpers"
+import { requireAuthWithProfile } from "./helpers"
 
 // Get current admin profile
 export const getCurrentAdminProfile = query({
@@ -49,17 +50,12 @@ export const updateAdminProfile = mutation({
     newPassword: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const profileData = await getUserProfile(ctx, userId)
-    
-    if (!profileData || profileData.type !== "admin") {
+    const { userId, profileData } = await requireAuthWithProfile(ctx)
+
+    if (profileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
-    
+
     const adminProfile = profileData.profile as any
     
     // Get current user for email comparison
@@ -241,17 +237,12 @@ export const createAdminProfile = mutation({
   },
   handler: async (ctx, args) => {
     // Verify that the current user is an admin (the one creating the new admin)
-    const currentUserId = await getAuthUserId(ctx)
-    if (!currentUserId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const currentProfileData = await getUserProfile(ctx, currentUserId)
-    
-    if (!currentProfileData || currentProfileData.type !== "admin") {
+    const { userId: currentUserId, profileData: currentProfileData } = await requireAuthWithProfile(ctx)
+
+    if (currentProfileData.type !== "admin") {
       throw new Error("Unauthorized: Only admins can create admin accounts")
     }
-    
+
     // Find the newly created user by email
     const allUsers = await ctx.db.query("users").collect()
     const newUser = allUsers.find(u => u.email === args.email)
@@ -301,17 +292,12 @@ export const addAdminUser = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Unauthorized: Authentication required")
-    }
-    
-    const profileData = await getUserProfile(ctx, userId)
-    
-    if (!profileData || profileData.type !== "admin") {
+    const { profileData } = await requireAuthWithProfile(ctx)
+
+    if (profileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
-    
+
     // Check if email already exists in users table
     const allUsers = await ctx.db.query("users").collect()
     const existingAuthUser = allUsers.find(u => u.email === args.email)
@@ -357,22 +343,9 @@ export const toggleAdminUserStatus = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
-    
-    const profileData = await getUserProfile(ctx, userId)
-    
-    if (!profileData || profileData.type !== "admin") {
-      throw new Error("Unauthorized: Admin access required")
-    }
-    
-    const adminProfile = profileData.profile as any
+    const { userId, profileData } = await requireAuthWithProfile(ctx)
 
-    // Get the calling admin's profile data first
-    const callerProfileData = await getUserProfile(ctx, userId)
-    if (!callerProfileData || callerProfileData.type !== "admin") {
+    if (profileData.type !== "admin") {
       throw new Error("Unauthorized: Admin access required")
     }
 
@@ -415,17 +388,12 @@ export const deleteAdminUser = mutation({
   },
   handler: async (ctx, args) => {
     // Verify admin access
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
-    
-    const profileData = await getUserProfile(ctx, userId)
-    
-    if (!profileData || profileData.type !== "admin") {
+    const { userId, profileData } = await requireAuthWithProfile(ctx)
+
+    if (profileData.type !== "admin") {
       throw new Error("Unauthorized: Super admin access required")
     }
-    
+
     const adminProfile = profileData.profile as any
     if (adminProfile.adminRole !== "super_admin") {
       throw new Error("Unauthorized: Super admin access required")

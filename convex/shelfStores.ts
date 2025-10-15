@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { getPeriodDates, calculatePercentageChange } from "./helpers"
 import { api, internal } from "./_generated/api"
 
 // Create a shelf store when a rental becomes active
@@ -227,46 +228,8 @@ export const getBrandShelfStoresStats = query({
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect()
 
-    // Calculate date range based on period
-    const now = new Date()
-    const currentPeriodStart = new Date()
-    const previousPeriodStart = new Date()
-    const previousPeriodEnd = new Date()
-
-    switch (args.period) {
-      case "daily":
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setDate(now.getDate() - 1)
-        previousPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodEnd.setDate(now.getDate() - 1)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "weekly":
-        currentPeriodStart.setDate(now.getDate() - now.getDay())
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setDate(currentPeriodStart.getDate() - 7)
-        previousPeriodEnd.setDate(currentPeriodStart.getDate() - 1)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "monthly":
-        currentPeriodStart.setDate(1)
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setMonth(now.getMonth() - 1)
-        previousPeriodStart.setDate(1)
-        previousPeriodEnd.setMonth(now.getMonth())
-        previousPeriodEnd.setDate(0)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "yearly":
-        currentPeriodStart.setMonth(0, 1)
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setFullYear(now.getFullYear() - 1)
-        previousPeriodStart.setMonth(0, 1)
-        previousPeriodEnd.setFullYear(now.getFullYear() - 1)
-        previousPeriodEnd.setMonth(11, 31)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-    }
+    // Calculate date range based on period using helper
+    const { currentPeriodStart } = getPeriodDates(args.period)
 
     // Aggregate current stats
     const currentStats = shelfStores.reduce(
@@ -285,11 +248,6 @@ export const getBrandShelfStoresStats = query({
 
     // For now, return 0 changes as we don't have historical data
     // In production, you'd query historical data or store periodic snapshots
-    const calculateChange = (current: number, previous: number) => {
-      if (previous === 0) return current > 0 ? 100 : 0
-      return Math.round(((current - previous) / previous) * 100)
-    }
-
     return {
       totalScans: currentStats.totalScans,
       totalOrders: currentStats.totalOrders,

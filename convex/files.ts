@@ -1,6 +1,7 @@
 import { mutation } from "./_generated/server"
 import { v } from "convex/values"
 import { getAuthUserId } from "@convex-dev/auth/server"
+import { requireAuth } from "./helpers"
 
 // File upload limits and allowed types
 const FILE_SIZE_LIMITS = {
@@ -50,10 +51,7 @@ export const generateUploadUrl = mutation({
   },
   handler: async (ctx, args) => {
     // Require authentication
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Authentication required for file upload")
-    }
+    const userId = await requireAuth(ctx)
 
     // Check upload quota
     if (!checkUploadQuota(userId)) {
@@ -90,10 +88,7 @@ export const getFileUrl = mutation({
   },
   handler: async (ctx, args) => {
     // Require authentication
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Authentication required to access files")
-    }
+    const userId = await requireAuth(ctx)
 
     // Validate storage ID format (basic validation)
     if (!args.storageId || typeof args.storageId !== 'string' || args.storageId.length < 10) {

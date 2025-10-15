@@ -3,7 +3,7 @@ import { mutation, query, internalQuery } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
-import { getImageUrlsFromArray } from "./helpers"
+import { getImageUrlsFromArray, getPeriodDates, calculatePercentageChange, requireAuth } from "./helpers"
 import { api, internal } from "./_generated/api"
 
 
@@ -252,48 +252,9 @@ export const acceptRentalRequest = mutation({
     }
     
     // Update request status to accepted (payment_pending)
+    // Note: Payment record will be created after successful payment verification
     await ctx.db.patch(args.requestId, {
       status: "payment_pending",
-    })
-    
-    // Generate invoice for the rental payment
-    const currentYear = new Date().getFullYear()
-    const existingInvoices = await ctx.db
-      .query("payments")
-      .withIndex("by_type", (q) => q.eq("type", "brand_payment"))
-      .collect()
-    
-    const invoiceCount = existingInvoices.length + 1
-    const invoiceNumber = `INV-${currentYear}-${String(invoiceCount).padStart(4, '0')}`
-    
-    // Get platform settings for store rent commission
-    const platformSettings = await ctx.db.query("platformSettings").collect()
-    const storeRentCommission = platformSettings.find(s => s.key === "storeRentCommission")?.value || 10
-
-    // Calculate platform fee based on store rent commission
-    const platformFee = (request.totalAmount * storeRentCommission) / 100
-    const netAmount = request.totalAmount - platformFee
-    
-    // Create payment record (invoice)
-    await ctx.db.insert("payments", {
-      rentalRequestId: args.requestId,
-      type: "brand_payment",
-      fromProfileId: request.brandProfileId,
-      toProfileId: undefined, // Platform (no specific profile)
-      amount: request.totalAmount,
-      platformFee: platformFee,
-      netAmount: netAmount,
-      invoiceNumber: invoiceNumber,
-      paymentMethod: undefined, // Will be set when payment is made
-      transactionReference: undefined,
-      status: "pending",
-      paymentDate: Date.now(),
-      processedDate: undefined,
-      settlementDate: undefined,
-      dueDate: Date.now() + (7 * 24 * 60 * 60 * 1000), // Due in 7 days
-      description: `Shelf rental payment for ${Math.ceil((request.endDate - request.startDate) / (30 * 24 * 60 * 60 * 1000)) || 1} month(s)`,
-      notes: undefined,
-      failureReason: undefined,
     })
     
     // Get store user ID for messages
@@ -422,10 +383,7 @@ export const updateRentalRequest = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const userId = await requireAuth(ctx)
 
     const request = await ctx.db.get(args.requestId)
     if (!request) {
@@ -439,7 +397,7 @@ export const updateRentalRequest = mutation({
 
     // Verify the user is the brand owner who created this request
     const userProfile = await getUserProfile(ctx, userId)
-    if (!userProfile || userProfile.type !== "brand_owner" || 
+    if (!userProfile || userProfile.type !== "brand_owner" ||
         userProfile.profile._id !== request.brandProfileId) {
       throw new Error("Not authorized to update this request")
     }
@@ -962,85 +920,41 @@ export const getRentalStatsWithChanges = query({
           .filter((q) => q.eq(q.field("storeProfileId"), profileData.profile._id))
           .collect()
     
-    // Calculate date range based on period
-    const now = new Date()
-    const currentPeriodStart = new Date()
-    const previousPeriodStart = new Date()
-    const previousPeriodEnd = new Date()
-    
-    switch (args.period) {
-      case "daily":
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setDate(now.getDate() - 1)
-        previousPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodEnd.setDate(now.getDate() - 1)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "weekly":
-        currentPeriodStart.setDate(now.getDate() - now.getDay())
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setDate(currentPeriodStart.getDate() - 7)
-        previousPeriodEnd.setDate(currentPeriodStart.getDate() - 1)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "monthly":
-        currentPeriodStart.setDate(1)
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setMonth(now.getMonth() - 1)
-        previousPeriodStart.setDate(1)
-        previousPeriodEnd.setMonth(now.getMonth())
-        previousPeriodEnd.setDate(0)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-      case "yearly":
-        currentPeriodStart.setMonth(0, 1)
-        currentPeriodStart.setHours(0, 0, 0, 0)
-        previousPeriodStart.setFullYear(now.getFullYear() - 1)
-        previousPeriodStart.setMonth(0, 1)
-        previousPeriodEnd.setFullYear(now.getFullYear() - 1)
-        previousPeriodEnd.setMonth(11, 31)
-        previousPeriodEnd.setHours(23, 59, 59, 999)
-        break
-    }
-    
+    // Calculate date range based on period using helper
+    const { now, currentPeriodStart, previousPeriodStart, previousPeriodEnd } = getPeriodDates(args.period)
+
     // Filter requests by period
     const currentPeriodRequests = requests.filter(r => {
       const createdAt = new Date(r._creationTime)
       return createdAt >= currentPeriodStart && createdAt <= now
     })
-    
+
     const previousPeriodRequests = requests.filter(r => {
       const createdAt = new Date(r._creationTime)
       return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd
     })
-    
+
     // Calculate stats for current period
     const currentActive = currentPeriodRequests.filter(r => r.status === "active").length
     const currentPending = currentPeriodRequests.filter(r => r.status === "pending").length
-    const currentAccepted = currentPeriodRequests.filter(r => 
+    const currentAccepted = currentPeriodRequests.filter(r =>
       r.status === "payment_pending"
     ).length
-    
+
     // Calculate stats for previous period
     const previousActive = previousPeriodRequests.filter(r => r.status === "active").length
     const previousPending = previousPeriodRequests.filter(r => r.status === "pending").length
-    const previousAccepted = previousPeriodRequests.filter(r => 
+    const previousAccepted = previousPeriodRequests.filter(r =>
       r.status === "payment_pending"
     ).length
-    
-    // Calculate percentage changes
-    const calculateChange = (current: number, previous: number) => {
-      if (previous === 0) return current > 0 ? 100 : 0
-      return Math.round(((current - previous) / previous) * 100)
-    }
-    
+
     return {
       active: currentActive,
-      activeChange: calculateChange(currentActive, previousActive),
+      activeChange: calculatePercentageChange(currentActive, previousActive),
       pending: currentPending,
-      pendingChange: calculateChange(currentPending, previousPending),
+      pendingChange: calculatePercentageChange(currentPending, previousPending),
       accepted: currentAccepted,
-      acceptedChange: calculateChange(currentAccepted, previousAccepted),
+      acceptedChange: calculatePercentageChange(currentAccepted, previousAccepted),
     }
   },
 })
