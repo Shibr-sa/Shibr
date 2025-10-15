@@ -358,20 +358,18 @@ const schema = defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Email verification OTP (for signup only - no userId needed)
-  emailVerificationOTP: defineTable({
-    email: v.string(),
+  // Unified OTP verification table for both email and phone
+  verificationOTP: defineTable({
+    type: v.union(v.literal("email"), v.literal("phone")),
+    identifier: v.string(), // Email address or phone number
+    email: v.optional(v.string()), // Associated email for linking during signup
     otp: v.string(),
     expiresAt: v.number(), // Unix timestamp
     attempts: v.number(), // Number of verification attempts
     createdAt: v.number(), // Unix timestamp
-    // Legacy fields - kept for backward compatibility with existing documents
-    userId: v.optional(v.string()),
     verified: v.optional(v.boolean()),
   })
-    .index("by_email", ["email"])
-    .index("by_otp", ["otp"])
-    .index("by_expires", ["expiresAt"]),
+    .index("by_type_identifier", ["type", "identifier"]),
 
   // Shelf Stores (QR code-enabled stores for active rentals)
   shelfStores: defineTable({
