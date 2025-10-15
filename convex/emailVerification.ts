@@ -29,8 +29,8 @@ function generateOTP(): string {
 async function cleanupExpiredOTPs(ctx: any, email: string) {
   const now = Date.now()
   const expiredOTPs = await ctx.db
-    .query("emailVerificationOTP")
-    .withIndex("by_email", (q: any) => q.eq("email", email))
+    .query("verificationOTP")
+    .withIndex("by_type_identifier", (q: any) => q.eq("type", "email").eq("identifier", email))
     .filter((q: any) => q.lt(q.field("expiresAt"), now))
     .collect()
 
@@ -45,6 +45,58 @@ async function cleanupExpiredOTPs(ctx: any, email: string) {
 // ============================================
 
 /**
+ * Check if email and phone are available for signup (no OTPs sent)
+ */
+export const checkAvailability = mutation({
+  args: {
+    email: v.string(),
+    phoneNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim()
+    const phoneNumber = args.phoneNumber
+
+    // Check if email already exists
+    const existingEmail = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), email))
+      .first()
+
+    if (existingEmail) {
+      return {
+        success: false,
+        error: "auth.account_already_exists",
+        field: "email"
+      }
+    }
+
+    // Check if phone already exists (check both with and without 966 prefix)
+    const existingPhone = await ctx.db
+      .query("users")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("phone"), phoneNumber),
+          q.eq(q.field("phone"), phoneNumber.replace('966', ''))
+        )
+      )
+      .first()
+
+    if (existingPhone) {
+      return {
+        success: false,
+        error: "auth.account_already_exists",
+        field: "phone"
+      }
+    }
+
+    return {
+      success: true,
+      message: "Email and phone are available"
+    }
+  }
+})
+
+/**
  * Send OTP for signup email verification (no account exists yet)
  */
 export const sendSignupOTP = mutation({
@@ -55,27 +107,14 @@ export const sendSignupOTP = mutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim()
 
-    // Check if user with this email already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), email))
-      .first()
-
-    if (existingUser) {
-      return {
-        success: false,
-        error: "auth.account_already_exists"  // Return translation key instead of hardcoded message
-      }
-    }
-
     // Clean up expired OTPs for this email
     await cleanupExpiredOTPs(ctx, email)
 
     // Check rate limiting
     const oneHourAgo = Date.now() - (60 * 60 * 1000)
     const recentOTPs = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
       .filter((q) => q.gt(q.field("createdAt"), oneHourAgo))
       .collect()
 
@@ -88,8 +127,8 @@ export const sendSignupOTP = mutation({
 
     // Delete any existing OTPs for this email
     const existingOTPs = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
       .collect()
 
     for (const oldOTP of existingOTPs) {
@@ -101,7 +140,9 @@ export const sendSignupOTP = mutation({
     const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
 
     // Store OTP
-    await ctx.db.insert("emailVerificationOTP", {
+    await ctx.db.insert("verificationOTP", {
+      type: "email",
+      identifier: email,
       email,
       otp,
       expiresAt,
@@ -143,8 +184,8 @@ export const verifySignupAndCreateAccount = mutation({
 
     // Find the OTP record
     const otpRecord = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
       .filter((q) => q.eq(q.field("otp"), args.otp))
       .first()
 
@@ -213,8 +254,8 @@ export const resendSignupOTP = mutation({
 
     // Check cooldown - last OTP should be at least 60 seconds old
     const recentOTP = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
       .order("desc")
       .first()
 
@@ -227,8 +268,8 @@ export const resendSignupOTP = mutation({
 
     // Delete any existing OTPs for this email
     const existingOTPs = await ctx.db
-      .query("emailVerificationOTP")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .query("verificationOTP")
+      .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
       .collect()
 
     for (const oldOTP of existingOTPs) {
@@ -240,7 +281,9 @@ export const resendSignupOTP = mutation({
     const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000)
 
     // Store OTP
-    await ctx.db.insert("emailVerificationOTP", {
+    await ctx.db.insert("verificationOTP", {
+      type: "email",
+      identifier: email,
       email,
       otp,
       expiresAt,

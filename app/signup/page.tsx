@@ -40,7 +40,9 @@ export default function SignUpPage() {
   const searchParams = useSearchParams()
   const { t, direction, language } = useLanguage()
   const { toast } = useToast()
+  const checkAvailability = useMutation(api.emailVerification.checkAvailability)
   const sendSignupOTP = useMutation(api.emailVerification.sendSignupOTP)
+  const sendPhoneOTP = useMutation(api.phoneVerification.sendPhoneOTP)
 
   // Get account type from URL parameter
   useEffect(() => {
@@ -109,50 +111,68 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      // Send OTP to email (no account creation)
-      const result = await sendSignupOTP({
+      // Prepare signup data first
+      const signupData = {
+        isSignup: true,
+        fullName: formData.fullName.trim(),
         email: formData.email.toLowerCase().trim(),
-        name: formData.fullName.trim(),
+        phoneNumber: formatSaudiPhoneNumber(formData.phoneNumber),
+        password: formData.password,
+        accountType,
+        storeName: accountType === "store-owner" ? formData.storeName.trim() : undefined,
+        brandName: accountType === "brand-owner" ? formData.brandName.trim() : undefined,
+      }
+
+      // First, check if both email and phone are available
+      const availabilityResult = await checkAvailability({
+        email: signupData.email,
+        phoneNumber: signupData.phoneNumber,
       })
 
-      if (result.success) {
+      // If either email or phone already exists, show error and stop
+      if (!availabilityResult.success) {
+        toast({
+          title: t("auth.error"),
+          description: t(availabilityResult.error || "auth.account_already_exists"),
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Both are available, now send OTPs in parallel
+      const [emailResult, phoneResult] = await Promise.all([
+        sendSignupOTP({
+          email: signupData.email,
+          name: signupData.fullName,
+        }),
+        sendPhoneOTP({
+          phoneNumber: signupData.phoneNumber,
+          email: signupData.email,
+          name: signupData.fullName,
+        })
+      ])
+
+      // Check if both OTPs were sent successfully
+      if (emailResult.success && phoneResult.success) {
         toast({
           title: t("auth.success"),
-          description: t("verification.code_sent"),
+          description: t("verification.codes_sent"),
         })
 
         // Store signup data in sessionStorage and navigate to verify-email
-        const signupData = {
-          isSignup: true,
-          fullName: formData.fullName.trim(),
-          email: formData.email.toLowerCase().trim(),
-          phoneNumber: formatSaudiPhoneNumber(formData.phoneNumber),
-          password: formData.password,
-          accountType,
-          storeName: accountType === "store-owner" ? formData.storeName.trim() : undefined,
-          brandName: accountType === "brand-owner" ? formData.brandName.trim() : undefined,
-        }
-
         sessionStorage.setItem('signupData', JSON.stringify(signupData))
         router.push('/verify-email')
       } else {
-        // Check if error is a translation key or actual message
-        const errorMessage = result.error?.includes(".")
-          ? t(result.error as any)
-          : result.error || t("auth.signup_failed")
+        // If sending OTPs failed (shouldn't happen since we checked availability)
+        const errorKey = !emailResult.success
+          ? (emailResult.error || "auth.email_otp_failed")
+          : (phoneResult.error || "auth.phone_otp_failed")
 
         toast({
           title: t("auth.error"),
-          description: errorMessage,
+          description: t(errorKey),
           variant: "destructive",
         })
-
-        // If account already exists, redirect to signin after showing error
-        if (result.error === "auth.account_already_exists") {
-          setTimeout(() => {
-            router.push('/signin')
-          }, 3000)
-        }
       }
     } catch (error: any) {
       toast({
