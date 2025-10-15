@@ -74,11 +74,6 @@ export default function ShibrLandingPage() {
     { question: t("faq.q3"), answer: t("faq.a3") },
     { question: t("faq.q4"), answer: t("faq.a4") },
     { question: t("faq.q5"), answer: t("faq.a5") },
-    { question: t("faq.q6"), answer: t("faq.a6") },
-    { question: t("faq.q7"), answer: t("faq.a7") },
-    { question: t("faq.q8"), answer: t("faq.a8") },
-    { question: t("faq.q9"), answer: t("faq.a9") },
-    { question: t("faq.q10"), answer: t("faq.a10") },
   ]
 
   return (
