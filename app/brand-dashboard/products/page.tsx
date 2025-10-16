@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/ui/stat-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { formatCurrency } from "@/lib/formatters"
+import { formatCurrency, formatDate } from "@/lib/formatters"
 import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import {
   Pagination,
@@ -27,7 +28,7 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import BrandProductsLoading from "./loading"
 
 export default function BrandProductsPage() {
@@ -35,11 +36,14 @@ export default function BrandProductsPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
   const { isBrandDataComplete, isLoading: brandLoading } = useBrandData()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [currentPage, setCurrentPage] = useState(1)
+  const [salesPage, setSalesPage] = useState(1)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "products")
   const itemsPerPage = 5
 
   // Get user ID from current user
@@ -57,6 +61,12 @@ export default function BrandProductsPage() {
     userId ? { period: "monthly" as const } : "skip"
   )
 
+  // Fetch all sales operations
+  const allSalesOperations = useQuery(
+    api.products.getLatestSalesOperations,
+    userId ? { ownerId: userId, limit: 1000 } : "skip"
+  )
+
   // Delete product mutation
   const deleteProduct = useMutation(api.products.deleteProduct)
 
@@ -69,15 +79,21 @@ export default function BrandProductsPage() {
     return matchesSearch
   }) || []
 
-  // Pagination logic
+  // Products pagination logic
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex)
 
+  // Sales pagination logic
+  const totalSalesPages = Math.ceil((allSalesOperations?.length || 0) / itemsPerPage)
+  const salesStartIndex = (salesPage - 1) * itemsPerPage
+  const salesEndIndex = salesStartIndex + itemsPerPage
+  const paginatedSales = allSalesOperations?.slice(salesStartIndex, salesEndIndex) || []
+
   // Loading state - true if we're waiting for products after userId is available
   const isLoading = !products && userId !== null
-  
+
   // Check if search is in progress (user typed but debounce hasn't fired yet)
   const isSearching = searchQuery !== debouncedSearchQuery
 
@@ -161,22 +177,30 @@ export default function BrandProductsPage() {
         </div>
       </div>
 
-      {/* Products Table Section */}
-      <div className="w-full">
-        <div className="mb-4">
-          {/* Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
-            <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full overflow-visible">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t("brand.dashboard.search_products")}
-                className="ps-10 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+      {/* Products & Sales Tables Section */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="products">{t("brand.dashboard.products_tab")}</TabsTrigger>
+          <TabsTrigger value="sales">{t("brand.dashboard.sales_operations_tab")}</TabsTrigger>
+        </TabsList>
+
+        {/* Products Tab */}
+        <TabsContent value="products" className="mt-0">
+          <div className="w-full">
+            <div className="mb-4">
+              {/* Search */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
+                <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full overflow-visible">
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t("brand.dashboard.search_products")}
+                    className="ps-10 w-full"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
         {/* Table */}
         <div className="rounded-md border">
             <Table>
@@ -257,7 +281,7 @@ export default function BrandProductsPage() {
                                 {product.sku || '-'}
                               </TableCell>
                               <TableCell className="text-muted-foreground py-3 w-[15%]">
-                                {product.category || '-'}
+                                {product.category ? t(`brands.category.${product.category}`) : '-'}
                               </TableCell>
                               <TableCell className="py-3 w-[8%]">
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>
@@ -414,8 +438,159 @@ export default function BrandProductsPage() {
                 </PaginationContent>
               </Pagination>
             </div>
-      </div>
-      
+          </div>
+        </TabsContent>
+
+        {/* Sales Tab */}
+        <TabsContent value="sales" className="mt-0">
+          <div className="w-full">
+            {/* Sales Table */}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 border-b">
+                    <TableHead className="text-start h-12 font-medium w-[15%]">{t("table.order_number")}</TableHead>
+                    <TableHead className="text-start h-12 font-medium w-[25%]">{t("table.product_name")}</TableHead>
+                    <TableHead className="text-start h-12 font-medium w-[20%]">{t("table.store_name")}</TableHead>
+                    <TableHead className="text-start h-12 font-medium w-[15%]">{t("table.city")}</TableHead>
+                    <TableHead className="text-start h-12 font-medium w-[10%]">{t("table.price")}</TableHead>
+                    <TableHead className="text-start h-12 font-medium w-[15%]">{t("table.date")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!allSalesOperations ? (
+                    // Loading state - show 5 skeleton rows
+                    Array.from({ length: itemsPerPage }).map((_, index) => (
+                      <TableRow key={`sales-loading-${index}`} className="h-[72px]">
+                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell className="w-[25%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell className="w-[10%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
+                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[70px]" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : paginatedSales.length > 0 ? (
+                    <>
+                      {paginatedSales.map((sale, index) => (
+                        <TableRow key={`${sale.invoiceNumber}-${index}`} className={`h-[72px] ${index < paginatedSales.length - 1 ? 'border-b' : ''}`}>
+                          <TableCell className="font-medium py-3">
+                            {sale.invoiceNumber}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {sale.productName}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {sale.storeName}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {sale.city}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className="font-medium">{formatCurrency(sale.price, language)}</span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground py-3">
+                            {formatDate(sale.date, language)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Fill remaining rows to always show 5 rows */}
+                      {paginatedSales.length < 5 && Array.from({ length: 5 - paginatedSales.length }).map((_, index) => (
+                        <TableRow key={`sales-filler-${index}`} className="h-[72px]">
+                          <TableCell className="py-3" colSpan={6}></TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ) : (
+                    // Empty state - centered view with fixed height
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-[360px] text-center">
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex flex-col items-center gap-1 py-10">
+                            <ShoppingCart className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <h3 className="font-medium">
+                              {t("brand.dashboard.no_sales_operations")}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {t("brand.dashboard.sales_operations_description")}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Sales Pagination Controls */}
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setSalesPage(prev => Math.max(1, prev - 1))}
+                      className={cn(
+                        "cursor-pointer",
+                        (salesPage === 1 || totalSalesPages === 0) && "pointer-events-none opacity-50"
+                      )}
+                      aria-disabled={salesPage === 1 || totalSalesPages === 0}
+                    >
+                      {t("common.previous")}
+                    </PaginationPrevious>
+                  </PaginationItem>
+
+                  {totalSalesPages > 0 ? (
+                    Array.from({ length: Math.min(5, totalSalesPages) }, (_, i) => {
+                      let page;
+                      if (totalSalesPages <= 5) {
+                        page = i + 1;
+                      } else if (salesPage <= 3) {
+                        page = i + 1;
+                      } else if (salesPage >= totalSalesPages - 2) {
+                        page = totalSalesPages - 4 + i;
+                      } else {
+                        page = salesPage - 2 + i;
+                      }
+                      return page;
+                    }).map(page => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setSalesPage(page)}
+                          isActive={salesPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))
+                  ) : (
+                    <PaginationItem>
+                      <PaginationLink isActive className="pointer-events-none">
+                        1
+                      </PaginationLink>
+                    </PaginationItem>
+                  )}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setSalesPage(prev => Math.min(totalSalesPages, prev + 1))}
+                      className={cn(
+                        "cursor-pointer",
+                        (salesPage === totalSalesPages || totalSalesPages <= 1) && "pointer-events-none opacity-50"
+                      )}
+                      aria-disabled={salesPage === totalSalesPages || totalSalesPages <= 1}
+                    >
+                      {t("common.next")}
+                    </PaginationNext>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
       {/* Product Dialog */}
       {userId && (
         <ProductDialog
