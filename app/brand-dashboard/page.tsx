@@ -348,7 +348,7 @@ export default function BrandDashboardPage() {
           
           {isBrandDataComplete ? (
             <Button variant="outline" size="sm" asChild>
-              <Link href={activeTab === "shelves" ? "/brand-dashboard/shelves" : "/brand-dashboard/products"}>
+              <Link href={activeTab === "shelves" ? "/brand-dashboard/shelves" : "/brand-dashboard/products?tab=sales"}>
                 {t("brand.dashboard.see_more")}
               </Link>
             </Button>
