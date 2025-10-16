@@ -67,13 +67,10 @@ export default function BrandDashboardPage() {
     user?.id ? { ownerId: user.id as Id<"users"> } : "skip"
   )
   
-  // Fetch product statistics
-  const productStats = useQuery(
-    api.products.getProductStats,
-    user?.id ? { 
-      ownerId: user.id as Id<"users">,
-      period: "monthly" as const
-    } : "skip"
+  // Fetch unified dashboard statistics (products + shelf stores)
+  const dashboardStats = useQuery(
+    api.products.getBrandDashboardStats,
+    { period: "monthly" as const }
   )
   
   // Fetch sales chart data
@@ -93,8 +90,8 @@ export default function BrandDashboardPage() {
   
   // Calculate statistics
   const pendingRequests = rentalRequests?.filter(r => r.status === "pending").length || 0
-  const totalRevenue = productStats?.totalRevenue || 0
-  const totalSales = productStats?.totalSales || 0
+  const totalRevenue = dashboardStats?.totalRevenue || 0
+  const totalSales = dashboardStats?.totalSales || 0
   
   // Calculate products on shelves (products from active rentals)
   const productsOnShelves = rentalRequests?.filter(r => r.status === "active")
@@ -221,7 +218,7 @@ export default function BrandDashboardPage() {
           />
         )}
         
-        {!productStats ? (
+        {!dashboardStats ? (
           // Loading skeleton for second stat card
           <div className="rounded-lg border bg-card">
             <div className="p-6">
@@ -240,14 +237,14 @@ export default function BrandDashboardPage() {
             title={t("brand.dashboard.total_sales")}
             value={formatCurrency(totalRevenue, language)}
             trend={{
-              value: productStats?.revenueChange || 0,
+              value: dashboardStats?.revenueChange || 0,
               label: `${t("time.from")} ${t("time.last_month")}`
             }}
             icon={<TrendingUp className="h-6 w-6 text-primary" />}
           />
         )}
-        
-        {!products || !productStats ? (
+
+        {!products || !dashboardStats ? (
           // Loading skeleton for third stat card
           <div className="rounded-lg border bg-card">
             <div className="p-6">
@@ -266,7 +263,7 @@ export default function BrandDashboardPage() {
             title={t("brand.dashboard.total_products")}
             value={productsOnShelves}
             trend={{
-              value: productStats?.productsChange || 0,
+              value: dashboardStats?.productsChange || 0,
               label: `${t("time.from")} ${t("time.last_month")}`
             }}
             icon={<Package className="h-6 w-6 text-primary" />}

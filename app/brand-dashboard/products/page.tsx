@@ -55,9 +55,9 @@ export default function BrandProductsPage() {
     userId ? {} : "skip"
   )
 
-  // Fetch product statistics (using monthly period as default)
-  const productStats = useQuery(
-    api.products.getUserProductStats,
+  // Fetch unified dashboard statistics (products + shelf stores)
+  const dashboardStats = useQuery(
+    api.products.getBrandDashboardStats,
     userId ? { period: "monthly" as const } : "skip"
   )
 
@@ -156,21 +156,21 @@ export default function BrandProductsPage() {
             {/* Total Products Card */}
             <StatCard
               title={t("brand.dashboard.total_products_count")}
-              value={productStats?.totalProducts ?? 0}
+              value={dashboardStats?.totalProducts ?? 0}
               icon={<Package className="h-5 w-5 text-primary" />}
             />
 
             {/* Sold Products Card */}
             <StatCard
               title={t("brand.dashboard.sold_products_count")}
-              value={productStats?.totalSales ?? 0}
+              value={dashboardStats?.totalSales ?? 0}
               icon={<ShoppingCart className="h-5 w-5 text-primary" />}
             />
 
             {/* Total Revenue Card */}
             <StatCard
               title={t("brand.dashboard.total_sales")}
-              value={formatCurrency(productStats?.totalRevenue ?? 0, language)}
+              value={formatCurrency(dashboardStats?.totalRevenue ?? 0, language)}
               icon={<Banknote className="h-5 w-5 text-primary" />}
             />
           </div>

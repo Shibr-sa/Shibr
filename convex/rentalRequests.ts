@@ -134,17 +134,21 @@ export const createRentalRequest = mutation({
       }
       
       // Get platform settings for commission
-      const platformSettings = await ctx.db.query("platformSettings").collect()
-      const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
-      const platformFee = brandSalesCommission
-      const storeCommissionRate = shelf.storeCommission || 0
-      const totalCommission = storeCommissionRate + platformFee
-      
+      const platformSettings = await ctx.db
+        .query("platformSettings")
+        .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+        .first()
+      const platformCommission = platformSettings?.value?.brandSalesCommission || 9
+      const storeCommission = shelf.storeCommission || 0
+
       await ctx.db.patch(existingRequest._id, {
         startDate: new Date(args.startDate).getTime(),
         endDate: new Date(args.endDate).getTime(),
         selectedProducts: selectedProducts,
-        storeCommission: totalCommission, // Store + شبر platform commission
+        commissions: [
+          { type: "store" as const, rate: storeCommission },
+          { type: "platform" as const, rate: platformCommission },
+        ],
       })
       
       // Send a system message in the conversation about the update
@@ -198,12 +202,13 @@ export const createRentalRequest = mutation({
     }
     
     // Get platform settings for commission
-    const platformSettings = await ctx.db.query("platformSettings").collect()
-    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
-    const platformFee = brandSalesCommission
-    const storeCommissionRate = shelf.storeCommission || 0
-    const totalCommission = storeCommissionRate + platformFee
-    
+    const platformSettings = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+      .first()
+    const platformCommission = platformSettings?.value?.brandSalesCommission || 9
+    const storeCommission = shelf.storeCommission || 0
+
     // Create the rental request
     const requestId = await ctx.db.insert("rentalRequests", {
       shelfId: args.shelfId,
@@ -214,7 +219,10 @@ export const createRentalRequest = mutation({
       selectedProducts: selectedProducts || [],
       monthlyPrice: shelf.monthlyPrice,
       totalAmount: totalPrice,
-      storeCommission: totalCommission, // Store + شبر platform commission
+      commissions: [
+        { type: "store" as const, rate: storeCommission },
+        { type: "platform" as const, rate: platformCommission },
+      ],
       status: "pending",
       conversationId: args.conversationId,
     })

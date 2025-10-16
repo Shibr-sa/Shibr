@@ -58,32 +58,72 @@ export const getUserProducts = query({
       .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
 
+    // Get platform settings for commission rates
+    const platformSettings = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+      .first()
+
+    const platformFeeRate = platformSettings?.value?.brandSalesCommission || 9 // Default 9%
+
     // Get all customer orders to calculate real sales
     const allOrders = await ctx.db.query("customerOrders").collect()
 
-    // Get all active shelf stores for this brand to count stores selling each product
+    // Get all shelf stores (both active and inactive) for this brand
     const brandShelfStores = await ctx.db
       .query("shelfStores")
       .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
-      .filter((q) => q.eq(q.field("isActive"), true))
       .collect()
 
-    // Get rental requests for these shelf stores to know which products they're selling
-    const rentalRequestIds = brandShelfStores.map(ss => ss.rentalRequestId)
+    // Create a map of shelf store ID to commission rates
+    const shelfStoreCommissions = new Map(
+      brandShelfStores.map(ss => {
+        const storeRate = ss.commissions.find(c => c.type === "store")?.rate || 0
+        const platformRate = ss.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
+
+        return [
+          ss._id.toString(),
+          {
+            storeCommissionRate: storeRate,
+            platformFeeRate: platformRate,
+          }
+        ]
+      })
+    )
+
+    // Get active shelf stores to count stores selling each product
+    const activeShelfStores = brandShelfStores.filter(ss => ss.isActive)
+
+    // Get rental requests for active shelf stores to know which products they're selling
+    const rentalRequestIds = activeShelfStores.map(ss => ss.rentalRequestId)
     const rentalRequests = await Promise.all(
       rentalRequestIds.map(id => ctx.db.get(id))
     )
 
     return products.map(p => {
-      // Calculate total sales for this product across all orders
+      // Calculate total sales and net revenue for this product across all orders
       let totalSalesCount = 0
-      let totalRevenueAmount = 0
+      let totalNetRevenue = 0
 
       for (const order of allOrders) {
         for (const item of order.items) {
           if (item.productId === p._id) {
             totalSalesCount += item.quantity
-            totalRevenueAmount += item.subtotal
+
+            // Calculate net revenue after commissions
+            const saleAmount = item.subtotal
+            const commissions = shelfStoreCommissions.get(order.shelfStoreId.toString())
+
+            if (commissions) {
+              const storeCommission = (saleAmount * commissions.storeCommissionRate) / 100
+              const platformCommission = (saleAmount * commissions.platformFeeRate) / 100
+              const netAmount = saleAmount - storeCommission - platformCommission
+              totalNetRevenue += netAmount
+            } else {
+              // Fallback: use default platform fee if shelf store not found
+              const platformCommission = (saleAmount * platformFeeRate) / 100
+              totalNetRevenue += saleAmount - platformCommission
+            }
           }
         }
       }
@@ -110,7 +150,7 @@ export const getUserProducts = query({
         imageUrl: p.imageUrl,
         description: p.description,
         totalSales: totalSalesCount,
-        totalRevenue: totalRevenueAmount,
+        totalRevenue: totalNetRevenue, // Net revenue after commissions
         shelfCount: storeCount,
       }
     })
@@ -184,84 +224,10 @@ export const getSalesChartData = query({
   },
 })
 
-// Get product statistics for dashboard
-export const getProductStats = query({
-  args: {
-    ownerId: v.id("users"),
-    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
-  },
-  handler: async (ctx, args) => {
-    // Get the brand profile for this user
-    const userProfile = await getUserProfile(ctx, args.ownerId)
-    
-    if (!userProfile || userProfile.type !== "brand_owner") {
-      return {
-        totalProducts: 0,
-        activeProducts: 0,
-        outOfStock: 0,
-        inventoryHealth: 0,
-        productsChange: 0,
-        activeChange: 0,
-        outOfStockChange: 0,
-        inventoryHealthChange: 0,
-      }
-    }
-    
-    const brandProfileId = userProfile.profile._id
-    const now = new Date()
-    let compareDate = new Date()
-    
-    // Calculate comparison date based on period
-    switch (args.period) {
-      case "daily":
-        compareDate.setDate(compareDate.getDate() - 1)
-        break
-      case "weekly":
-        compareDate.setDate(compareDate.getDate() - 7)
-        break
-      case "monthly":
-        compareDate.setMonth(compareDate.getMonth() - 1)
-        break
-      case "yearly":
-        compareDate.setFullYear(compareDate.getFullYear() - 1)
-        break
-    }
-    
-    // Get all products for the owner
-    const products = await ctx.db
-      .query("products")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
-      .collect()
-    
-    // Calculate current stats
-    const totalProducts = products.length
-    const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
-    const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
-    const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
-    const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
-    
-    // Calculate percentage changes based on actual data
-    // In a real scenario, these would be compared with historical data from the previous period
-    // For now, return 0 as we don't have historical data tracking yet
-    const salesChange = 0
-    const revenueChange = 0
-    const productsChange = 0
-    
-    return {
-      totalProducts,
-      activeProducts,
-      totalSales,
-      totalRevenue,
-      totalInventory,
-      salesChange,
-      revenueChange,
-      productsChange,
-    }
-  },
-})
-
-// Get product statistics for current user's dashboard
-export const getUserProductStats = query({
+// UNIFIED: Get all brand dashboard statistics in one query
+// Replaces: getUserProductStats + getBrandShelfStoresStats
+// More efficient: Single query, calculates net revenue once
+export const getBrandDashboardStats = query({
   args: {
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
   },
@@ -269,17 +235,24 @@ export const getUserProductStats = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       return {
+        // Product stats
         totalProducts: 0,
         activeProducts: 0,
         totalSales: 0,
         totalRevenue: 0,
         totalInventory: 0,
+        // Shelf store stats
+        totalScans: 0,
+        totalOrders: 0,
+        // Changes (would need historical data)
         salesChange: 0,
         revenueChange: 0,
         productsChange: 0,
+        scansChange: 0,
+        ordersChange: 0,
       };
     }
-    
+
     // Get user profile first
     const userProfile = await getUserProfile(ctx, userId)
     if (!userProfile || userProfile.type !== "brand_owner") {
@@ -289,60 +262,125 @@ export const getUserProductStats = query({
         totalSales: 0,
         totalRevenue: 0,
         totalInventory: 0,
+        totalScans: 0,
+        totalOrders: 0,
         salesChange: 0,
         revenueChange: 0,
         productsChange: 0,
+        scansChange: 0,
+        ordersChange: 0,
       }
     }
-    
-    const now = new Date()
-    let compareDate = new Date()
-    
-    // Calculate comparison date based on period
-    switch (args.period) {
-      case "daily":
-        compareDate.setDate(compareDate.getDate() - 1)
-        break
-      case "weekly":
-        compareDate.setDate(compareDate.getDate() - 7)
-        break
-      case "monthly":
-        compareDate.setMonth(compareDate.getMonth() - 1)
-        break
-      case "yearly":
-        compareDate.setFullYear(compareDate.getFullYear() - 1)
-        break
-    }
-    
+
     // Get all products for the owner
     const products = await ctx.db
       .query("products")
       .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
-    
-    // Calculate current stats
+
+    // Get platform settings for commission rates
+    const platformSettings = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+      .first()
+
+    const platformFeeRate = platformSettings?.value?.brandSalesCommission || 9 // Default 9%
+
+    // Get all customer orders to calculate real sales
+    const allOrders = await ctx.db.query("customerOrders").collect()
+
+    // Get all shelf stores for this brand
+    const brandShelfStores = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
+      .collect()
+
+    // Create a map of shelf store ID to commission rates
+    const shelfStoreCommissions = new Map(
+      brandShelfStores.map(ss => {
+        const storeRate = ss.commissions.find(c => c.type === "store")?.rate || 0
+        const platformRate = ss.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
+
+        return [
+          ss._id.toString(),
+          {
+            storeCommissionRate: storeRate,
+            platformFeeRate: platformRate,
+          }
+        ]
+      })
+    )
+
+    // Calculate total sales and net revenue across all products
+    let totalSalesCount = 0
+    let totalNetRevenue = 0
+
+    for (const order of allOrders) {
+      for (const item of order.items) {
+        // Check if this product belongs to this brand
+        const product = products.find(p => p._id === item.productId)
+        if (product) {
+          totalSalesCount += item.quantity
+
+          // Calculate net revenue after commissions
+          const saleAmount = item.subtotal
+          const commissions = shelfStoreCommissions.get(order.shelfStoreId.toString())
+
+          if (commissions) {
+            const storeCommission = (saleAmount * commissions.storeCommissionRate) / 100
+            const platformCommission = (saleAmount * commissions.platformFeeRate) / 100
+            const netAmount = saleAmount - storeCommission - platformCommission
+            totalNetRevenue += netAmount
+          } else {
+            // Fallback: use default platform fee if shelf store not found
+            const platformCommission = (saleAmount * platformFeeRate) / 100
+            totalNetRevenue += saleAmount - platformCommission
+          }
+        }
+      }
+    }
+
+    // Calculate product stats
     const totalProducts = products.length
     const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
-    const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0)
-    const totalRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
     const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
-    
+
+    // Calculate shelf store stats (scans and orders)
+    let totalScans = 0
+    let totalOrders = 0
+
+    for (const store of brandShelfStores) {
+      if (store.isActive) {
+        totalScans += store.totalScans || 0
+        totalOrders += store.totalOrders || 0
+      }
+    }
+
     // Calculate percentage changes based on actual data
     // In a real scenario, these would be compared with historical data from the previous period
     // For now, return 0 as we don't have historical data tracking yet
     const salesChange = 0
     const revenueChange = 0
     const productsChange = 0
-    
+    const scansChange = 0
+    const ordersChange = 0
+
     return {
+      // Product stats
       totalProducts,
       activeProducts,
-      totalSales,
-      totalRevenue,
+      totalSales: totalSalesCount,
+      totalRevenue: totalNetRevenue, // Net revenue after commissions
       totalInventory,
+      // Shelf store stats
+      totalScans,
+      totalOrders,
+      // Changes
       salesChange,
       revenueChange,
       productsChange,
+      scansChange,
+      ordersChange,
     }
   },
 })
@@ -483,7 +521,7 @@ export const getLatestSalesOperations = query({
             productName: item.productName,
             storeName: storeProfile?.storeName || "Unknown Store",
             city: shelf?.city || "Unknown",
-            price: item.subtotal, // Total price for this item (price * quantity)
+            price: item.subtotal, // Full sale amount (before commissions)
             date: order._creationTime,
             quantity: item.quantity,
           })
