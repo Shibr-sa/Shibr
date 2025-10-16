@@ -83,41 +83,51 @@ export const getOwnerShelves = query({
   handler: async (ctx, args) => {
     // Get the user's profile first
     const userProfile = await getUserProfile(ctx, args.ownerId)
-    
+
     if (!userProfile || userProfile.type !== "store_owner") {
       return []
     }
-    
+
+    // Get platform settings for commission rates
+    const settings = await ctx.runQuery(internal.platformSettings.internalGetPlatformSettings)
+    const platformRentCommission = settings.storeRentCommission // Default 10%
+
     const shelves = await ctx.db
       .query("shelves")
       .withIndex("by_store_profile", (q) => q.eq("storeProfileId", userProfile.profile._id))
       .order("desc")
       .collect()
-    
+
     // Fetch renter names and calculate next collection dates for rented shelves
     const shelvesWithDetails = await Promise.all(
       shelves.map(async (shelf) => {
         let renterName = null
         let nextCollectionDate = null
-        
+        let netRevenue = 0
+
         // Check if there's an active rental for this shelf
         const activeRental = await ctx.db
           .query("rentalRequests")
           .withIndex("by_shelf", (q) => q.eq("shelfId", shelf._id))
           .filter((q) => q.eq(q.field("status"), "active"))
           .first()
-        
+
         if (activeRental) {
           const renterProfile = activeRental.brandProfileId ? await ctx.db.get(activeRental.brandProfileId) : null
           renterName = renterProfile?.brandName
+
+          // Calculate net revenue after Shibr commission
+          const monthlyPrice = activeRental.monthlyPrice || 0
+          const shibrCommission = (monthlyPrice * platformRentCommission) / 100
+          netRevenue = monthlyPrice - shibrCommission
         }
-        
+
         // Calculate next collection date for rented shelves
         if (activeRental && activeRental.endDate) {
           // Collection happens at the end of the rental period
           nextCollectionDate = activeRental.endDate
         }
-        
+
         // Convert image storage IDs to URLs
         const imagesWithUrls = await Promise.all(
           (shelf.images || []).map(async (img: any) => ({
@@ -125,16 +135,17 @@ export const getOwnerShelves = query({
             url: await ctx.storage.getUrl(img.storageId)
           }))
         )
-        
+
         return {
           ...shelf,
           images: imagesWithUrls,
           renterName,
-          nextCollectionDate
+          nextCollectionDate,
+          netRevenue
         }
       })
     )
-    
+
     return shelvesWithDetails
   },
 })
@@ -452,14 +463,10 @@ export const getShelfStatsWithChanges = query({
       .withIndex("by_store", (q) => q.eq("storeProfileId", userProfile.profile._id))
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
-    
-    // Get platform settings for commission rates
-    const platformSettings = await ctx.db
-      .query("platformSettings")
-      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
-      .first()
 
-    const platformRentCommission = platformSettings?.value?.shelfRentCommission || 5 // Default 5% on rent
+    // Get platform settings for commission rates
+    const settings: { storeRentCommission: number; brandSalesCommission: number } = await ctx.runQuery(internal.platformSettings.internalGetPlatformSettings)
+    const platformRentCommission: number = settings.storeRentCommission // Default 10%
 
     // Current stats
     const currentRented = currentActiveRentals.length
@@ -471,9 +478,9 @@ export const getShelfStatsWithChanges = query({
     const currentAvailable = shelvesWithoutRentals.length
 
     // Calculate rental revenue after deducting Shibr's commission
-    const rentalRevenue = currentActiveRentals.reduce((sum, rental) => {
+    const rentalRevenue: number = currentActiveRentals.reduce((sum: number, rental) => {
       const monthlyPrice = rental.monthlyPrice || 0
-      const shibrCommission = (monthlyPrice * platformRentCommission) / 100
+      const shibrCommission: number = (monthlyPrice * platformRentCommission) / 100
       return sum + (monthlyPrice - shibrCommission)
     }, 0)
 
@@ -504,7 +511,7 @@ export const getShelfStatsWithChanges = query({
     }
 
     // Total revenue = rental revenue (after Shibr commission) + store commission revenue
-    const currentRevenue = rentalRevenue + storeCommissionRevenue
+    const currentRevenue: number = rentalRevenue + storeCommissionRevenue
     
     // Get rental requests to analyze trends
     const rentalRequests = await ctx.db
@@ -589,15 +596,19 @@ export const getShelfStatsWithChanges = query({
 
     if (previousRevenue > 0) {
       revenueChange = ((currentRevenue - previousRevenue) / previousRevenue) * 100
+      // Cap at 100% for better display
+      if (revenueChange > 100) {
+        revenueChange = 100
+      }
     } else if (currentRevenue > 0) {
       revenueChange = 100 // 100% increase if starting from 0 revenue
     } else {
       revenueChange = 0 // No change if both are 0
     }
-    
+
     // Round to 1 decimal place
     rentedChange = Math.round(rentedChange * 10) / 10
-    availableChange = Math.round(availableChange * 10) / 10  
+    availableChange = Math.round(availableChange * 10) / 10
     revenueChange = Math.round(revenueChange * 10) / 10
     
     return {

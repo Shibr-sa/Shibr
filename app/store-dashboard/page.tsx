@@ -378,6 +378,7 @@ export default function StoreDashboardPage() {
                       <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.price")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.net_revenue")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.next_collection")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.action")}</TableHead>
@@ -392,6 +393,7 @@ export default function StoreDashboardPage() {
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
@@ -400,7 +402,7 @@ export default function StoreDashboardPage() {
                     ) : recentShelves.length === 0 ? (
                       // Empty state
                       <TableRow>
-                        <TableCell colSpan={7} className="h-[216px] text-center">
+                        <TableCell colSpan={8} className="h-[216px] text-center">
                           <div className="flex h-full w-full items-center justify-center">
                             <div className="flex flex-col items-center gap-1 py-10">
                               <Layout className="h-10 w-10 text-muted-foreground/40 mb-2" />
@@ -441,6 +443,12 @@ export default function StoreDashboardPage() {
                               {formatCurrency(shelf.monthlyPrice || 0, language)}
                             </TableCell>
                             <TableCell>
+                              {!shelf.isAvailable && shelf.netRevenue ?
+                                formatCurrency(shelf.netRevenue, language) :
+                                "-"
+                              }
+                            </TableCell>
+                            <TableCell>
                               <Badge variant={getShelfStatusBadgeVariant(shelf)}>
                                 {!shelf.isAvailable
                                   ? t("shelves.status.rented")
@@ -459,9 +467,9 @@ export default function StoreDashboardPage() {
                               }
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
                               >
@@ -473,7 +481,7 @@ export default function StoreDashboardPage() {
                         {/* Fill remaining rows to maintain consistent height */}
                         {recentShelves.length < 3 && Array.from({ length: 3 - recentShelves.length }).map((_, index) => (
                           <TableRow key={`filler-shelf-${index}`} className="h-[72px]">
-                            <TableCell className="py-3" colSpan={7}>&nbsp;</TableCell>
+                            <TableCell className="py-3" colSpan={8}>&nbsp;</TableCell>
                           </TableRow>
                         ))}
                       </>
