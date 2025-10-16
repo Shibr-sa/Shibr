@@ -453,6 +453,14 @@ export const getShelfStatsWithChanges = query({
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect()
     
+    // Get platform settings for commission rates
+    const platformSettings = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+      .first()
+
+    const platformRentCommission = platformSettings?.value?.shelfRentCommission || 5 // Default 5% on rent
+
     // Current stats
     const currentRented = currentActiveRentals.length
     // Count shelves without active rentals
@@ -461,7 +469,42 @@ export const getShelfStatsWithChanges = query({
       return shelf.status === "active" && !hasActiveRental
     })
     const currentAvailable = shelvesWithoutRentals.length
-    const currentRevenue = currentActiveRentals.reduce((sum, rental) => sum + (rental.monthlyPrice || 0), 0)
+
+    // Calculate rental revenue after deducting Shibr's commission
+    const rentalRevenue = currentActiveRentals.reduce((sum, rental) => {
+      const monthlyPrice = rental.monthlyPrice || 0
+      const shibrCommission = (monthlyPrice * platformRentCommission) / 100
+      return sum + (monthlyPrice - shibrCommission)
+    }, 0)
+
+    // Get all shelf stores for this store profile
+    const allShelfStores = await ctx.db
+      .query("shelfStores")
+      .withIndex("by_store_profile", (q) => q.eq("storeProfileId", userProfile.profile._id))
+      .collect()
+
+    // Get all customer orders to calculate store commission revenue
+    const allOrders = await ctx.db.query("customerOrders").collect()
+
+    // Calculate store commission revenue from product sales
+    let storeCommissionRevenue = 0
+    for (const order of allOrders) {
+      // Check if this order belongs to one of the store's shelf stores
+      const shelfStore = allShelfStores.find(ss => ss._id === order.shelfStoreId)
+      if (shelfStore) {
+        // Get store commission rate from shelf store commissions
+        const storeCommissionRate = shelfStore.commissions.find(c => c.type === "store")?.rate || 0
+
+        // Calculate commission from all items in this order
+        for (const item of order.items) {
+          const itemRevenue = (item.subtotal * storeCommissionRate) / 100
+          storeCommissionRevenue += itemRevenue
+        }
+      }
+    }
+
+    // Total revenue = rental revenue (after Shibr commission) + store commission revenue
+    const currentRevenue = rentalRevenue + storeCommissionRevenue
     
     // Get rental requests to analyze trends
     const rentalRequests = await ctx.db
@@ -527,17 +570,23 @@ export const getShelfStatsWithChanges = query({
     }
     
     // For revenue change
-    // Calculate revenue from rentals that started recently
-    const recentRevenueRentals = currentActiveRentals.filter(rental => 
+    // Calculate rental revenue from rentals that started recently (after Shibr commission)
+    const recentRevenueRentals = currentActiveRentals.filter(rental =>
       new Date(rental.startDate) > compareDate
     )
-    
-    const recentRevenue = recentRevenueRentals.reduce((sum, rental) => 
-      sum + (rental.monthlyPrice || 0), 0
-    )
-    
-    const previousRevenue = Math.max(0, currentRevenue - recentRevenue)
-    
+
+    const recentRentalRevenue = recentRevenueRentals.reduce((sum, rental) => {
+      const monthlyPrice = rental.monthlyPrice || 0
+      const shibrCommission = (monthlyPrice * platformRentCommission) / 100
+      return sum + (monthlyPrice - shibrCommission)
+    }, 0)
+
+    // Calculate previous revenue
+    // Note: We're only tracking rental revenue changes, not store commission changes
+    // Store commission revenue requires historical order data which we don't track by period
+    const previousRentalRevenue = Math.max(0, rentalRevenue - recentRentalRevenue)
+    const previousRevenue = previousRentalRevenue + storeCommissionRevenue // Assume store commission hasn't changed
+
     if (previousRevenue > 0) {
       revenueChange = ((currentRevenue - previousRevenue) / previousRevenue) * 100
     } else if (currentRevenue > 0) {
