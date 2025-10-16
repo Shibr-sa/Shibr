@@ -253,7 +253,7 @@ export default function ShelfDetailsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    {Array.from({ length: 6 }).map((_, i) => (
+                    {Array.from({ length: 7 }).map((_, i) => (
                       <TableHead key={i} className="h-12">
                         <Skeleton className="h-4 w-20" />
                       </TableHead>
@@ -269,6 +269,7 @@ export default function ShelfDetailsPage() {
                       <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
                       <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -775,6 +776,7 @@ export default function ShelfDetailsPage() {
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.price")}</TableHead>
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.quantity")}</TableHead>
                   <TableHead className="h-12 text-start font-medium">{t("shelf_details.sales_count")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium">{t("shelf_details.commission_revenue")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -788,12 +790,13 @@ export default function ShelfDetailsPage() {
                       <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredProducts.length === 0 ? (
                   // Empty state
                   <TableRow>
-                    <TableCell colSpan={6} className="h-[360px] text-center">
+                    <TableCell colSpan={7} className="h-[360px] text-center">
                       <div className="flex h-full w-full items-center justify-center">
                         <div className="flex flex-col items-center gap-1 py-10">
                           <ShoppingBag className="h-10 w-10 text-muted-foreground/40 mb-2" />
@@ -846,11 +849,14 @@ export default function ShelfDetailsPage() {
                           <TableCell className="py-3">{formatCurrency(product.price)}</TableCell>
                           <TableCell className="py-3">{product.quantity}</TableCell>
                           <TableCell className="py-3">{product.sales}</TableCell>
+                          <TableCell className="py-3">
+                            {formatCurrency((product.sales * product.price * formattedData.storeCommission) / 100)}
+                          </TableCell>
                         </TableRow>
                       ))}
                       {Array.from({ length: emptyRows }).map((_, index) => (
                         <TableRow key={`empty-${index}`} className="h-[72px]">
-                          <TableCell className="py-3" colSpan={6}>&nbsp;</TableCell>
+                          <TableCell className="py-3" colSpan={7}>&nbsp;</TableCell>
                         </TableRow>
                       ))}
                     </>
