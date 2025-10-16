@@ -149,7 +149,12 @@ const schema = defineSchema({
     endDate: v.number(), // Unix timestamp
     monthlyPrice: v.number(),
     totalAmount: v.number(),
-    storeCommission: v.number(), // Store commission percentage on sales
+
+    // Commission rates - array structure for flexibility
+    commissions: v.array(v.object({
+      type: v.union(v.literal("store"), v.literal("platform")),
+      rate: v.number(),
+    })),
 
     // Product details - REQUIRED (empty array if no products)
     selectedProducts: v.array(v.object({
@@ -377,8 +382,10 @@ const schema = defineSchema({
     qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
 
     // Commission settings (inherited from rental)
-    storeCommissionRate: v.number(), // Store's commission percentage
-    platformFeeRate: v.number(), // Platform fee percentage
+    commissions: v.array(v.object({
+      type: v.union(v.literal("store"), v.literal("platform")),
+      rate: v.number(),
+    })),
 
     // Store status
     isActive: v.boolean(),

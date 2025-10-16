@@ -82,9 +82,9 @@ export default function BrandShelvesPage() {
     } : "skip"
   )
 
-  // Fetch shelf store statistics (QR scans, orders, revenue)
-  const shelfStoreStats = useQuery(
-    api.shelfStores.getBrandShelfStoresStats,
+  // Fetch unified dashboard statistics (products + shelf stores)
+  const dashboardStats = useQuery(
+    api.products.getBrandDashboardStats,
     userId ? {
       period: selectedPeriod as "daily" | "weekly" | "monthly" | "yearly"
     } : "skip"
@@ -406,9 +406,9 @@ export default function BrandShelvesPage() {
             {/* QR Code Scans Card */}
             <StatCard
               title={t("brand.shelves.qr_scans")}
-              value={shelfStoreStats?.totalScans || 0}
+              value={dashboardStats?.totalScans || 0}
               trend={{
-                value: shelfStoreStats?.scansChange || 0,
+                value: dashboardStats?.scansChange || 0,
                 label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
               }}
               icon={<QrCode className="h-5 w-5 text-primary" />}
@@ -417,9 +417,9 @@ export default function BrandShelvesPage() {
             {/* Total Sales Card */}
             <StatCard
               title={t("brand.shelves.total_sales")}
-              value={formatCurrency(shelfStoreStats?.totalRevenue || 0, language)}
+              value={formatCurrency(dashboardStats?.totalRevenue || 0, language)}
               trend={{
-                value: shelfStoreStats?.revenueChange || 0,
+                value: dashboardStats?.revenueChange || 0,
                 label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
               }}
               icon={<Banknote className="h-5 w-5 text-primary" />}

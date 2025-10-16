@@ -231,15 +231,21 @@ export const renewRental = mutation({
     
     // Get the shelf to get current commission rate
     const shelf = await ctx.db.get(rental.shelfId)
-    
+
     // Get platform settings for commission
-    const platformSettings = await ctx.db.query("platformSettings").collect()
-    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
-    const platformFee = brandSalesCommission
-    const shelfStoreCommission = shelf?.storeCommission || 0
-    // If shelf has commission, use shelf + platform. Otherwise use the original rental's total commission
-    const totalCommission = shelf ? (shelfStoreCommission + platformFee) : (rental.storeCommission || 0)
-    
+    const platformSettings = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", "commission_rates"))
+      .first()
+    const platformCommission = platformSettings?.value?.brandSalesCommission || 9
+    const storeCommission = shelf?.storeCommission || 10
+
+    // Use commissions from original rental, or create new ones if shelf exists
+    const commissions = rental.commissions || [
+      { type: "store" as const, rate: storeCommission },
+      { type: "platform" as const, rate: platformCommission },
+    ]
+
     // Create a new rental request for renewal
     const renewalRequest = await ctx.db.insert("rentalRequests", {
       shelfId: rental.shelfId,
@@ -250,7 +256,7 @@ export const renewRental = mutation({
       selectedProducts: rental.selectedProducts,
       monthlyPrice: rental.monthlyPrice,
       totalAmount: newTotalPrice,
-      storeCommission: totalCommission, // Store + شبر platform commission
+      commissions: commissions,
       status: "pending",
       conversationId: rental.conversationId,
     })

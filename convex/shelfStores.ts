@@ -62,11 +62,7 @@ export const createShelfStore = mutation({
       counter++
     }
 
-    // Get platform settings for commission
-    const platformSettings = await ctx.db.query("platformSettings").collect()
-    const brandSalesCommission = platformSettings.find(s => s.key === "brandSalesCommission")?.value || 8
-
-    // Create the store
+    // Create the store with commissions from rental
     const siteUrl = process.env.SITE_URL || "http://localhost:3000"
     const qrCodeUrl = `${siteUrl}/store/${slug}`
 
@@ -79,8 +75,7 @@ export const createShelfStore = mutation({
       storeSlug: slug,
       description: shelf.description,
       qrCodeUrl,
-      storeCommissionRate: rental.storeCommission,
-      platformFeeRate: brandSalesCommission,
+      commissions: rental.commissions,
       isActive: true,
       activatedAt: Date.now(),
       totalScans: 0,
@@ -190,76 +185,9 @@ export const deactivateShelfStore = mutation({
   },
 })
 
-// Get aggregated shelf store stats for a brand
-export const getBrandShelfStoresStats = query({
-  args: {
-    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) {
-      return {
-        totalScans: 0,
-        totalOrders: 0,
-        totalRevenue: 0,
-        scansChange: 0,
-        ordersChange: 0,
-        revenueChange: 0,
-      }
-    }
-
-    // Get user's brand profile
-    const profileData = await getUserProfile(ctx, userId)
-    if (!profileData || profileData.type !== "brand_owner") {
-      return {
-        totalScans: 0,
-        totalOrders: 0,
-        totalRevenue: 0,
-        scansChange: 0,
-        ordersChange: 0,
-        revenueChange: 0,
-      }
-    }
-
-    // Get all shelf stores for this brand
-    const shelfStores = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", profileData.profile._id))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect()
-
-    // Calculate date range based on period using helper
-    const { currentPeriodStart } = getPeriodDates(args.period)
-
-    // Aggregate current stats
-    const currentStats = shelfStores.reduce(
-      (acc, store) => {
-        // Only count stats from stores activated in current period
-        const activatedDate = new Date(store.activatedAt)
-        if (activatedDate >= currentPeriodStart) {
-          acc.totalScans += store.totalScans || 0
-          acc.totalOrders += store.totalOrders || 0
-          acc.totalRevenue += store.totalRevenue || 0
-        }
-        return acc
-      },
-      { totalScans: 0, totalOrders: 0, totalRevenue: 0 }
-    )
-
-    // For now, return 0 changes as we don't have historical data
-    // In production, you'd query historical data or store periodic snapshots
-    return {
-      totalScans: currentStats.totalScans,
-      totalOrders: currentStats.totalOrders,
-      totalRevenue: currentStats.totalRevenue,
-      scansChange: 0, // Would need historical data
-      ordersChange: 0, // Would need historical data
-      revenueChange: 0, // Would need historical data
-    }
-  },
-})
-
 // Simplified stats increment
+// NOTE: getBrandShelfStoresStats has been replaced by the unified getBrandDashboardStats
+// query in products.ts for better performance and code reusability
 export const incrementStats = mutation({
   args: {
     shelfStoreId: v.id("shelfStores"),
