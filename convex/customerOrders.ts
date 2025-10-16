@@ -188,10 +188,10 @@ export const processOrderAfterPayment = action({
 
     // Get product details for invoice line items
     const products = await Promise.all(
-      order.items.map(item => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
+      order.items.map((item: any) => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
     )
 
-    const lineItems = order.items.map((item, index) => {
+    const lineItems = order.items.map((item: any, index: number) => {
       const product = products[index]
       return {
         description: product?.name || item.productName,
