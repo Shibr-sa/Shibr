@@ -524,12 +524,6 @@ export const getRentalRequestById = query({
       products = products.filter(p => p !== null)
     }
     
-    // Get shelf store if exists (for active rentals)
-    const shelfStore = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
-      .first()
-
     // Return enriched request data
     return {
       ...request,
@@ -556,15 +550,15 @@ export const getRentalRequestById = query({
       brandTotalRatings: 0, // brandOwner?.totalRatings || 0,
       // Products
       products: products,
-      // Shelf store information
-      shelfStore: shelfStore ? {
-        _id: shelfStore._id,
-        storeSlug: shelfStore.storeSlug,
-        qrCodeUrl: shelfStore.qrCodeUrl,
-        isActive: shelfStore.isActive,
-        totalScans: shelfStore.totalScans,
-        totalOrders: shelfStore.totalOrders,
-        totalRevenue: shelfStore.totalRevenue,
+      // Branch store information (now at branch level instead of shelf level)
+      branchStore: branch ? {
+        _id: branch._id,
+        storeSlug: branch.storeSlug,
+        qrCodeUrl: branch.qrCodeUrl,
+        isActive: branch.storeIsActive,
+        totalScans: branch.totalScans,
+        totalOrders: branch.totalOrders,
+        totalRevenue: branch.totalRevenue,
       } : null,
     }
   },
@@ -622,18 +616,13 @@ export const getUserRentalRequests = query({
         const shelf = await ctx.db.get(request.shelfId)
         const branch = (shelf && shelf.branchId) ? await ctx.db.get(shelf.branchId) : null
 
-        // Get shelf store for this rental to calculate sales count
-        const shelfStore = await ctx.db
-          .query("shelfStores")
-          .withIndex("by_rental", (q) => q.eq("rentalRequestId", request._id))
-          .first()
-
-        // Calculate total sales count from customer orders
+        // Calculate total sales count from branch orders
+        // Note: Since QR codes are now at branch level, we count all branch sales
         let salesCount = 0
-        if (shelfStore) {
+        if (shelf?.branchId) {
           const orders = await ctx.db
             .query("customerOrders")
-            .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", shelfStore._id))
+            .withIndex("by_branch", (q) => q.eq("branchId", shelf.branchId!))
             .collect()
 
           // Sum up all item quantities from all orders
@@ -982,23 +971,21 @@ export const confirmPayment = mutation({
       throw new Error("Rental request not found")
     }
 
-    // Idempotency check: If already active, verify shelf store exists and return success
+    // Idempotency check: If already active, verify branch store is active and return success
     // This prevents errors when webhook is called multiple times (retries, duplicates, etc.)
     if (request.status === "active") {
-      const existingShelfStore = await ctx.db
-        .query("shelfStores")
-        .withIndex("by_rental", (q) => q.eq("rentalRequestId", args.requestId))
-        .first()
-
-      if (existingShelfStore) {
-        // Already processed successfully, return success (idempotent behavior)
-        console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active, shelf store exists)`)
-        return { success: true, alreadyProcessed: true }
+      const shelf = await ctx.db.get(request.shelfId)
+      if (shelf?.branchId) {
+        const branch = await ctx.db.get(shelf.branchId)
+        if (branch?.storeIsActive) {
+          // Already processed successfully, return success (idempotent behavior)
+          console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active, branch store active)`)
+          return { success: true, alreadyProcessed: true }
+        }
+        // Status is active but branch store not active - this shouldn't happen, but let's log it
+        console.warn(`[confirmPayment] Request ${args.requestId} is active but branch store not active - will attempt to activate`)
       }
-
-      // Status is active but shelf store missing - this shouldn't happen, but let's log it
-      console.warn(`[confirmPayment] Request ${args.requestId} is active but shelf store missing - will attempt to create`)
-      // Continue with shelf store creation below
+      // Continue with branch store activation below
     } else {
       // Verify the request status is valid for payment confirmation
       // Allow payment from multiple states (for testing and flexibility)
@@ -1007,16 +994,23 @@ export const confirmPayment = mutation({
         throw new Error(`Invalid request status for payment confirmation. Current: ${request.status}, Expected one of: ${validStatuses.join(", ")}`)
       }
     }
-    
+
     // Update the request status to active (since we'll have automated payment in future)
     await ctx.db.patch(args.requestId, {
       status: "active",
     })
 
-    // Create shelf store for QR code functionality
-    await ctx.runMutation(api.shelfStores.createShelfStore, {
-      rentalRequestId: args.requestId,
-    })
+    // Activate branch store for QR code functionality
+    const shelf = await ctx.db.get(request.shelfId)
+    if (shelf?.branchId) {
+      const branch = await ctx.db.get(shelf.branchId)
+      if (branch && !branch.storeIsActive) {
+        await ctx.db.patch(shelf.branchId, {
+          storeIsActive: true,
+          storeActivatedAt: Date.now(),
+        })
+      }
+    }
     
     // Auto-reject any other accepted/pending requests for the same shelf
     const otherRequests = await ctx.db

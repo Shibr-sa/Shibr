@@ -8,7 +8,7 @@ import { api, internal } from "./_generated/api"
 // STEP 1: Create order record immediately after payment (with payment reference to prevent duplicates)
 export const createOrderFromPayment = mutation({
   args: {
-    shelfStoreId: v.id("shelfStores"),
+    branchId: v.id("branches"),
     customerName: v.string(),
     customerPhone: v.string(),
     paymentReference: v.string(), // Tap charge ID
@@ -31,9 +31,9 @@ export const createOrderFromPayment = mutation({
       return { orderId: existingOrder._id }
     }
 
-    // Get the shelf store
-    const shelfStore = await ctx.db.get(args.shelfStoreId)
-    if (!shelfStore || !shelfStore.isActive) {
+    // Get the branch
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch || !branch.storeIsActive) {
       throw new Error("Store not found or inactive")
     }
 
@@ -68,7 +68,7 @@ export const createOrderFromPayment = mutation({
 
     // Create the order record with payment reference (prevents duplicates)
     const orderId = await ctx.db.insert("customerOrders", {
-      shelfStoreId: args.shelfStoreId,
+      branchId: args.branchId,
       customerName: args.customerName,
       customerPhone: args.customerPhone,
       paymentReference: args.paymentReference,
@@ -91,28 +91,49 @@ export const createOrderFromPayment = mutation({
     }
 
     // Update rental request's selectedProducts quantities
-    const rental = await ctx.db.get(shelfStore.rentalRequestId)
-    if (rental && rental.selectedProducts) {
-      const updatedProducts = rental.selectedProducts.map(prod => {
-        const orderedItem = args.items.find(item => item.productId === prod.productId)
+    // Note: Products may come from multiple rentals in this branch
+    // We need to find which rental each product belongs to and update accordingly
+    const shelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_branch", (q) => q.eq("branchId", args.branchId))
+      .collect()
+
+    const activeRentals = await Promise.all(
+      shelves.map(async (shelf) =>
+        ctx.db
+          .query("rentalRequests")
+          .withIndex("by_shelf_status", (q) =>
+            q.eq("shelfId", shelf._id).eq("status", "active")
+          )
+          .collect()
+      )
+    ).then((results) => results.flat())
+
+    // Update quantities in each affected rental
+    for (const rental of activeRentals) {
+      const updatedProducts = rental.selectedProducts.map((prod) => {
+        const orderedItem = args.items.find((item) => item.productId === prod.productId)
         if (orderedItem) {
           return {
             ...prod,
-            quantity: Math.max(0, prod.quantity - orderedItem.quantity)
+            quantity: Math.max(0, prod.quantity - orderedItem.quantity),
           }
         }
         return prod
       })
 
-      await ctx.db.patch(rental._id, {
-        selectedProducts: updatedProducts
-      })
+      // Only update if something changed
+      if (JSON.stringify(updatedProducts) !== JSON.stringify(rental.selectedProducts)) {
+        await ctx.db.patch(rental._id, {
+          selectedProducts: updatedProducts,
+        })
+      }
     }
 
-    // Update shelf store statistics
-    await ctx.db.patch(args.shelfStoreId, {
-      totalOrders: (shelfStore.totalOrders || 0) + 1,
-      totalRevenue: (shelfStore.totalRevenue || 0) + total,
+    // Update branch store statistics
+    await ctx.db.patch(args.branchId, {
+      totalOrders: (branch.totalOrders || 0) + 1,
+      totalRevenue: (branch.totalRevenue || 0) + total,
     })
 
     console.log('[Order] Step 1 complete: Order record created:', orderId)
@@ -246,7 +267,7 @@ export const processOrderAfterPayment = action({
     console.log('[Order] Step 4: Sending invoice via WhatsApp')
 
     const brandName = await ctx.runQuery(internal.customerOrders.getBrandName, {
-      shelfStoreId: order.shelfStoreId,
+      branchId: order.branchId,
     })
 
     // Schedule WhatsApp sending (don't wait for it to avoid blocking)
@@ -301,20 +322,48 @@ export const getOrderById = query({
       return null
     }
 
-    // Get shelf store details
-    const shelfStore = await ctx.db.get(order.shelfStoreId)
+    // Get branch details
+    const branch = await ctx.db.get(order.branchId)
 
-    // Get brand profile details
-    let brandName = null
-    if (shelfStore?.brandProfileId) {
-      const brandProfile = await ctx.db.get(shelfStore.brandProfileId)
-      brandName = brandProfile?.brandName
+    // Get store profile for store name
+    let storeName = null
+    if (branch?.storeProfileId) {
+      const storeProfile = await ctx.db.get(branch.storeProfileId)
+      storeName = storeProfile?.storeName
+    }
+
+    // Get brand names from active rentals in this branch
+    let brandNames: string[] = []
+    if (branch) {
+      const shelves = await ctx.db
+        .query("shelves")
+        .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
+        .collect()
+
+      const activeRentals = await Promise.all(
+        shelves.map(async (shelf) =>
+          ctx.db
+            .query("rentalRequests")
+            .withIndex("by_shelf_status", (q) =>
+              q.eq("shelfId", shelf._id).eq("status", "active")
+            )
+            .collect()
+        )
+      ).then((results) => results.flat())
+
+      const uniqueBrandIds = [...new Set(activeRentals.map(r => r.brandProfileId))]
+      brandNames = await Promise.all(
+        uniqueBrandIds.map(async (brandId) => {
+          const brand = await ctx.db.get(brandId)
+          return brand?.brandName || "Brand"
+        })
+      )
     }
 
     return {
       ...order,
-      storeName: shelfStore?.storeName,
-      brandName: brandName || "Brand",
+      storeName: storeName || "Store",
+      brandName: brandNames.length > 0 ? brandNames.join(", ") : "Brand",
     }
   },
 })
@@ -334,25 +383,30 @@ export const getOrderByInvoiceNumber = query({
       return null
     }
 
-    // Get shelf store details
-    const shelfStore = await ctx.db.get(order.shelfStoreId)
+    // Get branch and store details
+    const branch = await ctx.db.get(order.branchId)
+    let storeName = null
+    if (branch?.storeProfileId) {
+      const storeProfile = await ctx.db.get(branch.storeProfileId)
+      storeName = storeProfile?.storeName
+    }
 
     return {
       ...order,
-      storeName: shelfStore?.storeName,
+      storeName: storeName || "Store",
     }
   },
 })
 
-// Get orders for a shelf store
-export const getShelfStoreOrders = query({
+// Get orders for a branch
+export const getBranchOrders = query({
   args: {
-    shelfStoreId: v.id("shelfStores"),
+    branchId: v.id("branches"),
   },
   handler: async (ctx, args) => {
     const orders = await ctx.db
       .query("customerOrders")
-      .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", args.shelfStoreId))
+      .withIndex("by_branch", (q) => q.eq("branchId", args.branchId))
       .collect()
 
     // Sort by order date (newest first)
@@ -382,26 +436,27 @@ export const getStoreOwnerOrders = query({
       return []
     }
 
-    // Get all shelf stores for this store owner
-    const shelfStores = await ctx.db
-      .query("shelfStores")
+    // Get all branches for this store owner
+    const branches = await ctx.db
+      .query("branches")
       .withIndex("by_store_profile", (q) =>
         q.eq("storeProfileId", profileData.profile._id)
       )
       .collect()
 
-    // Get orders for all shelf stores
+    // Get orders for all branches
     const allOrders = await Promise.all(
-      shelfStores.map(async (store) => {
+      branches.map(async (branch) => {
         const orders = await ctx.db
           .query("customerOrders")
-          .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", store._id))
+          .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
           .collect()
 
+        const storeProfile = await ctx.db.get(branch.storeProfileId)
         return orders.map(order => ({
           ...order,
-          storeName: store.storeName,
-          storeSlug: store.storeSlug,
+          storeName: storeProfile?.storeName || "Store",
+          storeSlug: branch.storeSlug,
         }))
       })
     )
@@ -447,26 +502,36 @@ export const getBrandOwnerOrders = query({
       return []
     }
 
-    // Get all shelf stores for this brand owner
-    const shelfStores = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_brand_profile", (q) =>
-        q.eq("brandProfileId", profileData.profile._id)
+    // Get all active rentals for this brand owner
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_brand_status", (q) =>
+        q.eq("brandProfileId", profileData.profile._id).eq("status", "active")
       )
       .collect()
 
-    // Get orders for all shelf stores
+    // Get unique branch IDs from rentals
+    const branchIds = await Promise.all(
+      activeRentals.map(async (rental) => {
+        const shelf = await ctx.db.get(rental.shelfId)
+        return shelf?.branchId
+      })
+    ).then((ids) => [...new Set(ids.filter(Boolean))] as Id<"branches">[])
+
+    // Get orders for all branches
     const allOrders = await Promise.all(
-      shelfStores.map(async (store) => {
+      branchIds.map(async (branchId) => {
+        const branch = await ctx.db.get(branchId)
         const orders = await ctx.db
           .query("customerOrders")
-          .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", store._id))
+          .withIndex("by_branch", (q) => q.eq("branchId", branchId))
           .collect()
 
+        const storeProfile = branch ? await ctx.db.get(branch.storeProfileId) : null
         return orders.map(order => ({
           ...order,
-          storeName: store.storeName,
-          storeSlug: store.storeSlug,
+          storeName: storeProfile?.storeName || "Store",
+          storeSlug: branch?.storeSlug || "",
         }))
       })
     )
@@ -493,7 +558,7 @@ export const getBrandOwnerOrders = query({
 // Get order statistics for dashboard
 export const getOrderStatistics = query({
   args: {
-    shelfStoreId: v.optional(v.id("shelfStores")),
+    branchId: v.optional(v.id("branches")),
     period: v.union(
       v.literal("today"),
       v.literal("week"),
@@ -515,14 +580,14 @@ export const getOrderStatistics = query({
 
     let orders: any[] = []
 
-    if (args.shelfStoreId) {
-      // Get orders for specific shelf store
+    if (args.branchId) {
+      // Get orders for specific branch
       orders = await ctx.db
         .query("customerOrders")
-        .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", args.shelfStoreId!))
+        .withIndex("by_branch", (q) => q.eq("branchId", args.branchId!))
         .collect()
     } else {
-      // Get all orders for user's stores
+      // Get all orders for user's stores/brands
       const profileData = await getUserProfile(ctx, userId)
       if (!profileData) {
         return {
@@ -534,22 +599,40 @@ export const getOrderStatistics = query({
         }
       }
 
-      const shelfStores = await ctx.db
-        .query("shelfStores")
-        .withIndex(
-          profileData.type === "store_owner" ? "by_store_profile" : "by_brand_profile",
-          (q) => q.eq(
-            profileData.type === "store_owner" ? "storeProfileId" : "brandProfileId",
-            profileData.profile._id as any
+      let branchIds: Id<"branches">[] = []
+
+      if (profileData.type === "store_owner") {
+        // Get all branches for this store owner
+        const branches = await ctx.db
+          .query("branches")
+          .withIndex("by_store_profile", (q) =>
+            q.eq("storeProfileId", profileData.profile._id)
           )
+          .collect()
+        branchIds = branches.map(b => b._id)
+      } else if (profileData.type === "brand_owner") {
+        // Get branches from active rentals
+        const activeRentals = await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_brand_status", (q) =>
+            q.eq("brandProfileId", profileData.profile._id).eq("status", "active")
+          )
+          .collect()
+
+        const ids = await Promise.all(
+          activeRentals.map(async (rental) => {
+            const shelf = await ctx.db.get(rental.shelfId)
+            return shelf?.branchId
+          })
         )
-        .collect()
+        branchIds = [...new Set(ids.filter(Boolean))] as Id<"branches">[]
+      }
 
       const allOrders = await Promise.all(
-        shelfStores.map(store =>
+        branchIds.map(branchId =>
           ctx.db
             .query("customerOrders")
-            .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", store._id))
+            .withIndex("by_branch", (q) => q.eq("branchId", branchId))
             .collect()
         )
       )
@@ -637,19 +720,48 @@ export const getProductForInvoice = internalQuery({
   },
 })
 
-// Internal query to get brand name
+// Internal query to get brand name(s) from active rentals in a branch
 export const getBrandName = internalQuery({
   args: {
-    shelfStoreId: v.id("shelfStores"),
+    branchId: v.id("branches"),
   },
   handler: async (ctx, args) => {
-    const shelfStore = await ctx.db.get(args.shelfStoreId)
-    if (!shelfStore?.brandProfileId) {
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch) {
       return "Brand"
     }
 
-    const brandProfile = await ctx.db.get(shelfStore.brandProfileId)
-    return brandProfile?.brandName || "Brand"
+    // Get all active rentals in this branch
+    const shelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
+      .collect()
+
+    const activeRentals = await Promise.all(
+      shelves.map(async (shelf) =>
+        ctx.db
+          .query("rentalRequests")
+          .withIndex("by_shelf_status", (q) =>
+            q.eq("shelfId", shelf._id).eq("status", "active")
+          )
+          .collect()
+      )
+    ).then((results) => results.flat())
+
+    if (activeRentals.length === 0) {
+      return "Brand"
+    }
+
+    // Get unique brand names
+    const uniqueBrandIds = [...new Set(activeRentals.map(r => r.brandProfileId))]
+    const brandNames = await Promise.all(
+      uniqueBrandIds.map(async (brandId) => {
+        const brand = await ctx.db.get(brandId)
+        return brand?.brandName || "Brand"
+      })
+    )
+
+    return brandNames.join(", ")
   },
 })
 

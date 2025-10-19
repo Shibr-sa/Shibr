@@ -92,7 +92,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           // This will automatically check for duplicates and return existing order if found
           console.log('[Payment Success] Step 1: Creating order record...')
           const orderResult = await createOrderFromPayment({
-            shelfStoreId: orderData.shelfStoreId as any,
+            branchId: orderData.branchId as any,
             customerName: orderData.customerName,
             customerPhone: orderData.customerPhone,
             paymentReference: chargeId, // This prevents duplicates

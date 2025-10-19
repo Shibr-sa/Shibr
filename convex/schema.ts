@@ -108,10 +108,25 @@ const schema = defineSchema({
       v.literal("active"),
       v.literal("inactive")
     ),
+
+    // Store/QR Code fields
+    storeSlug: v.string(), // URL-friendly identifier for store page
+    qrCodeUrl: v.string(), // Full URL that QR code points to
+    qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
+
+    // Store analytics
+    totalScans: v.number(), // QR scans + page views
+    totalOrders: v.number(),
+    totalRevenue: v.number(),
+
+    // Store status (separate from branch physical status)
+    storeIsActive: v.boolean(), // True when at least one rental is active
+    storeActivatedAt: v.optional(v.number()),
   })
     .index("by_store_profile", ["storeProfileId"])
     .index("by_city", ["city"])
-    .index("by_store_city", ["storeProfileId", "city"]),
+    .index("by_store_city", ["storeProfileId", "city"])
+    .index("by_store_slug", ["storeSlug"]),
 
   // Shelves/Stores for marketplace
   shelves: defineTable({
@@ -391,48 +406,9 @@ const schema = defineSchema({
   })
     .index("by_type_identifier", ["type", "identifier"]),
 
-  // Shelf Stores (QR code-enabled stores for active rentals)
-  shelfStores: defineTable({
-    rentalRequestId: v.id("rentalRequests"), // Link to active rental
-    shelfId: v.id("shelves"),
-    storeProfileId: v.id("storeProfiles"),
-    brandProfileId: v.id("brandProfiles"),
-
-    // Store details
-    storeName: v.string(), // Generated name for the store
-    storeSlug: v.string(), // URL-friendly identifier
-    description: v.optional(v.string()),
-
-    // QR Code data
-    qrCodeUrl: v.string(), // Full URL that QR code points to
-    qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
-
-    // Commission settings (inherited from rental)
-    commissions: v.array(v.object({
-      type: v.union(v.literal("store"), v.literal("platform")),
-      rate: v.number(),
-    })),
-
-    // Store status
-    isActive: v.boolean(),
-    activatedAt: v.number(), // When store was activated
-    deactivatedAt: v.optional(v.number()),
-
-    // Analytics
-    totalScans: v.number(),
-    totalOrders: v.number(),
-    totalRevenue: v.number(),
-  })
-    .index("by_rental", ["rentalRequestId"])
-    .index("by_shelf", ["shelfId"])
-    .index("by_store_profile", ["storeProfileId"])
-    .index("by_brand_profile", ["brandProfileId"])
-    .index("by_slug", ["storeSlug"])
-    .index("by_active", ["isActive"]),
-
-  // Customer Orders from shelf stores
+  // Customer Orders from branch stores
   customerOrders: defineTable({
-    shelfStoreId: v.id("shelfStores"),
+    branchId: v.id("branches"),
 
     // Customer information (guest checkout)
     customerName: v.optional(v.string()),
@@ -456,7 +432,7 @@ const schema = defineSchema({
     // Payment info
     paymentReference: v.optional(v.string()), // Tap charge ID
   })
-    .index("by_shelf_store", ["shelfStoreId"])
+    .index("by_branch", ["branchId"])
     .index("by_customer_phone", ["customerPhone"])
     .index("by_invoice_number", ["invoiceNumber"]),
 })
