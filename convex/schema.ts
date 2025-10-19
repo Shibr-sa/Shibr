@@ -302,7 +302,7 @@ const schema = defineSchema({
     netAmount: v.optional(v.number()), // Amount after platform fee
 
     // Payment details
-    transactionReference: v.string(), // Tap charge/refund ID (unique payment identifier)
+    transactionReference: v.optional(v.string()), // Tap charge/refund ID (unique payment identifier) - optional for failed payments
     paymentMethod: v.optional(v.string()), // card, apple_pay, etc
 
     // Tap transfer ID for payouts (store settlements)
