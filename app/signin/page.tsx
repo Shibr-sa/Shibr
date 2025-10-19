@@ -149,11 +149,10 @@ export default function SignInPage() {
             <Image
               src="/logo.svg"
               alt={t("common.logo_alt")}
-              width={48}
-              height={48}
-              className="h-12 w-12"
+              width={72}
+              height={72}
+              className="h-24 w-24"
             />
-            <span className="text-3xl font-bold">{t("common.shibr")}</span>
           </div>
         </div>
 
