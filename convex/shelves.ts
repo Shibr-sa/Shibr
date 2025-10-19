@@ -488,11 +488,36 @@ export const getShelfStatsWithChanges = query({
       return sum + (monthlyPrice - shibrCommission)
     }, 0)
 
-    // Get all shelf stores for this store profile
-    const allShelfStores = await ctx.db
-      .query("shelfStores")
+    // Get all branches for this store profile
+    const allBranches = await ctx.db
+      .query("branches")
       .withIndex("by_store_profile", (q) => q.eq("storeProfileId", userProfile.profile._id))
       .collect()
+
+    const branchIds = new Set(allBranches.map(b => b._id))
+
+    // Get all rental requests for these branches to get commission rates
+    const allRentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_store", (q) => q.eq("storeProfileId", userProfile.profile._id))
+      .collect()
+
+    // Batch fetch all shelves for rentals (avoid N+1 queries)
+    const shelfIds = [...new Set(allRentalRequests.map(r => r.shelfId))]
+    const shelves = await Promise.all(shelfIds.map(id => ctx.db.get(id)))
+    const shelfMap = new Map(shelves.filter(s => s !== null).map(s => [s!._id.toString(), s!]))
+
+    // Create a map of branch ID to rentals
+    const branchToRentals = new Map<string, typeof allRentalRequests>()
+    for (const rental of allRentalRequests) {
+      const shelf = shelfMap.get(rental.shelfId.toString())
+      if (shelf?.branchId && branchIds.has(shelf.branchId)) {
+        const branchIdStr = shelf.branchId.toString()
+        const existing = branchToRentals.get(branchIdStr) || []
+        existing.push(rental)
+        branchToRentals.set(branchIdStr, existing)
+      }
+    }
 
     // Get all customer orders to calculate store commission revenue
     const allOrders = await ctx.db.query("customerOrders").collect()
@@ -500,16 +525,24 @@ export const getShelfStatsWithChanges = query({
     // Calculate store commission revenue from product sales
     let storeCommissionRevenue = 0
     for (const order of allOrders) {
-      // Check if this order belongs to one of the store's shelf stores
-      const shelfStore = allShelfStores.find(ss => ss._id === order.shelfStoreId)
-      if (shelfStore) {
-        // Get store commission rate from shelf store commissions
-        const storeCommissionRate = shelfStore.commissions.find(c => c.type === "store")?.rate || 0
+      // Check if this order belongs to one of the store's branches
+      if (branchIds.has(order.branchId)) {
+        // Get rentals for this branch
+        const branchRentals = branchToRentals.get(order.branchId.toString()) || []
 
         // Calculate commission from all items in this order
         for (const item of order.items) {
-          const itemRevenue = (item.subtotal * storeCommissionRate) / 100
-          storeCommissionRevenue += itemRevenue
+          // Find which rental this product belongs to
+          const rentalWithProduct = branchRentals.find(r =>
+            r.selectedProducts.some(sp => sp.productId === item.productId)
+          )
+
+          if (rentalWithProduct) {
+            // Get store commission rate from rental
+            const storeCommissionRate = rentalWithProduct.commissions.find(c => c.type === "store")?.rate || 0
+            const itemRevenue = (item.subtotal * storeCommissionRate) / 100
+            storeCommissionRevenue += itemRevenue
+          }
         }
       }
     }

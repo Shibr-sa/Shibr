@@ -232,6 +232,33 @@ export const createBranch = mutation({
       throw new Error("Only store owners can create branches")
     }
 
+    // Get store profile for store name
+    const storeProfile = userProfile.profile as any
+
+    // Generate unique slug for the branch store
+    const baseSlug = `${storeProfile.storeName}-${args.branchName}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+
+    // Ensure slug is unique
+    let slug = baseSlug
+    let counter = 1
+    while (true) {
+      const existing = await ctx.db
+        .query("branches")
+        .withIndex("by_store_slug", (q) => q.eq("storeSlug", slug))
+        .first()
+
+      if (!existing) break
+      slug = `${baseSlug}-${counter}`
+      counter++
+    }
+
+    // Generate QR code URL
+    const siteUrl = process.env.SITE_URL || "http://localhost:3000"
+    const qrCodeUrl = `${siteUrl}/store/${slug}`
+
     const branchId = await ctx.db.insert("branches", {
       storeProfileId: userProfile.profile._id,
       branchName: args.branchName,
@@ -243,6 +270,13 @@ export const createBranch = mutation({
       },
       images: args.images || [],
       status: "active",
+      // Store/QR fields
+      storeSlug: slug,
+      qrCodeUrl,
+      totalScans: 0,
+      totalOrders: 0,
+      totalRevenue: 0,
+      storeIsActive: false, // Will be activated when first rental becomes active
     })
 
     return branchId
@@ -301,6 +335,35 @@ export const updateBranch = mutation({
       }
     }
 
+    // Regenerate slug if branch name changed
+    if (args.branchName && args.branchName !== branch.branchName) {
+      const storeProfile = await ctx.db.get(branch.storeProfileId)
+      if (storeProfile) {
+        const baseSlug = `${storeProfile.storeName}-${args.branchName}`
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+
+        // Ensure new slug is unique
+        let slug = baseSlug
+        let counter = 1
+        while (true) {
+          const existing = await ctx.db
+            .query("branches")
+            .withIndex("by_store_slug", (q) => q.eq("storeSlug", slug))
+            .first()
+
+          if (!existing || existing._id === args.branchId) break
+          slug = `${baseSlug}-${counter}`
+          counter++
+        }
+
+        const siteUrl = process.env.SITE_URL || "http://localhost:3000"
+        updates.storeSlug = slug
+        updates.qrCodeUrl = `${siteUrl}/store/${slug}`
+      }
+    }
+
     await ctx.db.patch(args.branchId, updates)
 
     // Note: Shelves will automatically get updated city/location via branchId reference
@@ -342,5 +405,121 @@ export const deleteBranch = mutation({
     await ctx.db.delete(args.branchId)
 
     return { success: true }
+  },
+})
+
+// Get branch store by slug (for public access)
+export const getBranchStoreBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get branch by slug
+    const branch = await ctx.db
+      .query("branches")
+      .withIndex("by_store_slug", (q) => q.eq("storeSlug", args.slug))
+      .first()
+
+    if (!branch || !branch.storeIsActive) {
+      return null
+    }
+
+    // 2. Get all active shelves in this branch
+    const shelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect()
+
+    // 3. Get all active rentals for these shelves
+    const activeRentals = await Promise.all(
+      shelves.map(async (shelf) =>
+        ctx.db
+          .query("rentalRequests")
+          .withIndex("by_shelf_status", (q) =>
+            q.eq("shelfId", shelf._id).eq("status", "active")
+          )
+          .collect()
+      )
+    ).then((results) => results.flat())
+
+    // 4. Aggregate products from all rentals
+    const productMap = new Map()
+    for (const rental of activeRentals) {
+      const brandProfile = await ctx.db.get(rental.brandProfileId)
+
+      for (const item of rental.selectedProducts) {
+        const product = await ctx.db.get(item.productId)
+        const key = item.productId
+
+        if (productMap.has(key)) {
+          // Aggregate quantities from multiple rentals
+          const existing = productMap.get(key)
+          existing.shelfQuantity += item.quantity
+          existing.rentals.push({
+            rentalId: rental._id,
+            quantity: item.quantity,
+            brandName: brandProfile?.brandName,
+          })
+        } else {
+          productMap.set(key, {
+            ...product,
+            ...item,
+            shelfQuantity: item.quantity,
+            available: item.quantity > 0,
+            brandName: brandProfile?.brandName,
+            rentals: [
+              {
+                rentalId: rental._id,
+                quantity: item.quantity,
+                brandName: brandProfile?.brandName,
+              },
+            ],
+          })
+        }
+      }
+    }
+
+    // 5. Return store data
+    const storeProfile = await ctx.db.get(branch.storeProfileId)
+
+    return {
+      branch,
+      storeName: storeProfile?.storeName,
+      products: Array.from(productMap.values()),
+      location: branch.location,
+      city: branch.city,
+      branchName: branch.branchName,
+    }
+  },
+})
+
+// Increment branch store stats
+export const incrementBranchStoreStats = mutation({
+  args: {
+    branchId: v.id("branches"),
+    statType: v.union(
+      v.literal("scan"),
+      v.literal("view"),
+      v.literal("order")
+    ),
+    revenue: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch) return
+
+    const updates: any = {}
+
+    if (args.statType === "scan" || args.statType === "view") {
+      updates.totalScans = (branch.totalScans || 0) + 1
+    } else if (args.statType === "order") {
+      updates.totalOrders = (branch.totalOrders || 0) + 1
+      if (args.revenue) {
+        updates.totalRevenue = (branch.totalRevenue || 0) + args.revenue
+      }
+    }
+
+    await ctx.db.patch(args.branchId, updates)
   },
 })

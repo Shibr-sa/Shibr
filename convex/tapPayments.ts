@@ -148,10 +148,17 @@ export const updatePaymentStatus = internalMutation({
         status: "active" as any,
       })
 
-      // Create shelf store for QR code functionality
-      await ctx.runMutation(api.shelfStores.createShelfStore, {
-        rentalRequestId: args.rentalRequestId,
-      })
+      // Activate branch store for QR code functionality
+      const shelf = await ctx.db.get(rentalRequest.shelfId)
+      if (shelf?.branchId) {
+        const branch = await ctx.db.get(shelf.branchId)
+        if (branch && !branch.storeIsActive) {
+          await ctx.db.patch(shelf.branchId, {
+            storeIsActive: true,
+            storeActivatedAt: Date.now(),
+          })
+        }
+      }
     }
 
     return { success: true }

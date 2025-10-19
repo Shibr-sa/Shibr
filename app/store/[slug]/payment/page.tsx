@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 
 interface OrderData {
-  shelfStoreId: string
+  branchId: string
   storeName: string
   customerName: string
   customerPhone: string
@@ -113,7 +113,7 @@ export default function PaymentPage() {
       if (session.success && session.checkoutUrl) {
         // Keep order data in session for success page
         sessionStorage.setItem("pendingOrderData", JSON.stringify({
-          shelfStoreId: orderData.shelfStoreId,
+          branchId: orderData.branchId,
           customerName: orderData.customerName,
           customerPhone: orderData.customerPhone,
           items: orderData.items.map(item => ({

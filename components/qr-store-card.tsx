@@ -42,20 +42,21 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [showQRDialog, setShowQRDialog] = useState(false)
 
-  // Fetch shelf store for this rental
-  const shelfStore = useQuery(
-    api.shelfStores.getShelfStoreByRental,
-    { rentalRequestId }
+  // Fetch rental request to get branch information
+  const rentalRequest = useQuery(
+    api.rentalRequests.getRentalRequestById,
+    { requestId: rentalRequestId }
   )
 
-  // Analytics are now directly on the shelfStore object
+  // Branch store data (QR code and analytics are now at branch level)
+  const branchStore = rentalRequest?.branchStore
 
   // Generate QR code when store is loaded
   useEffect(() => {
     const generateQR = async () => {
-      if (shelfStore?.qrCodeUrl && !qrCodeDataUrl) {
+      if (branchStore?.qrCodeUrl && !qrCodeDataUrl) {
         try {
-          const dataUrl = await QRCode.toDataURL(shelfStore.qrCodeUrl, {
+          const dataUrl = await QRCode.toDataURL(branchStore.qrCodeUrl, {
             width: 400,
             margin: 2,
             color: {
@@ -71,16 +72,16 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
       }
     }
     generateQR()
-  }, [shelfStore?.qrCodeUrl])
+  }, [branchStore?.qrCodeUrl, qrCodeDataUrl])
 
   const handleCopyLink = async () => {
-    if (!shelfStore?.qrCodeUrl) return
+    if (!branchStore?.qrCodeUrl) return
 
     try {
-      await navigator.clipboard.writeText(shelfStore.qrCodeUrl)
+      await navigator.clipboard.writeText(branchStore.qrCodeUrl)
       toast({
         title: t("qr_stores.link_copied"),
-        description: shelfStore.qrCodeUrl,
+        description: branchStore.qrCodeUrl,
       })
     } catch (error) {
       toast({
@@ -92,20 +93,20 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
   }
 
   const handleDownloadQR = () => {
-    if (!qrCodeDataUrl || !shelfStore) return
+    if (!qrCodeDataUrl || !branchStore) return
 
     const link = document.createElement("a")
-    link.download = `qr-${shelfStore.storeSlug}.png`
+    link.download = `qr-${branchStore.storeSlug}.png`
     link.href = qrCodeDataUrl
     link.click()
   }
 
   const handleViewStore = () => {
-    if (!shelfStore?.qrCodeUrl) return
-    window.open(shelfStore.qrCodeUrl, "_blank")
+    if (!branchStore?.qrCodeUrl) return
+    window.open(branchStore.qrCodeUrl, "_blank")
   }
 
-  if (!shelfStore) {
+  if (!branchStore) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -159,7 +160,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
               {/* Store URL */}
               <div className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
                 <code className="flex-1 truncate">
-                  {shelfStore.qrCodeUrl}
+                  {branchStore.qrCodeUrl}
                 </code>
                 <Button
                   size="icon"
@@ -198,19 +199,19 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
           <div className="grid grid-cols-3 gap-3">
             <StatCard
               title={t("qr_stores.scans")}
-              value={shelfStore.totalScans || 0}
+              value={branchStore.totalScans || 0}
               icon={<ScanLine className="h-5 w-5 text-primary" />}
               className="bg-background border"
             />
             <StatCard
               title={t("qr_stores.orders")}
-              value={shelfStore.totalOrders || 0}
+              value={branchStore.totalOrders || 0}
               icon={<ShoppingCart className="h-5 w-5 text-primary" />}
               className="bg-background border"
             />
             <StatCard
               title={t("qr_stores.revenue")}
-              value={formatCurrency(shelfStore.totalRevenue || 0, language)}
+              value={formatCurrency(branchStore.totalRevenue || 0, language)}
               icon={<TrendingUp className="h-5 w-5 text-primary" />}
               className="bg-background border"
             />
@@ -228,7 +229,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          {qrCodeDataUrl && shelfStore && (
+          {qrCodeDataUrl && branchStore && (
             <div className="space-y-4">
               <div className="bg-white p-8 rounded-lg flex items-center justify-center">
                 <img
@@ -244,7 +245,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
                 </p>
                 <div className="flex items-center gap-2 p-2 bg-muted rounded">
                   <code className="text-xs flex-1 truncate">
-                    {shelfStore.qrCodeUrl}
+                    {branchStore.qrCodeUrl}
                   </code>
                   <Button
                     size="icon"

@@ -69,20 +69,20 @@ export const getUserProducts = query({
     // Get all customer orders to calculate real sales
     const allOrders = await ctx.db.query("customerOrders").collect()
 
-    // Get all shelf stores (both active and inactive) for this brand
-    const brandShelfStores = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
+    // Get all rental requests (both active and completed) for this brand to track sales
+    const allRentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
 
-    // Create a map of shelf store ID to commission rates
-    const shelfStoreCommissions = new Map(
-      brandShelfStores.map(ss => {
-        const storeRate = ss.commissions.find(c => c.type === "store")?.rate || 0
-        const platformRate = ss.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
+    // Create a map of rental ID to commission rates
+    const rentalCommissions = new Map(
+      allRentalRequests.map(rental => {
+        const storeRate = rental.commissions.find(c => c.type === "store")?.rate || 0
+        const platformRate = rental.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
 
         return [
-          ss._id.toString(),
+          rental._id.toString(),
           {
             storeCommissionRate: storeRate,
             platformFeeRate: platformRate,
@@ -91,14 +91,25 @@ export const getUserProducts = query({
       })
     )
 
-    // Get active shelf stores to count stores selling each product
-    const activeShelfStores = brandShelfStores.filter(ss => ss.isActive)
+    // Get active rental requests to count branches selling each product
+    const activeRentalRequests = allRentalRequests.filter(r => r.status === "active")
 
-    // Get rental requests for active shelf stores to know which products they're selling
-    const rentalRequestIds = activeShelfStores.map(ss => ss.rentalRequestId)
-    const rentalRequests = await Promise.all(
-      rentalRequestIds.map(id => ctx.db.get(id))
-    )
+    // Batch fetch all shelves for rentals (avoid N+1 queries)
+    const shelfIds = [...new Set(allRentalRequests.map(r => r.shelfId))]
+    const shelves = await Promise.all(shelfIds.map(id => ctx.db.get(id)))
+    const shelfMap = new Map(shelves.filter(s => s !== null).map(s => [s!._id.toString(), s!]))
+
+    // Create a map of branch ID to rentals for faster lookup
+    const branchToRentals = new Map<string, typeof allRentalRequests>()
+    for (const rental of allRentalRequests) {
+      const shelf = shelfMap.get(rental.shelfId.toString())
+      if (shelf?.branchId) {
+        const branchIdStr = shelf.branchId.toString()
+        const existing = branchToRentals.get(branchIdStr) || []
+        existing.push(rental)
+        branchToRentals.set(branchIdStr, existing)
+      }
+    }
 
     return products.map(p => {
       // Calculate total sales and net revenue for this product across all orders
@@ -112,7 +123,16 @@ export const getUserProducts = query({
 
             // Calculate net revenue after commissions
             const saleAmount = item.subtotal
-            const commissions = shelfStoreCommissions.get(order.shelfStoreId.toString())
+
+            // Find which rental this product belongs to (in this branch)
+            const branchRentals = branchToRentals.get(order.branchId.toString()) || []
+            const rentalWithProduct = branchRentals.find(r =>
+              r.selectedProducts.some(sp => sp.productId === p._id)
+            )
+
+            const commissions = rentalWithProduct
+              ? rentalCommissions.get(rentalWithProduct._id.toString())
+              : null
 
             if (commissions) {
               const storeCommission = (saleAmount * commissions.storeCommissionRate) / 100
@@ -120,7 +140,7 @@ export const getUserProducts = query({
               const netAmount = saleAmount - storeCommission - platformCommission
               totalNetRevenue += netAmount
             } else {
-              // Fallback: use default platform fee if shelf store not found
+              // Fallback: use default platform fee if rental not found
               const platformCommission = (saleAmount * platformFeeRate) / 100
               totalNetRevenue += saleAmount - platformCommission
             }
@@ -128,11 +148,10 @@ export const getUserProducts = query({
         }
       }
 
-      // Count how many active stores are selling this product
+      // Count how many active branches are selling this product
       let storeCount = 0
-      for (let i = 0; i < rentalRequests.length; i++) {
-        const rental = rentalRequests[i]
-        if (rental && rental.selectedProducts) {
+      for (const rental of activeRentalRequests) {
+        if (rental.selectedProducts) {
           const hasProduct = rental.selectedProducts.some(sp => sp.productId === p._id)
           if (hasProduct) {
             storeCount++
@@ -241,7 +260,7 @@ export const getBrandDashboardStats = query({
         totalSales: 0,
         totalRevenue: 0,
         totalInventory: 0,
-        // Shelf store stats
+        // Branch store stats
         totalScans: 0,
         totalOrders: 0,
         // Changes (would need historical data)
@@ -289,20 +308,20 @@ export const getBrandDashboardStats = query({
     // Get all customer orders to calculate real sales
     const allOrders = await ctx.db.query("customerOrders").collect()
 
-    // Get all shelf stores for this brand
-    const brandShelfStores = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", userProfile.profile._id))
+    // Get all rental requests for this brand to track sales
+    const allRentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", userProfile.profile._id))
       .collect()
 
-    // Create a map of shelf store ID to commission rates
-    const shelfStoreCommissions = new Map(
-      brandShelfStores.map(ss => {
-        const storeRate = ss.commissions.find(c => c.type === "store")?.rate || 0
-        const platformRate = ss.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
+    // Create a map of rental ID to commission rates
+    const rentalCommissions = new Map(
+      allRentalRequests.map(rental => {
+        const storeRate = rental.commissions.find(c => c.type === "store")?.rate || 0
+        const platformRate = rental.commissions.find(c => c.type === "platform")?.rate || platformFeeRate
 
         return [
-          ss._id.toString(),
+          rental._id.toString(),
           {
             storeCommissionRate: storeRate,
             platformFeeRate: platformRate,
@@ -311,6 +330,26 @@ export const getBrandDashboardStats = query({
       })
     )
 
+    // Batch fetch all shelves for rentals (avoid N+1 queries)
+    const shelfIdsForStats = [...new Set(allRentalRequests.map(r => r.shelfId))]
+    const shelvesForStats = await Promise.all(shelfIdsForStats.map(id => ctx.db.get(id)))
+    const shelfMapForStats = new Map(shelvesForStats.filter(s => s !== null).map(s => [s!._id.toString(), s!]))
+
+    // Create a map of branch ID to rentals for faster lookup
+    const branchToRentals = new Map<string, typeof allRentalRequests>()
+    for (const rental of allRentalRequests) {
+      const shelf = shelfMapForStats.get(rental.shelfId.toString())
+      if (shelf?.branchId) {
+        const branchIdStr = shelf.branchId.toString()
+        const existing = branchToRentals.get(branchIdStr) || []
+        existing.push(rental)
+        branchToRentals.set(branchIdStr, existing)
+      }
+    }
+
+    // Create a Set of product IDs for faster lookup
+    const productIds = new Set(products.map(p => p._id.toString()))
+
     // Calculate total sales and net revenue across all products
     let totalSalesCount = 0
     let totalNetRevenue = 0
@@ -318,13 +357,21 @@ export const getBrandDashboardStats = query({
     for (const order of allOrders) {
       for (const item of order.items) {
         // Check if this product belongs to this brand
-        const product = products.find(p => p._id === item.productId)
-        if (product) {
+        if (productIds.has(item.productId.toString())) {
           totalSalesCount += item.quantity
 
           // Calculate net revenue after commissions
           const saleAmount = item.subtotal
-          const commissions = shelfStoreCommissions.get(order.shelfStoreId.toString())
+
+          // Find which rental this product belongs to (in this branch)
+          const branchRentals = branchToRentals.get(order.branchId.toString()) || []
+          const rentalWithProduct = branchRentals.find(r =>
+            r.selectedProducts.some(sp => sp.productId.toString() === item.productId.toString())
+          )
+
+          const commissions = rentalWithProduct
+            ? rentalCommissions.get(rentalWithProduct._id.toString())
+            : null
 
           if (commissions) {
             const storeCommission = (saleAmount * commissions.storeCommissionRate) / 100
@@ -332,7 +379,7 @@ export const getBrandDashboardStats = query({
             const netAmount = saleAmount - storeCommission - platformCommission
             totalNetRevenue += netAmount
           } else {
-            // Fallback: use default platform fee if shelf store not found
+            // Fallback: use default platform fee if rental not found
             const platformCommission = (saleAmount * platformFeeRate) / 100
             totalNetRevenue += saleAmount - platformCommission
           }
@@ -345,14 +392,28 @@ export const getBrandDashboardStats = query({
     const activeProducts = products.filter(p => (p.stockQuantity || 0) > 0).length
     const totalInventory = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0)
 
-    // Calculate shelf store stats (scans and orders)
+    // Calculate branch store stats (scans and orders)
+    // Get unique branch IDs from active rentals
+    const branchIds = new Set<Id<"branches">>()
+    for (const rental of allRentalRequests) {
+      if (rental.status === "active") {
+        const shelf = shelfMapForStats.get(rental.shelfId.toString())
+        if (shelf?.branchId) {
+          branchIds.add(shelf.branchId)
+        }
+      }
+    }
+
+    // Batch fetch all branches (avoid N+1 queries)
+    const branches = await Promise.all([...branchIds].map(id => ctx.db.get(id)))
+
+    // Sum up scans and orders from all active branches
     let totalScans = 0
     let totalOrders = 0
-
-    for (const store of brandShelfStores) {
-      if (store.isActive) {
-        totalScans += store.totalScans || 0
-        totalOrders += store.totalOrders || 0
+    for (const branch of branches) {
+      if (branch && branch.storeIsActive) {
+        totalScans += branch.totalScans || 0
+        totalOrders += branch.totalOrders || 0
       }
     }
 
@@ -372,7 +433,7 @@ export const getBrandDashboardStats = query({
       totalSales: totalSalesCount,
       totalRevenue: totalNetRevenue, // Net revenue after commissions
       totalInventory,
-      // Shelf store stats
+      // Branch store stats
       totalScans,
       totalOrders,
       // Changes
@@ -537,40 +598,58 @@ export const getLatestSalesOperations = query({
 
     const brandProfileId = userProfile.profile._id
 
-    // Get all shelf stores for this brand
-    const brandShelfStores = await ctx.db
-      .query("shelfStores")
-      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
+    // Get all rental requests for this brand to find branches
+    const allRentalRequests = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_brand", (q) => q.eq("brandProfileId", brandProfileId))
       .collect()
 
-    // Get all customer orders for these shelf stores
+    // Get all brand's products to filter orders
+    const brandProducts = await ctx.db
+      .query("products")
+      .withIndex("by_brand_profile", (q) => q.eq("brandProfileId", brandProfileId))
+      .collect()
+    const brandProductIds = new Set(brandProducts.map(p => p._id))
+
+    // Get unique branch IDs from rentals
+    const branchIds = new Set<Id<"branches">>()
+    for (const rental of allRentalRequests) {
+      const shelf = await ctx.db.get(rental.shelfId)
+      if (shelf?.branchId) {
+        branchIds.add(shelf.branchId)
+      }
+    }
+
+    // Get all customer orders for these branches
     const allSalesOperations = []
 
-    for (const shelfStore of brandShelfStores) {
-      // Get orders for this shelf store
+    for (const branchId of branchIds) {
+      // Get orders for this branch
       const orders = await ctx.db
         .query("customerOrders")
-        .withIndex("by_shelf_store", (q) => q.eq("shelfStoreId", shelfStore._id))
+        .withIndex("by_branch", (q) => q.eq("branchId", branchId))
         .collect()
 
-      // Get store and shelf information
-      const storeProfile = await ctx.db.get(shelfStore.storeProfileId)
-      const shelf = await ctx.db.get(shelfStore.shelfId)
-      const branch = (shelf && shelf.branchId) ? await ctx.db.get(shelf.branchId) : null
+      // Get branch information
+      const branch = await ctx.db.get(branchId)
+      const storeProfile = branch ? await ctx.db.get(branch.storeProfileId) : null
 
       // Process each order
       for (const order of orders) {
         // Process each item in the order as a separate sale operation
+        // Only include items that are this brand's products
         for (const item of order.items) {
-          allSalesOperations.push({
-            invoiceNumber: order.invoiceNumber,
-            productName: item.productName,
-            storeName: storeProfile?.storeName || "Unknown Store",
-            city: branch?.city || "Unknown",
-            price: item.subtotal, // Full sale amount (before commissions)
-            date: order._creationTime,
-            quantity: item.quantity,
-          })
+          if (brandProductIds.has(item.productId)) {
+            allSalesOperations.push({
+              invoiceNumber: order.invoiceNumber,
+              productName: item.productName,
+              storeName: storeProfile?.storeName || "Unknown Store",
+              city: branch?.city || "Unknown",
+              price: item.subtotal, // Full sale amount (before commissions)
+              date: order._creationTime,
+              quantity: item.quantity,
+            })
+          }
         }
       }
     }

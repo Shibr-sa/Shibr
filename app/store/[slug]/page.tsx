@@ -65,18 +65,18 @@ export default function StorePage() {
   }
 
   // Fetch store data
-  const store = useQuery(api.shelfStores.getShelfStoreBySlug, { slug })
-  const incrementStats = useMutation(api.shelfStores.incrementStats)
+  const store = useQuery(api.branches.getBranchStoreBySlug, { slug })
+  const incrementStats = useMutation(api.branches.incrementBranchStoreStats)
 
   // Track page view and QR scan
   useEffect(() => {
-    if (store?._id) {
+    if (store?.branch?._id) {
       // Check if coming from QR scan (has referrer or specific query param)
       const isQrScan = document.referrer === "" || new URLSearchParams(window.location.search).has("qr")
 
       // Track appropriate event
       incrementStats({
-        shelfStoreId: store._id,
+        branchId: store.branch._id,
         statType: isQrScan ? "scan" : "view",
       }).catch(() => {
         // Silently ignore stats tracking errors
@@ -86,7 +86,7 @@ export default function StorePage() {
       // Set store slug in cart
       cart.setStoreSlug(slug)
     }
-  }, [store?._id, slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [store?.branch?._id, slug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddToCart = (product: any, customQuantity?: number) => {
     const quantityToAdd = customQuantity || 1
@@ -190,7 +190,7 @@ export default function StorePage() {
     )
   }
 
-  if (!store.isActive) {
+  if (!store.branch?.storeIsActive) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md">
@@ -208,26 +208,34 @@ export default function StorePage() {
     )
   }
 
+  // Get unique brand names for header (use first brand if multiple)
+  const brandName = store.storeName || "Store"
+  // For brand logo, we could use the first product's brand, but for now just use initials
+  const brandLogo = null
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-3">
-            {store.brandLogo ? (
+            {brandLogo ? (
               <Avatar className="h-10 w-10">
-                <AvatarImage src={store.brandLogo} alt={store.brandName} />
-                <AvatarFallback>{getInitials(store.brandName || "")}</AvatarFallback>
+                <AvatarImage src={brandLogo} alt={brandName} />
+                <AvatarFallback>{getInitials(brandName)}</AvatarFallback>
               </Avatar>
             ) : (
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-muted">
-                  {getInitials(store.brandName || "")}
+                  {getInitials(brandName)}
                 </AvatarFallback>
               </Avatar>
             )}
             <div>
-              <h1 className="text-lg font-semibold">{store.brandName}</h1>
+              <h1 className="text-lg font-semibold">{brandName}</h1>
+              {store.branchName && (
+                <p className="text-xs text-muted-foreground">{store.branchName}</p>
+              )}
             </div>
           </div>
 

@@ -54,7 +54,7 @@ export default function CartPage() {
   const [otpError, setOtpError] = useState("")
 
   // Fetch store data to get current stock levels
-  const store = useQuery(api.shelfStores.getShelfStoreBySlug, { slug })
+  const store = useQuery(api.branches.getBranchStoreBySlug, { slug })
 
   // OTP mutations
   const sendCheckoutOTP = useMutation(api.phoneVerification.sendCheckoutOTP)
@@ -239,7 +239,7 @@ export default function CartPage() {
   }
 
   const handleCheckoutWithPhone = async () => {
-    if (!store?._id) return
+    if (!store?.branch?._id) return
 
     setIsSubmitting(true)
 
@@ -250,7 +250,7 @@ export default function CartPage() {
       const totalAmount = cartSubtotal * 1.15 // Add 15% VAT
 
       const orderData = {
-        shelfStoreId: store._id,
+        branchId: store.branch._id,
         storeName: store.storeName,
         customerName: customerName,
         customerPhone: customerPhone,
