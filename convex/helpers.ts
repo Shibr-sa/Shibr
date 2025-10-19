@@ -126,7 +126,7 @@ export function calculatePercentageChange(current: number, previous: number): nu
   return Math.round(((current - previous) / previous) * 100)
 }
 
-// Legacy helper function for simple date ranges (kept for backwards compatibility)
+// Helper function for simple date ranges
 export function getDateRange(endDate: Date, period: string): { startDate: Date; endDate: Date } {
   const startDate = new Date(endDate);
 

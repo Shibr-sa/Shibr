@@ -9,9 +9,8 @@ import { internal } from "./_generated/api"
 // Add a new shelf
 export const addShelf = mutation({
   args: {
+    branchId: v.id("branches"), // Required: shelf must belong to a branch
     shelfName: v.string(),
-    city: v.string(),
-    storeBranch: v.string(),
     monthlyPrice: v.number(),
     storeCommission: v.number(),
     availableFrom: v.string(),
@@ -20,12 +19,9 @@ export const addShelf = mutation({
     depth: v.string(),
     productTypes: v.array(v.string()), // Array of product categories
     description: v.optional(v.string()),
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
-    address: v.optional(v.string()),
     images: v.optional(v.array(v.object({
       storageId: v.id("_storage"),
-      type: v.union(v.literal("shelf"), v.literal("exterior"), v.literal("interior"), v.literal("additional")),
+      type: v.union(v.literal("shelf"), v.literal("additional")), // Only shelf and additional images
       order: v.number()
     }))),
   },
@@ -34,30 +30,36 @@ export const addShelf = mutation({
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // Get user's profile
     const userProfile = await getUserProfile(ctx, userId);
-    
+
     if (!userProfile || userProfile.type !== "store_owner") {
       throw new Error("Only store owners can add shelves");
     }
-    
+
+    // Get the branch to verify ownership and get location data
+    const branch = await ctx.db.get(args.branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+
+    // Verify branch belongs to this store owner
+    if (branch.storeProfileId !== userProfile.profile._id) {
+      throw new Error("Branch does not belong to this store owner");
+    }
+
     // Get platform settings for dynamic fee percentage
     const settings = await ctx.runQuery(internal.platformSettings.internalGetPlatformSettings)
     const storeRentCommission = settings.storeRentCommission
     const finalPrice = args.monthlyPrice * (1 + storeRentCommission / 100)
-    
+
     // Create the shelf with approved status (active listing)
+    // Location data comes from the branch table
     const shelfId = await ctx.db.insert("shelves", {
       storeProfileId: userProfile.profile._id,
+      branchId: args.branchId,
       shelfName: args.shelfName,
-      city: args.city,
-      storeBranch: args.storeBranch,
-      location: args.latitude && args.longitude && args.address ? {
-        lat: args.latitude,
-        lng: args.longitude,
-        address: args.address
-      } : undefined,
       shelfSize: {
         width: parseFloat(args.width),
         height: parseFloat(args.length), // Using length as height
@@ -67,12 +69,12 @@ export const addShelf = mutation({
       productTypes: args.productTypes || [],
       description: args.description,
       monthlyPrice: args.monthlyPrice,
-      storeCommission: args.storeCommission, // Add store commission
+      storeCommission: args.storeCommission,
       availableFrom: new Date(args.availableFrom).getTime(),
       images: args.images || [],
-      status: "active" as const, // Directly active (no approval needed)
+      status: "active" as const,
     })
-    
+
     return shelfId
   },
 })
@@ -98,7 +100,7 @@ export const getOwnerShelves = query({
       .order("desc")
       .collect()
 
-    // Fetch renter names and calculate next collection dates for rented shelves
+    // Fetch renter names, branch data, and calculate next collection dates for rented shelves
     const shelvesWithDetails = await Promise.all(
       shelves.map(async (shelf) => {
         let renterName = null
@@ -128,9 +130,36 @@ export const getOwnerShelves = query({
           nextCollectionDate = activeRental.endDate
         }
 
-        // Convert image storage IDs to URLs
+        // Get branch data if branchId exists
+        let branchData = null
+        let allImages = shelf.images || []
+
+        if (shelf.branchId) {
+          const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+          if (branch) {
+            branchData = {
+              _id: branch._id,
+              branchName: branch.branchName,
+              city: branch.city,
+              location: branch.location,
+            }
+
+            // Include branch images (exterior/interior)
+            if (branch.images && branch.images.length > 0) {
+              const branchImagesWithUrls = await Promise.all(
+                branch.images.map(async (img) => ({
+                  ...img,
+                  url: await ctx.storage.getUrl(img.storageId)
+                }))
+              )
+              allImages = [...allImages, ...branchImagesWithUrls]
+            }
+          }
+        }
+
+        // Convert shelf image storage IDs to URLs
         const imagesWithUrls = await Promise.all(
-          (shelf.images || []).map(async (img: any) => ({
+          allImages.map(async (img: any) => ({
             ...img,
             url: await ctx.storage.getUrl(img.storageId)
           }))
@@ -139,6 +168,7 @@ export const getOwnerShelves = query({
         return {
           ...shelf,
           images: imagesWithUrls,
+          branch: branchData,
           renterName,
           nextCollectionDate,
           netRevenue
@@ -178,7 +208,11 @@ export const getAvailableShelves = query({
     // Filter by additional criteria and add rental info
     const filteredShelves = await Promise.all(
       shelves.map(async (shelf) => {
-        if (args.city && shelf.city !== args.city) return null
+        // Get branch to check city filter
+        const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+        if (!branch) return null
+
+        if (args.city && branch.city !== args.city) return null
         if (args.maxPrice && shelf.monthlyPrice && shelf.monthlyPrice > args.maxPrice) return null
         if (args.minPrice && shelf.monthlyPrice && shelf.monthlyPrice < args.minPrice) return null
 
@@ -187,6 +221,9 @@ export const getAvailableShelves = query({
 
         return {
           ...shelf,
+          city: branch.city,
+          storeBranch: branch.branchName,
+          location: branch.location,
           currentRental: currentRental ? {
             endDate: currentRental.endDate,
             startDate: currentRental.startDate,
@@ -221,9 +258,8 @@ export const getAvailableShelves = query({
 export const updateShelf = mutation({
   args: {
     shelfId: v.id("shelves"),
+    branchId: v.optional(v.id("branches")),
     shelfName: v.optional(v.string()),
-    city: v.optional(v.string()),
-    storeBranch: v.optional(v.string()),
     monthlyPrice: v.optional(v.number()),
     storeCommission: v.optional(v.number()),
     availableFrom: v.optional(v.string()),
@@ -232,9 +268,6 @@ export const updateShelf = mutation({
     depth: v.optional(v.string()),
     productTypes: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
-    address: v.optional(v.string()),
     images: v.optional(v.array(v.object({
       storageId: v.id("_storage"),
       type: v.union(v.literal("shelf"), v.literal("exterior"), v.literal("interior"), v.literal("additional")),
@@ -242,23 +275,20 @@ export const updateShelf = mutation({
     }))),
   },
   handler: async (ctx, args) => {
-    const { shelfId, length, width, depth, latitude, longitude, address, ...otherData } = args
-    
+    const { shelfId, length, width, depth, ...otherData } = args
+
     // Create a properly typed update object
     const patchData: any = {}
-    
+
     // Add other fields that are in the schema
+    if (otherData.branchId !== undefined) patchData.branchId = otherData.branchId
     if (otherData.shelfName !== undefined) patchData.shelfName = otherData.shelfName
-    if (otherData.city !== undefined) {
-      patchData.city = otherData.city
-    }
-    if (otherData.storeBranch !== undefined) patchData.storeBranch = otherData.storeBranch
     if (otherData.monthlyPrice !== undefined) patchData.monthlyPrice = otherData.monthlyPrice
     if (otherData.storeCommission !== undefined) patchData.storeCommission = otherData.storeCommission
     if (otherData.availableFrom !== undefined) patchData.availableFrom = new Date(otherData.availableFrom).getTime()
     if (otherData.productTypes !== undefined) patchData.productTypes = otherData.productTypes
     if (otherData.description !== undefined) patchData.description = otherData.description
-    
+
     // Handle shelf size (convert string dimensions to shelfSize object)
     if (length !== undefined || width !== undefined || depth !== undefined) {
       const shelf = await ctx.db.get(shelfId)
@@ -271,40 +301,14 @@ export const updateShelf = mutation({
         }
       }
     }
-    
-    // Handle location - consistent with addShelf
-    if (latitude !== undefined && longitude !== undefined && address) {
-      patchData.location = {
-        lat: latitude,
-        lng: longitude,
-        address: address
-      }
-    } else if (latitude !== undefined || longitude !== undefined || address !== undefined) {
-      // If partial location data is provided, need to fetch existing shelf
-      const shelf = await ctx.db.get(shelfId)
-      if (shelf && shelf.location) {
-        patchData.location = {
-          lat: latitude !== undefined ? latitude : shelf.location.lat,
-          lng: longitude !== undefined ? longitude : shelf.location.lng,
-          address: address !== undefined ? address : shelf.location.address
-        }
-      } else if (latitude !== undefined && longitude !== undefined && address) {
-        // Only create new location if all fields are provided
-        patchData.location = {
-          lat: latitude,
-          lng: longitude,
-          address: address
-        }
-      }
-    }
-    
+
     // Handle images array
     if (otherData.images !== undefined) {
       patchData.images = otherData.images
     }
-    
+
     await ctx.db.patch(shelfId, patchData)
-    
+
     return { success: true }
   },
 })

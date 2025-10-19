@@ -274,27 +274,3 @@ export const renewRental = mutation({
     return renewalRequest
   },
 })
-
-// Query to get rental reviews - DISABLED: rentalReviews table not in schema
-// export const getRentalReviews = query({
-//   args: {
-//     rentalRequestId: v.id("rentalRequests"),
-//   },
-//   handler: async (ctx, args) => {
-//     // TODO: Add rentalReviews table to schema first
-//     return []
-//   },
-// })
-
-// Mutation to submit a review - DISABLED: rentalReviews table not in schema
-// export const submitReview = mutation({
-//   args: {
-//     rentalRequestId: v.id("rentalRequests"),
-//     rating: v.number(),
-//     revieweeId: v.id("users"),
-//   },
-//   handler: async (ctx, args) => {
-//     // TODO: Add rentalReviews table to schema first
-//     return { success: false, message: "Reviews not implemented yet" }
-//   },
-// })

@@ -23,6 +23,15 @@ export const getMarketplaceStores = query({
     // Get all shelves first
     let shelves = await shelvesQuery.collect()
 
+    // Get branches for all shelves
+    const branchesMap = new Map()
+    for (const shelf of shelves) {
+      const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+      if (branch) {
+        branchesMap.set(shelf._id, branch)
+      }
+    }
+
     // Get all active and payment_pending rentals to add rental info
     const [activeRequests, paymentPendingRequests] = await Promise.all([
       ctx.db
@@ -39,7 +48,10 @@ export const getMarketplaceStores = query({
 
     // Apply filters
     if (args.city && args.city !== "all") {
-      shelves = shelves.filter(shelf => shelf.city === args.city)
+      shelves = shelves.filter(shelf => {
+        const branch = branchesMap.get(shelf._id)
+        return branch?.city === args.city
+      })
     }
 
 
@@ -77,12 +89,13 @@ export const getMarketplaceStores = query({
 
     if (args.searchQuery) {
       const query = args.searchQuery.toLowerCase()
-      shelves = shelves.filter(shelf => 
-        shelf.shelfName.toLowerCase().includes(query) ||
-        shelf.city.toLowerCase().includes(query) ||
-        shelf.storeBranch?.toLowerCase().includes(query) ||
-        shelf.description?.toLowerCase().includes(query)
-      )
+      shelves = shelves.filter(shelf => {
+        const branch = branchesMap.get(shelf._id)
+        return shelf.shelfName.toLowerCase().includes(query) ||
+          branch?.city.toLowerCase().includes(query) ||
+          branch?.branchName?.toLowerCase().includes(query) ||
+          shelf.description?.toLowerCase().includes(query)
+      })
     }
 
     // Get owner information and image URLs for each shelf
@@ -90,7 +103,8 @@ export const getMarketplaceStores = query({
       shelves.map(async (shelf) => {
         const ownerProfile = await ctx.db.get(shelf.storeProfileId)
         const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
-        
+        const branch = branchesMap.get(shelf._id)
+
         // Convert storage IDs to URLs using new structure
         const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
 
@@ -110,6 +124,9 @@ export const getMarketplaceStores = query({
 
         return {
           ...shelf,
+          city: branch?.city,
+          storeBranch: branch?.branchName,
+          location: branch?.location,
           shelfImage: imageUrls.shelfImageUrl,
           exteriorImage: imageUrls.exteriorImageUrl,
           interiorImage: imageUrls.interiorImageUrl,
@@ -118,8 +135,8 @@ export const getMarketplaceStores = query({
           ownerImage: owner?.image,
           businessCategory: ownerProfile?.businessCategory,
           // Add latitude and longitude from location for map compatibility
-          latitude: shelf.location?.lat,
-          longitude: shelf.location?.lng,
+          latitude: branch?.location?.lat,
+          longitude: branch?.location?.lng,
           // Add rental information
           currentRental: rentalInfo,
         }
@@ -141,23 +158,29 @@ export const getStoreById = query({
   },
   handler: async (ctx, args) => {
     const shelf = await ctx.db.get(args.storeId)
-    
+
     if (!shelf) {
       return null
     }
-    
+
+    // Get branch information
+    const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+
     // Get owner information from profile
-    const ownerProfile = shelf.storeProfileId 
+    const ownerProfile = shelf.storeProfileId
       ? await ctx.db.get(shelf.storeProfileId)
       : null
     const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
-    
+
     // Convert storage IDs to URLs using new structure
     const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
-    
+
     // Return the shelf with owner information and image URLs
     return {
       ...shelf,
+      city: branch?.city,
+      storeBranch: branch?.branchName,
+      location: branch?.location,
       shelfImage: imageUrls.shelfImageUrl,
       exteriorImage: imageUrls.exteriorImageUrl,
       interiorImage: imageUrls.interiorImageUrl,
@@ -166,8 +189,8 @@ export const getStoreById = query({
       ownerImage: owner?.image || null,
       businessCategory: ownerProfile?.businessCategory,
       // Add latitude and longitude from location for map compatibility
-      latitude: shelf.location?.lat,
-      longitude: shelf.location?.lng,
+      latitude: branch?.location?.lat,
+      longitude: branch?.location?.lng,
     }
   },
 })
@@ -181,7 +204,16 @@ export const getAvailableCities = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
 
-    const cities = [...new Set(shelves.map(shelf => shelf.city))]
+    // Get unique branch IDs (filter out undefined)
+    const branchIds = [...new Set(shelves.map(shelf => shelf.branchId).filter(Boolean))]
+
+    // Fetch all branches
+    const branches = await Promise.all(
+      branchIds.map(id => ctx.db.get(id!))
+    )
+
+    // Get unique cities from branches
+    const cities = [...new Set(branches.filter(Boolean).map(branch => branch!.city))]
     return cities.sort()
   },
 })
@@ -220,14 +252,26 @@ export const getPriceRange = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
 
+    // Get branches for all shelves
+    const branchesMap = new Map()
+    for (const shelf of shelves) {
+      const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+      if (branch) {
+        branchesMap.set(shelf._id, branch)
+      }
+    }
+
     // Apply the same filters as getMarketplaceStores (except price)
     if (args.city && args.city !== "all") {
-      shelves = shelves.filter(shelf => shelf.city === args.city)
+      shelves = shelves.filter(shelf => {
+        const branch = branchesMap.get(shelf._id)
+        return branch?.city === args.city
+      })
     }
 
 
     if (args.productType && args.productType !== "all") {
-      shelves = shelves.filter(shelf => 
+      shelves = shelves.filter(shelf =>
         shelf.productTypes && shelf.productTypes.includes(args.productType!)
       )
     }
@@ -250,12 +294,13 @@ export const getPriceRange = query({
 
     if (args.searchQuery) {
       const query = args.searchQuery.toLowerCase()
-      shelves = shelves.filter(shelf => 
-        shelf.shelfName.toLowerCase().includes(query) ||
-        shelf.city.toLowerCase().includes(query) ||
-        shelf.storeBranch?.toLowerCase().includes(query) ||
-        shelf.description?.toLowerCase().includes(query)
-      )
+      shelves = shelves.filter(shelf => {
+        const branch = branchesMap.get(shelf._id)
+        return shelf.shelfName.toLowerCase().includes(query) ||
+          branch?.city.toLowerCase().includes(query) ||
+          branch?.branchName?.toLowerCase().includes(query) ||
+          shelf.description?.toLowerCase().includes(query)
+      })
     }
 
     if (shelves.length === 0) {

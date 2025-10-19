@@ -78,22 +78,49 @@ const schema = defineSchema({
     .index("by_role", ["adminRole"])
     .index("by_active", ["isActive"]),
 
+  // Store branches/locations
+  branches: defineTable({
+    storeProfileId: v.id("storeProfiles"),
+
+    // Branch details
+    branchName: v.string(),
+    city: v.string(),
+
+    // Location
+    location: v.object({
+      lat: v.number(),
+      lng: v.number(),
+      address: v.string(),
+    }),
+
+    // Images - only exterior and interior for the branch
+    images: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      type: v.union(
+        v.literal("exterior"),
+        v.literal("interior")
+      ),
+      order: v.number(),
+    }))),
+
+    // Status
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive")
+    ),
+  })
+    .index("by_store_profile", ["storeProfileId"])
+    .index("by_city", ["city"])
+    .index("by_store_city", ["storeProfileId", "city"]),
+
   // Shelves/Stores for marketplace
   shelves: defineTable({
     storeProfileId: v.id("storeProfiles"),
+    branchId: v.optional(v.id("branches")),
 
     // Basic info
     shelfName: v.string(),
     description: v.optional(v.string()),
-
-    // Location (denormalized for search performance)
-    city: v.string(),
-    storeBranch: v.string(),
-    location: v.optional(v.object({
-      lat: v.number(),
-      lng: v.number(),
-      address: v.string(), // Actual street address (required)
-    })),
 
     // Shelf details
     shelfSize: v.object({
@@ -133,10 +160,9 @@ const schema = defineSchema({
     rating: v.optional(v.number()),
   })
     .index("by_store_profile", ["storeProfileId"])
+    .index("by_branch", ["branchId"])
     .index("by_status", ["status"])
-    .index("by_city", ["city"])
-    .index("by_price", ["monthlyPrice"])
-    .index("by_status_city", ["status", "city"]),
+    .index("by_price", ["monthlyPrice"]),
 
   // Rental requests
   rentalRequests: defineTable({
@@ -409,7 +435,7 @@ const schema = defineSchema({
     shelfStoreId: v.id("shelfStores"),
 
     // Customer information (guest checkout)
-    customerName: v.optional(v.string()), // Made optional for backward compatibility with legacy orders
+    customerName: v.optional(v.string()),
     customerPhone: v.string(),
     wafeqContactId: v.optional(v.string()),
     invoiceNumber: v.string(), // Wafeq invoice ID (required)

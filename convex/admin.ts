@@ -997,6 +997,10 @@ export const getPosts = query({
         const ownerProfile = await ctx.db.get(shelf.storeProfileId);
         if (!ownerProfile) return null;
 
+        // Get branch data
+        const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null;
+        if (!branch) return null;
+
         // Get the owner's email from users table
         const authUser = await ctx.db.get(ownerProfile.userId)
 
@@ -1011,13 +1015,13 @@ export const getPosts = query({
           storeOwnerEmail: authUser?.email || "",
           storeOwnerPhone: ownerUser?.phone,
           businessRegistration: ownerProfile.commercialRegisterNumber,
-          storeBranch: shelf.storeBranch || shelf.city,
+          storeBranch: branch.branchName,
           shelfName: shelf.shelfName,
           percentage: shelf.storeCommission ?? 0, // Store commission
           price: shelf.monthlyPrice,
           addedDate: shelf._creationTime,
           status: shelf.status === "active" ? "published" : shelf.status,
-          city: shelf.city,
+          city: branch.city,
           dimensions: `${shelf.shelfSize.width} × ${shelf.shelfSize.height} × ${shelf.shelfSize.depth} ${shelf.shelfSize.unit}`,
           productTypes: shelf.productTypes?.join(", "),
           description: shelf.description,
@@ -1313,13 +1317,25 @@ export const getStoreShelves = query({
       .filter(q => q.eq(q.field("storeProfileId"), args.profileId))
       .take(100) // Strict limit per Convex best practices
 
+    // Get branches for all shelves to enable search by branch name
+    const shelvesWithBranches = await Promise.all(
+      shelves.map(async (shelf) => {
+        const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+        return { shelf, branch }
+      })
+    )
+
     // Apply search filter
+    let filteredShelvesWithBranches = shelvesWithBranches
     if (searchQuery) {
-      shelves = shelves.filter(shelf =>
+      filteredShelvesWithBranches = shelvesWithBranches.filter(({ shelf, branch }) =>
         shelf.shelfName?.toLowerCase().includes(searchQuery) ||
-        shelf.storeBranch?.toLowerCase().includes(searchQuery)
+        branch?.branchName?.toLowerCase().includes(searchQuery)
       )
     }
+
+    // Extract shelves from filtered results
+    shelves = filteredShelvesWithBranches.map(({ shelf }) => shelf)
 
     // Get active/payment_pending rentals to determine shelf availability
     const activeShelfRentals = await ctx.db

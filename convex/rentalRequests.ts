@@ -495,7 +495,8 @@ export const getRentalRequestById = query({
     
     // Get shelf details
     const shelf = await ctx.db.get(request.shelfId)
-    
+    const branch = (shelf && shelf.branchId) ? await ctx.db.get(shelf.branchId) : null
+
     // Get selected products with their requested quantities
     let products: any[] = []
     if (request.selectedProducts && request.selectedProducts.length > 0) {
@@ -535,10 +536,10 @@ export const getRentalRequestById = query({
       otherUserId: brandOwner?._id,
       otherUserName: brandOwnerProfile?.brandName || "",
       otherUserEmail: brandOwner?.email || "",
-      city: shelf?.city,
-      shelfCity: shelf?.city,
+      city: branch?.city,
+      shelfCity: branch?.city,
       shelfName: shelf?.shelfName,
-      shelfBranch: shelf?.storeBranch,
+      shelfBranch: branch?.branchName,
       // Brand specific details
       activityType: brandOwnerProfile?.businessType,
       businessCategory: brandOwnerProfile?.businessCategory,
@@ -619,6 +620,7 @@ export const getUserRentalRequests = query({
 
         // Get shelf details
         const shelf = await ctx.db.get(request.shelfId)
+        const branch = (shelf && shelf.branchId) ? await ctx.db.get(shelf.branchId) : null
 
         // Get shelf store for this rental to calculate sales count
         const shelfStore = await ctx.db
@@ -647,10 +649,10 @@ export const getUserRentalRequests = query({
             otherUserId: otherUser._id,
             otherUserName: (otherUserProfile as any).brandName || "",
             otherUserEmail: otherUser?.email || "",
-            city: shelf?.city,
-            shelfCity: shelf?.city,
+            city: branch?.city,
+            shelfCity: branch?.city,
             shelfName: shelf?.shelfName,
-            shelfBranch: shelf?.storeBranch,
+            shelfBranch: branch?.branchName,
             activityType: (otherUserProfile as any).brandType,
                   website: (otherUserProfile as any).website,
             commercialRegisterNumber: (otherUserProfile as any).commercialRegisterNumber || (otherUserProfile as any).freelanceLicenseNumber,
@@ -670,9 +672,9 @@ export const getUserRentalRequests = query({
           otherUserId: otherUser?._id,
           otherUserName: (otherUserProfile as any)?.storeName || "",
           otherUserEmail: otherUser?.email || "",
-          city: shelf?.city,
+          city: branch?.city,
           shelfName: shelf?.shelfName,
-          shelfBranch: shelf?.storeBranch,
+          shelfBranch: branch?.branchName,
           salesCount, // Add real sales count
         }
       })
@@ -1092,6 +1094,9 @@ export const getRentalRequestDetails = query({
       return null
     }
 
+    // Get branch details
+    const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+
     // Get brand profile
     const brandProfile = await ctx.db.get(request.brandProfileId)
 
@@ -1108,8 +1113,8 @@ export const getRentalRequestDetails = query({
     return {
       ...request,
       shelfName: shelf.shelfName,
-      city: shelf.city,
-      branch: shelf.storeBranch,
+      city: branch?.city,
+      branch: branch?.branchName,
       brandName: brandProfile?.brandName,
       storeName: storeProfile?.storeName,
       rentalMonths,

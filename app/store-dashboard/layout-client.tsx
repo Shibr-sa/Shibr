@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut } from "lucide-react"
+import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut, Building2 } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -42,6 +42,7 @@ import {
 
 const sidebarItems = [
   { title: "dashboard.home", href: "/store-dashboard", icon: Home, pageTitle: "dashboard.home" },
+  { title: "dashboard.branches", href: "/store-dashboard/branches", icon: Building2, pageTitle: "dashboard.branches" },
   { title: "dashboard.shelves", href: "/store-dashboard/shelves", icon: Package, pageTitle: "dashboard.shelves" },
   { title: "dashboard.orders", href: "/store-dashboard/orders", icon: ShoppingCart, pageTitle: "dashboard.orders" },
   { title: "dashboard.settings", href: "/store-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
