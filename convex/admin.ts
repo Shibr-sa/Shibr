@@ -805,16 +805,47 @@ export const getBrands = query({
       .query("brandProfiles")
       .take(500); // Reasonable limit
 
-    // Get emails from users table for search
-    const allBrandOwners = await Promise.all(
-      allBrandProfiles.map(async (profile) => {
-        const authUser = await ctx.db.get(profile.userId)
-        return {
-          ...profile,
-          email: authUser?.email
-        }
-      })
-    )
+    // BATCH FETCH 1: Get all users upfront (avoid N+1 queries)
+    const userIds = [...new Set(allBrandProfiles.map(p => p.userId))];
+    const users = await Promise.all(userIds.map(id => ctx.db.get(id)));
+    const userMap = new Map(users.filter(u => u !== null).map(u => [u!._id.toString(), u!]));
+
+    // BATCH FETCH 2: Get all products upfront (avoid N+1 queries)
+    const allProducts = await ctx.db
+      .query("products")
+      .take(5000); // Limit total products
+
+    // Group products by brand
+    const productsByBrand = new Map<string, typeof allProducts>();
+    for (const product of allProducts) {
+      const brandId = product.brandProfileId.toString();
+      const existing = productsByBrand.get(brandId) || [];
+      existing.push(product);
+      productsByBrand.set(brandId, existing);
+    }
+
+    // BATCH FETCH 3: Get all rentals upfront (avoid N+1 queries)
+    const allRentals = await ctx.db
+      .query("rentalRequests")
+      .take(5000); // Limit total rentals
+
+    // Group rentals by brand
+    const rentalsByBrand = new Map<string, typeof allRentals>();
+    for (const rental of allRentals) {
+      const brandId = rental.brandProfileId.toString();
+      const existing = rentalsByBrand.get(brandId) || [];
+      existing.push(rental);
+      rentalsByBrand.set(brandId, existing);
+    }
+
+    // Build brand owners with user data
+    const allBrandOwners = allBrandProfiles.map(profile => {
+      const user = userMap.get(profile.userId.toString());
+      return {
+        ...profile,
+        email: user?.email
+      };
+    });
 
     // Filter by search query
     const filteredBrandOwners = searchQuery
@@ -824,34 +855,24 @@ export const getBrands = query({
       )
       : allBrandOwners;
 
-    // Get stats for each brand owner
+    // Get stats for each brand owner (using batched data - NO queries in loop!)
     const brandsWithStats = await Promise.all(
       filteredBrandOwners.map(async (brand) => {
-        // Get products for this brand (strict limit per Convex best practices)
-        const products = await ctx.db
-          .query("products")
-          .filter(q => q.eq(q.field("brandProfileId"), brand._id))
-          .take(100); // Strict limit per brand per Convex best practices
-
+        // Use pre-fetched products (O(1) map lookup)
+        const products = productsByBrand.get(brand._id.toString()) || [];
         const totalProducts = products.length;
-        // Calculate product sales revenue (this would come from actual sales data)
-        // For now, using totalRevenue field from products or a calculated value
         const totalProductRevenue = products.reduce((sum, p) => sum + (p.totalRevenue || 0), 0);
 
-        // Get rental requests for this brand (for counting active rentals, not for revenue)
-        const rentals = await ctx.db
-          .query("rentalRequests")
-          .filter(q => q.eq(q.field("brandProfileId"), brand._id))
-          .take(100); // Strict limit per Convex best practices
-
+        // Use pre-fetched rentals (O(1) map lookup)
+        const rentals = rentalsByBrand.get(brand._id.toString()) || [];
         const activeRentals = rentals.filter(r => r.status === "active").length;
 
         // Get unique stores this brand is working with
         const uniqueStoreIds = new Set(rentals.map(r => r.storeProfileId));
         const storesCount = uniqueStoreIds.size;
 
-        // Get user from users table for name and phone
-        const user = await ctx.db.get(brand.userId)
+        // Use pre-fetched user (O(1) map lookup)
+        const user = userMap.get(brand.userId.toString());
 
         // Profile image is now stored in users.image field as URL string
         const profileImageUrl = user?.image || null;
