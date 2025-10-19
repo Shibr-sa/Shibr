@@ -556,6 +556,7 @@ export const getLatestSalesOperations = query({
       // Get store and shelf information
       const storeProfile = await ctx.db.get(shelfStore.storeProfileId)
       const shelf = await ctx.db.get(shelfStore.shelfId)
+      const branch = (shelf && shelf.branchId) ? await ctx.db.get(shelf.branchId) : null
 
       // Process each order
       for (const order of orders) {
@@ -565,7 +566,7 @@ export const getLatestSalesOperations = query({
             invoiceNumber: order.invoiceNumber,
             productName: item.productName,
             storeName: storeProfile?.storeName || "Unknown Store",
-            city: shelf?.city || "Unknown",
+            city: branch?.city || "Unknown",
             price: item.subtotal, // Full sale amount (before commissions)
             date: order._creationTime,
             quantity: item.quantity,

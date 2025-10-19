@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Upload, MapPin, Info, CalendarIcon, Loader2, X, Coffee, ShoppingBag, Heart, Home, Baby, Dumbbell, BookOpen, Gift, Package, Check, Ruler, Box, ArrowRight, ArrowUp, ArrowLeft, HelpCircle } from "lucide-react"
+import { Upload, MapPin, Info, CalendarIcon, Loader2, X, Coffee, ShoppingBag, Heart, Home, Baby, Dumbbell, BookOpen, Gift, Package, Check, Ruler, Box, ArrowRight, ArrowUp, ArrowLeft, HelpCircle, Plus } from "lucide-react"
 import { MapPicker } from "@/components/ui/map-picker"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Calendar } from "@/components/ui/calendar"
@@ -110,12 +110,14 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
   const getFileUrl = useMutation(api.files.getFileUrl)
   const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
+  const branches = useQuery(api.branches.getBranches)
   
   
   // Form states - Initialize with data if in edit mode
   const [shelfName, setShelfName] = useState(mode === "edit" ? (initialData?.shelfName || "") : "")
-  const [city, setCity] = useState(mode === "edit" ? (initialData?.city || "") : "")
-  const [storeBranch, setStoreBranch] = useState(mode === "edit" ? (initialData?.storeBranch || "") : "")
+  const [selectedBranch, setSelectedBranch] = useState<Id<"branches"> | "">(
+    mode === "edit" ? (initialData?.branchId || "") : ""
+  )
   const [storeCommission, setStoreCommission] = useState(
     mode === "edit" ? 
     (initialData?.storeCommission?.toString() || initialData?.discountPercentage?.toString() || "") : 
@@ -134,123 +136,28 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     []
   )
   const [description, setDescription] = useState(mode === "edit" ? (initialData?.description || "") : "")
-  
-  // Location states - initialize with data if in edit mode
-  const [selectedLocation, setSelectedLocation] = useState({
-    address: mode === "edit" && initialData?.location?.address || "",
-    latitude: mode === "edit" && (initialData?.location?.lat || initialData?.latitude) || 24.7136,
-    longitude: mode === "edit" && (initialData?.location?.lng || initialData?.longitude) || 46.6753
-  })
 
-  const [userLocationRequested, setUserLocationRequested] = useState(false)
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
-  
-  // City coordinates in Saudi Arabia
-  const cityCoordinates: Record<string, { lat: number; lng: number }> = {
-    "Riyadh": { lat: 24.7136, lng: 46.6753 },
-    "Jeddah": { lat: 21.5433, lng: 39.1728 },
-    "Mecca": { lat: 21.4225, lng: 39.8262 },
-    "Medina": { lat: 24.5247, lng: 39.5692 },
-    "Dammam": { lat: 26.3927, lng: 49.9777 },
-    "Khobar": { lat: 26.2172, lng: 50.1971 },
-    "Dhahran": { lat: 26.2361, lng: 50.0393 },
-    "Taif": { lat: 21.4373, lng: 40.5128 },
-    "Buraidah": { lat: 26.3266, lng: 43.9750 },
-    "Tabuk": { lat: 28.3835, lng: 36.5662 },
-    "Hail": { lat: 27.5219, lng: 41.6907 },
-    "Hafar Al-Batin": { lat: 28.4337, lng: 45.9601 },
-    "Jubail": { lat: 27.0046, lng: 49.6460 },
-    "Najran": { lat: 17.5656, lng: 44.2289 },
-    "Abha": { lat: 18.2164, lng: 42.5053 },
-    "Khamis Mushait": { lat: 18.3060, lng: 42.7297 },
-    "Jazan": { lat: 16.8892, lng: 42.5511 },
-    "Yanbu": { lat: 24.0893, lng: 38.0618 },
-    "Al-Qatif": { lat: 26.5195, lng: 50.0240 },
-    "Unaizah": { lat: 26.0844, lng: 43.9935 },
-    "Arar": { lat: 30.9753, lng: 41.0381 },
-    "Sakaka": { lat: 29.9697, lng: 40.2064 },
-    "Al-Kharj": { lat: 24.1556, lng: 47.3120 },
-    "Al-Ahsa": { lat: 25.3487, lng: 49.5856 }
-  }
-
-  // Request user location on mount (only in create mode)
+  // Load existing shelf image when in edit mode
   useEffect(() => {
-    if (mode === "create" && !userLocationRequested) {
-      setUserLocationRequested(true)
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setSelectedLocation({
-              address: "",
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            })
-          },
-          (error) => {
-            // Location permission denied or error
-            setLocationPermissionDenied(true)
-            // Keep default location (Riyadh) if user denies permission
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        )
+    if (mode === "edit" && initialData?.images) {
+      const shelfImage = initialData.images.find((img: any) => img.type === "shelf")
+      if (shelfImage?.url) {
+        setImagePreviews({ shelf: shelfImage.url })
       }
-    }
-  }, [mode, userLocationRequested])
-
-  // Load existing images when in edit mode
-  useEffect(() => {
-    if (mode === "edit" && initialData) {
-      // Load existing images from the images array with url property
-      const loadImages = () => {
-        const previews: any = {}
-
-        if (initialData.images && Array.isArray(initialData.images)) {
-          for (const img of initialData.images) {
-            if (img.url && img.type) {
-              previews[img.type] = img.url
-            }
-          }
-        }
-
-        setImagePreviews(previews)
-      }
-      loadImages()
     }
   }, [mode, initialData])
-  
-  // Update location when city changes (only in create mode)
-  useEffect(() => {
-    if (mode === "create" && city && cityCoordinates[city]) {
-      setSelectedLocation(prev => ({
-        ...prev,
-        latitude: cityCoordinates[city].lat,
-        longitude: cityCoordinates[city].lng
-      }))
-    }
-  }, [city, mode])
-  
-  // File states - using new images array format
+
+  // File states - only shelf images now (branch has exterior/interior)
   const [images, setImages] = useState<{
-    shelf?: File | null,
-    exterior?: File | null,
-    interior?: File | null
+    shelf?: File | null
   }>({})
   const [imagePreviews, setImagePreviews] = useState<{
-    shelf?: string | null,
-    exterior?: string | null,
-    interior?: string | null
+    shelf?: string | null
   }>({})
   const [uploadingImages, setUploadingImages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
   // File input refs
-  const exteriorInputRef = useRef<HTMLInputElement>(null)
-  const interiorInputRef = useRef<HTMLInputElement>(null)
   const shelfInputRef = useRef<HTMLInputElement>(null)
   
   // Upload file to Convex storage
@@ -273,7 +180,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user) {
       toast({
         title: t("common.error"),
@@ -282,9 +189,9 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       })
       return
     }
-    
+
     // Validate required fields
-    if (!shelfName || !city || !storeBranch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
+    if (!shelfName || !selectedBranch || !monthlyPrice || !storeCommission || !availableFrom || !length || !width || !depth) {
       toast({
         title: t("common.error"),
         description: t("add_shelf.required_fields_error"),
@@ -292,7 +199,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       })
       return
     }
-    
+
     // Validate discount percentage
     const discount = parseFloat(storeCommission)
     const maxDiscount = NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
@@ -304,29 +211,28 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       })
       return
     }
-    
+
     setSubmitting(true)
-    
+
     try {
       // Upload images and create images array
       const uploadedImages: any[] = []
-      
-      // Keep existing images if in edit mode
+
+      // Keep existing shelf images if in edit mode (only shelf type, no exterior/interior)
       if (mode === "edit" && initialData?.images) {
-        // Keep images that have the correct structure from backend
         const validImages = initialData.images
-          .filter(img => img && typeof img === 'object' && 'storageId' in img && 'type' in img && 'order' in img)
-          .map(img => ({
+          .filter((img: any) => img && img.type === "shelf" && img.storageId && img.order !== undefined)
+          .map((img: any) => ({
             storageId: img.storageId,
             type: img.type,
             order: img.order
           }))
         uploadedImages.push(...validImages)
       }
-      
+
       setUploadingImages(true)
-      
-      // Upload new images
+
+      // Upload new shelf image
       if (images.shelf) {
         const shelfImageId = await uploadFile(images.shelf)
         if (shelfImageId) {
@@ -337,36 +243,12 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           uploadedImages.push(...filtered)
         }
       }
-      
-      if (images.exterior) {
-        const exteriorImageId = await uploadFile(images.exterior)
-        if (exteriorImageId) {
-          // Remove existing exterior image if any
-          const filtered = uploadedImages.filter(img => img.type !== "exterior")
-          filtered.push({ storageId: exteriorImageId, type: "exterior", order: 1 })
-          uploadedImages.length = 0
-          uploadedImages.push(...filtered)
-        }
-      }
-      
-      if (images.interior) {
-        const interiorImageId = await uploadFile(images.interior)
-        if (interiorImageId) {
-          // Remove existing interior image if any
-          const filtered = uploadedImages.filter(img => img.type !== "interior")
-          filtered.push({ storageId: interiorImageId, type: "interior", order: 2 })
-          uploadedImages.length = 0
-          uploadedImages.push(...filtered)
-        }
-      }
-      
+
       setUploadingImages(false)
-      
+
       const shelfData: any = {
+        branchId: selectedBranch as Id<"branches">,
         shelfName,
-        city,
-        storeBranch,
-        address: selectedLocation.address,
         monthlyPrice: parseFloat(monthlyPrice),
         storeCommission: parseFloat(storeCommission),
         availableFrom: format(availableFrom, "yyyy-MM-dd"),
@@ -375,45 +257,43 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
         depth,
         productTypes: selectedCategories,
         description,
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
       }
-      
+
       // Include images array if we have any images
       if (uploadedImages.length > 0) {
         shelfData.images = uploadedImages
       }
-      
+
       if (mode === "create") {
         await addShelf({
           ...shelfData
         })
-        
+
         toast({
           title: t("common.success"),
           description: t("add_shelf.success_message"),
         })
-        
+
         router.push("/store-dashboard/shelves")
       } else {
         await updateShelf({
           shelfId: shelfId!,
           ...shelfData
         })
-        
+
         toast({
           title: t("common.success"),
           description: t("add_shelf.update_success_message"),
         })
-        
+
         // Redirect back to the shelf details page after updating
         router.push(`/store-dashboard/shelves/${shelfId}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting shelf:", error)
       toast({
         title: t("common.error"),
-        description: t("add_shelf.submit_error"),
+        description: error.message || t("add_shelf.submit_error"),
         variant: "destructive",
       })
     } finally {
@@ -422,8 +302,8 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     }
   }
   
-  // Handle file selection
-  const handleFileSelect = (type: 'exterior' | 'interior' | 'shelf', file: File | null) => {
+  // Handle file selection (only shelf images now)
+  const handleFileSelect = (file: File | null) => {
     if (file && file.size > 10 * 1024 * 1024) { // 10MB limit
       toast({
         title: t("common.error"),
@@ -432,38 +312,26 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       })
       return
     }
-    
-    // Update images state
-    setImages(prev => ({
-      ...prev,
-      [type]: file
-    }))
-    
-    // Create preview URL for images
+
+    setImages({ shelf: file })
+
+    // Create preview URL
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onloadend = () => {
-        const previewUrl = reader.result as string
-        setImagePreviews(prev => ({
-          ...prev,
-          [type]: previewUrl
-        }))
+        setImagePreviews({ shelf: reader.result as string })
       }
       reader.readAsDataURL(file)
     } else {
-      // Clear preview if not an image
-      setImagePreviews(prev => ({
-        ...prev,
-        [type]: null
-      }))
+      setImagePreviews({ shelf: null })
     }
   }
 
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit} className="grid gap-6">
-          {/* First Row - Shelf Name, City, Branch */}
-          <div className="grid gap-4 md:grid-cols-3">
+          {/* First Row - Shelf Name and Branch Selection */}
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="shelfName" className="text-start block">
                 {t("add_shelf.shelf_name")} *
@@ -477,58 +345,68 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="city" className="text-start block">
-                {t("add_shelf.city")} *
+              <Label htmlFor="branch" className="text-start block">
+                {t("shelves.select_branch")} *
               </Label>
-              <Select value={city} onValueChange={setCity} required>
-                <SelectTrigger id="city" className={cn("text-start", !city && "text-muted-foreground")}>
-                  <SelectValue placeholder={t("add_shelf.city_placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Riyadh">{getCityName("riyadh")}</SelectItem>
-                  <SelectItem value="Jeddah">{getCityName("jeddah")}</SelectItem>
-                  <SelectItem value="Mecca">{getCityName("mecca")}</SelectItem>
-                  <SelectItem value="Medina">{getCityName("medina")}</SelectItem>
-                  <SelectItem value="Dammam">{getCityName("dammam")}</SelectItem>
-                  <SelectItem value="Khobar">{getCityName("khobar")}</SelectItem>
-                  <SelectItem value="Dhahran">{getCityName("dhahran")}</SelectItem>
-                  <SelectItem value="Taif">{getCityName("taif")}</SelectItem>
-                  <SelectItem value="Buraidah">{getCityName("buraidah")}</SelectItem>
-                  <SelectItem value="Tabuk">{getCityName("tabuk")}</SelectItem>
-                  <SelectItem value="Hail">{getCityName("hail")}</SelectItem>
-                  <SelectItem value="Hafar Al-Batin">{getCityName("hafar_al_batin")}</SelectItem>
-                  <SelectItem value="Jubail">{getCityName("jubail")}</SelectItem>
-                  <SelectItem value="Najran">{getCityName("najran")}</SelectItem>
-                  <SelectItem value="Abha">{getCityName("abha")}</SelectItem>
-                  <SelectItem value="Khamis Mushait">{getCityName("khamis_mushait")}</SelectItem>
-                  <SelectItem value="Jazan">{getCityName("jazan")}</SelectItem>
-                  <SelectItem value="Yanbu">{getCityName("yanbu")}</SelectItem>
-                  <SelectItem value="Al-Qatif">{getCityName("al_qatif")}</SelectItem>
-                  <SelectItem value="Unaizah">{getCityName("unaizah")}</SelectItem>
-                  <SelectItem value="Arar">{getCityName("arar")}</SelectItem>
-                  <SelectItem value="Sakaka">{getCityName("sakaka")}</SelectItem>
-                  <SelectItem value="Al-Kharj">{getCityName("al_kharj")}</SelectItem>
-                  <SelectItem value="Al-Ahsa">{getCityName("al_ahsa")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="storeBranch" className="text-start block">
-                {t("add_shelf.branch")} *
-              </Label>
-              <Input
-                id="storeBranch"
-                value={storeBranch}
-                onChange={(e) => setStoreBranch(e.target.value)}
-                placeholder={t("add_shelf.branch_placeholder")}
-                className="text-start"
-                required
-              />
+              {!branches || branches.length === 0 ? (
+                <Alert>
+                  <AlertDescription className="flex items-center justify-between">
+                    <span>{t("shelves.no_branches_available")}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push("/store-dashboard/branches/new")}
+                    >
+                      <Plus className="w-4 h-4 me-2" />
+                      {t("branches.add_branch")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Select
+                  value={selectedBranch as string}
+                  onValueChange={(value) => setSelectedBranch(value as Id<"branches">)}
+                  required
+                >
+                  <SelectTrigger id="branch" className={cn("text-start", !selectedBranch && "text-muted-foreground")}>
+                    <SelectValue placeholder={t("shelves.select_branch_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch._id} value={branch._id}>
+                        {branch.branchName} - {getCityName(branch.city)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
+
+          {/* Branch Info Display - Show selected branch details */}
+          {selectedBranch && branches && (() => {
+            const branch = branches.find(b => b._id === selectedBranch)
+            if (!branch) return null
+            return (
+              <Alert>
+                <AlertTitle className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {t("branches.branch_details")}
+                </AlertTitle>
+                <AlertDescription>
+                  <p className="text-sm">
+                    <strong>{t("shelves.city")}:</strong> {getCityName(branch.city)}
+                  </p>
+                  <p className="text-sm">
+                    <strong>{t("shelves.address")}:</strong> {branch.location.address}
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )
+          })()}
 
           {/* Second Row - Pricing */}
           <div className="grid gap-4 md:grid-cols-3">
@@ -869,52 +747,6 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </div>
           </div>
 
-          {/* Map Section */}
-          <div className="space-y-3">
-            {/* Interactive Map Container */}
-            <MapPicker
-              defaultLocation={{
-                lat: selectedLocation.latitude,
-                lng: selectedLocation.longitude,
-                address: selectedLocation.address
-              }}
-              onLocationSelect={(location) => {
-                setSelectedLocation({
-                  latitude: location.lat,
-                  longitude: location.lng,
-                  address: location.address
-                })
-              }}
-              height="400px"
-              zoom={14}
-            />
-
-            {/* Location Label and Display - Under the Map */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-start block">
-                  {t("add_shelf.location")} *
-                </Label>
-                {locationPermissionDenied && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("add_shelf.location_permission_denied")}
-                  </p>
-                )}
-              </div>
-
-              {/* Selected location display */}
-              <div className="border rounded-lg p-3 bg-muted/30">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      {selectedLocation.address || t("add_shelf.click_map_to_select")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Description Section - After Map */}
           <div className="space-y-2">
@@ -930,178 +762,67 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             />
           </div>
 
-          {/* Image Upload Section */}
+          {/* Shelf Image Upload Section */}
           <div className="space-y-4">
             <Label className="text-start block font-semibold">
-              {t("add_shelf.shelf_images")} *
+              {t("add_shelf.shelf_image")}
             </Label>
-            
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Exterior Image Upload */}
-              <div className="space-y-2">
-                <input
-                  ref={exteriorInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileSelect('exterior', e.target.files?.[0] || null)}
-                />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
-                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {images.exterior || imagePreviews.exterior ? (
-                      <>
-                        {imagePreviews.exterior ? (
-                          <img 
-                            src={imagePreviews.exterior} 
-                            alt="Exterior preview" 
-                            className="w-full h-32 object-cover rounded-md mb-2"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{images.exterior?.name}</p>
-                        )}
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setImages(prev => ({ ...prev, exterior: null }))
-                            setImagePreviews(prev => ({ ...prev, exterior: null }))
-                            if (exteriorInputRef.current) exteriorInputRef.current.value = ''
-                          }}
-                        >
-                          {t("common.remove")}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-sm font-medium text-center">{t("add_shelf.upload_exterior_image")}</p>
-                        <p className="text-xs text-muted-foreground text-center">
-                          {t("add_shelf.upload_exterior_image_desc")}
-                        </p>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => exteriorInputRef.current?.click()}
-                        >
-                          {t("settings.store_data.choose_file")}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <p className="text-sm text-muted-foreground">
+              {t("shelves.store_images_from_branch")}
+            </p>
 
-              {/* Interior Image Upload */}
-              <div className="space-y-2">
-                <input
-                  ref={interiorInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileSelect('interior', e.target.files?.[0] || null)}
-                />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
-                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {images.interior || imagePreviews.interior ? (
-                      <>
-                        {imagePreviews.interior ? (
-                          <img 
-                            src={imagePreviews.interior} 
-                            alt="Interior preview" 
-                            className="w-full h-32 object-cover rounded-md mb-2"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{images.interior?.name}</p>
-                        )}
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setImages(prev => ({ ...prev, interior: null }))
-                            setImagePreviews(prev => ({ ...prev, interior: null }))
-                            if (interiorInputRef.current) interiorInputRef.current.value = ''
-                          }}
-                        >
-                          {t("common.remove")}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-sm font-medium text-center">{t("add_shelf.upload_interior_image")}</p>
-                        <p className="text-xs text-muted-foreground text-center">
-                          {t("add_shelf.upload_interior_image_desc")}
-                        </p>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => interiorInputRef.current?.click()}
-                        >
-                          {t("settings.store_data.choose_file")}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Shelf Image Upload */}
-              <div className="space-y-2">
-                <input
-                  ref={shelfInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileSelect('shelf', e.target.files?.[0] || null)}
-                />
-                <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
-                  <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                    {images.shelf || imagePreviews.shelf ? (
-                      <>
-                        {imagePreviews.shelf ? (
-                          <img 
-                            src={imagePreviews.shelf} 
-                            alt="Shelf preview" 
-                            className="w-full h-32 object-cover rounded-md mb-2"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>
-                        )}
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setImages(prev => ({ ...prev, shelf: null }))
-                            setImagePreviews(prev => ({ ...prev, shelf: null }))
-                            if (shelfInputRef.current) shelfInputRef.current.value = ''
-                          }}
-                        >
-                          {t("common.remove")}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-sm font-medium text-center">{t("add_shelf.upload_shelf_image")}</p>
-                        <p className="text-xs text-muted-foreground text-center">
-                          {t("add_shelf.upload_shelf_image_desc")}
-                        </p>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => shelfInputRef.current?.click()}
-                        >
-                          {t("settings.store_data.choose_file")}
-                        </Button>
-                      </>
-                    )}
-                  </div>
+            {/* Shelf Image Upload */}
+            <div className="space-y-2">
+              <input
+                ref={shelfInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+              />
+              <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
+                <div className="flex flex-col items-center justify-center space-y-2 h-full">
+                  {images.shelf || imagePreviews.shelf ? (
+                    <>
+                      {imagePreviews.shelf ? (
+                        <img
+                          src={imagePreviews.shelf}
+                          alt="Shelf preview"
+                          className="w-full h-32 object-cover rounded-md mb-2"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setImages({ shelf: null })
+                          setImagePreviews({ shelf: null })
+                          if (shelfInputRef.current) shelfInputRef.current.value = ''
+                        }}
+                      >
+                        {t("common.remove")}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm font-medium text-center">{t("add_shelf.upload_shelf_image")}</p>
+                      <p className="text-xs text-muted-foreground text-center">
+                        {t("add_shelf.upload_shelf_image_desc")}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => shelfInputRef.current?.click()}
+                      >
+                        {t("settings.store_data.choose_file")}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

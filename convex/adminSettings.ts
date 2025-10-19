@@ -278,7 +278,7 @@ export const createAdminProfile = mutation({
   },
 })
 
-// Add new admin user (legacy - for upgrading existing users)
+// Add new admin user
 export const addAdminUser = mutation({
   args: {
     email: v.string(),
