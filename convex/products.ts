@@ -459,17 +459,62 @@ export const updateProduct = mutation({
   },
 })
 
-// Delete a product (mark as out of stock)
+// Delete a product
 export const deleteProduct = mutation({
   args: {
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
-    // Mark product as out of stock instead of using isActive
-    await ctx.db.patch(args.productId, {
-      stockQuantity: 0,
-    })
-    
+    const userId = await requireAuth(ctx)
+
+    // Get the product to verify ownership
+    const product = await ctx.db.get(args.productId)
+    if (!product) {
+      throw new Error("Product not found")
+    }
+
+    // Verify user owns this product
+    const userProfile = await getUserProfile(ctx, userId)
+    if (!userProfile || userProfile.type !== "brand_owner") {
+      throw new Error("Unauthorized: Only brand owners can delete products")
+    }
+
+    if (product.brandProfileId !== userProfile.profile._id) {
+      throw new Error("Unauthorized: You can only delete your own products")
+    }
+
+    // Check if product is used in any active or payment_pending rental requests
+    const activeRentals = await ctx.db
+      .query("rentalRequests")
+      .filter(q => q.or(
+        q.eq(q.field("status"), "active"),
+        q.eq(q.field("status"), "payment_pending")
+      ))
+      .collect()
+
+    // Check if any active rental includes this product
+    for (const rental of activeRentals) {
+      if (rental.selectedProducts && rental.selectedProducts.length > 0) {
+        const hasProduct = rental.selectedProducts.some(sp => sp.productId === args.productId)
+        if (hasProduct) {
+          throw new Error("Cannot delete product: It is currently displayed in an active shelf rental")
+        }
+      }
+    }
+
+    // Check if product has any sales in customer orders
+    const allOrders = await ctx.db.query("customerOrders").collect()
+    const hasSales = allOrders.some(order =>
+      order.items.some(item => item.productId === args.productId)
+    )
+
+    if (hasSales) {
+      throw new Error("Cannot delete product: It has existing sales records")
+    }
+
+    // All checks passed - delete the product
+    await ctx.db.delete(args.productId)
+
     return { success: true }
   },
 })
