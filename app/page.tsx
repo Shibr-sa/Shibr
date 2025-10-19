@@ -85,11 +85,10 @@ export default function ShibrLandingPage() {
             <Image
               src="/logo.svg"
               alt={t("common.logo_alt")}
-              width={32}
-              height={32}
-              className="h-8 w-8"
+              width={24}
+              height={24}
+              className="h-14 w-14"
             />
-            <span className="font-medium">{t("common.shibr")}</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-6">
