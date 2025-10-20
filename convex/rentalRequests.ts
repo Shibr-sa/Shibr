@@ -554,7 +554,6 @@ export const getRentalRequestById = query({
       branchStore: branch ? {
         _id: branch._id,
         qrCodeUrl: branch.qrCodeUrl,
-        isActive: branch.storeIsActive,
         totalScans: branch.totalScans,
         totalOrders: branch.totalOrders,
         totalRevenue: branch.totalRevenue,
@@ -970,21 +969,11 @@ export const confirmPayment = mutation({
       throw new Error("Rental request not found")
     }
 
-    // Idempotency check: If already active, verify branch store is active and return success
+    // Idempotency check: If already active, return success
     // This prevents errors when webhook is called multiple times (retries, duplicates, etc.)
     if (request.status === "active") {
-      const shelf = await ctx.db.get(request.shelfId)
-      if (shelf?.branchId) {
-        const branch = await ctx.db.get(shelf.branchId)
-        if (branch?.storeIsActive) {
-          // Already processed successfully, return success (idempotent behavior)
-          console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active, branch store active)`)
-          return { success: true, alreadyProcessed: true }
-        }
-        // Status is active but branch store not active - this shouldn't happen, but let's log it
-        console.warn(`[confirmPayment] Request ${args.requestId} is active but branch store not active - will attempt to activate`)
-      }
-      // Continue with branch store activation below
+      console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active)`)
+      return { success: true, alreadyProcessed: true }
     } else {
       // Verify the request status is valid for payment confirmation
       // Allow payment from multiple states (for testing and flexibility)
@@ -999,18 +988,6 @@ export const confirmPayment = mutation({
       status: "active",
     })
 
-    // Activate branch store for QR code functionality
-    const shelf = await ctx.db.get(request.shelfId)
-    if (shelf?.branchId) {
-      const branch = await ctx.db.get(shelf.branchId)
-      if (branch && !branch.storeIsActive) {
-        await ctx.db.patch(shelf.branchId, {
-          storeIsActive: true,
-          storeActivatedAt: Date.now(),
-        })
-      }
-    }
-    
     // Auto-reject any other accepted/pending requests for the same shelf
     const otherRequests = await ctx.db
       .query("rentalRequests")

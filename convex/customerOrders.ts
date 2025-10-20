@@ -33,8 +33,8 @@ export const createOrderFromPayment = mutation({
 
     // Get the branch
     const branch = await ctx.db.get(args.branchId)
-    if (!branch || !branch.storeIsActive) {
-      throw new Error("Store not found or inactive")
+    if (!branch) {
+      throw new Error("Store not found")
     }
 
     // Calculate order details

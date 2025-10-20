@@ -167,8 +167,6 @@ const translations = {
     "dashboard.shelves_description": "إدارة الرفوف المتاحة في متجرك",
 
     // Public Store Page
-    "store.store_closed": "المتجر مغلق",
-    "store.store_closed_description": "هذا المتجر غير متاح حالياً",
     "store.cart": "السلة",
     "store.welcome_message": "مرحباً بك في متجرنا",
     "store.available_products": "المنتجات المتاحة",
@@ -373,8 +371,6 @@ const translations = {
     // QR Stores Page
     "qr_stores.title": "متاجر QR للرفوف",
     "qr_stores.description": "قم بإنشاء وإدارة رموز QR لمتاجر الرفوف المؤجرة",
-    "qr_stores.no_active_stores": "لا توجد متاجر نشطة",
-    "qr_stores.no_active_stores_description": "ستظهر المتاجر هنا عندما يتم تأكيد الدفع للإيجارات",
     "qr_stores.generate_qr": "إنشاء رمز QR",
     "qr_stores.regenerate_qr": "إعادة إنشاء رمز QR",
     "qr_stores.view_qr": "عرض رمز QR",
@@ -2602,8 +2598,6 @@ const translations = {
     "dashboard.shelves_description": "Manage available shelves in your store",
 
     // Public Store Page
-    "store.store_closed": "Store Closed",
-    "store.store_closed_description": "This store is currently unavailable",
     "store.cart": "Cart",
     "store.welcome_message": "Welcome to our store",
     "store.available_products": "Available Products",
@@ -2808,8 +2802,6 @@ const translations = {
     // QR Stores Page
     "qr_stores.title": "QR Shelf Stores",
     "qr_stores.description": "Create and manage QR codes for rented shelf stores",
-    "qr_stores.no_active_stores": "No Active Stores",
-    "qr_stores.no_active_stores_description": "Stores will appear here when rental payments are confirmed",
     "qr_stores.generate_qr": "Generate QR Code",
     "qr_stores.regenerate_qr": "Regenerate QR Code",
     "qr_stores.view_qr": "View QR Code",

@@ -116,10 +116,6 @@ const schema = defineSchema({
     totalScans: v.number(), // QR scans + page views
     totalOrders: v.number(),
     totalRevenue: v.number(),
-
-    // Store status (separate from branch physical status)
-    storeIsActive: v.boolean(), // True when at least one rental is active
-    storeActivatedAt: v.optional(v.number()),
   })
     .index("by_store_profile", ["storeProfileId"])
     .index("by_city", ["city"])

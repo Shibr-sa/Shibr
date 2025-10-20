@@ -39,7 +39,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: http:",
-    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://api.tap.company",
+    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://api.tap.company https://maps.googleapis.com https://*.googleapis.com",
     "frame-src 'self' https://checkout.tap.company",
     "object-src 'none'",
     "base-uri 'self'",
