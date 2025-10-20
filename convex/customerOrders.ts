@@ -21,11 +21,11 @@ export const createOrderFromPayment = mutation({
     console.log('[Order] Step 1: Creating order record with payment reference:', args.paymentReference)
 
     // Check if order already exists for this payment reference (duplicate prevention)
-    const existingOrders = await ctx.db
+    const existingOrder = await ctx.db
       .query("customerOrders")
-      .collect()
+      .withIndex("by_payment_reference", (q) => q.eq("paymentReference", args.paymentReference))
+      .first()
 
-    const existingOrder = existingOrders.find(o => o.paymentReference === args.paymentReference)
     if (existingOrder) {
       console.log('[Order] Order already exists for this payment:', existingOrder._id)
       return { orderId: existingOrder._id }

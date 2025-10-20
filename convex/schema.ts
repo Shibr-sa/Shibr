@@ -431,7 +431,8 @@ const schema = defineSchema({
   })
     .index("by_branch", ["branchId"])
     .index("by_customer_phone", ["customerPhone"])
-    .index("by_invoice_number", ["invoiceNumber"]),
+    .index("by_invoice_number", ["invoiceNumber"])
+    .index("by_payment_reference", ["paymentReference"]), // For duplicate order prevention
 })
 
 export default schema
