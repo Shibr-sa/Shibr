@@ -5,8 +5,13 @@ import { ResendOTPPasswordReset } from "./authPasswordReset";
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [Password({
     profile(params) {
+      // Normalize email to lowercase to ensure case-insensitive authentication
+      const email = typeof params.email === 'string'
+        ? params.email.toLowerCase().trim()
+        : params.email;
+
       const profile: any = {
-        email: params.email as string,
+        email,
         name: params.name as string,
         // Profile image is stored in userProfiles for custom uploads
       };
