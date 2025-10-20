@@ -129,11 +129,20 @@ export default function SignUpPage() {
         phoneNumber: signupData.phoneNumber,
       })
 
-      // If either email or phone already exists, show error and stop
+      // If either email or phone already exists, show field-specific error
       if (!availabilityResult.success) {
+        const fieldName = availabilityResult.field === "email" ? "email" : "phoneNumber"
+        const errorKey = availabilityResult.field === "email"
+          ? "auth.email_already_exists"
+          : "auth.phone_already_exists"
+
+        // Set error on specific field
+        setErrors(prev => ({ ...prev, [fieldName]: t(errorKey) }))
+
+        // Also show toast
         toast({
           title: t("auth.error"),
-          description: t(availabilityResult.error || "auth.account_already_exists"),
+          description: t(errorKey),
           variant: "destructive",
         })
         return

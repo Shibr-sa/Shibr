@@ -530,3 +530,32 @@ export const updateFreelanceDocument = mutation({
     return { success: true };
   },
 })
+
+// Pre-signin validation to provide specific error messages
+export const validateSigninEmail = mutation({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim()
+
+    // Check if email exists
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), email))
+      .first()
+
+    if (!existingUser) {
+      return {
+        success: false,
+        error: "auth.email_not_found",
+        field: "email"
+      }
+    }
+
+    return {
+      success: true,
+      message: "Email exists, proceed with signin"
+    }
+  }
+})
