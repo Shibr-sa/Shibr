@@ -158,8 +158,8 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
 
             <div className="flex-1 space-y-3">
               {/* Store URL */}
-              <div className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
-                <code className="flex-1 truncate">
+              <div className="flex items-center gap-2 p-2 bg-muted rounded text-sm overflow-hidden">
+                <code className="flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap block">
                   {branchStore.qrCodeUrl}
                 </code>
                 <Button
@@ -221,7 +221,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
 
       {/* QR Code Dialog */}
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[95vw]">
           <DialogHeader>
             <DialogTitle>{t("qr_stores.qr_code_ready")}</DialogTitle>
             <DialogDescription>
@@ -230,26 +230,24 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
           </DialogHeader>
 
           {qrCodeDataUrl && branchStore && (
-            <div className="space-y-4">
-              <div className="bg-white p-8 rounded-lg flex items-center justify-center">
+            <div className="space-y-4 overflow-hidden">
+              <div className="bg-white p-4 rounded-lg flex items-center justify-center">
                 <img
                   src={qrCodeDataUrl}
                   alt="QR Code"
-                  className="w-64 h-64"
+                  className="w-48 h-48 sm:w-64 sm:h-64"
                 />
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground text-center">
-                  {t("qr_stores.store_url")}:
-                </p>
-                <div className="flex items-center gap-2 p-2 bg-muted rounded">
-                  <code className="text-xs flex-1 truncate">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 p-2 bg-muted rounded min-w-0">
+                  <code className="text-xs flex-1 truncate min-w-0 block">
                     {branchStore.qrCodeUrl}
                   </code>
                   <Button
                     size="icon"
                     variant="ghost"
+                    className="shrink-0"
                     onClick={handleCopyLink}
                   >
                     <Copy className="h-4 w-4" />
@@ -267,7 +265,6 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
               {t("common.close")}
             </Button>
             <Button onClick={handleDownloadQR}>
-              <Download className="h-4 w-4 me-2" />
               {t("qr_stores.download_qr")}
             </Button>
           </DialogFooter>
