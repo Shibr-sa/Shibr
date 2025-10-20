@@ -99,10 +99,10 @@ export default function StoreDashboardShelvesPage() {
     
     // Apply search filter with debounced value
     if (debouncedSearchQuery) {
-      filtered = filtered.filter(shelf => 
+      filtered = filtered.filter(shelf =>
         shelf.shelfName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        shelf.city.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        shelf.storeBranch.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        shelf.branch?.city?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        shelf.branch?.branchName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       )
     }
     
@@ -406,7 +406,7 @@ export default function StoreDashboardShelvesPage() {
                           className="h-[72px]"
                         >
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                          <TableCell>{shelf.storeBranch}</TableCell>
+                          <TableCell>{shelf.branch?.branchName || "-"}</TableCell>
                           <TableCell>
                             {!shelf.isAvailable && shelf.renterName ? 
                               shelf.renterName : 

@@ -307,8 +307,8 @@ export default function ShelfDetailsPage() {
     storeCommission: shelfData.storeCommission ?? 0,
     status: shelfData.status || "available",
     city: shelfData.city,
-    branch: shelfData.storeBranch,
-    address: shelfData.location?.address || shelfData.storeBranch,
+    branch: shelfData.branchName,
+    address: shelfData.location?.address,
     description: shelfData.description,
     addedDate: shelfData.availableFrom || new Date(shelfData._creationTime).toLocaleDateString(),
     dimensions: {
