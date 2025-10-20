@@ -553,7 +553,6 @@ export const getRentalRequestById = query({
       // Branch store information (now at branch level instead of shelf level)
       branchStore: branch ? {
         _id: branch._id,
-        storeSlug: branch.storeSlug,
         qrCodeUrl: branch.qrCodeUrl,
         isActive: branch.storeIsActive,
         totalScans: branch.totalScans,

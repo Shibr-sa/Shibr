@@ -20,21 +20,21 @@ interface CartContextType {
   getTotalItems: () => number
   getTotalPrice: () => number
   getItemQuantity: (productId: Id<"products">) => number
-  storeSlug: string | null
-  setStoreSlug: (slug: string) => void
+  branchId: string | null
+  setBranchId: (id: string) => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
-  const [storeSlug, setStoreSlug] = useState<string | null>(null)
+  const [branchId, setBranchId] = useState<string | null>(null)
 
   // Load cart from sessionStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedCart = sessionStorage.getItem("cart")
-      const savedSlug = sessionStorage.getItem("cartStoreSlug")
+      const savedBranchId = sessionStorage.getItem("cartBranchId")
 
       if (savedCart) {
         try {
@@ -44,8 +44,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (savedSlug) {
-        setStoreSlug(savedSlug)
+      if (savedBranchId) {
+        setBranchId(savedBranchId)
       }
     }
   }, [])
@@ -57,12 +57,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items])
 
-  // Save store slug to sessionStorage
+  // Save branch ID to sessionStorage
   useEffect(() => {
-    if (typeof window !== "undefined" && storeSlug) {
-      sessionStorage.setItem("cartStoreSlug", storeSlug)
+    if (typeof window !== "undefined" && branchId) {
+      sessionStorage.setItem("cartBranchId", branchId)
     }
-  }, [storeSlug])
+  }, [branchId])
 
   const addItem = (newItem: Omit<CartItem, "quantity"> & { quantity?: number }) => {
     const existingItem = items.find(item => item.productId === newItem.productId)
@@ -172,8 +172,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         getTotalItems,
         getTotalPrice,
         getItemQuantity,
-        storeSlug,
-        setStoreSlug,
+        branchId,
+        setBranchId,
       }}
     >
       {children}

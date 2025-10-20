@@ -1,3 +1,9 @@
+// Helper to get site URL without trailing slash
+function getSiteUrl(): string {
+  const url = process.env.SITE_URL || 'http://localhost:3000'
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+
 export interface EmailTemplateProps {
   language: 'en' | 'ar';
   subject: string;
@@ -241,7 +247,7 @@ export function generateEmailHTML({
             <div class="container">
               <!-- Header -->
               <div class="header">
-                <a href="${process.env.SITE_URL || 'http://localhost:3000'}" class="logo">شبر | Shibr</a>
+                <a href="${getSiteUrl()}" class="logo">شبر | Shibr</a>
                 <div class="tagline">
                   ${isArabic ? 'منصة الربط الذكية بين المتاجر' : 'Smart Store Connection Platform'}
                 </div>

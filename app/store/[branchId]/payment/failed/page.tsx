@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { XCircle, RefreshCw, ShoppingCart } from "lucide-react"
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ branchId: string }>
 }
 
 export default function PaymentFailedPage({ params }: PageProps) {
@@ -28,11 +28,11 @@ export default function PaymentFailedPage({ params }: PageProps) {
                 searchParams.get("chargeId")
 
   const handleRetryPayment = () => {
-    router.push(`/store/${resolvedParams.slug}/cart`)
+    router.push(`/store/${resolvedParams.branchId}/cart`)
   }
 
   const handleBackToCart = () => {
-    router.push(`/store/${resolvedParams.slug}/cart`)
+    router.push(`/store/${resolvedParams.branchId}/cart`)
   }
 
   return (

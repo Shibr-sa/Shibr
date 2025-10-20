@@ -50,7 +50,7 @@ export default function StorePage() {
   const [quantity, setQuantity] = useState(1)
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const slug = params.slug as string
+  const branchId = params.branchId as string
 
   // Function to get initials from brand name
   const getInitials = (name: string) => {
@@ -65,7 +65,7 @@ export default function StorePage() {
   }
 
   // Fetch store data
-  const store = useQuery(api.branches.getBranchStoreBySlug, { slug })
+  const store = useQuery(api.branches.getBranchStoreById, { branchId: branchId as any })
   const incrementStats = useMutation(api.branches.incrementBranchStoreStats)
 
   // Track page view and QR scan
@@ -83,10 +83,10 @@ export default function StorePage() {
         // These are not critical to the user experience
       })
 
-      // Set store slug in cart
-      cart.setStoreSlug(slug)
+      // Set branch ID in cart
+      cart.setBranchId(branchId)
     }
-  }, [store?.branch?._id, slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [store?.branch?._id, branchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddToCart = (product: any, customQuantity?: number) => {
     const quantityToAdd = customQuantity || 1
@@ -165,7 +165,7 @@ export default function StorePage() {
   }
 
   const handleViewCart = () => {
-    router.push(`/store/${slug}/cart`)
+    router.push(`/store/${branchId}/cart`)
   }
 
   if (!store) {

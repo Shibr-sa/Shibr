@@ -44,7 +44,7 @@ export const createSignUpSchema = (t: (key: string) => string) => {
   })
 }
 
-// Keep the old schema for backward compatibility (using English messages)
+// Signup form validation schema
 export const signUpSchema = z.object({
   fullName: z.string().min(1, "Full name is required").min(2, "Full name must be at least 2 characters"),
   email: z.string().min(1, "Email is required").email("Invalid email address"),

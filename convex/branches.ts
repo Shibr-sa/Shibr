@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
+import { getSiteUrl } from "./utils"
 
 /**
  * Branch Management Functions
@@ -232,32 +233,9 @@ export const createBranch = mutation({
       throw new Error("Only store owners can create branches")
     }
 
-    // Get store profile for store name
-    const storeProfile = userProfile.profile as any
-
-    // Generate unique slug for the branch store
-    const baseSlug = `${storeProfile.storeName}-${args.branchName}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-
-    // Ensure slug is unique
-    let slug = baseSlug
-    let counter = 1
-    while (true) {
-      const existing = await ctx.db
-        .query("branches")
-        .withIndex("by_store_slug", (q) => q.eq("storeSlug", slug))
-        .first()
-
-      if (!existing) break
-      slug = `${baseSlug}-${counter}`
-      counter++
-    }
-
-    // Generate QR code URL
-    const siteUrl = process.env.SITE_URL || "http://localhost:3000"
-    const qrCodeUrl = `${siteUrl}/store/${slug}`
+    // Create branch with placeholder URL, then update with actual _id
+    // (required due to Convex schema validation - can't reference _id before insert)
+    const siteUrl = getSiteUrl()
 
     const branchId = await ctx.db.insert("branches", {
       storeProfileId: userProfile.profile._id,
@@ -270,13 +248,16 @@ export const createBranch = mutation({
       },
       images: args.images || [],
       status: "active",
-      // Store/QR fields
-      storeSlug: slug,
-      qrCodeUrl,
+      qrCodeUrl: "temp", // Will be updated immediately
       totalScans: 0,
       totalOrders: 0,
       totalRevenue: 0,
       storeIsActive: false, // Will be activated when first rental becomes active
+    })
+
+    // Update URL with the branch's own _id
+    await ctx.db.patch(branchId, {
+      qrCodeUrl: `${siteUrl}/store/${branchId}`,
     })
 
     return branchId
@@ -335,35 +316,6 @@ export const updateBranch = mutation({
       }
     }
 
-    // Regenerate slug if branch name changed
-    if (args.branchName && args.branchName !== branch.branchName) {
-      const storeProfile = await ctx.db.get(branch.storeProfileId)
-      if (storeProfile) {
-        const baseSlug = `${storeProfile.storeName}-${args.branchName}`
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "")
-
-        // Ensure new slug is unique
-        let slug = baseSlug
-        let counter = 1
-        while (true) {
-          const existing = await ctx.db
-            .query("branches")
-            .withIndex("by_store_slug", (q) => q.eq("storeSlug", slug))
-            .first()
-
-          if (!existing || existing._id === args.branchId) break
-          slug = `${baseSlug}-${counter}`
-          counter++
-        }
-
-        const siteUrl = process.env.SITE_URL || "http://localhost:3000"
-        updates.storeSlug = slug
-        updates.qrCodeUrl = `${siteUrl}/store/${slug}`
-      }
-    }
-
     await ctx.db.patch(args.branchId, updates)
 
     // Note: Shelves will automatically get updated city/location via branchId reference
@@ -408,17 +360,14 @@ export const deleteBranch = mutation({
   },
 })
 
-// Get branch store by slug (for public access)
-export const getBranchStoreBySlug = query({
+// Get branch store by ID (for public access via QR code/URL)
+export const getBranchStoreById = query({
   args: {
-    slug: v.string(),
+    branchId: v.id("branches"),
   },
   handler: async (ctx, args) => {
-    // 1. Get branch by slug
-    const branch = await ctx.db
-      .query("branches")
-      .withIndex("by_store_slug", (q) => q.eq("storeSlug", args.slug))
-      .first()
+    // 1. Get branch by ID
+    const branch = await ctx.db.get(args.branchId)
 
     if (!branch || !branch.storeIsActive) {
       return null

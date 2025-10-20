@@ -12,7 +12,7 @@ import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ branchId: string }>
 }
 
 export default function PaymentSuccessPage({ params }: PageProps) {
@@ -56,7 +56,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
 
       // Check if status indicates failure first
       if (status === "FAILED" || status === "DECLINED" || status === "CANCELLED") {
-        router.push(`/store/${resolvedParams.slug}/payment/failed?status=${status}&tap_id=${chargeId}`)
+        router.push(`/store/${resolvedParams.branchId}/payment/failed?status=${status}&tap_id=${chargeId}`)
         return
       }
 
@@ -66,7 +66,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           description: t("payment.missing_payment_info"),
           variant: "destructive",
         })
-        router.push(`/store/${resolvedParams.slug}/cart`)
+        router.push(`/store/${resolvedParams.branchId}/cart`)
         return
       }
 
@@ -121,7 +121,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           console.log('[Payment Success] Redirecting to order confirmation...')
 
           // Redirect to order confirmation page
-          router.push(`/store/${resolvedParams.slug}/order/${orderResult.orderId}`)
+          router.push(`/store/${resolvedParams.branchId}/order/${orderResult.orderId}`)
         } else {
           // Payment failed or pending
           toast({
@@ -129,7 +129,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
             description: t("payment.payment_not_completed"),
             variant: "destructive",
           })
-          router.push(`/store/${resolvedParams.slug}/payment`)
+          router.push(`/store/${resolvedParams.branchId}/payment`)
         }
       } catch (error) {
         console.error('[Payment Success] Error:', error)
@@ -138,7 +138,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           description: error instanceof Error ? error.message : t("payment.verification_failed"),
           variant: "destructive",
         })
-        router.push(`/store/${resolvedParams.slug}/payment`)
+        router.push(`/store/${resolvedParams.branchId}/payment`)
       } finally {
         setIsProcessing(false)
       }
@@ -162,7 +162,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
               {t("payment.failed_message")}
             </p>
             <Button
-              onClick={() => router.push(`/store/${resolvedParams.slug}/payment`)}
+              onClick={() => router.push(`/store/${resolvedParams.branchId}/payment`)}
               variant="destructive"
             >
               {t("payment.try_again")}

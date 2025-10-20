@@ -2,6 +2,12 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Helper to get site URL without trailing slash
+function getSiteUrl(): string {
+  const url = process.env.SITE_URL || 'http://localhost:3000'
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+
 export interface EmailTemplate {
   subject: string
   html: string
@@ -300,11 +306,12 @@ The Shibr Team`
       ? (isArabic ? 'صاحب علامة تجارية' : 'Brand Owner')
       : ''
 
+    const siteUrl = getSiteUrl()
     const dashboardLink = accountType === 'store_owner'
-      ? `${process.env.SITE_URL || 'http://localhost:3000'}/store-dashboard`
+      ? `${siteUrl}/store-dashboard`
       : accountType === 'brand_owner'
-      ? `${process.env.SITE_URL || 'http://localhost:3000'}/brand-dashboard`
-      : `${process.env.SITE_URL || 'http://localhost:3000'}`
+      ? `${siteUrl}/brand-dashboard`
+      : siteUrl
 
     const html = `
       <!DOCTYPE html>

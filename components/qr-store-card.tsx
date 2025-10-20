@@ -96,7 +96,7 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
     if (!qrCodeDataUrl || !branchStore) return
 
     const link = document.createElement("a")
-    link.download = `qr-${branchStore.storeSlug}.png`
+    link.download = `qr-${branchStore._id}.png`
     link.href = qrCodeDataUrl
     link.click()
   }

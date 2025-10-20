@@ -405,7 +405,7 @@ export const BRAND_BUSINESS_CATEGORIES_EN = [
 ] as const
 
 // ============================================
-// Combined Business Categories (for backward compatibility)
+// Combined Business Categories
 // ============================================
 
 export const SAUDI_BUSINESS_CATEGORIES = [

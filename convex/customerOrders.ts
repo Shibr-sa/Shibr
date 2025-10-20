@@ -456,7 +456,6 @@ export const getStoreOwnerOrders = query({
         return orders.map(order => ({
           ...order,
           storeName: storeProfile?.storeName || "Store",
-          storeSlug: branch.storeSlug,
         }))
       })
     )
@@ -531,7 +530,6 @@ export const getBrandOwnerOrders = query({
         return orders.map(order => ({
           ...order,
           storeName: storeProfile?.storeName || "Store",
-          storeSlug: branch?.storeSlug || "",
         }))
       })
     )

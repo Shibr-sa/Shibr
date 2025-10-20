@@ -4,15 +4,11 @@ import { api, internal } from "./_generated/api"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./helpers"
+import { getSiteUrl } from "./utils"
 
 // Get the Tap secret key
 function getTapSecretKey(): string {
   return process.env.TAP_SECRET_KEY!
-}
-
-// Helper to get the site URL
-function getSiteUrl(): string {
-  return process.env.SITE_URL || "http://localhost:3000"
 }
 
 
@@ -278,7 +274,7 @@ export const refundCharge = action({
         userId: userId,
       },
       post: {
-        url: `${process.env.SITE_URL || "https://shibr.io"}/api/tap/webhook-refund`,
+        url: `${getSiteUrl()}/api/tap/webhook-refund`,
       },
     }
 
@@ -322,7 +318,7 @@ export const createCheckoutSession = action({
     orderId: v.optional(v.id("customerOrders")),
     metadata: v.optional(v.object({
       type: v.string(), // "rental" or "purchase"
-      storeSlug: v.optional(v.string()), // Store slug for redirect URLs
+      branchId: v.optional(v.string()), // Branch ID for redirect URLs
     })),
   },
   handler: async (ctx, args) => {
@@ -380,8 +376,8 @@ export const createCheckoutSession = action({
     }
 
     // Prepare redirect URLs
-    // For store payments, we need the slug which we'll pass through metadata
-    const storeSlug = args.metadata?.storeSlug
+    // For store payments, we need the branch ID which we'll pass through metadata
+    const branchId = args.metadata?.branchId
 
     // Both success and failure redirect to the same page
     // The payment status will be checked there and appropriate dialog shown
@@ -396,9 +392,9 @@ export const createCheckoutSession = action({
       if (rentalRequest?.shelfId) {
         redirectUrl = `${siteUrl}/brand-dashboard/shelves/marketplace/${rentalRequest.shelfId}?rentalRequestId=${args.rentalRequestId}`
       }
-    } else if (storeSlug && args.metadata?.type === "purchase") {
+    } else if (branchId && args.metadata?.type === "purchase") {
       // For guest checkout purchases, redirect to store-specific success page
-      redirectUrl = `${siteUrl}/store/${storeSlug}/payment/success`
+      redirectUrl = `${siteUrl}/store/${branchId}/payment/success`
     }
 
     // Generate unique reference IDs
