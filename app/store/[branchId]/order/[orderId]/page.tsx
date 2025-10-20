@@ -26,7 +26,7 @@ export default function OrderConfirmationPage() {
   const router = useRouter()
   const { t, language } = useLanguage()
 
-  const slug = params.slug as string
+  const branchId = params.branchId as string
   const orderId = params.orderId as Id<"customerOrders">
 
   // Fetch order details
@@ -162,7 +162,7 @@ export default function OrderConfirmationPage() {
         <Button
           variant="default"
           className="w-full sm:w-auto"
-          onClick={() => router.push(`/store/${slug}`)}
+          onClick={() => router.push(`/store/${branchId}`)}
         >
           <ShoppingBag className="h-4 w-4 me-2" />
           {t("order.continue_shopping")}

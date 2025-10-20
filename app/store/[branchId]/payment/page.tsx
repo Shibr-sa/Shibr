@@ -42,7 +42,7 @@ export default function PaymentPage() {
   const { t, language } = useLanguage()
   const { toast } = useToast()
   const cart = useCart()
-  const slug = params.slug as string
+  const branchId = params.branchId as string
 
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -65,7 +65,7 @@ export default function PaymentPage() {
     if (tapId) {
       // Build URL with all parameters
       const params = new URLSearchParams(searchParams.toString())
-      router.push(`/store/${slug}/payment/success?${params.toString()}`)
+      router.push(`/store/${branchId}/payment/success?${params.toString()}`)
       return
     }
 
@@ -78,7 +78,7 @@ export default function PaymentPage() {
         description: t("payment.redirecting_cart"),
         variant: "destructive",
       })
-      router.push(`/store/${slug}/cart`)
+      router.push(`/store/${branchId}/cart`)
       return
     }
 
@@ -86,9 +86,9 @@ export default function PaymentPage() {
       const data = JSON.parse(pendingOrder)
       setOrderData(data)
     } catch (error) {
-      router.push(`/store/${slug}/cart`)
+      router.push(`/store/${branchId}/cart`)
     }
-  }, [slug, router, t, toast, tapId, paymentStatus, searchParams])
+  }, [branchId, router, t, toast, tapId, paymentStatus, searchParams])
 
   const handlePayNow = async () => {
     if (!orderData) return
@@ -106,7 +106,7 @@ export default function PaymentPage() {
         customerPhone: orderData.customerPhone,
         metadata: {
           type: "purchase",
-          storeSlug: slug,
+          branchId: branchId,
         }
       })
 
@@ -152,7 +152,7 @@ export default function PaymentPage() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/store/${slug}/cart`)}
+            onClick={() => router.push(`/store/${branchId}/cart`)}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 me-2" />

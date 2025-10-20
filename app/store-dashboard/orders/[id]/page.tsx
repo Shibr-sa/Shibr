@@ -527,7 +527,7 @@ export default function RequestDetailsPage() {
           )}
 
           {/* QR Store Section - Only for active rentals */}
-          {(rentalRequest.status === "active" || rentalRequest.shelfStore) && (
+          {(rentalRequest.status === "active" || rentalRequest.branchStore) && (
             <div className="mt-6">
               <QRStoreCard rentalRequestId={requestId} />
             </div>

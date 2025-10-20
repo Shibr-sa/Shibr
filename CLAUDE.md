@@ -89,7 +89,7 @@ Three distinct user types with role-based access control:
 - `/marketplace` - Public shelf listings
 - `/signin`, `/signup`, `/verify-email` - Authentication flow
 - `/forgot-password`, `/reset-password` - Password recovery
-- `/store/[slug]/*` - QR store customer interface for active rentals
+- `/store/[branchId]/*` - QR store customer interface for active rentals (uses branch ID)
 
 ### Convex Database Schema
 
@@ -117,7 +117,7 @@ Three distinct user types with role-based access control:
 - **notifications** - User alerts for requests, messages
 - **payments** - Transaction records with Tap gateway references
 - **platformSettings** - Global configuration (fees, terms)
-- **shelfStores** - QR-enabled stores for active rentals
+- **branches** - Store branches with QR-enabled stores, analytics, and location data
 - **customerOrders** - Orders from QR store customers
 - **bankAccounts** - Store owner payout information
 

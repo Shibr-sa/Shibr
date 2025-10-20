@@ -110,8 +110,7 @@ const schema = defineSchema({
     ),
 
     // Store/QR Code fields
-    storeSlug: v.string(), // URL-friendly identifier for store page
-    qrCodeUrl: v.string(), // Full URL that QR code points to
+    qrCodeUrl: v.string(), // Full URL that QR code points to (uses branch _id)
     qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
 
     // Store analytics
@@ -125,8 +124,7 @@ const schema = defineSchema({
   })
     .index("by_store_profile", ["storeProfileId"])
     .index("by_city", ["city"])
-    .index("by_store_city", ["storeProfileId", "city"])
-    .index("by_store_slug", ["storeSlug"]),
+    .index("by_store_city", ["storeProfileId", "city"]),
 
   // Shelves/Stores for marketplace
   shelves: defineTable({

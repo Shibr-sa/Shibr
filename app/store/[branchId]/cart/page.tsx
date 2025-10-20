@@ -36,7 +36,7 @@ export default function CartPage() {
   const { toast } = useToast()
   const cart = useCart()
 
-  const slug = params.slug as string
+  const branchId = params.branchId as string
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false)
@@ -54,7 +54,7 @@ export default function CartPage() {
   const [otpError, setOtpError] = useState("")
 
   // Fetch store data to get current stock levels
-  const store = useQuery(api.branches.getBranchStoreBySlug, { slug })
+  const store = useQuery(api.branches.getBranchStoreById, { branchId: branchId as any })
 
   // OTP mutations
   const sendCheckoutOTP = useMutation(api.phoneVerification.sendCheckoutOTP)
@@ -270,7 +270,7 @@ export default function CartPage() {
 
       // Close dialog and redirect to payment page
       setPhoneDialogOpen(false)
-      router.push(`/store/${slug}/payment`)
+      router.push(`/store/${branchId}/payment`)
     } catch (error: any) {
       toast({
         title: t("store.order_failed"),
@@ -304,7 +304,7 @@ export default function CartPage() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/store/${slug}`)}
+            onClick={() => router.push(`/store/${branchId}`)}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 me-2" />
@@ -320,7 +320,7 @@ export default function CartPage() {
                 <p className="text-xl text-muted-foreground">{t("store.empty_cart")}</p>
                 <Button
                   className="mt-4"
-                  onClick={() => router.push(`/store/${slug}`)}
+                  onClick={() => router.push(`/store/${branchId}`)}
                 >
                   {t("store.continue_shopping")}
                 </Button>
