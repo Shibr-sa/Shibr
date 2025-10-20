@@ -111,7 +111,6 @@ const schema = defineSchema({
 
     // Store/QR Code fields
     qrCodeUrl: v.string(), // Full URL that QR code points to (uses branch _id)
-    qrCodeImage: v.optional(v.id("_storage")), // Generated QR code image
 
     // Store analytics
     totalScans: v.number(), // QR scans + page views
