@@ -49,6 +49,28 @@ export const addShelf = mutation({
       throw new Error("Branch does not belong to this store owner");
     }
 
+    // Validate monthly price must be greater than 0
+    if (args.monthlyPrice <= 0) {
+      throw new Error("Monthly price must be greater than 0");
+    }
+
+    // Validate shelf dimensions must be greater than 0
+    const lengthNum = parseFloat(args.length);
+    const widthNum = parseFloat(args.width);
+    const depthNum = parseFloat(args.depth);
+
+    if (isNaN(lengthNum) || lengthNum <= 0) {
+      throw new Error("Shelf length must be greater than 0");
+    }
+
+    if (isNaN(widthNum) || widthNum <= 0) {
+      throw new Error("Shelf width must be greater than 0");
+    }
+
+    if (isNaN(depthNum) || depthNum <= 0) {
+      throw new Error("Shelf depth must be greater than 0");
+    }
+
     // Get platform settings for dynamic fee percentage
     const settings = await ctx.runQuery(internal.platformSettings.internalGetPlatformSettings)
     const storeRentCommission = settings.storeRentCommission

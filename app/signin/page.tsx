@@ -102,7 +102,8 @@ export default function SignInPage() {
     try {
       // Create FormData for Convex Auth
       const authFormData = new FormData()
-      authFormData.append("email", formData.email)
+      // Normalize email to lowercase for case-insensitive authentication
+      authFormData.append("email", formData.email.toLowerCase().trim())
       authFormData.append("password", formData.password)
       authFormData.append("flow", "signIn")
 

@@ -204,10 +204,11 @@ export const getAdminUsers = query({
     // Filter by search query if provided
     let filteredAdmins = adminUsersWithEmails
     if (args.searchQuery) {
+      // Note: emails are already stored lowercase, only normalize search input
       const query = args.searchQuery.toLowerCase()
       filteredAdmins = adminUsersWithEmails.filter(user =>
         user.name?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query)
+        user.email?.includes(query)  // email already lowercase in DB
       )
     }
     

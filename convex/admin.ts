@@ -585,10 +585,12 @@ export const getStores = query({
     )
 
     // Filter by search query
+    // Note: emails are already stored lowercase, only normalize search input
+    const normalizedSearchQuery = searchQuery.toLowerCase();
     const filteredStoreOwners = searchQuery
       ? allStoreOwners.filter(store =>
-        store.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        store.email?.toLowerCase().includes(searchQuery.toLowerCase())
+        store.storeName?.toLowerCase().includes(normalizedSearchQuery) ||
+        store.email?.includes(normalizedSearchQuery)  // email already lowercase in DB
       )
       : allStoreOwners;
 
@@ -848,10 +850,12 @@ export const getBrands = query({
     });
 
     // Filter by search query
+    // Note: emails are already stored lowercase, only normalize search input
+    const normalizedQuery = searchQuery.toLowerCase();
     const filteredBrandOwners = searchQuery
       ? allBrandOwners.filter(brand =>
-        brand.brandName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        brand.email?.toLowerCase().includes(searchQuery.toLowerCase())
+        brand.brandName?.toLowerCase().includes(normalizedQuery) ||
+        brand.email?.includes(normalizedQuery)  // email already lowercase in DB
       )
       : allBrandOwners;
 

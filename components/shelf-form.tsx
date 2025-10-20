@@ -200,7 +200,32 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
       return
     }
 
-    // Validate discount percentage
+    // Validate monthly price must be greater than 0
+    const price = parseFloat(monthlyPrice)
+    if (isNaN(price) || price <= 0) {
+      toast({
+        title: t("common.error"),
+        description: t("add_shelf.price_must_be_positive"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate shelf dimensions must be greater than 0
+    const lengthNum = parseFloat(length)
+    const widthNum = parseFloat(width)
+    const depthNum = parseFloat(depth)
+
+    if (isNaN(lengthNum) || lengthNum <= 0 || isNaN(widthNum) || widthNum <= 0 || isNaN(depthNum) || depthNum <= 0) {
+      toast({
+        title: t("common.error"),
+        description: t("add_shelf.dimensions_must_be_positive"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate commission percentage max
     const discount = parseFloat(storeCommission)
     const maxDiscount = NUMERIC_LIMITS.DEFAULT_MAX_DISCOUNT
     if (isNaN(discount) || discount > maxDiscount) {
