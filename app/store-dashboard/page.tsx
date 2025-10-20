@@ -432,7 +432,7 @@ export default function StoreDashboardPage() {
                         {recentShelves.map((shelf: any) => (
                           <TableRow key={shelf._id} className="h-[72px]">
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                            <TableCell>{shelf.branch}</TableCell>
+                            <TableCell>{shelf.branch?.branchName || '-'}</TableCell>
                             <TableCell>
                               {!shelf.isAvailable && shelf.renterName ?
                                 shelf.renterName :

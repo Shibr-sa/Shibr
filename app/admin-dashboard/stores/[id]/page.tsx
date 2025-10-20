@@ -481,7 +481,7 @@ export default function StoreDetailsPage() {
                         {pageItems.map((shelf) => (
                           <TableRow key={shelf.id} className="h-[72px]">
                             <TableCell className="py-3 font-medium">{shelf.name}</TableCell>
-                            <TableCell className="py-3">{shelf.branch}</TableCell>
+                            <TableCell className="py-3">{shelf.branch?.branchName || '-'}</TableCell>
                             <TableCell className="py-3">
                               <Badge
                                 variant={shelf.status === "rented" ? "default" : "secondary"}
