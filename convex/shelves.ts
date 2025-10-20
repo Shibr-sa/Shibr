@@ -368,6 +368,9 @@ export const getShelfById = query({
       renter = renterProfile?.userId ? await ctx.db.get(renterProfile.userId) : null
     }
     
+    // Get branch details if shelf has a branch
+    const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+
     // Get image URLs from the images array
     const imagesWithUrls = await Promise.all(
       (shelf.images || []).map(async (img) => ({
@@ -375,7 +378,7 @@ export const getShelfById = query({
         url: await ctx.storage.getUrl(img.storageId)
       }))
     )
-    
+
     return {
       ...shelf,
       ownerName: ownerProfile?.storeName,
@@ -383,7 +386,11 @@ export const getShelfById = query({
       renterName: renterProfile?.brandName,
       renterEmail: renter?.email,
       renterRating: null,
-      images: imagesWithUrls
+      images: imagesWithUrls,
+      // Branch information
+      branchName: branch?.branchName,
+      city: branch?.city,
+      location: branch?.location,
     }
   },
 })
