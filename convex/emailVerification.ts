@@ -65,7 +65,7 @@ export const checkAvailability = mutation({
     if (existingEmail) {
       return {
         success: false,
-        error: "auth.account_already_exists",
+        error: "auth.email_already_exists",
         field: "email"
       }
     }
@@ -84,7 +84,7 @@ export const checkAvailability = mutation({
     if (existingPhone) {
       return {
         success: false,
-        error: "auth.account_already_exists",
+        error: "auth.phone_already_exists",
         field: "phone"
       }
     }

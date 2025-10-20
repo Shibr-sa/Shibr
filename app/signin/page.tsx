@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import { useLanguage } from "@/contexts/localization-context"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthActions } from "@convex-dev/auth/react"
-import { useQuery, useConvexAuth } from "convex/react"
+import { useQuery, useConvexAuth, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { parseAuthError } from "@/lib/auth-errors"
 
@@ -24,6 +24,7 @@ export default function SignInPage() {
   const { signIn } = useAuthActions()
   const { isAuthenticated } = useConvexAuth()
   const userWithProfile = useQuery(api.users.getCurrentUserWithProfile)
+  const validateSigninEmail = useMutation(api.users.validateSigninEmail)
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -100,6 +101,24 @@ export default function SignInPage() {
     setIsLoading(true)
 
     try {
+      // Step 1: Validate email exists
+      const emailValidation = await validateSigninEmail({
+        email: formData.email.toLowerCase().trim()
+      })
+
+      if (!emailValidation.success) {
+        // Email doesn't exist - show error on email field
+        setErrors(prev => ({ ...prev, email: t("auth.email_not_found") }))
+        toast({
+          title: t("auth.error"),
+          description: t("auth.email_not_found"),
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Step 2: Email exists, attempt signin
       // Create FormData for Convex Auth
       const authFormData = new FormData()
       // Normalize email to lowercase for case-insensitive authentication
@@ -118,22 +137,14 @@ export default function SignInPage() {
       // The useEffect hook will handle the redirect once userWithProfile is loaded
       setIsCheckingAuth(true)
     } catch (error: any) {
-      // Parse error using centralized error handler
-      const parsedError = parseAuthError(error)
-      const errorMessage = t(parsedError.translationKey as any) || parsedError.fallbackMessage
+      // If we reach here and email validation passed, it means the password is incorrect
+      setErrors(prev => ({ ...prev, password: t("auth.incorrect_password") }))
 
       toast({
         title: t("auth.error"),
-        description: errorMessage,
+        description: t("auth.incorrect_password"),
         variant: "destructive",
       })
-
-      // Handle redirect if needed
-      if (parsedError.shouldRedirect && parsedError.redirectTo) {
-        setTimeout(() => {
-          router.push(parsedError.redirectTo!)
-        }, 2000)
-      }
     } finally {
       setIsLoading(false)
     }
