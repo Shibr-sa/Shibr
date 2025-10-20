@@ -97,11 +97,19 @@ export default function PaymentSuccessPage({ params }: PageProps) {
 
           // Get order data from sessionStorage
           const pendingOrderData = sessionStorage.getItem("pendingOrderData")
+          console.log('[Payment Success] Session storage data:', pendingOrderData ? 'Found' : 'Missing')
+
           if (!pendingOrderData) {
-            throw new Error("Order data not found")
+            console.error('[Payment Success] ERROR: No order data in sessionStorage')
+            throw new Error("Order data not found in session. Please try placing the order again.")
           }
 
           const orderData = JSON.parse(pendingOrderData)
+          console.log('[Payment Success] Order data parsed:', {
+            branchId: orderData.branchId,
+            customerName: orderData.customerName,
+            itemCount: orderData.items?.length
+          })
 
           // STEP 1: Create order record with payment reference
           // This will automatically check for duplicates and return existing order if found
@@ -135,10 +143,23 @@ export default function PaymentSuccessPage({ params }: PageProps) {
 
           console.log('[Payment Success] Redirecting to order confirmation...')
 
-          // Redirect to order confirmation page
-          router.push(`/store/${resolvedParams.branchId}/order/${orderResult.orderId}`)
+          // Small delay to ensure state is saved, then redirect
+          const redirectUrl = `/store/${resolvedParams.branchId}/order/${orderResult.orderId}`
+          console.log('[Payment Success] Redirect URL:', redirectUrl)
+
+          setTimeout(() => {
+            try {
+              // Try Next.js router first
+              router.replace(redirectUrl)
+            } catch (routerError) {
+              console.error('[Payment Success] Router error, using window.location:', routerError)
+              // Fallback to window.location if router fails
+              window.location.replace(redirectUrl)
+            }
+          }, 500)
         } else {
           // Payment failed or pending
+          console.log('[Payment Success] Payment not successful, status:', chargeDetails.status)
           toast({
             title: t("payment.error_title"),
             description: t("payment.payment_not_completed"),
@@ -160,7 +181,6 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           variant: "destructive",
         })
         router.push(`/store/${resolvedParams.branchId}/payment`)
-      } finally {
         setIsProcessing(false)
       }
     }

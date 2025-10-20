@@ -143,9 +143,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([])
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("cart")
-      sessionStorage.removeItem("cartStoreSlug")
+      sessionStorage.removeItem("cartBranchId")
     }
-    setStoreSlug(null)
+    setBranchId(null)
   }
 
   const getTotalItems = () => {
