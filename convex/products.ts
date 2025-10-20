@@ -407,11 +407,11 @@ export const getBrandDashboardStats = query({
     // Batch fetch all branches (avoid N+1 queries)
     const branches = await Promise.all([...branchIds].map(id => ctx.db.get(id)))
 
-    // Sum up scans and orders from all active branches
+    // Sum up scans and orders from all branches
     let totalScans = 0
     let totalOrders = 0
     for (const branch of branches) {
-      if (branch && branch.storeIsActive) {
+      if (branch) {
         totalScans += branch.totalScans || 0
         totalOrders += branch.totalOrders || 0
       }

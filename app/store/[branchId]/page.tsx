@@ -190,24 +190,6 @@ export default function StorePage() {
     )
   }
 
-  if (!store.branch?.storeIsActive) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <Store className="h-12 w-12 text-muted-foreground mx-auto" />
-              <h2 className="text-2xl font-bold">{t("store.store_closed")}</h2>
-              <p className="text-muted-foreground">
-                {t("store.store_closed_description")}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   // Get unique brand names for header (use first brand if multiple)
   const brandName = store.storeName || "Store"
   // For brand logo, we could use the first product's brand, but for now just use initials

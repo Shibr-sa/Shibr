@@ -37,6 +37,12 @@ export default function PaymentSuccessPage({ params }: PageProps) {
                  searchParams.get("payment_status") ||
                  searchParams.get("result")
 
+  console.log('[Payment Success] URL params:', {
+    chargeId,
+    status,
+    allParams: Object.fromEntries(searchParams.entries())
+  })
+
   // State for order creation
   const [isProcessing, setIsProcessing] = useState(true)
 
@@ -76,7 +82,16 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           chargeId: chargeId,
         })
 
-        if (chargeDetails.status === "CAPTURED" || chargeDetails.status === "AUTHORIZED") {
+        console.log('[Payment Success] Charge details:', chargeDetails)
+        console.log('[Payment Success] Payment status:', chargeDetails.status)
+
+        // Only proceed if payment is definitely successful
+        const successStatuses = ["CAPTURED", "AUTHORIZED"]
+        const isPaymentSuccessful = successStatuses.includes(chargeDetails.status)
+
+        console.log('[Payment Success] Is payment successful?', isPaymentSuccessful)
+
+        if (isPaymentSuccessful) {
           // Payment successful - follow standard flow
           console.log('[Payment Success] Payment verified, starting order flow...')
 
@@ -132,7 +147,13 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           router.push(`/store/${resolvedParams.branchId}/payment`)
         }
       } catch (error) {
-        console.error('[Payment Success] Error:', error)
+        console.error('[Payment Success] Error occurred:', error)
+        console.error('[Payment Success] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          chargeId,
+          status
+        })
         toast({
           title: t("payment.error_title"),
           description: error instanceof Error ? error.message : t("payment.verification_failed"),

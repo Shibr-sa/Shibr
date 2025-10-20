@@ -50,35 +50,6 @@ export const checkRentalStatuses = internalMutation({
           status: "completed"
         })
 
-        // Check if branch store should be deactivated
-        const shelf = await ctx.db.get(rental.shelfId)
-        if (shelf?.branchId) {
-          // Get all shelves in this branch
-          const branchShelves = await ctx.db
-            .query("shelves")
-            .withIndex("by_branch", (q) => q.eq("branchId", shelf.branchId))
-            .collect()
-
-          // Check if any other active rentals exist for this branch
-          const hasActiveRentals = await Promise.all(
-            branchShelves.map(async (s) =>
-              ctx.db
-                .query("rentalRequests")
-                .withIndex("by_shelf_status", (q) =>
-                  q.eq("shelfId", s._id).eq("status", "active")
-                )
-                .first()
-            )
-          ).then((results) => results.some((r) => r !== null))
-
-          // Deactivate branch store if no active rentals remain
-          if (!hasActiveRentals) {
-            await ctx.db.patch(shelf.branchId, {
-              storeIsActive: false,
-            })
-          }
-        }
-
         // Send system message about rental completion
         if (rental.conversationId) {
           await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {

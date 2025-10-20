@@ -22,6 +22,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useToast } from "@/hooks/use-toast"
+import { BranchQRCard } from "@/components/branch-qr-card"
 
 export default function BranchDetailsPage() {
   const { t, direction } = useLanguage()
@@ -212,6 +213,9 @@ export default function BranchDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Store Section */}
+      <BranchQRCard branchId={branchId} />
 
       {/* Shelves using this branch */}
       {branch.shelves && branch.shelves.length > 0 && (

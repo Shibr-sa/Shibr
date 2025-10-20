@@ -40,12 +40,12 @@ This project uses Bun. Install dependencies with `bun install`.
 
 #### User Journey
 1. Users sign up selecting role (store owner or brand owner)
-2. Store owners list shelves with location, size, and pricing
+2. Store owners create branches (each gets a permanent QR code) and list shelves with location, size, and pricing
 3. Brand owners browse marketplace and request rentals
 4. Real-time chat between parties
 5. Store owners approve/reject requests
 6. Payment processing via Tap Payment Gateway
-7. Approved rentals become active contracts with QR-enabled stores
+7. Approved rentals become active contracts - brand products appear in the branch's QR store
 
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
@@ -89,7 +89,7 @@ Three distinct user types with role-based access control:
 - `/marketplace` - Public shelf listings
 - `/signin`, `/signup`, `/verify-email` - Authentication flow
 - `/forgot-password`, `/reset-password` - Password recovery
-- `/store/[branchId]/*` - QR store customer interface for active rentals (uses branch ID)
+- `/store/[branchId]/*` - QR store customer interface (uses branch ID)
 
 ### Convex Database Schema
 
@@ -117,7 +117,7 @@ Three distinct user types with role-based access control:
 - **notifications** - User alerts for requests, messages
 - **payments** - Transaction records with Tap gateway references
 - **platformSettings** - Global configuration (fees, terms)
-- **branches** - Store branches with QR-enabled stores, analytics, and location data
+- **branches** - Store branches with QR codes, analytics, and location data
 - **customerOrders** - Orders from QR store customers
 - **bankAccounts** - Store owner payout information
 

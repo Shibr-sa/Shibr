@@ -252,7 +252,6 @@ export const createBranch = mutation({
       totalScans: 0,
       totalOrders: 0,
       totalRevenue: 0,
-      storeIsActive: false, // Will be activated when first rental becomes active
     })
 
     // Update URL with the branch's own _id
@@ -369,7 +368,7 @@ export const getBranchStoreById = query({
     // 1. Get branch by ID
     const branch = await ctx.db.get(args.branchId)
 
-    if (!branch || !branch.storeIsActive) {
+    if (!branch) {
       return null
     }
 
