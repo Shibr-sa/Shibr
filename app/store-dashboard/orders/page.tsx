@@ -221,7 +221,7 @@ export default function StoreDashboardOrdersPage() {
       {/* Search and Filter Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         {/* Filter Pills */}
-        <RadioGroup value={filter} onValueChange={setFilter} className="flex items-center gap-4">
+        <RadioGroup value={filter} onValueChange={setFilter} className="flex flex-wrap items-center gap-3 sm:gap-4">
           {orderedOrdersFilters.map((option) => (
             <div key={option.value} className="flex items-center gap-2">
               <RadioGroupItem
@@ -229,7 +229,7 @@ export default function StoreDashboardOrdersPage() {
                 id={`orders-${option.value}`}
                 className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
               />
-              <Label htmlFor={`orders-${option.value}`} className="cursor-pointer">
+              <Label htmlFor={`orders-${option.value}`} className="cursor-pointer whitespace-nowrap">
                 {option.label}
               </Label>
             </div>
@@ -237,7 +237,7 @@ export default function StoreDashboardOrdersPage() {
         </RadioGroup>
 
         {/* Search */}
-        <div className="relative w-80 ms-auto">
+        <div className="relative w-full sm:w-80 sm:ms-auto">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t("orders.search_placeholder")}
@@ -259,15 +259,15 @@ export default function StoreDashboardOrdersPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="h-12 text-start font-medium">{t("table.store")}</TableHead>
-              <TableHead className="h-12 text-start font-medium">{t("table.branch")}</TableHead>
-              <TableHead className="h-12 text-start font-medium">{t("table.rental_duration")}</TableHead>
+              <TableHead className="h-12 text-start font-medium hidden md:table-cell">{t("table.branch")}</TableHead>
+              <TableHead className="h-12 text-start font-medium hidden md:table-cell">{t("table.rental_duration")}</TableHead>
               <TableHead className="h-12 text-start font-medium">{t("table.status")}</TableHead>
-              <TableHead className="h-12 text-start font-medium">{t("table.request_date")}</TableHead>
+              <TableHead className="h-12 text-start font-medium hidden lg:table-cell">{t("table.request_date")}</TableHead>
               <TableHead className="h-12 text-start font-medium">{t("table.options")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -277,10 +277,10 @@ export default function StoreDashboardOrdersPage() {
               Array.from({ length: itemsPerPage }).map((_, index) => (
                 <TableRow key={`loading-${index}`} className="h-[72px]">
                   <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                  <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                 </TableRow>
               ))
@@ -292,16 +292,16 @@ export default function StoreDashboardOrdersPage() {
                     <TableCell className="py-3 font-medium">
                       {request.otherUserName}
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 hidden md:table-cell">
                       {request.shelfBranch || t("common.jeddah")}
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 hidden md:table-cell">
                       {calculateDuration(new Date(request.startDate).toISOString(), new Date(request.endDate).toISOString())}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(request.status)}
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 hidden lg:table-cell">
                       {formatDate(request._creationTime, language, 'long')}
                     </TableCell>
                     <TableCell className="py-3">

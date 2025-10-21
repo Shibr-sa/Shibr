@@ -5,7 +5,7 @@ import { Store, QrCode, Banknote } from "lucide-react"
 
 export default function BrandShelvesLoading() {
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-6">
       {/* Statistics Section Skeleton */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -23,7 +23,7 @@ export default function BrandShelvesLoading() {
         </div>
         
         {/* Stats Cards Skeleton */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card className="bg-muted/50 border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -72,11 +72,11 @@ export default function BrandShelvesLoading() {
       </div>
 
       {/* Current Shelves Section Skeleton */}
-      <div className="space-y-4 w-full">
+      <div className="space-y-4">
         <div className="space-y-4">
           <div>
             <Skeleton className="h-7 w-64 mb-2" />
-            <Skeleton className="h-4 w-96 max-w-full" />
+            <Skeleton className="h-4 w-96" />
           </div>
           
           {/* Search and Add Button Skeleton */}

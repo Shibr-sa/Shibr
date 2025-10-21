@@ -186,11 +186,11 @@ export default function ShibrLandingPage() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="space-y-8">
             <div className="space-y-6">
-              <h1 className="text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl text-start">
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl text-start">
                 {t("hero.title")} <span className="text-primary">{t("hero.highlight")}</span>
               </h1>
 
-              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl text-start">
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl text-start">
                 {t("hero.description")}
               </p>
             </div>
@@ -237,10 +237,10 @@ export default function ShibrLandingPage() {
       <section className="bg-muted py-16">
         <div className="container text-center">
           <div className="space-y-6 mb-12">
-            <h2 className="text-3xl font-medium tracking-tight">
+            <h2 className="text-2xl font-medium tracking-tight md:text-3xl">
               {t("shibr.title")} <span className="text-primary">{t("shibr.highlight")}</span> {t("shibr.subtitle")}
             </h2>
-            <p className="text-xl text-muted-foreground leading-7">{t("shibr.description")}</p>
+            <p className="text-lg md:text-xl text-muted-foreground leading-7">{t("shibr.description")}</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -262,7 +262,7 @@ export default function ShibrLandingPage() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {activeServiceType === "stores" ? (
               <>
                 <Card>
@@ -365,7 +365,7 @@ export default function ShibrLandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card className="overflow-hidden group">
               <CardContent className="p-0 relative">
                 <div className="aspect-[3/4] relative w-full overflow-hidden bg-muted">

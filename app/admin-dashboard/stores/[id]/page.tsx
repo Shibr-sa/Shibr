@@ -75,7 +75,7 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
     shelf: rental.shelfName,
     duration: `${rental.duration} ${language === "ar" ? "شهر" : "month(s)"}`,
     payment: rental.totalAmount,
-    status: rental.status === "active" ? "active" : rental.status === "expired" ? "expired" : "pending"
+    status: (rental.status === "active" || rental.status === "expired") ? rental.status : "pending"
   })),
   paymentSummary: (payments || []).map((payment: any) => ({
     month: payment.month,
@@ -192,7 +192,7 @@ export default function StoreDetailsPage() {
       {/* Overview Section */}
       <div className="space-y-4">
         {/* Statistics */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
             title={t("stores.total_revenue")}
             value={formatCurrency(storeDetailsData.totalRevenue)}
@@ -353,7 +353,7 @@ export default function StoreDetailsPage() {
         {/* Tables with Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Tab Header with Search */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <TabsList className="grid w-auto grid-cols-3">
               <TabsTrigger value="shelves">{t("stores.shelves")}</TabsTrigger>
               <TabsTrigger value="rentals">{t("stores.rentals")}</TabsTrigger>
@@ -383,7 +383,7 @@ export default function StoreDetailsPage() {
                   </ToggleGroupItem>
                 </ToggleGroup>
 
-                <div className="relative w-80">
+                <div className="relative w-full sm:w-80">
                   <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder={t("stores.search_shelves_placeholder")}

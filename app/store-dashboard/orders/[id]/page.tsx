@@ -550,7 +550,7 @@ export default function RequestDetailsPage() {
         </div>
 
         {/* Right Side - Communication Card with Enhanced Design */}
-        <Card className="flex flex-col overflow-hidden h-[500px]">
+        <Card className="flex flex-col overflow-hidden h-[400px] md:h-[500px]">
           <div className="bg-muted/50 px-6 py-3 border-b flex items-center gap-3">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-primary/10 text-primary text-xs">

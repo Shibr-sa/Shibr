@@ -245,7 +245,7 @@ export default function ShelfDetailsPage() {
           <div className="space-y-4 mt-6">
             <div className="flex items-center justify-between gap-4">
               <Skeleton className="h-6 w-40" />
-              <div className="relative w-80">
+              <div className="relative w-full sm:w-80">
                 <Skeleton className="h-10 w-full rounded-md" />
               </div>
             </div>
@@ -620,7 +620,7 @@ export default function ShelfDetailsPage() {
                     
                     {/* Thumbnail Images - Only show if multiple images exist */}
                     {formattedData.images.length > 1 && (
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {formattedData.images.slice(0, 3).map((image, index) => (
                           <div 
                             key={index}
@@ -752,7 +752,7 @@ export default function ShelfDetailsPage() {
           <div className="space-y-4 mt-6">
             <div className="flex items-center justify-between gap-4">
               <h3 className="text-lg font-semibold">{t("shelf_details.displayed_products")}</h3>
-              <div className="relative w-80">
+              <div className="relative w-full sm:w-80">
                 <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"

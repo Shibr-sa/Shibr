@@ -300,7 +300,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 sm:py-8 pb-24 lg:pb-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8 pb-32 lg:pb-8">
         <div className="mb-6">
           <Button
             variant="ghost"
@@ -328,7 +328,7 @@ export default function CartPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:gap-6">
             <div className="w-full lg:col-span-2 space-y-4 order-1 lg:order-2">
               {/* Cart Items */}
               {cart.items.map(item => {
@@ -358,7 +358,7 @@ export default function CartPage() {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 sm:h-10 sm:w-10"
+                                className="h-10 w-10 sm:h-8 sm:w-8"
                                 onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
                                 disabled={item.quantity <= 1}
                               >
@@ -375,7 +375,7 @@ export default function CartPage() {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 sm:h-10 sm:w-10"
+                                className="h-10 w-10 sm:h-8 sm:w-8"
                                 onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
                                 disabled={item.quantity >= stock}
                               >
@@ -486,7 +486,7 @@ export default function CartPage() {
 
         {/* Customer Information Dialog */}
         <Dialog open={phoneDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t("store.enter_phone_title")}</DialogTitle>
               <DialogDescription>

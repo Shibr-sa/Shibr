@@ -197,7 +197,7 @@ export function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir={direction}>
+      <DialogContent className="sm:max-w-md" dir={direction}>
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {mode === "edit" 
@@ -304,7 +304,7 @@ export function ProductDialog({
             />
 
             {/* SKU, Price, and Quantity in a row */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Product SKU */}
               <FormField
                 control={form.control}

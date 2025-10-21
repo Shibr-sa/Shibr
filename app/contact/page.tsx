@@ -293,7 +293,7 @@ export default function ContactPage() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Contact Information */}
           <div className="lg:col-span-1">
             <Card>
@@ -385,7 +385,7 @@ export default function ContactPage() {
                   </div>
 
                   {/* Email and Phone */}
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email" className={direction === "rtl" ? "text-right block" : "text-left block"}>
                         {isArabic ? "البريد الإلكتروني" : "Email"}
@@ -440,7 +440,7 @@ export default function ContactPage() {
                     <RadioGroup
                       value={formData.subject}
                       onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                      className="grid grid-cols-2 gap-4"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                     >
                       {subjects.map((subject) => (
                         <div key={subject.value}>
@@ -477,7 +477,7 @@ export default function ContactPage() {
                       value={formData.message}
                       onChange={handleInputChange}
                       disabled={isLoading}
-                      className={`min-h-[150px] ${direction === "rtl" ? "text-right" : "text-left"}`}
+                      className={`min-h-[120px] sm:min-h-[150px] ${direction === "rtl" ? "text-right" : "text-left"}`}
                       aria-invalid={!!errors.message}
                     />
                     {errors.message && (

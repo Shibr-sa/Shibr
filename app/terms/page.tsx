@@ -220,7 +220,7 @@ export default function TermsPage() {
               </p>
             </div>
 
-            <ScrollArea className="h-[600px] px-1">
+            <ScrollArea className="h-96 md:h-[500px] lg:h-[600px] px-1">
               <div className="space-y-8">
                 {sections.map((section, index) => (
                   <div key={index}>

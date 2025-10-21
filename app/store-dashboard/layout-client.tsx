@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Separator } from "@/components/ui/separator"
 import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut, Building2 } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
@@ -38,6 +39,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
   SidebarFooter,
+  SidebarInset,
 } from "@/components/ui/sidebar"
 
 const sidebarItems = [
@@ -152,7 +154,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <>
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <SidebarMenu>
@@ -243,43 +245,43 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       
-      <div className="flex-1 flex flex-col">
+      <SidebarInset>
         {/* Header */}
-        <header className="h-14 border-b bg-background flex items-center px-4">
-          <SidebarTrigger />
-          
-          <div className="flex-1 flex items-center justify-between ms-4">
-            <Breadcrumb>
-              <BreadcrumbList>
-                {getBreadcrumbs().map((item, index) => (
-                  <React.Fragment key={item.href}>
-                    {index > 0 && <BreadcrumbSeparator />}
-                    <BreadcrumbItem>
-                      {item.isCurrentPage ? (
-                        <BreadcrumbPage>{item.title}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <Link href={item.href}>{item.title}</Link>
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                  </React.Fragment>
-                ))}
-              </BreadcrumbList>
-            </Breadcrumb>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <LanguageSwitcher />
-            </div>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ms-1" />
+          <Separator orientation="vertical" className="me-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              {getBreadcrumbs().map((item, index) => (
+                <React.Fragment key={item.href}>
+                  {index > 0 && <BreadcrumbSeparator />}
+                  <BreadcrumbItem>
+                    {item.isCurrentPage ? (
+                      <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={item.href}>{item.title}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                </React.Fragment>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+          <div className="ms-auto flex items-center gap-2">
+            <ThemeToggle />
+            <LanguageSwitcher />
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 bg-background">
-          {children}
-        </main>
-      </div>
-    </div>
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 p-4 md:min-h-min md:p-6">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+      </>
     </SidebarProvider>
   )
 }

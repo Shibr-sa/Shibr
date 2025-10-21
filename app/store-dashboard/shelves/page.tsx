@@ -193,7 +193,7 @@ export default function StoreDashboardShelvesPage() {
   return (
     <div className="space-y-6">
       {/* Header with Time Period Selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">
             {t("shelves.statistics_title")}
@@ -240,7 +240,7 @@ export default function StoreDashboardShelvesPage() {
       )}
 
       {/* Statistics Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* Rented Shelves Card */}
             <StatCard
               title={t("shelves.total_rented_shelves")}
@@ -326,26 +326,26 @@ export default function StoreDashboardShelvesPage() {
         {/* Search and Filter */}
         <div className="flex items-center justify-between mb-4">
             {/* Search */}
-            <div className="relative">
+            <div className="relative w-full sm:w-80">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
+              <Input
                 placeholder={t("shelves.search_placeholder")}
-                className="ps-10 w-80"
+                className="ps-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
             {/* Filter Pills */}
-            <RadioGroup value={filter} onValueChange={setFilter} className="flex items-center gap-4">
+            <RadioGroup value={filter} onValueChange={setFilter} className="flex flex-wrap items-center gap-3 sm:gap-4">
               {orderedFilters.map((option) => (
                 <div key={option.value} className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value={option.value} 
-                    id={option.value} 
-                    className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
+                  <RadioGroupItem
+                    value={option.value}
+                    id={option.value}
+                    className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
-                  <Label htmlFor={option.value} className="cursor-pointer">
+                  <Label htmlFor={option.value} className="cursor-pointer whitespace-nowrap">
                     {option.label}
                   </Label>
                 </div>
@@ -354,16 +354,16 @@ export default function StoreDashboardShelvesPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
-                    <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
-                    <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
-                    <TableHead className="text-start">{t("shelves.table.price")}</TableHead>
+                    <TableHead className="text-start hidden md:table-cell">{t("shelves.table.branch_name")}</TableHead>
+                    <TableHead className="text-start hidden md:table-cell">{t("shelves.table.renter")}</TableHead>
+                    <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.price")}</TableHead>
                     <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
-                    <TableHead className="text-start">{t("shelves.table.next_collection")}</TableHead>
+                    <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.next_collection")}</TableHead>
                     <TableHead className="text-start">{t("shelves.table.action")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -373,11 +373,11 @@ export default function StoreDashboardShelvesPage() {
                     Array.from({ length: itemsPerPage }).map((_, index) => (
                       <TableRow key={`skeleton-${index}`} className="h-[72px]">
                         <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                        <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                        <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
@@ -401,24 +401,24 @@ export default function StoreDashboardShelvesPage() {
                   ) : (
                     <>
                       {paginatedShelves.map((shelf) => (
-                        <TableRow 
+                        <TableRow
                           key={shelf._id}
                           className="h-[72px]"
                         >
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                          <TableCell>{shelf.branch?.branchName || "-"}</TableCell>
-                          <TableCell>
-                            {!shelf.isAvailable && shelf.renterName ? 
-                              shelf.renterName : 
+                          <TableCell className="hidden md:table-cell">{shelf.branch?.branchName || "-"}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {!shelf.isAvailable && shelf.renterName ?
+                              shelf.renterName :
                               "-"
                             }
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             {formatCurrency(shelf.monthlyPrice || 0, language)} / {t("common.monthly")}
                           </TableCell>
                           <TableCell>
                             <Badge variant={getShelfBadgeVariant(shelf)}>
-                              {!shelf.isAvailable 
+                              {!shelf.isAvailable
                                 ? t("shelves.status.rented")
                                 : shelf.status === "active" && shelf.isAvailable
                                 ? t("shelves.status.available")
@@ -428,9 +428,9 @@ export default function StoreDashboardShelvesPage() {
                               }
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            {shelf.nextCollectionDate ? 
-                              format(new Date(shelf.nextCollectionDate), "dd/MM/yyyy") : 
+                          <TableCell className="hidden lg:table-cell">
+                            {shelf.nextCollectionDate ?
+                              format(new Date(shelf.nextCollectionDate), "dd/MM/yyyy") :
                               "-"
                             }
                           </TableCell>

@@ -19,7 +19,7 @@ export default function SettingsLoading() {
             <Skeleton className="h-6 w-40" />
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-10 w-full" />
@@ -39,7 +39,7 @@ export default function SettingsLoading() {
 
             <div className="space-y-4">
               <Skeleton className="h-6 w-48" />
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-10 w-full" />

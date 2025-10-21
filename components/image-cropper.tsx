@@ -151,14 +151,14 @@ export function ImageCropper({
               onComplete={(c) => setCompletedCrop(c)}
               aspect={aspectRatio}
               circularCrop={cropShape === "round"}
-              className="max-h-[400px]"
+              className="max-h-[300px] sm:max-h-[400px]"
             >
               <img
                 ref={imgRef}
                 alt="Crop preview"
                 src={imageUrl}
                 onLoad={onImageLoad}
-                className="max-h-[400px] max-w-full"
+                className="max-h-[300px] sm:max-h-[400px] max-w-full"
               />
             </ReactCrop>
           )}

@@ -148,69 +148,35 @@ export default function PaymentsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {statsResult === undefined ? (
               <>
-                <Card className="bg-muted/50 border-0 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{t("payments.total_received")}</p>
-                        <Skeleton className="h-[30px] w-24 mt-1" />
-                        <Skeleton className="h-[16px] w-32 mt-1" />
+                {[
+                  { key: 'total-received', label: t("payments.total_received"), icon: DollarSign },
+                  { key: 'current-month', label: t("payments.current_month"), icon: CreditCard },
+                  { key: 'pending-payments', label: t("payments.pending_payments"), icon: CreditCard },
+                  { key: 'invoices-issued', label: t("payments.invoices_issued"), icon: CreditCard }
+                ].map(({ key, label, icon: Icon }) => (
+                  <Card key={key} className="bg-muted/50 border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">{label}</p>
+                          <Skeleton className="h-[30px] w-24 mt-1" />
+                          <Skeleton className="h-[16px] w-32 mt-1" />
+                        </div>
+                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Icon className="h-6 w-6 text-primary" />
+                        </div>
                       </div>
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-muted/50 border-0 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{t("payments.current_month")}</p>
-                        <Skeleton className="h-[30px] w-24 mt-1" />
-                        <Skeleton className="h-[16px] w-32 mt-1" />
-                      </div>
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <CreditCard className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-muted/50 border-0 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{t("payments.pending_payments")}</p>
-                        <Skeleton className="h-[30px] w-24 mt-1" />
-                        <Skeleton className="h-[16px] w-32 mt-1" />
-                      </div>
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <CreditCard className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-muted/50 border-0 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{t("payments.invoices_issued")}</p>
-                        <Skeleton className="h-[30px] w-24 mt-1" />
-                        <Skeleton className="h-[16px] w-32 mt-1" />
-                      </div>
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <CreditCard className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                ))}
               </>
             ) : (
               <>
                 <StatCard
+                  key="total-received"
                   title={t("payments.total_received")}
                   value={formatCurrency(statsResult.stats?.totalReceived || 0)}
                   trend={{
@@ -221,6 +187,7 @@ export default function PaymentsPage() {
                 />
 
                 <StatCard
+                  key="current-month"
                   title={t("payments.current_month")}
                   value={formatCurrency(statsResult.stats?.currentMonthPayments || 0)}
                   trend={{
@@ -231,6 +198,7 @@ export default function PaymentsPage() {
                 />
 
                 <StatCard
+                  key="pending-payments"
                   title={t("payments.pending_payments")}
                   value={formatCurrency(statsResult.stats?.pendingPayments || 0)}
                   trend={{
@@ -241,6 +209,7 @@ export default function PaymentsPage() {
                 />
 
                 <StatCard
+                  key="invoices-issued"
                   title={t("payments.invoices_issued")}
                   value={statsResult.stats?.invoicesIssued || 0}
                   trend={{
@@ -254,7 +223,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Payments Section Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-xl font-semibold">{t("payments.all_transactions")}</h3>
         <div className="flex items-center gap-4">
               {/* Filter Pills */}
@@ -273,10 +242,10 @@ export default function PaymentsPage() {
                 <ToggleGroupItem value="unpaid">{t("payments.filter_unpaid")}</ToggleGroupItem>
               </ToggleGroup>
               
-              <div className="relative w-80">
+              <div className="relative w-full sm:w-80">
                 <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input 
-                  placeholder={t("payments.search_placeholder")} 
+                <Input
+                  placeholder={t("payments.search_placeholder")}
                   className="pe-10"
                   value={searchQuery}
                   onChange={(e) => {
@@ -289,29 +258,29 @@ export default function PaymentsPage() {
       </div>
 
       {/* Payments Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="h-12 text-start font-medium w-[16%]">
+              <TableHead className="h-12 text-start font-medium">
                 {t("payments.table.invoice_number")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[20%]">
+              <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                 {t("payments.table.store")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[16%]">
+              <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                 {t("payments.table.date")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[15%]">
+              <TableHead className="h-12 text-start font-medium">
                 {t("payments.table.amount")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[13%]">
+              <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                 {t("payments.table.method")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[12%]">
+              <TableHead className="h-12 text-start font-medium">
                 {t("payments.table.status")}
               </TableHead>
-              <TableHead className="h-12 text-start font-medium w-[8%]">
+              <TableHead className="h-12 text-start font-medium">
                 {t("payments.table.options")}
               </TableHead>
             </TableRow>
@@ -321,34 +290,34 @@ export default function PaymentsPage() {
               // Loading state - show skeletons
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`loading-${index}`} className="h-[72px]">
-                  <TableCell className="py-3 w-[16%]"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="py-3 w-[16%]"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="py-3 w-[13%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                  <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                  <TableCell className="py-3 w-[8%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                  <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                  <TableCell className="py-3"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                  <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                 </TableRow>
               ))
             ) : payments.length > 0 ? (
               <>
                 {payments.map((payment, index) => (
-                  <TableRow 
+                  <TableRow
                     key={payment.invoiceNumber}
                     className={`h-[72px] ${index < payments.length - 1 ? 'border-b' : ''}`}
                   >
-                    <TableCell className="py-3 font-medium w-[16%]">{payment.invoiceNumber}</TableCell>
-                    <TableCell className="py-3 w-[20%]">{payment.store}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[16%]">
+                    <TableCell className="py-3 font-medium">{payment.invoiceNumber}</TableCell>
+                    <TableCell className="py-3 hidden md:table-cell">{payment.store}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                             {formatDate(payment.date, language, 'long')}
                     </TableCell>
-                    <TableCell className="py-3 font-medium w-[15%]">{formatCurrency(payment.amount)}</TableCell>
-                          <TableCell className="py-3 w-[13%]">
+                    <TableCell className="py-3 font-medium">{formatCurrency(payment.amount)}</TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell">
                             <Badge variant="outline" className="font-normal">
                               {t(`payments.method.${payment.method}`)}
                             </Badge>
                     </TableCell>
-                    <TableCell className="py-3 w-[12%]">
+                    <TableCell className="py-3">
                             <Badge
                               variant={getStatusVariant(payment.status)}
                               className="font-normal"
@@ -356,7 +325,7 @@ export default function PaymentsPage() {
                               {t(`payments.status.${payment.status}`)}
                             </Badge>
                     </TableCell>
-                    <TableCell className="py-3 w-[8%]">
+                    <TableCell className="py-3">
                             <div className="flex items-center gap-1">
                               <TooltipProvider>
                                 <Tooltip>
@@ -400,8 +369,7 @@ export default function PaymentsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {/* Fill remaining rows to always show 5 rows */}
-                {payments.length < 5 && Array.from({ length: 5 - payments.length }).map((_, index) => (
+                {Array.from({ length: Math.max(0, 5 - payments.length) }).map((_, index) => (
                   <TableRow key={`filler-${index}`} className="h-[72px]">
                     <TableCell className="py-3" colSpan={7}></TableCell>
                   </TableRow>
@@ -545,17 +513,18 @@ export default function PaymentsPage() {
                 <Label>{t("payments.payout.select_bank_account")}</Label>
                 {getBankAccountsByProfile && getBankAccountsByProfile.length > 0 ? (
                   <div className="space-y-2">
-                    {getBankAccountsByProfile.map((account) => (
-                      <div
-                        key={account._id}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
-                          selectedBankAccount?._id === account._id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        )}
-                        onClick={() => setSelectedBankAccount(account)}
-                      >
+                    {getBankAccountsByProfile.map((account) => {
+                      return (
+                        <div
+                          key={account._id}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
+                            selectedBankAccount?._id === account._id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                          onClick={() => setSelectedBankAccount(account)}
+                        >
                         <div className="space-y-1">
                           <p className="font-medium">{account.bankName}</p>
                           <p className="text-sm text-muted-foreground">
@@ -568,8 +537,9 @@ export default function PaymentsPage() {
                         {account.isDefault && (
                           <Badge variant="secondary">{t("payments.payout.default")}</Badge>
                         )}
-                      </div>
-                    ))}
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <Alert>

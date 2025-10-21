@@ -233,7 +233,7 @@ export default function AdminDashboard() {
                   color: "hsl(var(--chart-1))",
                 },
               }}
-              className="h-[250px] w-full"
+              className="h-[200px] sm:h-[250px] w-full"
             >
               <BarChart 
                 data={isChartLoading ? emptyChartData : (chartData?.revenueByMonth || [])}
@@ -273,13 +273,13 @@ export default function AdminDashboard() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="h-12 text-start font-medium w-[50%]">
+                  <TableHead className="h-12 text-start font-medium">
                     {t("dashboard.brand_name")}
                   </TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[25%]">
+                  <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                     {t("dashboard.revenue")}
                   </TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[25%]">
+                  <TableHead className="h-12 text-start font-medium">
                     {t("dashboard.growth")}
                   </TableHead>
                 </TableRow>
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
                           <Skeleton className="h-4 w-32" />
                         </div>
                       </TableCell>
-                      <TableCell className="py-3">
+                      <TableCell className="py-3 hidden md:table-cell">
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
                       <TableCell className="py-3">
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 text-muted-foreground">
+                        <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
                           {formatCurrency(store.revenue || 0)}
                         </TableCell>
                         <TableCell className="py-3">

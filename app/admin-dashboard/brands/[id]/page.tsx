@@ -156,7 +156,7 @@ export default function BrandDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Statistics */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
           title={t("brands.total_payments_due")}
           value={formatCurrency(brand.revenue || 0)}
@@ -373,12 +373,12 @@ export default function BrandDetailsPage() {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '160px' }}>{t("common.date")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '140px' }}>{t("brands.store")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '120px' }}>{t("brands.amount")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '140px' }}>{t("brands.operation_type")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '100px' }}>{t("brands.status_column")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '60px' }}>{t("brands.options")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[160px]">{t("common.date")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[140px]">{t("brands.store")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[120px]">{t("brands.amount")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[140px]">{t("brands.operation_type")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[100px]">{t("brands.status_column")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[60px]">{t("brands.options")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,22 +386,22 @@ export default function BrandDetailsPage() {
                   // Loading state - show skeletons
                   Array.from({ length: 5 }).map((_, index) => (
                     <TableRow key={`loading-payment-${index}`} className="h-[72px]">
-                      <TableCell className="py-3" style={{ width: '160px' }}>
+                      <TableCell className="py-3 w-[160px]">
                         <Skeleton className="h-4 w-32" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '140px' }}>
+                      <TableCell className="py-3 w-[140px]">
                         <Skeleton className="h-4 w-28" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '120px' }}>
+                      <TableCell className="py-3 w-[120px]">
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '140px' }}>
+                      <TableCell className="py-3 w-[140px]">
                         <Skeleton className="h-4 w-28" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '100px' }}>
+                      <TableCell className="py-3 w-[100px]">
                         <Skeleton className="h-6 w-20 rounded-full" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '60px' }}>
+                      <TableCell className="py-3 w-[60px]">
                         <Skeleton className="h-8 w-8 rounded" />
                       </TableCell>
                     </TableRow>
@@ -438,16 +438,16 @@ export default function BrandDetailsPage() {
                   [...rentals.slice((paymentPage - 1) * itemsPerPage, paymentPage * itemsPerPage), ...Array(Math.max(0, 5 - Math.min(rentals.slice((paymentPage - 1) * itemsPerPage, paymentPage * itemsPerPage).length, itemsPerPage)))].map((payment: any, index: number) => (
                     payment ? (
                       <TableRow key={payment.id} className="h-[72px]">
-                        <TableCell className="py-3" style={{ width: '160px' }}>{formatDate(payment.createdAt)}</TableCell>
-                        <TableCell className="py-3" style={{ width: '140px' }}>{payment.storeName || "-"}</TableCell>
-                        <TableCell className="py-3" style={{ width: '120px' }}>{formatCurrency(payment.payment || 0)}</TableCell>
-                        <TableCell className="py-3" style={{ width: '140px' }}>{t("brands.payment_transfer")}</TableCell>
-                        <TableCell className="py-3" style={{ width: '100px' }}>
-                          <Badge variant={payment.status === "payment_pending" ? "secondary" : payment.status === "active" ? "default" : "secondary"}>
+                        <TableCell className="py-3 w-[160px]">{formatDate(payment.createdAt)}</TableCell>
+                        <TableCell className="py-3 w-[140px]">{payment.storeName || "-"}</TableCell>
+                        <TableCell className="py-3 w-[120px]">{formatCurrency(payment.payment || 0)}</TableCell>
+                        <TableCell className="py-3 w-[140px]">{t("brands.payment_transfer")}</TableCell>
+                        <TableCell className="py-3 w-[100px]">
+                          <Badge variant={payment.status === "active" ? "default" : "secondary"}>
                             {payment.status === "active" ? t("brands.payment_completed") : t("brands.payment_pending")}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-3" style={{ width: '60px' }}>
+                        <TableCell className="py-3 w-[60px]">
                           <Button
                             variant="ghost"
                             size="icon"

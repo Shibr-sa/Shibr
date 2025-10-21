@@ -172,7 +172,7 @@ export default function StorePage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-8">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i}>
                 <CardHeader>
@@ -259,11 +259,11 @@ export default function StorePage() {
       </div>
 
       {/* Products */}
-      <div className="container pb-8">
+      <div className="container pb-8 px-2 sm:px-4 md:px-6">
         <h2 className="text-2xl font-bold mb-6">{t("store.available_products")}</h2>
 
         {store.products && store.products.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {store.products
               .filter((product: any) =>
                 searchQuery === "" ||
@@ -347,7 +347,7 @@ export default function StorePage() {
 
       {/* Product Details Bottom Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
+        <SheetContent side="bottom" className="h-[75vh] sm:h-[85vh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{selectedProduct?.name}</SheetTitle>
           </SheetHeader>

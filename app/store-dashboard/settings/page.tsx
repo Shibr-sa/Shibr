@@ -403,7 +403,7 @@ export default function StoreDashboardSettingsPage() {
 
               <div className="space-y-4">
                 {/* Store Name and Type */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="storeName" className="block">
                       {t("settings.store_data.store_name")} *
@@ -900,7 +900,8 @@ export default function StoreDashboardSettingsPage() {
                   <SelectValue placeholder={t("settings.payment.dialog.bank_placeholder")}>
                     {bankCode && (() => {
                       const selectedBank = SAUDI_BANKS.find(b => b.code === bankCode)
-                      return selectedBank ? (language === 'ar' ? selectedBank.nameAr : selectedBank.name) : ''
+                      if (!selectedBank) return ''
+                      return language === 'ar' ? selectedBank.nameAr : selectedBank.name
                     })()}
                   </SelectValue>
                 </SelectTrigger>
