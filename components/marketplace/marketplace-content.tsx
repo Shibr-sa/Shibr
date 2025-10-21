@@ -31,7 +31,7 @@ const StoreMap = lazy(() => import("./store-map"))
 
 // Constants
 const ITEMS_PER_PAGE = 3
-const STORE_CARD_HEIGHT = "h-[240px]"
+const STORE_CARD_HEIGHT = "min-h-[240px]"
 const STORE_CARD_GAP = "mb-4"
 const DEFAULT_PRICE_RANGE = { min: 0, max: 9000 }
 
@@ -357,10 +357,10 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
         </CardContent>
       </Card>
 
-      {/* Content Grid - Fixed Height Layout */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6" style={{ height: 'calc(100vh - 280px)', minHeight: '760px' }}>
-        {/* Map Section - Fixed on Left */}
-        <div className="order-2 lg:order-1 h-full">
+      {/* Content Grid - Responsive Layout */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        {/* Map Section - Responsive on Left */}
+        <div className="order-2 lg:order-1 h-[300px] md:h-[400px] lg:h-[600px]">
           <Card className="h-full">
             <CardContent className="p-0 h-full">
               <Suspense 
@@ -395,8 +395,8 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
           </Card>
         </div>
 
-        {/* Store Listings - Fixed Height with Pagination at Bottom */}
-        <div className="order-1 lg:order-2 h-full flex flex-col">
+        {/* Store Listings - Responsive with Pagination at Bottom */}
+        <div className="order-1 lg:order-2 flex flex-col">
           {/* Stores Container */}
           <div className="flex-1 flex flex-col justify-start store-listings">
             {isInitialLoading ? (

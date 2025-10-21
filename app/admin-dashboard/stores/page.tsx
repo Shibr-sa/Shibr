@@ -142,7 +142,7 @@ export default function StoresPage() {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{t("stores.title")}</h2>
           <p className="text-muted-foreground mt-1">{t("stores.description")}</p>
@@ -166,7 +166,7 @@ export default function StoresPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {statsResult === undefined ? (
           <>
             <Card className="bg-muted/50 border-0 shadow-sm">
@@ -267,10 +267,10 @@ export default function StoresPage() {
           
           {/* Dynamic Search Bar based on active tab */}
           {activeTab === "stores" ? (
-            <div className="relative w-80">
+            <div className="relative w-full sm:w-80">
               <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input 
-                placeholder={t("stores.search_placeholder")} 
+              <Input
+                placeholder={t("stores.search_placeholder")}
                 className="pe-10"
                 value={searchQuery}
                 onChange={(e) => {
@@ -305,10 +305,10 @@ export default function StoresPage() {
               </ToggleGroup>
               
               {/* Search Bar */}
-              <div className="relative w-80">
+              <div className="relative w-full sm:w-80">
                 <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input 
-                  placeholder={t("posts.search_placeholder")} 
+                <Input
+                  placeholder={t("posts.search_placeholder")}
                   className="pe-10"
                   value={postsSearchQuery}
                   onChange={(e) => {
@@ -325,23 +325,23 @@ export default function StoresPage() {
         <TabsContent value="stores" className="space-y-6">
 
           {/* Stores Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
         <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium w-[35%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("stores.table.store")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                       {t("stores.table.shelves")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                       {t("stores.table.rentals")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[20%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("stores.table.status")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("dashboard.options")}
                     </TableHead>
                   </TableRow>
@@ -351,27 +351,27 @@ export default function StoresPage() {
                     // Loading state - show skeletons
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`loading-${index}`} className="h-[72px]">
-                        <TableCell className="py-3 w-[35%]">
+                        <TableCell className="py-3">
                           <div className="flex items-center gap-3">
                             <Skeleton className="w-10 h-10 rounded-full" />
                             <Skeleton className="h-4 w-32" />
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-8" /></TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-8" /></TableCell>
-                        <TableCell className="py-3 w-[20%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
                   ) : stores.length > 0 ? (
                     // Data state - show actual stores with fillers
                     <>
                       {stores.map((store) => (
-                        <TableRow 
+                        <TableRow
                           key={store.id}
                           className="h-[72px]"
                         >
-                          <TableCell className="py-3 w-[35%]">
+                          <TableCell className="py-3">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-10 h-10">
                                 <AvatarImage src={store.profileImageUrl || undefined} alt={store.name} />
@@ -382,17 +382,17 @@ export default function StoresPage() {
                               <div className="font-medium">{store.name}</div>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[15%]">{store.shelves}</TableCell>
-                          <TableCell className="py-3 text-muted-foreground w-[15%]">{store.rentals}</TableCell>
-                          <TableCell className="py-3 w-[20%]">
+                          <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">{store.shelves}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground hidden md:table-cell">{store.rentals}</TableCell>
+                          <TableCell className="py-3">
                             <Badge variant={getStatusVariant(store.status)} className="font-normal">
                               {t(`stores.status.${store.status}`)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3 w-[15%]">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                          <TableCell className="py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8"
                               onClick={() => router.push(`/admin-dashboard/stores/${store.id}`)}
                             >
@@ -510,29 +510,29 @@ export default function StoresPage() {
         {/* Posts Tab Content */}
         <TabsContent value="posts" className="space-y-6">
           {/* Posts Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="h-12 text-start font-medium w-[20%]">
+                <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                   {t("dashboard.store_name")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                   {t("dashboard.branch")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[20%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("dashboard.shelf_name")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[10%]">
+                <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                   {t("posts.table.percentage")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                   {t("dashboard.date_added")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[12%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("dashboard.status")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[8%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("dashboard.options")}
                 </TableHead>
               </TableRow>
@@ -542,13 +542,13 @@ export default function StoresPage() {
                 // Loading state - show skeletons
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={`loading-${index}`} className="h-[72px]">
-                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-12" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                    <TableCell className="py-3 w-[8%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                    <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                   </TableRow>
                 ))
               ) : postsData.length > 0 ? (
@@ -559,11 +559,11 @@ export default function StoresPage() {
                       key={post.id} 
                       className="h-[72px]"
                     >
-                      <TableCell className="py-3 font-medium w-[20%]">
+                      <TableCell className="py-3 font-medium hidden md:table-cell">
                         {post.storeName}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[15%]">
-                        {language === "ar" ? 
+                      <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
+                        {language === "ar" ?
                           (post.branch === "Riyadh" ? "الرياض" :
                            post.branch === "Jeddah" ? "جدة" :
                            post.branch === "Dammam" ? "الدمام" :
@@ -572,8 +572,8 @@ export default function StoresPage() {
                           : post.branch
                         }
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[20%]">
-                        {language === "ar" ? 
+                      <TableCell className="py-3 font-medium">
+                        {language === "ar" ?
                           (post.shelfName === "Front Display" ? "العرض الأمامي" :
                            post.shelfName === "Premium Shelf" ? "الرف المميز" :
                            post.shelfName === "Corner Unit" ? "وحدة الزاوية" :
@@ -586,18 +586,18 @@ export default function StoresPage() {
                           : post.shelfName
                         }
                       </TableCell>
-                      <TableCell className="py-3 w-[10%]">
+                      <TableCell className="py-3 hidden lg:table-cell">
                         <span className="font-medium">{post.percentage}%</span>
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                      <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                         {post.addedDate ? new Date(post.addedDate).toLocaleDateString("en-US") : "-"}
                       </TableCell>
-                      <TableCell className="py-3 w-[12%]">
+                      <TableCell className="py-3">
                         <Badge variant={post.status === "published" ? "default" : "secondary"} className="font-normal">
                           {t(`posts.status.${post.status}`)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-3 w-[8%]">
+                      <TableCell className="py-3">
                         <Button 
                           variant="ghost" 
                           size="icon" 

@@ -122,7 +122,7 @@ export default function StoreDashboardPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("dashboard.manage_store_starts_here")}</h1>
           <p className="text-muted-foreground mt-1">
@@ -153,7 +153,7 @@ export default function StoreDashboardPage() {
       </div>
 
       {/* Statistics Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
             {!hasInitialData ? (
               // Loading state
               <>
@@ -234,7 +234,7 @@ export default function StoreDashboardPage() {
 
       {/* Rental Requests Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-lg font-semibold">{t("dashboard.rental_requests")}</h2>
           <Button 
             variant="outline" 
@@ -248,16 +248,16 @@ export default function StoreDashboardPage() {
           </Button>
         </div>
         
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
             <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("table.store")}</TableHead>
-                      <TableHead className="text-start">{t("table.branch")}</TableHead>
-                      <TableHead className="text-start">{t("table.rental_duration")}</TableHead>
+                      <TableHead className="text-start hidden md:table-cell">{t("table.branch")}</TableHead>
+                      <TableHead className="text-start hidden md:table-cell">{t("table.rental_duration")}</TableHead>
                       <TableHead className="text-start">{t("table.status")}</TableHead>
-                      <TableHead className="text-start">{t("table.request_date")}</TableHead>
-                      <TableHead className="text-start">{t("table.rating")}</TableHead>
+                      <TableHead className="text-start hidden lg:table-cell">{t("table.request_date")}</TableHead>
+                      <TableHead className="text-start hidden lg:table-cell">{t("table.rating")}</TableHead>
                       <TableHead className="text-start">{t("table.options")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -267,11 +267,11 @@ export default function StoreDashboardPage() {
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-request-${index}`} className="h-[72px]">
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))
@@ -300,9 +300,9 @@ export default function StoreDashboardPage() {
                             <TableCell className="font-medium">
                               {request.otherUserName}
                             </TableCell>
-                            <TableCell>{request.shelfBranch || "-"}</TableCell>
-                            <TableCell>
-                              {request.startDate && request.endDate 
+                            <TableCell className="hidden md:table-cell">{request.shelfBranch || "-"}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {request.startDate && request.endDate
                                 ? formatDuration(request.startDate, request.endDate, language)
                                 : "-"}
                             </TableCell>
@@ -311,12 +311,12 @@ export default function StoreDashboardPage() {
                                 {t(`status.${request.status}`)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {request.createdAt 
+                            <TableCell className="text-muted-foreground hidden lg:table-cell">
+                              {request.createdAt
                                 ? formatDate(request.createdAt, language)
                                 : formatDate(new Date(request._creationTime), language)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               {request.status === "approved" && request.rating ? (
                                 <div className="flex items-center gap-1">
                                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -327,9 +327,9 @@ export default function StoreDashboardPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => {
                                   setSelectedRequest(request)
@@ -356,7 +356,7 @@ export default function StoreDashboardPage() {
 
       {/* Shelves Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-lg font-semibold">{t("dashboard.your_shelves")}</h2>
           <Button 
             variant="outline" 
@@ -370,17 +370,17 @@ export default function StoreDashboardPage() {
           </Button>
         </div>
         
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
             <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
-                      <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
-                      <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
-                      <TableHead className="text-start">{t("shelves.table.price")}</TableHead>
-                      <TableHead className="text-start">{t("shelves.table.net_revenue")}</TableHead>
+                      <TableHead className="text-start hidden md:table-cell">{t("shelves.table.branch_name")}</TableHead>
+                      <TableHead className="text-start hidden md:table-cell">{t("shelves.table.renter")}</TableHead>
+                      <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.price")}</TableHead>
+                      <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.net_revenue")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
-                      <TableHead className="text-start">{t("shelves.table.next_collection")}</TableHead>
+                      <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.next_collection")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.action")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -390,12 +390,12 @@ export default function StoreDashboardPage() {
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-${index}`} className="h-[72px]">
                           <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))
@@ -432,17 +432,17 @@ export default function StoreDashboardPage() {
                         {recentShelves.map((shelf: any) => (
                           <TableRow key={shelf._id} className="h-[72px]">
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                            <TableCell>{shelf.branch?.branchName || '-'}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">{shelf.branch?.branchName || '-'}</TableCell>
+                            <TableCell className="hidden md:table-cell">
                               {!shelf.isAvailable && shelf.renterName ?
                                 shelf.renterName :
                                 "-"
                               }
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               {formatCurrency(shelf.monthlyPrice || 0, language)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               {!shelf.isAvailable && shelf.netRevenue ?
                                 formatCurrency(shelf.netRevenue, language) :
                                 "-"
@@ -460,7 +460,7 @@ export default function StoreDashboardPage() {
                                 }
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               {!shelf.isAvailable && shelf.nextCollectionDate ?
                                 new Date(shelf.nextCollectionDate).toLocaleDateString("en-US") :
                                 "-"

@@ -112,7 +112,7 @@ export default function BranchesPage() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {branchStats ? (
           <>
             <StatCard
@@ -175,8 +175,8 @@ export default function BranchesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>{t("branches.branch_name")}</TableHead>
-              <TableHead>{t("shelves.city")}</TableHead>
-              <TableHead>{t("branches.shelves_count")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("shelves.city")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("branches.shelves_count")}</TableHead>
               <TableHead>{t("common.status")}</TableHead>
               <TableHead className="text-end">{t("common.actions")}</TableHead>
             </TableRow>
@@ -187,8 +187,8 @@ export default function BranchesPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                 </TableRow>
@@ -213,8 +213,8 @@ export default function BranchesPage() {
               filteredBranches.map((branch) => (
                 <TableRow key={branch._id}>
                   <TableCell className="font-medium">{branch.branchName}</TableCell>
-                  <TableCell>{getCityName(branch.city)}</TableCell>
-                  <TableCell>{branch.shelfCount}</TableCell>
+                  <TableCell className="hidden md:table-cell">{getCityName(branch.city)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{branch.shelfCount}</TableCell>
                   <TableCell>
                     <Badge variant={getBadgeVariant(branch.status)}>
                       {branch.status === "active" ? t("common.active") : t("common.inactive")}

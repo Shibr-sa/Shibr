@@ -356,7 +356,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
     <div className="w-full">
       <form onSubmit={handleSubmit} className="grid gap-6">
           {/* First Row - Shelf Name and Branch Selection */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="shelfName" className="text-start block">
                 {t("add_shelf.shelf_name")} *
@@ -434,7 +434,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
           })()}
 
           {/* Second Row - Pricing */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="monthlyPrice" className="text-start">
@@ -573,10 +573,10 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
               {t("add_shelf.shelf_dimensions")} *
             </Label>
             
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Visual Representation */}
               <div className="flex items-center justify-center p-6 bg-muted/30 rounded-lg">
-                <div className="relative w-full max-w-[280px] h-[200px]">
+                <div className="relative w-full max-w-[280px] h-[150px] sm:h-[200px]">
                   {/* 3D Rectangular Box - Isometric View */}
                   <svg viewBox="0 0 240 180" className="w-full h-full">
                     {/* Define the 3D box paths for a rectangular shelf */}
@@ -733,7 +733,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
             </Label>
             
             {/* Category selection cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {PRODUCT_CATEGORY_GROUPS.map(category => {
                 const Icon = category.icon
                 const isSelected = selectedCategories.includes(category.value)
@@ -783,7 +783,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("add_shelf.description_example")}
-              className="min-h-[120px] text-start resize-none"
+              className="min-h-[100px] sm:min-h-[120px] text-start resize-none"
             />
           </div>
 
@@ -805,7 +805,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                 className="hidden"
                 onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
               />
-              <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[200px]">
+              <div className="border-2 border-dashed border-muted rounded-lg p-4 h-[150px] sm:h-[200px]">
                 <div className="flex flex-col items-center justify-center space-y-2 h-full">
                   {images.shelf || imagePreviews.shelf ? (
                     <>

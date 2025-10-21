@@ -231,7 +231,7 @@ export default function SettingsPage() {
                 <h3 className="text-lg font-semibold text-start">
                   {language === "ar" ? "معلومات الاتصال" : "Contact Information"}
                 </h3>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="adminName" className="text-start block">
                       {language === "ar" ? "اسم المسؤول" : "Admin Name"}
@@ -379,11 +379,11 @@ export default function SettingsPage() {
               {language === "ar" ? "إدارة حسابات المسؤولين" : "Admin Account Management"}
             </h2>
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div className="relative w-full sm:w-[300px]">
                 <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={language === "ar" ? "البحث عن مسؤول..." : "Search admin..."}
-                  className="w-[300px] ps-10"
+                  className="ps-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />

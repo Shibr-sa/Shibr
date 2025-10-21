@@ -309,7 +309,7 @@ export default function AddShelfPage() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="grid gap-6">
             {/* First Row - Shelf Name, City, Branch */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="shelfName" className="text-start block">
                   {t("add_shelf.shelf_name")} *
@@ -358,7 +358,7 @@ export default function AddShelfPage() {
             </div>
 
             {/* Second Row - Price, Discount and Available From */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="monthlyPrice" className="text-start block">
                   {t("add_shelf.monthly_price")} *
@@ -434,7 +434,7 @@ export default function AddShelfPage() {
               <Label className="text-start block">
                 {t("add_shelf.rental_duration")} *
               </Label>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Input
                     value={length}
@@ -480,7 +480,7 @@ export default function AddShelfPage() {
             </div>
 
             {/* Location Section */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-start block">
@@ -530,7 +530,7 @@ export default function AddShelfPage() {
                 {t("add_shelf.shelf_images")} *
               </Label>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {/* Exterior Image Upload */}
                 <div className="space-y-2">
                   <input

@@ -159,7 +159,7 @@ export default function BrandDashboardPage() {
       )}
 
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("brand.dashboard.welcome_to_shelfy")}</h1>
           <p className="text-muted-foreground mt-1">
@@ -170,7 +170,7 @@ export default function BrandDashboardPage() {
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
-                <Button 
+                <Button
                   className="gap-2"
                   disabled={!isBrandDataComplete}
                   onClick={() => router.push("/brand-dashboard/shelves/marketplace")}
@@ -191,7 +191,7 @@ export default function BrandDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         {!rentalRequests || !rentalStats ? (
           // Loading skeleton for first stat card
           <div className="rounded-lg border bg-card">
@@ -277,7 +277,7 @@ export default function BrandDashboardPage() {
           <h2 className="text-lg font-semibold mb-4">{t("brand.dashboard.sales")}</h2>
           {salesChartDataRaw === undefined ? (
             // Loading state for chart
-            <div className="h-[280px] flex items-center justify-center">
+            <div className="h-[200px] sm:h-[280px] flex items-center justify-center">
               <div className="space-y-3 w-full">
                 <Skeleton className="h-[200px] w-full" />
                 <div className="flex gap-2 justify-center">
@@ -288,7 +288,7 @@ export default function BrandDashboardPage() {
               </div>
             </div>
           ) : salesChartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
                 <BarChart 
                   data={salesChartData}
                   margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
@@ -318,7 +318,7 @@ export default function BrandDashboardPage() {
                 </BarChart>
               </ChartContainer>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center h-[280px]">
+              <div className="flex flex-col items-center justify-center text-center h-[200px] sm:h-[280px]">
                 <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4">
                   <BarChart3 className="h-10 w-10 text-muted-foreground/50" />
                 </div>
@@ -337,8 +337,8 @@ export default function BrandDashboardPage() {
       {/* Tabs Section for Tables */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Tab Header with See More Button */}
-        <div className="flex items-center justify-between">
-          <TabsList className="grid w-auto grid-cols-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <TabsList className="grid w-full grid-cols-2 sm:w-auto">
             <TabsTrigger value="shelves">{t("brand.dashboard.rented_shelves_tab")}</TabsTrigger>
             <TabsTrigger value="sales">{t("brand.dashboard.sales_operations_tab")}</TabsTrigger>
           </TabsList>
@@ -370,15 +370,15 @@ export default function BrandDashboardPage() {
 
         {/* Rented Shelves Tab */}
         <TabsContent value="shelves" className="mt-6">
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="text-start w-[30%]">{t("table.store_name")}</TableHead>
-                    <TableHead className="text-start w-[20%]">{t("table.city")}</TableHead>
-                    <TableHead className="text-start w-[15%]">{t("table.product_count")}</TableHead>
-                    <TableHead className="text-start w-[15%]">{t("table.sales_count")}</TableHead>
-                    <TableHead className="text-start w-[20%]">{t("brand.dashboard.table.rental_status")}</TableHead>
+                    <TableHead className="text-start">{t("table.store_name")}</TableHead>
+                    <TableHead className="text-start hidden md:table-cell">{t("table.city")}</TableHead>
+                    <TableHead className="text-start hidden lg:table-cell">{t("table.product_count")}</TableHead>
+                    <TableHead className="text-start hidden lg:table-cell">{t("table.sales_count")}</TableHead>
+                    <TableHead className="text-start">{t("brand.dashboard.table.rental_status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -386,11 +386,11 @@ export default function BrandDashboardPage() {
                     // Loading state - show 3 skeleton rows
                     Array.from({ length: 3 }).map((_, index) => (
                       <TableRow key={`rental-loading-${index}`} className="h-[52px]">
-                        <TableCell className="w-[30%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                        <TableCell className="w-[20%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
-                        <TableCell className="w-[15%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
-                        <TableCell className="w-[20%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
                       </TableRow>
                     ))
                   ) : activeRentals.length > 0 ? (
@@ -400,17 +400,17 @@ export default function BrandDashboardPage() {
                           <TableCell className="font-medium">
                             {rental.otherUserName || "-"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             {(rental as any).shelfCity || rental.city || t("common.riyadh")}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             {formatNumber(
                               rental.selectedProducts?.length ||
                               rental.selectedProductIds?.length ||
                               0
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             {formatNumber((rental as any).salesCount || 0)}
                           </TableCell>
                           <TableCell>
@@ -452,16 +452,16 @@ export default function BrandDashboardPage() {
 
         {/* Sales Operations Tab */}
         <TabsContent value="sales" className="mt-6">
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="text-start w-[15%]">{t("table.order_number")}</TableHead>
-                  <TableHead className="text-start w-[25%]">{t("table.product_name")}</TableHead>
-                  <TableHead className="text-start w-[20%]">{t("table.store_name")}</TableHead>
-                  <TableHead className="text-start w-[15%]">{t("table.city")}</TableHead>
-                  <TableHead className="text-start w-[10%]">{t("table.price")}</TableHead>
-                  <TableHead className="text-start w-[15%]">{t("table.date")}</TableHead>
+                  <TableHead className="text-start">{t("table.order_number")}</TableHead>
+                  <TableHead className="text-start">{t("table.product_name")}</TableHead>
+                  <TableHead className="text-start hidden md:table-cell">{t("table.store_name")}</TableHead>
+                  <TableHead className="text-start hidden lg:table-cell">{t("table.city")}</TableHead>
+                  <TableHead className="text-start">{t("table.price")}</TableHead>
+                  <TableHead className="text-start hidden lg:table-cell">{t("table.date")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -469,12 +469,12 @@ export default function BrandDashboardPage() {
                   // Loading state - show 3 skeleton rows
                   Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={`sales-loading-${index}`} className="h-[52px]">
-                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                      <TableCell className="w-[25%]"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                      <TableCell className="w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                      <TableCell className="w-[10%]"><Skeleton className="h-4 w-[50px]" /></TableCell>
-                      <TableCell className="w-[15%]"><Skeleton className="h-4 w-[70px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[70px]" /></TableCell>
                     </TableRow>
                   ))
                 ) : salesOperations.length > 0 ? (
@@ -488,16 +488,16 @@ export default function BrandDashboardPage() {
                         <TableCell>
                           {sale.productName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {sale.storeName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {sale.city}
                         </TableCell>
                         <TableCell>
                           {formatCurrency(sale.price, language)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-muted-foreground hidden lg:table-cell">
                           {formatDate(sale.date, language)}
                         </TableCell>
                       </TableRow>

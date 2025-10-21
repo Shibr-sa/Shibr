@@ -388,7 +388,7 @@ export default function BrandDashboardSettingsPage() {
               {/* Contact Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-start">{t("settings.general.contact_info")}</h3>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
                     <Input
@@ -483,7 +483,7 @@ export default function BrandDashboardSettingsPage() {
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-4">
                 {/* Brand Name and Type */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="brandName" className="text-start block">
                       {t("settings.brand_data.brand_name")} *

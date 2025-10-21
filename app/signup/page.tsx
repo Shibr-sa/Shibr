@@ -263,7 +263,7 @@ export default function SignUpPage() {
                     onValueChange={(value: "store-owner" | "brand-owner") => {
                       if (value) setAccountType(value)
                     }}
-                    className="grid grid-cols-2 gap-2"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                     variant="outline"
                   >
                     <ToggleGroupItem value="store-owner" variant="outline">

@@ -23,7 +23,7 @@ export default function BrandProductsLoading() {
         
         {/* Stats Cards Skeleton */}
         <div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="bg-muted/50 border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -73,7 +73,7 @@ export default function BrandProductsLoading() {
       <div className="w-full">
         <div className="mb-4">
           {/* Search Skeleton */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Skeleton className="h-10 w-full sm:w-80" />
           </div>
         </div>

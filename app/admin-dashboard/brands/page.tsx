@@ -106,7 +106,7 @@ export default function BrandsPage() {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{t("brands.title")}</h2>
           <p className="text-muted-foreground mt-1">{t("brands.description")}</p>
@@ -130,7 +130,7 @@ export default function BrandsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {statsResult === undefined ? (
           <>
             <Card className="bg-muted/50 border-0 shadow-sm">
@@ -221,12 +221,12 @@ export default function BrandsPage() {
       </div>
 
       {/* Brands Section Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-xl font-semibold">{t("brands.all_brands")}</h3>
-        <div className="relative w-80">
+        <div className="relative w-full sm:w-80">
           <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input 
-            placeholder={t("brands.search_placeholder")} 
+          <Input
+            placeholder={t("brands.search_placeholder")}
             className="pe-10"
             value={searchQuery}
             onChange={(e) => {
@@ -238,29 +238,29 @@ export default function BrandsPage() {
       </div>
 
       {/* Brands Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium w-[25%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("brands.table.brand")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                       {t("brands.table.category")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[10%]">
+                    <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                       {t("brands.table.products")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[10%]">
+                    <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                       {t("brands.table.stores")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                       {t("brands.table.revenue")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[15%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("brands.table.status")}
                     </TableHead>
-                    <TableHead className="h-12 text-start font-medium w-[10%]">
+                    <TableHead className="h-12 text-start font-medium">
                       {t("dashboard.options")}
                     </TableHead>
                   </TableRow>
@@ -270,7 +270,7 @@ export default function BrandsPage() {
                     // Loading state - show skeletons
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={`loading-${index}`} className="h-[72px]">
-                        <TableCell className="py-3 w-[25%]">
+                        <TableCell className="py-3">
                           <div className="flex items-center gap-3">
                             <Skeleton className="w-10 h-10 rounded-full" />
                             <div className="space-y-2">
@@ -279,22 +279,22 @@ export default function BrandsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-8" /></TableCell>
-                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-8" /></TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-20" /></TableCell>
-                        <TableCell className="py-3 w-[15%]"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                        <TableCell className="py-3 w-[10%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
                   ) : brands.length > 0 ? (
                     <>
                       {brands.map((brand, index) => (
-                          <TableRow 
+                          <TableRow
                             key={brand.id}
                             className={`h-[72px] ${index < brands.length - 1 ? 'border-b' : ''}`}
                           >
-                            <TableCell className="py-3 w-[25%]">
+                            <TableCell className="py-3">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
                                   <AvatarImage src={brand.profileImageUrl || undefined} alt={brand.name} />
@@ -307,21 +307,21 @@ export default function BrandsPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="py-3 w-[15%]">
+                            <TableCell className="py-3 hidden lg:table-cell">
                               <Badge variant="outline">{brand.category || t("brands.category.general")}</Badge>
                             </TableCell>
-                            <TableCell className="py-3 text-muted-foreground w-[10%]">{brand.products}</TableCell>
-                            <TableCell className="py-3 text-muted-foreground w-[10%]">{brand.stores}</TableCell>
-                            <TableCell className="py-3 font-medium w-[15%]">{formatCurrency(brand.revenue)}</TableCell>
-                            <TableCell className="py-3 w-[15%]">
+                            <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">{brand.products}</TableCell>
+                            <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">{brand.stores}</TableCell>
+                            <TableCell className="py-3 font-medium hidden md:table-cell">{formatCurrency(brand.revenue)}</TableCell>
+                            <TableCell className="py-3">
                               <Badge variant={getStatusVariant(brand.status)} className="font-normal">
                                 {t(`brands.status.${brand.status}`)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="py-3 w-[10%]">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <TableCell className="py-3">
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => router.push(`/admin-dashboard/brands/${brand.id}`)}
                               >

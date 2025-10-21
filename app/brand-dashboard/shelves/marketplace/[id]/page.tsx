@@ -302,7 +302,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         alert(language === "ar" ? "فشل إنشاء جلسة الدفع" : "Failed to create payment session")
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : (language === "ar" ? "فشل الدفع" : "Payment failed"))
+      const errorMessage = error instanceof Error
+        ? error.message
+        : (language === "ar" ? "فشل الدفع" : "Payment failed")
+      alert(errorMessage)
     } finally {
       setProcessingPayment(false)
     }
@@ -378,7 +381,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 <Skeleton className="h-6 w-1/2" />
                 <Skeleton className="h-4 w-full" />
                 <Separator />
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <Skeleton className="h-16" />
                   <Skeleton className="h-16" />
                   <Skeleton className="h-16" />
@@ -605,7 +608,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
                       {/* Thumbnail Images - Only show if multiple images exist */}
                       {shelfDetails.images && shelfDetails.images.length > 1 && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {shelfDetails.images.slice(0, 3).map((image, index) => (
                             <div
                               key={index}
@@ -669,9 +672,9 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                 <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 overflow-hidden">
                   {/* Products Summary Header */}
                   <div className="p-4 border-b border-primary/10">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <Package className="h-5 w-5 text-primary" />
                         </div>
                         <div>
@@ -683,7 +686,7 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <p className="text-xs text-muted-foreground">{t("marketplace.details.total_value")}</p>
                         <p className="text-lg font-bold text-primary">
                           {t("common.currency_symbol")} {selectedProducts.reduce((total, selectedProduct) => {

@@ -164,7 +164,7 @@ export default function PaymentPage() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="flex flex-col md:grid md:grid-cols-3 gap-4 md:gap-6">
           {/* Payment Methods */}
           <div className="md:col-span-2 space-y-6">
             {/* Store Info */}
@@ -235,7 +235,7 @@ export default function PaymentPage() {
 
           {/* Order Summary */}
           <div>
-            <Card className="sticky top-4">
+            <Card className="lg:sticky lg:top-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingBag className="h-5 w-5" />

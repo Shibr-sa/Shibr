@@ -42,6 +42,14 @@ const calculateRentalMonths = (startDate: number | undefined, endDate: number | 
   return Math.max(1, Math.ceil(daysDiff / 30))
 }
 
+// Helper mapping for period to time label
+const periodToTimeLabel: Record<"daily" | "weekly" | "monthly" | "yearly", string> = {
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+  yearly: "year"
+}
+
 export default function BrandShelvesPage() {
   const { t, direction, language } = useLanguage()
   const { isBrandDataComplete } = useBrandData()
@@ -353,7 +361,7 @@ export default function BrandShelvesPage() {
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-6">
       {/* Profile Completion Warning */}
       {!isLoading && !isBrandDataComplete && (
         <Alert variant="destructive">
@@ -378,7 +386,7 @@ export default function BrandShelvesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold">{t("brand.shelves.stats_overview")}</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1">
               {t("brand.shelves.stats_description")}
             </p>
           </div>
@@ -391,14 +399,14 @@ export default function BrandShelvesPage() {
             </TabsList>
           </Tabs>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Rented Shelves Count Card */}
             <StatCard
               title={t("brand.shelves.rented_count")}
               value={rentalStats?.active ?? activeRentals}
               trend={{
                 value: rentalStats?.activeChange || 0,
-                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+                label: `${t("time.from")} ${t(`time.last_${periodToTimeLabel[selectedPeriod]}`)}`
               }}
               icon={<Store className="h-5 w-5 text-primary" />}
             />
@@ -409,7 +417,7 @@ export default function BrandShelvesPage() {
               value={dashboardStats?.totalScans || 0}
               trend={{
                 value: dashboardStats?.scansChange || 0,
-                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+                label: `${t("time.from")} ${t(`time.last_${periodToTimeLabel[selectedPeriod]}`)}`
               }}
               icon={<QrCode className="h-5 w-5 text-primary" />}
             />
@@ -420,7 +428,7 @@ export default function BrandShelvesPage() {
               value={formatCurrency(dashboardStats?.totalRevenue || 0, language)}
               trend={{
                 value: dashboardStats?.revenueChange || 0,
-                label: `${t("time.from")} ${t(`time.last_${selectedPeriod === "daily" ? "day" : selectedPeriod === "weekly" ? "week" : selectedPeriod === "yearly" ? "year" : "month"}`)}`
+                label: `${t("time.from")} ${t(`time.last_${periodToTimeLabel[selectedPeriod]}`)}`
               }}
               icon={<Banknote className="h-5 w-5 text-primary" />}
             />
@@ -437,17 +445,17 @@ export default function BrandShelvesPage() {
             </p>
           </div>
           {/* Search and Add Button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 overflow-visible">
-              <div className="relative flex-1 sm:flex-initial sm:w-80 max-w-full overflow-visible">
-                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t("ui.search_placeholder")}
-                  className="ps-10 w-full"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="sm:ms-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("ui.search_placeholder")}
+                className="ps-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="sm:ms-auto">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -478,32 +486,32 @@ export default function BrandShelvesPage() {
           </div>
         </div>
         {/* Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="h-12 text-start font-medium w-[20%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("table.store_name")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[15%]">
+                <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                   {t("table.city")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[10%]">
+                <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                   {t("table.sales_count")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[12%]">
+                <TableHead className="h-12 text-start font-medium hidden md:table-cell">
                   {t("table.rental_duration")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[13%]">
+                <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                   {t("table.rental_start_date")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[13%]">
+                <TableHead className="h-12 text-start font-medium hidden lg:table-cell">
                   {t("table.rental_end_date")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[12%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("table.status")}
                 </TableHead>
-                <TableHead className="h-12 text-start font-medium w-[10%]">
+                <TableHead className="h-12 text-start font-medium">
                   {t("table.action")}
                 </TableHead>
               </TableRow>
@@ -513,14 +521,14 @@ export default function BrandShelvesPage() {
                 // Loading state - show 5 skeleton rows
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={`loading-${index}`} className="h-[72px]">
-                    <TableCell className="py-3 w-[20%]"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                    <TableCell className="py-3 w-[15%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-4 w-[40px]" /></TableCell>
-                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                    <TableCell className="py-3 w-[13%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell className="py-3 w-[13%]"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell className="py-3 w-[12%]"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
-                    <TableCell className="py-3 w-[10%]"><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                    <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[40px]" /></TableCell>
+                    <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedRequests.length > 0 ? (
@@ -528,16 +536,16 @@ export default function BrandShelvesPage() {
                 <>
                   {paginatedRequests.map((request) => (
                     <TableRow key={request._id} className="h-[72px]">
-                      <TableCell className="py-3 font-medium w-[20%]">
+                      <TableCell className="py-3 font-medium">
                         {request.otherUserName || "-"}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[15%]">
+                      <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
                         {request.city || "-"}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[10%]">
+                      <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                         {(request as any).salesCount !== undefined ? (request as any).salesCount : "0"}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[12%]">
+                      <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
                         {(() => {
                           const months = calculateRentalMonths(request.startDate, request.endDate)
                           if (language === "ar") {
@@ -549,7 +557,7 @@ export default function BrandShelvesPage() {
                           }
                         })()}
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[13%]">
+                      <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                         {request.startDate
                           ? format(new Date(request.startDate), "d MMM yyyy", {
                               locale: language === "ar" ? ar : enUS
@@ -557,7 +565,7 @@ export default function BrandShelvesPage() {
                           : "-"
                         }
                       </TableCell>
-                      <TableCell className="py-3 text-muted-foreground w-[13%]">
+                      <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                         {request.endDate
                           ? format(new Date(request.endDate), "d MMM yyyy", {
                               locale: language === "ar" ? ar : enUS
@@ -565,10 +573,10 @@ export default function BrandShelvesPage() {
                           : "-"
                         }
                       </TableCell>
-                      <TableCell className="py-3 w-[12%]">
+                      <TableCell className="py-3">
                         {request.status ? getStatusBadge(request.status) : "-"}
                       </TableCell>
-                      <TableCell className="py-3 w-[10%]">{getActionButton(request)}</TableCell>
+                      <TableCell className="py-3">{getActionButton(request)}</TableCell>
                     </TableRow>
                   ))}
                   {/* Fill remaining rows to always show 5 rows */}

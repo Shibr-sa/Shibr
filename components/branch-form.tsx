@@ -328,7 +328,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
       <div className="space-y-4">
         <Label>{t("branches.location_label")}</Label>
 
-        <div className="h-[400px] rounded-lg overflow-hidden">
+        <div className="h-[300px] md:h-[400px] rounded-lg overflow-hidden">
           <MapPicker
             center={{
               lat: selectedLocation.latitude,
