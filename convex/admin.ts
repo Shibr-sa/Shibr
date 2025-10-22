@@ -1362,24 +1362,11 @@ export const getStoreShelves = query({
     // Extract shelves from filtered results
     shelves = filteredShelvesWithBranches.map(({ shelf }) => shelf)
 
-    // Get active/payment_pending rentals to determine shelf availability
-    const activeShelfRentals = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .take(500) // Strict limit per Convex best practices
-    const paymentPendingShelfRentals = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
-      .take(500) // Strict limit per Convex best practices
-    const allActiveShelfRentals = [...activeShelfRentals, ...paymentPendingShelfRentals]
-    const rentedShelfIds = new Set(allActiveShelfRentals.map(r => r.shelfId))
-
-    // Apply status filter
+    // Apply status filter based on shelf status field
     if (statusFilter !== "all") {
       shelves = shelves.filter(shelf => {
-        const isRented = rentedShelfIds.has(shelf._id)
-        const isAvailable = isRented ? "rented" : "available"
-        return isAvailable === statusFilter
+        const shelfStatus = shelf.status === "rented" ? "rented" : "available"
+        return shelfStatus === statusFilter
       })
     }
 

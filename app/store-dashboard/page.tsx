@@ -39,10 +39,9 @@ function getRequestStatusBadgeVariant(status: string): "default" | "secondary" |
 
 // Helper function to get badge variant based on shelf status
 function getShelfStatusBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  // Check if shelf is rented (not available)
-  if (!shelf.isAvailable) {
+  if (shelf.status === "rented") {
     return "default"
-  } else if (shelf.status === "active" && shelf.isAvailable) {
+  } else if (shelf.status === "active") {
     return "secondary"
   } else if (shelf.status === "suspended") {
     return "outline"
@@ -434,25 +433,22 @@ export default function StoreDashboardPage() {
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                             <TableCell className="hidden md:table-cell">{shelf.branch?.branchName || '-'}</TableCell>
                             <TableCell className="hidden md:table-cell">
-                              {!shelf.isAvailable && shelf.renterName ?
-                                shelf.renterName :
-                                "-"
-                              }
+                              {shelf.renterName || "-"}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
                               {formatCurrency(shelf.monthlyPrice || 0, language)}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
-                              {!shelf.isAvailable && shelf.netRevenue ?
+                              {shelf.netRevenue ?
                                 formatCurrency(shelf.netRevenue, language) :
                                 "-"
                               }
                             </TableCell>
                             <TableCell>
                               <Badge variant={getShelfStatusBadgeVariant(shelf)}>
-                                {!shelf.isAvailable
+                                {shelf.status === "rented"
                                   ? t("shelves.status.rented")
-                                  : shelf.status === "active" && shelf.isAvailable
+                                  : shelf.status === "active"
                                   ? t("shelves.status.available")
                                   : shelf.status === "suspended"
                                   ? t("shelves.status.suspended")
@@ -461,7 +457,7 @@ export default function StoreDashboardPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
-                              {!shelf.isAvailable && shelf.nextCollectionDate ?
+                              {shelf.nextCollectionDate ?
                                 new Date(shelf.nextCollectionDate).toLocaleDateString("en-US") :
                                 "-"
                               }

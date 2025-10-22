@@ -210,22 +210,16 @@ export const getAvailableShelves = query({
     minPrice: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("shelves")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-    
-    const shelves = await query.collect()
-    
-    // Get all active and payment_pending rentals to check availability
+    // Get all shelves (active and rented) - exclude only suspended shelves
+    // Brands can book rented shelves for dates after current rental ends
+    const allShelves = await ctx.db.query("shelves").collect()
+    const shelves = allShelves.filter(shelf => shelf.status !== "suspended")
+
+    // Get active rentals to show current rental info
     const activeRentals = await ctx.db
       .query("rentalRequests")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect()
-    const paymentPendingRentals = await ctx.db
-      .query("rentalRequests")
-      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
-      .collect()
-    const allActiveRentals = [...activeRentals, ...paymentPendingRentals]
 
     // Filter by additional criteria and add rental info
     const filteredShelves = await Promise.all(
@@ -238,8 +232,8 @@ export const getAvailableShelves = query({
         if (args.maxPrice && shelf.monthlyPrice && shelf.monthlyPrice > args.maxPrice) return null
         if (args.minPrice && shelf.monthlyPrice && shelf.monthlyPrice < args.minPrice) return null
 
-        // Find active rental for this shelf
-        const currentRental = allActiveRentals.find(r => r.shelfId === shelf._id)
+        // Find active rental for this shelf (to show when it becomes available)
+        const currentRental = activeRentals.find(r => r.shelfId === shelf._id)
 
         return {
           ...shelf,

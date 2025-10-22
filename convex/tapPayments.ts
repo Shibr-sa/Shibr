@@ -143,6 +143,11 @@ export const updatePaymentStatus = internalMutation({
       await ctx.db.patch(args.rentalRequestId, {
         status: "active" as any,
       })
+
+      // Update shelf status to rented
+      await ctx.db.patch(rentalRequest.shelfId, {
+        status: "rented" as any,
+      })
     }
 
     return { success: true }

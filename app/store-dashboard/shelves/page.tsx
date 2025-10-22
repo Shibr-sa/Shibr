@@ -36,10 +36,9 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 
 // Helper function to get badge variant based on shelf status
 function getShelfBadgeVariant(shelf: any): "default" | "secondary" | "outline" {
-  // Check if shelf has active rental
-  if (shelf.isAvailable === false) {
+  if (shelf.status === "rented") {
     return "default"
-  } else if (shelf.status === "active" && shelf.isAvailable) {
+  } else if (shelf.status === "active") {
     return "secondary"
   } else if (shelf.status === "suspended") {
     return "outline"
@@ -86,17 +85,16 @@ export default function StoreDashboardShelvesPage() {
   // Filter and search shelves
   const filteredShelves = useMemo(() => {
     if (!shelves) return []
-    
+
     let filtered = [...shelves]
-    
+
     // Apply status filter
     if (filter === "rented") {
-      // Check for shelves that are not available (meaning they're rented)
-      filtered = filtered.filter(shelf => shelf.isAvailable === false)
+      filtered = filtered.filter(shelf => shelf.status === "rented")
     } else if (filter === "available") {
-      filtered = filtered.filter(shelf => shelf.status === "active" && shelf.isAvailable)
+      filtered = filtered.filter(shelf => shelf.status === "active")
     }
-    
+
     // Apply search filter with debounced value
     if (debouncedSearchQuery) {
       filtered = filtered.filter(shelf =>
@@ -105,7 +103,7 @@ export default function StoreDashboardShelvesPage() {
         shelf.branch?.branchName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       )
     }
-    
+
     return filtered
   }, [shelves, filter, debouncedSearchQuery])
   
@@ -408,19 +406,16 @@ export default function StoreDashboardShelvesPage() {
                           <TableCell className="font-medium">{shelf.shelfName}</TableCell>
                           <TableCell className="hidden md:table-cell">{shelf.branch?.branchName || "-"}</TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {!shelf.isAvailable && shelf.renterName ?
-                              shelf.renterName :
-                              "-"
-                            }
+                            {shelf.renterName || "-"}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {formatCurrency(shelf.monthlyPrice || 0, language)} / {t("common.monthly")}
                           </TableCell>
                           <TableCell>
                             <Badge variant={getShelfBadgeVariant(shelf)}>
-                              {!shelf.isAvailable
+                              {shelf.status === "rented"
                                 ? t("shelves.status.rented")
-                                : shelf.status === "active" && shelf.isAvailable
+                                : shelf.status === "active"
                                 ? t("shelves.status.available")
                                 : shelf.status === "suspended"
                                 ? t("shelves.status.suspended")

@@ -161,6 +161,7 @@ const schema = defineSchema({
     // Status
     status: v.union(
       v.literal("active"),
+      v.literal("rented"),
       v.literal("suspended")
     ),
 

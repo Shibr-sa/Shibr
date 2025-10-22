@@ -264,8 +264,8 @@ export default function ShelfDetailsPage() {
           <h3 className="text-base font-semibold">
             {t("shelf_details.shelf_information")}
           </h3>
-          <Badge variant={getStatusVariant(shelfData.isAvailable === false ? "rented" : "available")}>
-            {shelfData.isAvailable === false
+          <Badge variant={getStatusVariant(shelfData.status === "rented" ? "rented" : "available")}>
+            {shelfData.status === "rented"
               ? t("shelf_details.rented")
               : t("shelf_details.available")
             }
