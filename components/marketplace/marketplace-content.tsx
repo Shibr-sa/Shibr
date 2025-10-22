@@ -416,27 +416,25 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                       className={`block ${STORE_CARD_GAP} last:mb-0`}
                       aria-label={`View details for ${store.shelfName}`}
                     >
-                      <Card 
+                      <Card
                         id={`store-${store._id}`}
                         className={`overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border shadow-lg ${STORE_CARD_HEIGHT}`}
                       >
-                        <CardContent className="p-0 h-full">
-                          <div className="flex h-full">
+                        <CardContent className="p-0">
+                          <div className="flex min-h-[240px]">
                             {/* Store Image */}
                             <div className="w-1/3 relative bg-gradient-to-br from-muted/50 to-muted">
-                              <AspectRatio ratio={3/4} className="h-full">
-                                {(store.shelfImage || store.exteriorImage || store.interiorImage) ? (
-                                  <img 
-                                    src={store.shelfImage || store.exteriorImage || store.interiorImage} 
-                                    alt={store.shelfName}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Store className="h-12 w-12 text-muted-foreground/50" />
-                                  </div>
-                                )}
-                              </AspectRatio>
+                              {(store.shelfImage || store.exteriorImage || store.interiorImage) ? (
+                                <img
+                                  src={store.shelfImage || store.exteriorImage || store.interiorImage}
+                                  alt={store.shelfName}
+                                  className="h-full w-full object-cover absolute inset-0"
+                                />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Store className="h-12 w-12 text-muted-foreground/50" />
+                                </div>
+                              )}
                             </div>
 
                             {/* Store Info - Simplified and Clear */}
