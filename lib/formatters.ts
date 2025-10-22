@@ -10,17 +10,22 @@ import { ar, enUS } from 'date-fns/locale'
 /**
  * Format currency with SAR symbol
  * Always uses English numerals (0-9) regardless of language
+ * Always displays exactly 2 decimal places (e.g., 180.00, 207.50)
  * @param amount - The amount to format
  * @param language - Current language for currency symbol placement
- * @returns Formatted currency string with English numbers
+ * @returns Formatted currency string with English numbers and 2 decimal places
  */
 export const formatCurrency = (amount: number, language: 'ar' | 'en' = 'en'): string => {
+  // Round to 2 decimal places first to avoid floating point issues
+  const rounded = Math.round(amount * 100) / 100
+
   // Always use en-US locale to ensure English numerals
+  // Force exactly 2 decimal places for consistency
   const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
-  
+  }).format(rounded)
+
   // Place currency symbol based on language preference
   return language === 'ar' ? `${formatted} ر.س` : `SAR ${formatted}`
 }

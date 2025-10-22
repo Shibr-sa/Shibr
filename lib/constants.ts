@@ -1,6 +1,9 @@
 /**
  * Application-wide constants for consistent limits and patterns.
  * All numeric values use English/Western numerals (0-9).
+ *
+ * Tax: 15% VAT calculated in /lib/tax.ts
+ * Prices stored without tax, calculated for display
  */
 
 // ============================================

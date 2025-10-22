@@ -34,6 +34,7 @@ import {
   Search
 } from "lucide-react"
 import { formatCurrency } from "@/lib/formatters"
+import { calculatePriceWithTax } from "@/lib/tax"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -90,10 +91,12 @@ export default function StorePage() {
 
   const handleAddToCart = (product: any, customQuantity?: number) => {
     const quantityToAdd = customQuantity || 1
+    // Calculate tax-inclusive price (product.price is base price from DB)
+    const priceWithTax = calculatePriceWithTax(product.price)
     const result = cart.addItem({
       productId: product._id,
       name: product.name,
-      price: product.price,
+      price: priceWithTax, // Tax-inclusive price shown to customers
       maxQuantity: product.shelfQuantity,
       quantity: quantityToAdd,
     })
@@ -296,7 +299,7 @@ export default function StorePage() {
                   <CardContent>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-lg sm:text-xl font-bold">
-                        {formatCurrency(product.price, language)}
+                        {formatCurrency(calculatePriceWithTax(product.price), language)}
                       </p>
                       <Button
                         className="min-w-fit"
@@ -378,7 +381,7 @@ export default function StorePage() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <p className="text-2xl font-bold">
-                    {formatCurrency(selectedProduct.price, language)}
+                    {formatCurrency(calculatePriceWithTax(selectedProduct.price), language)}
                   </p>
                   <Badge
                     variant={selectedProduct.shelfQuantity > 0 ? "secondary" : "destructive"}

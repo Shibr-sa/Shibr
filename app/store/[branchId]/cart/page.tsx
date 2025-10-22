@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/formatters"
+import { calculateCartTotalsFromInclusive } from "@/lib/tax"
 import {
   ShoppingCart,
   Plus,
@@ -245,9 +246,13 @@ export default function CartPage() {
 
     try {
       // Prepare order data for payment page
-      // Calculate subtotal (before tax) and total (with 15% VAT)
-      const cartSubtotal = cart.getTotalPrice()
-      const totalAmount = cartSubtotal * 1.15 // Add 15% VAT
+      // Cart prices already include 15% VAT - calculate proper breakdown
+      const totals = calculateCartTotalsFromInclusive(
+        cart.items.map(item => ({
+          inclusivePrice: item.price,
+          quantity: item.quantity
+        }))
+      )
 
       const orderData = {
         branchId: store.branch._id,
@@ -257,11 +262,11 @@ export default function CartPage() {
         items: cart.items.map(item => ({
           productId: item.productId,
           name: item.name,
-          price: item.price,
+          price: item.price, // Tax-inclusive price
           quantity: item.quantity
         })),
-        subtotal: cartSubtotal,
-        total: totalAmount,
+        subtotal: totals.subtotal,
+        total: totals.total,
         timestamp: Date.now()
       }
 
@@ -409,21 +414,31 @@ export default function CartPage() {
             <div className="hidden lg:block order-2 lg:order-1">
               <Card className="lg:sticky lg:top-4">
                 <CardContent className="space-y-4 pt-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span>{t("store.subtotal")}</span>
-                      <span>{formatCurrency(cart.getTotalPrice(), language)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{t("store.tax")} (15%)</span>
-                      <span>{formatCurrency(cart.getTotalPrice() * 0.15, language)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>{t("store.total")}</span>
-                      <span>{formatCurrency(cart.getTotalPrice() * 1.15, language)}</span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const totals = calculateCartTotalsFromInclusive(
+                      cart.items.map(item => ({
+                        inclusivePrice: item.price,
+                        quantity: item.quantity
+                      }))
+                    )
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>{t("store.subtotal")}</span>
+                          <span>{formatCurrency(totals.subtotal, language)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{t("store.tax")} (15%)</span>
+                          <span>{formatCurrency(totals.tax, language)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                          <span>{t("store.total")}</span>
+                          <span>{formatCurrency(totals.total, language)}</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   <Button
                     className="w-full"
@@ -447,42 +462,50 @@ export default function CartPage() {
         )}
 
         {/* Mobile Sticky Checkout Bar */}
-        {cart.items.length > 0 && (
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10 shadow-lg">
-            <div className="container mx-auto space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span>{t("store.subtotal")}</span>
-                  <span>{formatCurrency(cart.getTotalPrice(), language)}</span>
+        {cart.items.length > 0 && (() => {
+          const totals = calculateCartTotalsFromInclusive(
+            cart.items.map(item => ({
+              inclusivePrice: item.price,
+              quantity: item.quantity
+            }))
+          )
+          return (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10 shadow-lg">
+              <div className="container mx-auto space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span>{t("store.subtotal")}</span>
+                    <span>{formatCurrency(totals.subtotal, language)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <span>{t("store.tax")} (15%)</span>
+                    <span>{formatCurrency(totals.tax, language)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-lg">{t("store.total")}</span>
+                    <span className="font-bold text-lg">{formatCurrency(totals.total, language)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                  <span>{t("store.tax")} (15%)</span>
-                  <span>{formatCurrency(cart.getTotalPrice() * 0.15, language)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-lg">{t("store.total")}</span>
-                  <span className="font-bold text-lg">{formatCurrency(cart.getTotalPrice() * 1.15, language)}</span>
-                </div>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleCheckout}
+                  disabled={isSubmitting || cart.items.length === 0}
+                >
+                  {isSubmitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      {t("store.checkout")}
+                      <ArrowRight className="h-4 w-4 ms-2" />
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={handleCheckout}
-                disabled={isSubmitting || cart.items.length === 0}
-              >
-                {isSubmitting ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    {t("store.checkout")}
-                    <ArrowRight className="h-4 w-4 ms-2" />
-                  </>
-                )}
-              </Button>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Customer Information Dialog */}
         <Dialog open={phoneDialogOpen} onOpenChange={handleDialogClose}>

@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { api, internal } from "./_generated/api"
+import { calculateOrderTotals, TAX_RATE } from "./taxUtils"
 
 // STEP 1: Create order record immediately after payment (with payment reference to prevent duplicates)
 export const createOrderFromPayment = mutation({
@@ -37,7 +38,7 @@ export const createOrderFromPayment = mutation({
       throw new Error("Store not found")
     }
 
-    // Calculate order details
+    // Get products and calculate order (using DB prices for security)
     const orderItems = await Promise.all(
       args.items.map(async (item) => {
         const product = await ctx.db.get(item.productId)
@@ -45,26 +46,27 @@ export const createOrderFromPayment = mutation({
           throw new Error(`Product ${item.productId} not found`)
         }
 
-        // Check stock availability
         if (product.stockQuantity && product.stockQuantity < item.quantity) {
           throw new Error(`Insufficient stock for ${product.name}`)
         }
 
-        const itemSubtotal = product.price * item.quantity
-
         return {
           productId: item.productId,
           productName: product.name,
-          price: product.price,
+          price: product.price, // Base price from DB
           quantity: item.quantity,
-          subtotal: itemSubtotal,
+          subtotal: Math.round(product.price * item.quantity * 100) / 100,
         }
       })
     )
 
-    // Calculate subtotal and total with 15% VAT
-    const subtotal = orderItems.reduce((sum, item) => sum + item.subtotal, 0)
-    const total = subtotal * 1.15
+    // Calculate totals from DB prices
+    const totals = calculateOrderTotals(
+      orderItems.map(item => ({
+        basePrice: item.price,
+        quantity: item.quantity
+      }))
+    )
 
     // Create the order record with payment reference (prevents duplicates)
     const orderId = await ctx.db.insert("customerOrders", {
@@ -74,8 +76,10 @@ export const createOrderFromPayment = mutation({
       paymentReference: args.paymentReference,
       invoiceNumber: `PENDING-${Date.now()}`, // Temporary, will be updated with Wafeq invoice
       items: orderItems,
-      subtotal,
-      total,
+      subtotal: totals.subtotal,
+      total: totals.total,
+      taxAmount: totals.tax,
+      taxRate: TAX_RATE,
     })
 
     // Update product stock
@@ -133,7 +137,7 @@ export const createOrderFromPayment = mutation({
     // Update branch store statistics
     await ctx.db.patch(args.branchId, {
       totalOrders: (branch.totalOrders || 0) + 1,
-      totalRevenue: (branch.totalRevenue || 0) + total,
+      totalRevenue: (branch.totalRevenue || 0) + totals.total,
     })
 
     console.log('[Order] Step 1 complete: Order record created:', orderId)
@@ -212,12 +216,13 @@ export const processOrderAfterPayment = action({
       order.items.map((item: any) => ctx.runQuery(internal.customerOrders.getProductForInvoice, { productId: item.productId }))
     )
 
+    // Wafeq invoice line items (base prices, Wafeq applies 15% tax)
     const lineItems = order.items.map((item: any, index: number) => {
       const product = products[index]
       return {
         description: product?.name || item.productName,
         quantity: item.quantity,
-        unit_amount: item.price,
+        unit_amount: item.price, // Base price
         account: wafeqAccountId,
         tax_rate: wafeqTaxRateId,
       }
@@ -811,14 +816,10 @@ export const sendInvoiceToCustomer = internalAction({
 
       console.log('[Order] PDF stored temporarily, public URL generated')
 
-      // Format invoice date
       const invoiceDate = new Date(order._creationTime).toLocaleDateString('en-GB')
-
-      // Calculate tax amount from stored values
-      const taxAmount = order.total - order.subtotal
-
-      // Format total with tax breakdown
-      const invoiceTotal = `Subtotal: ${order.subtotal.toFixed(2)} SAR | Tax (15%): ${taxAmount.toFixed(2)} SAR | Total: ${order.total.toFixed(2)} SAR`
+      const taxAmount = order.taxAmount || (order.total - order.subtotal)
+      const taxRate = order.taxRate ? `${Math.round(order.taxRate * 100)}%` : '15%'
+      const invoiceTotal = `Subtotal: ${order.subtotal.toFixed(2)} SAR | Tax (${taxRate}): ${taxAmount.toFixed(2)} SAR | Total: ${order.total.toFixed(2)} SAR`
 
       try {
         // Send invoice via WhatsApp

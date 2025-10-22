@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { PRODUCT_CATEGORIES } from "@/lib/constants"
+import { calculatePriceWithTax, getTaxRatePercentage } from "@/lib/tax"
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -346,6 +347,16 @@ export function ProductDialog({
                         </span>
                       </div>
                     </FormControl>
+                    {field.value > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {(() => {
+                          const customerPrice = calculatePriceWithTax(field.value).toFixed(2)
+                          return language === "ar"
+                            ? `سعر العرض للعميل: ${customerPrice} ${t("common.currency")} (شامل ${getTaxRatePercentage()} ضريبة)`
+                            : `Customer price: ${customerPrice} ${t("common.currency")} (incl. ${getTaxRatePercentage()} VAT)`
+                        })()}
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
