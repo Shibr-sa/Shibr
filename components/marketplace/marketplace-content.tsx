@@ -81,58 +81,45 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   // Search and filter states
   const [searchInput, setSearchInput] = useState("")
   const [selectedCity, setSelectedCity] = useState("all")
-  const [selectedArea, setSelectedArea] = useState("all")
   const [selectedStoreType, setSelectedStoreType] = useState("all")
   const [priceRange, setPriceRange] = useState(DEFAULT_PRICE_RANGE)
   const [selectedMonth, setSelectedMonth] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [sliderValue, setSliderValue] = useState(100) // Visual slider position
   const [committedSliderValue, setCommittedSliderValue] = useState(100) // Actual filter value
-  const [previousStores, setPreviousStores] = useState<Store[] | undefined>(undefined) // Cache previous results
-
-  // Get available cities and price range from stores first
-  const availableCities = useQuery(api.stores.getAvailableCities)
-  const availableProductTypes = useQuery(api.stores.getAvailableProductTypes)
-  
-  // Get platform settings to calculate total commission
-  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
-  
-  // Get price range based on current filters (excluding price itself)
-  const priceRangeData = useQuery(api.stores.getPriceRange, {
-    city: selectedCity !== "all" ? selectedCity : undefined,
-    area: selectedArea !== "all" ? selectedArea : undefined,
-    productType: selectedStoreType !== "all" ? selectedStoreType : undefined,
-    searchQuery: searchInput || undefined,
-    month: selectedMonth !== "all" ? selectedMonth : undefined,
-  })
 
   // Debounce search input to avoid too many queries
   const debouncedSearchQuery = useDebounce(searchInput, 500)
 
-  // Fetch stores from Convex (using committed price range, not debounced)
-  const storesQuery = useQuery(api.stores.getMarketplaceStores, {
+  // Get available cities and product types
+  const availableCities = useQuery(api.stores.getAvailableCities)
+  const availableProductTypes = useQuery(api.stores.getAvailableProductTypes)
+
+  // Get platform settings to calculate total commission
+  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
+
+  // Get price range based on current filters (excluding price itself)
+  const priceRangeData = useQuery(api.stores.getPriceRange, {
     city: selectedCity !== "all" ? selectedCity : undefined,
-    area: selectedArea !== "all" ? selectedArea : undefined,
+    productType: selectedStoreType !== "all" ? selectedStoreType : undefined,
+    searchQuery: debouncedSearchQuery || undefined,
+    month: selectedMonth !== "all" ? selectedMonth : undefined,
+  })
+
+  // Fetch stores from Convex with backend pagination
+  const storesData = useQuery(api.stores.getMarketplaceStores, {
+    city: selectedCity !== "all" ? selectedCity : undefined,
     searchQuery: debouncedSearchQuery || undefined,
     minPrice: priceRange.min > 0 ? priceRange.min : undefined,
     maxPrice: priceRange.max < (priceRangeData?.max || 9000) ? priceRange.max : undefined,
     productType: selectedStoreType !== "all" ? selectedStoreType : undefined,
     month: selectedMonth !== "all" ? selectedMonth : undefined,
-  }) as Store[] | undefined
+    page: currentPage,
+    pageSize: ITEMS_PER_PAGE,
+  })
 
-  // Use previous stores while loading new ones to prevent flickering
-  const stores = storesQuery !== undefined ? storesQuery : previousStores
-
-  // Update previous stores when we get new data
-  useEffect(() => {
-    if (storesQuery !== undefined) {
-      setPreviousStores(storesQuery)
-    }
-  }, [storesQuery])
-
-  // Separate loading state for initial load vs filter updates
-  const isInitialLoading = stores === undefined && previousStores === undefined
-  const isFilterLoading = storesQuery === undefined && previousStores !== undefined
+  // Loading states
+  const isLoading = storesData === undefined
 
   // Update price range when data loads or filters change
   useEffect(() => {
@@ -144,30 +131,18 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
     }
   }, [priceRangeData?.min, priceRangeData?.max])
 
-  // Get actual min/max prices
+  // Extract data from backend response
+  const stores = storesData?.shelves || []
+  const totalPages = storesData?.pagination.totalPages || 0
+  const totalCount = storesData?.pagination.totalCount || 0
+
+  // Get price range values
   const minPrice = priceRangeData?.min || 0
   const maxPrice = priceRangeData?.max || 9000
 
-  // Pagination calculation - moved before usage
-  const { totalPages, currentStores } = useMemo(() => {
-    if (!stores) return { totalPages: 0, currentStores: [] }
-    
-    const total = Math.ceil(stores.length / ITEMS_PER_PAGE)
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    const endIndex = startIndex + ITEMS_PER_PAGE
-    const current = stores.slice(startIndex, endIndex)
-    
-    return { totalPages: total, currentStores: current }
-  }, [stores, currentPage])
-
-  // Reset to first page when filters change
+  // Filter change handlers - reset to page 1 when filters change
   const handleCityChange = useCallback((value: string) => {
     setSelectedCity(value)
-    setCurrentPage(1)
-  }, [])
-
-  const handleAreaChange = useCallback((value: string) => {
-    setSelectedArea(value)
     setCurrentPage(1)
   }, [])
 
@@ -246,113 +221,90 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
       )}
 
       {/* Search Filters */}
-      <Card className="relative">
-        {isFilterLoading && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        )}
+      <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Search Input */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  type="search"
-                  placeholder={t("marketplace.search_placeholder")}
-                  className="ps-10 h-12"
-                  value={searchInput}
-                  onChange={handleSearchChange}
-                />
-              </div>
+          <div className="space-y-4">
+            {/* Search Bar - Full Width */}
+            <div className="relative">
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                type="search"
+                placeholder={t("marketplace.search_placeholder")}
+                className="ps-10 h-12"
+                value={searchInput}
+                onChange={handleSearchChange}
+              />
             </div>
 
-            {/* City Filter */}
-            <Select value={selectedCity} onValueChange={handleCityChange}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder={t("marketplace.all_cities")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("marketplace.all_cities")}</SelectItem>
-                {availableCities?.map((city) => (
-                  <SelectItem key={city} value={city}>
-                    {city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Filters Row: City, Store Type, Month */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* City Filter */}
+              <Select value={selectedCity} onValueChange={handleCityChange}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder={t("marketplace.all_cities")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("marketplace.all_cities")}</SelectItem>
+                  {availableCities?.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* Area Filter */}
-            <Select value={selectedArea} onValueChange={handleAreaChange}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder={t("marketplace.all_areas")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("marketplace.all_areas")}</SelectItem>
-                <SelectItem value="north">{t("marketplace.north")}</SelectItem>
-                <SelectItem value="south">{t("marketplace.south")}</SelectItem>
-                <SelectItem value="east">{t("marketplace.east")}</SelectItem>
-                <SelectItem value="west">{t("marketplace.west")}</SelectItem>
-                <SelectItem value="center">{t("marketplace.center")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              {/* Store Type Filter */}
+              <Select value={selectedStoreType} onValueChange={handleStoreTypeChange}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder={t("marketplace.store_type")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("marketplace.all_types")}</SelectItem>
+                  {availableProductTypes?.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {t(`product_categories.${type}` as any) || type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
-            {/* Price Range */}
-            <div className="lg:col-span-2 flex items-center h-12">
-              <div className={`flex items-center gap-4 w-full ${(!priceRangeData || !stores || stores.length === 0) ? 'opacity-50 pointer-events-none' : ''}`}>
-                <span className="text-sm text-muted-foreground">{minPrice} {t("common.currency_symbol")}</span>
-                <Slider
-                  value={[sliderValue]}
-                  onValueChange={(value) => handleSliderChange(value[0])}
-                  onValueCommit={(value) => handleSliderCommit(value[0])}
-                  max={100}
-                  step={1}
-                  className="flex-1"
-                  disabled={!priceRangeData || !stores || stores.length === 0}
-                />
-                <span className="text-sm text-muted-foreground ms-2">{sliderValue === 0 ? minPrice : minPrice + Math.round((sliderValue / 100) * (maxPrice - minPrice))} {t("common.currency_symbol")}</span>
-              </div>
+              {/* Month/Date Filter */}
+              <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder={t("marketplace.select_month")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("marketplace.all_months")}</SelectItem>
+                  <SelectItem value="january">{t("marketplace.january")}</SelectItem>
+                  <SelectItem value="february">{t("marketplace.february")}</SelectItem>
+                  <SelectItem value="march">{t("marketplace.march")}</SelectItem>
+                  <SelectItem value="april">{t("marketplace.april")}</SelectItem>
+                  <SelectItem value="may">{t("marketplace.may")}</SelectItem>
+                  <SelectItem value="june">{t("marketplace.june")}</SelectItem>
+                  <SelectItem value="july">{t("marketplace.july")}</SelectItem>
+                  <SelectItem value="august">{t("marketplace.august")}</SelectItem>
+                  <SelectItem value="september">{t("marketplace.september")}</SelectItem>
+                  <SelectItem value="october">{t("marketplace.october")}</SelectItem>
+                  <SelectItem value="november">{t("marketplace.november")}</SelectItem>
+                  <SelectItem value="december">{t("marketplace.december")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Store Type Filter */}
-            <Select value={selectedStoreType} onValueChange={handleStoreTypeChange}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder={t("marketplace.store_type")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("marketplace.all_types")}</SelectItem>
-                {availableProductTypes?.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {t(`product_categories.${type}` as any) || type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Month/Date Filter */}
-            <Select value={selectedMonth} onValueChange={handleMonthChange}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder={t("marketplace.select_month")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("marketplace.all_months")}</SelectItem>
-                <SelectItem value="january">{t("marketplace.january")}</SelectItem>
-                <SelectItem value="february">{t("marketplace.february")}</SelectItem>
-                <SelectItem value="march">{t("marketplace.march")}</SelectItem>
-                <SelectItem value="april">{t("marketplace.april")}</SelectItem>
-                <SelectItem value="may">{t("marketplace.may")}</SelectItem>
-                <SelectItem value="june">{t("marketplace.june")}</SelectItem>
-                <SelectItem value="july">{t("marketplace.july")}</SelectItem>
-                <SelectItem value="august">{t("marketplace.august")}</SelectItem>
-                <SelectItem value="september">{t("marketplace.september")}</SelectItem>
-                <SelectItem value="october">{t("marketplace.october")}</SelectItem>
-                <SelectItem value="november">{t("marketplace.november")}</SelectItem>
-                <SelectItem value="december">{t("marketplace.december")}</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Price Range Slider - Full Width */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">{minPrice} {t("common.currency_symbol")}</span>
+              <Slider
+                value={[sliderValue]}
+                onValueChange={(value) => handleSliderChange(value[0])}
+                onValueCommit={(value) => handleSliderCommit(value[0])}
+                max={100}
+                step={1}
+                className="flex-1"
+                disabled={!priceRangeData || totalCount === 0}
+              />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">{sliderValue === 0 ? minPrice : minPrice + Math.round((sliderValue / 100) * (maxPrice - minPrice))} {t("common.currency_symbol")}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -363,7 +315,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
         <div className="order-2 lg:order-1 h-[300px] md:h-[400px] lg:h-[600px]">
           <Card className="h-full">
             <CardContent className="p-0 h-full">
-              <Suspense 
+              <Suspense
                 fallback={
                   <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
                     <div className="text-center">
@@ -373,16 +325,15 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                   </div>
                 }
               >
-                {isInitialLoading ? (
+                {isLoading ? (
                   <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
                     <Skeleton className="w-full h-full" />
                   </div>
                 ) : (
-                  <StoreMap 
+                  <StoreMap
                     key="marketplace-map"
-                    stores={currentStores || []}
+                    stores={stores}
                     onStoreSelect={(storeId) => {
-                      // Scroll to the selected store in the list
                       const element = document.getElementById(`store-${storeId}`)
                       if (element) {
                         element.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -399,17 +350,22 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
         <div className="order-1 lg:order-2 flex flex-col">
           {/* Stores Container */}
           <div className="flex-1 flex flex-col justify-start store-listings">
-            {isInitialLoading ? (
-              // Show skeleton only on initial load
+            {isLoading ? (
               <>
                 <Skeleton className={`${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} rounded-lg`} />
                 <Skeleton className={`${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} rounded-lg`} />
                 <Skeleton className={`${STORE_CARD_HEIGHT} rounded-lg`} />
               </>
+            ) : stores.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                <div className="text-center">
+                  <Store className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>{t("marketplace.no_stores_found")}</p>
+                </div>
+              </div>
             ) : (
-              <div className={`${isFilterLoading ? 'opacity-70 transition-opacity duration-200' : ''}`}>
-                {/* Show available stores with fade effect during filter loading */}
-                {currentStores.map((store) => (
+              <div>
+                {stores.map((store) => (
                     <Link 
                       href={`${linkPrefix}/${store._id}`} 
                       key={store._id} 

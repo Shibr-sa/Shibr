@@ -122,42 +122,69 @@ export const getOwnerShelves = query({
       .order("desc")
       .collect()
 
-    // Fetch renter names, branch data, and calculate next collection dates for rented shelves
+    // Batch fetch all active rentals for these shelves (fix N+1)
+    const shelfIds = shelves.map(s => s._id)
+    const allActiveRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect()
+
+    // Create map: shelfId -> rental
+    const rentalMap = new Map(
+      allActiveRentals
+        .filter(r => shelfIds.includes(r.shelfId))
+        .map(r => [r.shelfId, r])
+    )
+
+    // Batch fetch all brand profiles for rentals (fix N+1)
+    const brandProfileIds = [...new Set(allActiveRentals.map(r => r.brandProfileId).filter(Boolean))]
+    const brandProfiles = await Promise.all(
+      brandProfileIds.map(id => ctx.db.get(id!))
+    )
+    const brandProfileMap = new Map(
+      brandProfiles.filter(Boolean).map(p => [p!._id, p])
+    )
+
+    // Batch fetch all branches (fix N+1)
+    const branchIds = [...new Set(shelves.map(s => s.branchId).filter(Boolean))]
+    const branches = await Promise.all(
+      branchIds.map(id => ctx.db.get(id!))
+    )
+    const branchMap = new Map(
+      branches.filter(Boolean).map(b => [b!._id, b])
+    )
+
+    // Process shelves with batched data
     const shelvesWithDetails = await Promise.all(
       shelves.map(async (shelf) => {
         let renterName = null
         let nextCollectionDate = null
         let netRevenue = 0
 
-        // Check if there's an active rental for this shelf
-        const activeRental = await ctx.db
-          .query("rentalRequests")
-          .withIndex("by_shelf", (q) => q.eq("shelfId", shelf._id))
-          .filter((q) => q.eq(q.field("status"), "active"))
-          .first()
+        // Lookup active rental from map (no query!)
+        const activeRental = rentalMap.get(shelf._id)
 
         if (activeRental) {
-          const renterProfile = activeRental.brandProfileId ? await ctx.db.get(activeRental.brandProfileId) : null
-          renterName = renterProfile?.brandName
+          const renterProfile = brandProfileMap.get(activeRental.brandProfileId)
+          renterName = renterProfile?.brandName || null
 
           // Calculate net revenue after Shibr commission
           const monthlyPrice = activeRental.monthlyPrice || 0
           const shibrCommission = (monthlyPrice * platformRentCommission) / 100
           netRevenue = monthlyPrice - shibrCommission
+
+          // Calculate next collection date
+          if (activeRental.endDate) {
+            nextCollectionDate = activeRental.endDate
+          }
         }
 
-        // Calculate next collection date for rented shelves
-        if (activeRental && activeRental.endDate) {
-          // Collection happens at the end of the rental period
-          nextCollectionDate = activeRental.endDate
-        }
-
-        // Get branch data if branchId exists
+        // Lookup branch from map (no query!)
         let branchData = null
         let allImages = shelf.images || []
 
         if (shelf.branchId) {
-          const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+          const branch = branchMap.get(shelf.branchId)
           if (branch) {
             branchData = {
               _id: branch._id,

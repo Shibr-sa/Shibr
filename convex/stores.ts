@@ -13,12 +13,17 @@ export const getMarketplaceStores = query({
     productType: v.optional(v.string()),
     searchQuery: v.optional(v.string()),
     month: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Get all shelves (active and rented) - exclude only suspended
+    // Get all non-suspended shelves using indexed queries (more efficient)
     // Brands can book rented shelves for dates after current rental ends
-    const allShelves = await ctx.db.query("shelves").collect()
-    let shelves = allShelves.filter(shelf => shelf.status !== "suspended")
+    const [activeShelves, rentedShelves] = await Promise.all([
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "active")).collect(),
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "rented")).collect(),
+    ])
+    let shelves = [...activeShelves, ...rentedShelves]
 
     // Get branches for all shelves
     const branchesMap = new Map()
@@ -95,22 +100,68 @@ export const getMarketplaceStores = query({
       })
     }
 
-    // Get owner information and image URLs for each shelf
+    // Sort by creation date (newest first) - do this BEFORE pagination
+    shelves.sort((a, b) =>
+      new Date(b._creationTime).getTime() - new Date(a._creationTime).getTime()
+    )
+
+    // Pagination (after all filters, before expensive processing)
+    const totalCount = shelves.length
+    const page = args.page || 1
+    const pageSize = args.pageSize || 10
+    const startIndex = (page - 1) * pageSize
+    const paginatedShelves = shelves.slice(startIndex, startIndex + pageSize)
+
+    // Batch fetch all store profiles (fix N+1) - ONLY for paginated shelves
+    const storeProfileIds = [...new Set(paginatedShelves.map(s => s.storeProfileId))]
+    const storeProfiles = await Promise.all(
+      storeProfileIds.map(id => ctx.db.get(id))
+    )
+    const storeProfileMap = new Map(
+      storeProfiles.filter(Boolean).map(p => [p!._id, p])
+    )
+
+    // Batch fetch all owners (fix N+1) - ONLY for paginated shelves
+    const ownerUserIds = [...new Set(storeProfiles.filter(Boolean).map(p => p!.userId))]
+    const owners = await Promise.all(
+      ownerUserIds.map(id => ctx.db.get(id))
+    )
+    const ownerMap = new Map(
+      owners.filter(Boolean).map(o => [o!._id, o])
+    )
+
+    // Batch fetch all brand profiles for rentals (fix N+1) - ONLY for paginated shelf rentals
+    const paginatedShelfIds = paginatedShelves.map(s => s._id)
+    const relevantRentals = allActiveRentals.filter(r => paginatedShelfIds.includes(r.shelfId))
+    const brandProfileIds = [...new Set(relevantRentals.map(r => r.brandProfileId).filter(Boolean))]
+    const brandProfiles = await Promise.all(
+      brandProfileIds.map(id => ctx.db.get(id!))
+    )
+    const brandProfileMap = new Map(
+      brandProfiles.filter(Boolean).map(p => [p!._id, p])
+    )
+
+    // Create rental map for O(1) lookups (fix O(n²))
+    const rentalMap = new Map(
+      allActiveRentals.map(r => [r.shelfId, r])
+    )
+
+    // Process ONLY paginated shelves with batched data
     const shelvesWithOwners = await Promise.all(
-      shelves.map(async (shelf) => {
-        const ownerProfile = await ctx.db.get(shelf.storeProfileId)
-        const owner = ownerProfile ? await ctx.db.get(ownerProfile.userId) : null
+      paginatedShelves.map(async (shelf) => {
+        const ownerProfile = storeProfileMap.get(shelf.storeProfileId)
+        const owner = ownerProfile ? ownerMap.get(ownerProfile.userId) : null
         const branch = branchesMap.get(shelf._id)
 
         // Convert storage IDs to URLs using new structure
         const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
 
-        // Find current rental for this shelf
-        const currentRental = allActiveRentals.find(r => r.shelfId === shelf._id)
+        // Lookup current rental from map (no .find()!)
+        const currentRental = rentalMap.get(shelf._id)
         let rentalInfo = null
 
         if (currentRental) {
-          const brandProfile = await ctx.db.get(currentRental.brandProfileId)
+          const brandProfile = brandProfileMap.get(currentRental.brandProfileId)
           rentalInfo = {
             endDate: currentRental.endDate,
             startDate: currentRental.startDate,
@@ -140,10 +191,17 @@ export const getMarketplaceStores = query({
       })
     )
 
-    // Sort by creation date (newest first)
-    return shelvesWithOwners.sort((a, b) => 
-      new Date(b._creationTime).getTime() - new Date(a._creationTime).getTime()
-    )
+    // Return paginated results with metadata
+    return {
+      shelves: shelvesWithOwners,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        hasMore: startIndex + pageSize < totalCount,
+      },
+    }
   },
 })
 
@@ -196,9 +254,12 @@ export const getStoreById = query({
 export const getAvailableCities = query({
   args: {},
   handler: async (ctx) => {
-    // Get all shelves except suspended
-    const allShelves = await ctx.db.query("shelves").collect()
-    const shelves = allShelves.filter(shelf => shelf.status !== "suspended")
+    // Get all non-suspended shelves using indexed queries
+    const [activeShelves, rentedShelves] = await Promise.all([
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "active")).collect(),
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "rented")).collect(),
+    ])
+    const shelves = [...activeShelves, ...rentedShelves]
 
     // Get unique branch IDs (filter out undefined)
     const branchIds = [...new Set(shelves.map(shelf => shelf.branchId).filter(Boolean))]
@@ -218,9 +279,12 @@ export const getAvailableCities = query({
 export const getAvailableProductTypes = query({
   args: {},
   handler: async (ctx) => {
-    // Get all shelves except suspended
-    const allShelves = await ctx.db.query("shelves").collect()
-    const shelves = allShelves.filter(shelf => shelf.status !== "suspended")
+    // Get all non-suspended shelves using indexed queries
+    const [activeShelves, rentedShelves] = await Promise.all([
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "active")).collect(),
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "rented")).collect(),
+    ])
+    const shelves = [...activeShelves, ...rentedShelves]
 
     // Extract all product types from the productTypes arrays
     const types = [...new Set(
@@ -241,9 +305,12 @@ export const getPriceRange = query({
     month: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Get all shelves except suspended
-    const allShelves = await ctx.db.query("shelves").collect()
-    let shelves = allShelves.filter(shelf => shelf.status !== "suspended")
+    // Get all non-suspended shelves using indexed queries
+    const [activeShelves, rentedShelves] = await Promise.all([
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "active")).collect(),
+      ctx.db.query("shelves").withIndex("by_status", (q) => q.eq("status", "rented")).collect(),
+    ])
+    let shelves = [...activeShelves, ...rentedShelves]
 
     // Get branches for all shelves
     const branchesMap = new Map()

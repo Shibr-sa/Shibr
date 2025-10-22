@@ -6,42 +6,8 @@
 import { z } from 'zod'
 
 // ============================================
-// Email & Authentication Validations
+// NOTE: Auth validations are in /lib/validations/auth.ts
 // ============================================
-
-export const emailSchema = z.string()
-  .email('Invalid email format')
-  .min(5, 'Email too short')
-  .max(100, 'Email too long')
-  .transform(email => email.toLowerCase().trim())
-
-export const passwordSchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .max(100, 'Password too long')
-  .regex(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-    'Password must contain uppercase, lowercase, and number'
-  )
-
-export const signupSchema = z.object({
-  name: z.string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name too long')
-    .regex(/^[a-zA-Z\s\u0600-\u06FF]+$/, 'Name can only contain letters'),
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: z.string(),
-  accountType: z.enum(['store-owner', 'brand-owner']),
-  acceptTerms: z.boolean().refine(val => val === true, 'You must accept terms')
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword']
-})
-
-export const signinSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Password required')
-})
 
 // ============================================
 // Phone Number Validations
@@ -298,8 +264,7 @@ export function validateFileUpload(
 // Type Exports
 // ============================================
 
-export type SignupData = z.infer<typeof signupSchema>
-export type SigninData = z.infer<typeof signinSchema>
+// Note: SignupData and SigninData are in /lib/validations/auth.ts
 export type StoreData = z.infer<typeof storeDataSchema>
 export type ShelfData = z.infer<typeof shelfSchema>
 export type RentalRequestData = z.infer<typeof rentalRequestSchema>
