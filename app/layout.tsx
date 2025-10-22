@@ -28,7 +28,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "شبر",
   description: "منصة ذكية تربط بين المتاجر الواقعية والمتاجر الإلكترونية",
-  metadataBase: new URL('https://shibr.sa'),
+  metadataBase: new URL('https://shibr.io'),
   icons: {
     icon: '/logo.svg',
     apple: '/logo.svg',

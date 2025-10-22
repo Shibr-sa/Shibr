@@ -1620,8 +1620,8 @@ const translations = {
 
     // Footer
     "footer.contact": "تواصل معنا",
-    "footer.phone": "+966 50 123 4567",
-    "footer.email": "info@shibr.com",
+    "footer.phone": "+966 53 641 2311",
+    "footer.email": "info@shibr.io",
     "footer.address": "الرياض، المملكة العربية السعودية",
     "footer.rights": "جميع الحقوق محفوظة",
 
@@ -4051,8 +4051,8 @@ const translations = {
 
     // Footer
     "footer.contact": "Contact Us",
-    "footer.phone": "+966 50 123 4567",
-    "footer.email": "info@shibr.com",
+    "footer.phone": "+966 53 641 2311",
+    "footer.email": "info@shibr.io",
     "footer.address": "Riyadh, Saudi Arabia",
     "footer.rights": "All rights reserved",
 
