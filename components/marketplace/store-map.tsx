@@ -36,7 +36,6 @@ const DEFAULT_CENTER = {
 const containerStyle = {
   width: '100%',
   height: '100%',
-  minHeight: '600px',
 }
 
 // Map options
@@ -172,7 +171,7 @@ function StoreMapContent({
     return (
       <Card className="h-full">
         <CardContent className="p-0 h-full">
-          <div className="w-full h-full min-h-[300px] md:min-h-[400px] bg-muted rounded-lg flex items-center justify-center">
+          <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-12 w-12 text-destructive mx-auto mb-2" />
               <p className="text-muted-foreground">{t("marketplace.map_error")}</p>
@@ -188,7 +187,7 @@ function StoreMapContent({
     return (
       <Card className="h-full">
         <CardContent className="p-0 h-full">
-          <div className="w-full h-full min-h-[300px] md:min-h-[400px] bg-muted rounded-lg flex items-center justify-center">
+          <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-12 w-12 text-primary mx-auto mb-2 animate-pulse" />
               <p className="text-muted-foreground">{t("common.loading")}...</p>
@@ -204,7 +203,7 @@ function StoreMapContent({
     return (
       <Card className="h-full">
         <CardContent className="p-0 h-full">
-          <div className="w-full h-full min-h-[300px] md:min-h-[400px] bg-muted rounded-lg flex items-center justify-center">
+          <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-12 w-12 text-primary mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
