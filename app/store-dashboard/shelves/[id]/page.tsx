@@ -394,26 +394,26 @@ export default function ShelfDetailsPage() {
               {t("shelf_details.shelf_information")}
             </h3>
             <div className="flex items-center gap-2">
-              <Badge variant={getStatusVariant(shelfData.isAvailable === false ? "rented" : "available")}>
-                {shelfData.isAvailable === false 
+              <Badge variant={getStatusVariant(shelfData.status === "rented" ? "rented" : "available")}>
+                {shelfData.status === "rented"
                   ? t("shelf_details.rented")
                   : t("shelf_details.available")
                 }
               </Badge>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 className="h-8 w-8"
-                disabled={shelfData.isAvailable === false}
-                title={shelfData.isAvailable === false ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
+                disabled={shelfData.status === "rented"}
+                title={shelfData.status === "rented" ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
                 onClick={() => router.push(`/store-dashboard/shelves/${shelfIdParam}/edit`)}
               >
                 <Edit className="h-3.5 w-3.5" />
               </Button>
-              {shelfData.isAvailable !== false && (
-                <Button 
-                  variant="destructive" 
-                  size="icon" 
+              {shelfData.status !== "rented" && (
+                <Button
+                  variant="destructive"
+                  size="icon"
                   className="h-8 w-8"
                   onClick={() => setShowDeleteDialog(true)}
                   disabled={isDeleting}

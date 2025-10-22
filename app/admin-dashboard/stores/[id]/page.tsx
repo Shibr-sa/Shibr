@@ -65,7 +65,7 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
     id: shelf._id,
     name: shelf.shelfName,
     branch: shelf.branch,
-    status: shelf.isAvailable ? "available" : "rented",
+    status: shelf.status === "rented" ? "rented" : "available",
     monthlyPrice: shelf.monthlyPrice,
     endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString("en-US") : null
   })),
@@ -432,7 +432,7 @@ export default function StoreDetailsPage() {
                       id: shelf._id,
                       name: shelf.shelfName,
                       branch: shelf.branch,
-                      status: shelf.isAvailable ? "available" : "rented",
+                      status: shelf.status === "rented" ? "rented" : "available",
                       monthlyPrice: shelf.monthlyPrice,
                       endDate: shelf.availableFrom ? new Date(shelf.availableFrom).toLocaleDateString("en-US") : null
                     }))
