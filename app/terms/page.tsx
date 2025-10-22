@@ -268,16 +268,16 @@ export default function TermsPage() {
                     <p className={direction === "rtl" ? "flex justify-end gap-2" : ""}>
                       {isArabic ? (
                         <>
-                          <a href="mailto:support@shibr.sa" className="text-primary hover:underline">
-                            support@shibr.sa
+                          <a href="mailto:info@shibr.io" className="text-primary hover:underline">
+                            info@shibr.io
                           </a>
                           <span>:البريد الإلكتروني</span>
                         </>
                       ) : (
                         <>
                           <span>Email:</span>{" "}
-                          <a href="mailto:support@shibr.sa" className="text-primary hover:underline">
-                            support@shibr.sa
+                          <a href="mailto:info@shibr.io" className="text-primary hover:underline">
+                            info@shibr.io
                           </a>
                         </>
                       )}
@@ -285,16 +285,16 @@ export default function TermsPage() {
                     <p className={direction === "rtl" ? "flex justify-end gap-2" : ""}>
                       {isArabic ? (
                         <>
-                          <a href="tel:+966500000000" className="text-primary hover:underline" dir="ltr">
-                            +966 50 000 0000
+                          <a href="tel:+966536412311" className="text-primary hover:underline" dir="ltr">
+                            +966 53 641 2311
                           </a>
                           <span>:الهاتف</span>
                         </>
                       ) : (
                         <>
                           <span>Phone:</span>{" "}
-                          <a href="tel:+966500000000" className="text-primary hover:underline">
-                            +966 50 000 0000
+                          <a href="tel:+966536412311" className="text-primary hover:underline">
+                            +966 53 641 2311
                           </a>
                         </>
                       )}
