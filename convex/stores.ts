@@ -15,13 +15,10 @@ export const getMarketplaceStores = query({
     month: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Start with all active shelves (not just available ones)
-    let shelvesQuery = ctx.db
-      .query("shelves")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-
-    // Get all shelves first
-    let shelves = await shelvesQuery.collect()
+    // Get all shelves (active and rented) - exclude only suspended
+    // Brands can book rented shelves for dates after current rental ends
+    const allShelves = await ctx.db.query("shelves").collect()
+    let shelves = allShelves.filter(shelf => shelf.status !== "suspended")
 
     // Get branches for all shelves
     const branchesMap = new Map()
@@ -199,10 +196,9 @@ export const getStoreById = query({
 export const getAvailableCities = query({
   args: {},
   handler: async (ctx) => {
-    const shelves = await ctx.db
-      .query("shelves")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect()
+    // Get all shelves except suspended
+    const allShelves = await ctx.db.query("shelves").collect()
+    const shelves = allShelves.filter(shelf => shelf.status !== "suspended")
 
     // Get unique branch IDs (filter out undefined)
     const branchIds = [...new Set(shelves.map(shelf => shelf.branchId).filter(Boolean))]
@@ -222,10 +218,9 @@ export const getAvailableCities = query({
 export const getAvailableProductTypes = query({
   args: {},
   handler: async (ctx) => {
-    const shelves = await ctx.db
-      .query("shelves")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect()
+    // Get all shelves except suspended
+    const allShelves = await ctx.db.query("shelves").collect()
+    const shelves = allShelves.filter(shelf => shelf.status !== "suspended")
 
     // Extract all product types from the productTypes arrays
     const types = [...new Set(
@@ -246,11 +241,9 @@ export const getPriceRange = query({
     month: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Start with all approved and available shelves
-    let shelves = await ctx.db
-      .query("shelves")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect()
+    // Get all shelves except suspended
+    const allShelves = await ctx.db.query("shelves").collect()
+    let shelves = allShelves.filter(shelf => shelf.status !== "suspended")
 
     // Get branches for all shelves
     const branchesMap = new Map()
