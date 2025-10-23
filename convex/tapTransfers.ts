@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { action, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
@@ -165,7 +166,7 @@ export const handleTransferWebhook = action({
     webhookData: v.any(),
   },
   handler: async (ctx, args) => {
-    console.log("Transfer webhook received:", {
+    logger.info("Transfer webhook received:", {
       transferId: args.transferId,
       status: args.status,
     })

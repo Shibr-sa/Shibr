@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
 import { api } from "./_generated/api"
@@ -61,7 +62,7 @@ http.route({
       }
 
       // Log the webhook for debugging (remove sensitive data in production)
-      console.log("Tap webhook received and validated:", {
+      logger.info("Tap webhook received and validated:", {
         id: body.id,
         status: body.status,
         object: body.object
@@ -145,7 +146,7 @@ http.route({
         )
       }
 
-      console.log("Tap refund webhook received and validated:", {
+      logger.info("Tap refund webhook received and validated:", {
         id: body.id,
         status: body.status,
         object: body.object
@@ -154,7 +155,7 @@ http.route({
       if (body.object === "refund") {
         // Handle refund updates
         // You can add refund handling logic here
-        console.log("Refund processed:", body.id, "Status:", body.status)
+        logger.info("Refund processed:", body.id, "Status:", body.status)
       }
 
       return new Response(JSON.stringify({ success: true }), {

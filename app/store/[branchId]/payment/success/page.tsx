@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { logger } from "@/lib/error-logger"
 
 interface PageProps {
   params: Promise<{ branchId: string }>
@@ -37,7 +38,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
                  searchParams.get("payment_status") ||
                  searchParams.get("result")
 
-  console.log('[Payment Success] URL params:', {
+  logger.logDebug('[Payment Success] URL params', {
     chargeId,
     status,
     allParams: Object.fromEntries(searchParams.entries())
@@ -52,7 +53,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
   useEffect(() => {
     // GUARD: Prevent duplicate execution
     if (hasProcessed.current) {
-      console.log('[Payment Success] Already processed, skipping...')
+      logger.logDebug('[Payment Success] Already processed, skipping')
       return
     }
 
@@ -82,30 +83,30 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           chargeId: chargeId,
         })
 
-        console.log('[Payment Success] Charge details:', chargeDetails)
-        console.log('[Payment Success] Payment status:', chargeDetails.status)
+        logger.logDebug('[Payment Success] Charge details', { chargeDetails })
+        logger.logDebug('[Payment Success] Payment status', { status: chargeDetails.status })
 
         // Only proceed if payment is definitely successful
         const successStatuses = ["CAPTURED", "AUTHORIZED"]
         const isPaymentSuccessful = successStatuses.includes(chargeDetails.status)
 
-        console.log('[Payment Success] Is payment successful?', isPaymentSuccessful)
+        logger.logDebug('[Payment Success] Is payment successful', { isPaymentSuccessful })
 
         if (isPaymentSuccessful) {
           // Payment successful - follow standard flow
-          console.log('[Payment Success] Payment verified, starting order flow...')
+          logger.logDebug('[Payment Success] Payment verified, starting order flow')
 
           // Get order data from sessionStorage
           const pendingOrderData = sessionStorage.getItem("pendingOrderData")
-          console.log('[Payment Success] Session storage data:', pendingOrderData ? 'Found' : 'Missing')
+          logger.logDebug('[Payment Success] Session storage data', { found: !!pendingOrderData })
 
           if (!pendingOrderData) {
-            console.error('[Payment Success] ERROR: No order data in sessionStorage')
+            logger.logError(new Error('No order data in sessionStorage'), { page: 'payment-success' })
             throw new Error("Order data not found in session. Please try placing the order again.")
           }
 
           const orderData = JSON.parse(pendingOrderData)
-          console.log('[Payment Success] Order data parsed:', {
+          logger.logDebug('[Payment Success] Order data parsed', {
             branchId: orderData.branchId,
             customerName: orderData.customerName,
             itemCount: orderData.items?.length
@@ -113,7 +114,7 @@ export default function PaymentSuccessPage({ params }: PageProps) {
 
           // STEP 1: Create order record with payment reference
           // This will automatically check for duplicates and return existing order if found
-          console.log('[Payment Success] Step 1: Creating order record...')
+          logger.logInfo('[Payment Success] Step 1: Creating order record')
           const orderResult = await createOrderFromPayment({
             branchId: orderData.branchId as any,
             customerName: orderData.customerName,
@@ -125,14 +126,14 @@ export default function PaymentSuccessPage({ params }: PageProps) {
             }))
           })
 
-          console.log('[Payment Success] Step 1 complete: Order record created:', orderResult.orderId)
+          logger.logInfo('[Payment Success] Step 1 complete: Order record created', { orderId: orderResult.orderId })
 
           // STEPS 2-4: Process Wafeq and send invoice (runs in background)
-          console.log('[Payment Success] Steps 2-4: Processing Wafeq and invoice...')
+          logger.logInfo('[Payment Success] Steps 2-4: Processing Wafeq and invoice')
           processOrderAfterPayment({
             orderId: orderResult.orderId
           }).catch(error => {
-            console.error('[Payment Success] Error processing Wafeq/invoice:', error)
+            logger.logError(error, { page: 'payment-success', action: 'processWafeqInvoice' })
             // Don't fail the order - it already exists
           })
 
@@ -141,25 +142,25 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           sessionStorage.removeItem("pendingOrder")
           sessionStorage.removeItem("pendingOrderData")
 
-          console.log('[Payment Success] Redirecting to order confirmation...')
+          logger.logDebug('[Payment Success] Redirecting to order confirmation')
 
           // Small delay to ensure state is saved, then redirect
           const redirectUrl = `/store/${resolvedParams.branchId}/order/${orderResult.orderId}`
-          console.log('[Payment Success] Redirect URL:', redirectUrl)
+          logger.logDebug('[Payment Success] Redirect URL', { redirectUrl })
 
           setTimeout(() => {
             try {
               // Try Next.js router first
               router.replace(redirectUrl)
             } catch (routerError) {
-              console.error('[Payment Success] Router error, using window.location:', routerError)
+              logger.logError(routerError, { page: 'payment-success', action: 'router-redirect' })
               // Fallback to window.location if router fails
               window.location.replace(redirectUrl)
             }
           }, 500)
         } else {
           // Payment failed or pending
-          console.log('[Payment Success] Payment not successful, status:', chargeDetails.status)
+          logger.logWarn('[Payment Success] Payment not successful', { status: chargeDetails.status })
           toast({
             title: t("payment.error_title"),
             description: t("payment.payment_not_completed"),
@@ -168,12 +169,10 @@ export default function PaymentSuccessPage({ params }: PageProps) {
           router.push(`/store/${resolvedParams.branchId}/payment`)
         }
       } catch (error) {
-        console.error('[Payment Success] Error occurred:', error)
-        console.error('[Payment Success] Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          chargeId,
-          status
+        logger.logError(error, {
+          page: 'payment-success',
+          action: 'verifyPaymentAndCreateOrder',
+          metadata: { chargeId, status }
         })
         toast({
           title: t("payment.error_title"),

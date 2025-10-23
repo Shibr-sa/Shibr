@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { mutation } from "./_generated/server"
 import { v } from "convex/values"
 import { getAuthUserId } from "@convex-dev/auth/server"
@@ -70,7 +71,7 @@ export const generateUploadUrl = mutation({
     const uploadUrl = await ctx.storage.generateUploadUrl()
 
     // Log upload request for auditing
-    console.log("File upload URL generated", {
+    logger.info("File upload URL generated", {
       userId,
       fileType: args.fileType,
       mimeType: args.mimeType,
@@ -99,7 +100,7 @@ export const getFileUrl = mutation({
       const url = await ctx.storage.getUrl(args.storageId as any)
 
       // Log file access for auditing
-      console.log("File URL accessed", {
+      logger.info("File URL accessed", {
         userId,
         storageId: args.storageId,
         timestamp: new Date().toISOString(),

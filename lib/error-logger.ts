@@ -248,6 +248,9 @@ class ErrorLogger {
 // Export singleton instance
 export const errorLogger = new ErrorLogger()
 
+// Export as 'logger' for convenience
+export const logger = errorLogger
+
 // Export convenience functions
 export const logError = (error: Error | unknown, context?: ErrorContext) =>
   errorLogger.logError(error, context)

@@ -5,6 +5,7 @@ import { Id } from "./_generated/dataModel"
 import { getUserProfile } from "./profileHelpers"
 import { api, internal } from "./_generated/api"
 import { calculateOrderTotals, TAX_RATE } from "./taxUtils"
+import { logger } from "./logger"
 
 // STEP 1: Create order record immediately after payment (with payment reference to prevent duplicates)
 export const createOrderFromPayment = mutation({
@@ -19,7 +20,7 @@ export const createOrderFromPayment = mutation({
     })),
   },
   handler: async (ctx, args): Promise<{ orderId: Id<"customerOrders"> }> => {
-    console.log('[Order] Step 1: Creating order record with payment reference:', args.paymentReference)
+    logger.info('[Order] Step 1: Creating order record', { paymentReference: args.paymentReference })
 
     // Check if order already exists for this payment reference (duplicate prevention)
     const existingOrder = await ctx.db
@@ -28,7 +29,7 @@ export const createOrderFromPayment = mutation({
       .first()
 
     if (existingOrder) {
-      console.log('[Order] Order already exists for this payment:', existingOrder._id)
+      logger.debug('[Order] Order already exists for this payment', { orderId: existingOrder._id })
       return { orderId: existingOrder._id }
     }
 
@@ -140,7 +141,7 @@ export const createOrderFromPayment = mutation({
       totalRevenue: (branch.totalRevenue || 0) + totals.total,
     })
 
-    console.log('[Order] Step 1 complete: Order record created:', orderId)
+    logger.info('[Order] Step 1 complete: Order record created', { orderId })
     return { orderId }
   },
 })
@@ -151,7 +152,7 @@ export const processOrderAfterPayment = action({
     orderId: v.id("customerOrders"),
   },
   handler: async (ctx, args): Promise<{ success: boolean, invoiceNumber: string }> => {
-    console.log('[Order] Steps 2-4: Processing Wafeq and invoice for order:', args.orderId)
+    logger.info('[Order] Steps 2-4: Processing Wafeq and invoice', { orderId: args.orderId })
 
     // Get the order
     const order = await ctx.runQuery(api.customerOrders.getOrderById, {
@@ -168,7 +169,7 @@ export const processOrderAfterPayment = action({
     }
 
     // STEP 2: Create Wafeq contact
-    console.log('[Order] Step 2: Creating Wafeq contact for:', order.customerName)
+    logger.info('[Order] Step 2: Creating Wafeq contact', { customerName: order.customerName })
 
     const wafeqResponse = await fetch("https://api.wafeq.com/v1/contacts/", {
       method: "POST",
@@ -199,10 +200,10 @@ export const processOrderAfterPayment = action({
       wafeqContactId,
     })
 
-    console.log('[Order] Step 2 complete: Wafeq contact created:', wafeqContactId)
+    logger.info('[Order] Step 2 complete: Wafeq contact created', { wafeqContactId })
 
     // STEP 3: Create Wafeq invoice
-    console.log('[Order] Step 3: Creating Wafeq invoice')
+    logger.info('[Order] Step 3: Creating Wafeq invoice')
 
     const wafeqAccountId = process.env.WAFEQ_ACCOUNT_ID
     const wafeqTaxRateId = process.env.WAFEQ_TAX_RATE_ID
@@ -266,10 +267,10 @@ export const processOrderAfterPayment = action({
       invoiceNumber,
     })
 
-    console.log('[Order] Step 3 complete: Wafeq invoice created:', invoiceNumber)
+    logger.info('[Order] Step 3 complete: Wafeq invoice created', { invoiceNumber })
 
     // STEP 4: Send invoice via WhatsApp
-    console.log('[Order] Step 4: Sending invoice via WhatsApp')
+    logger.info('[Order] Step 4: Sending invoice via WhatsApp')
 
     const brandName = await ctx.runQuery(internal.customerOrders.getBrandName, {
       branchId: order.branchId,
@@ -281,7 +282,7 @@ export const processOrderAfterPayment = action({
       brandName,
     })
 
-    console.log('[Order] Step 4: WhatsApp invoice scheduled')
+    logger.info('[Order] Step 4: WhatsApp invoice scheduled')
 
     return {
       success: true,
@@ -776,7 +777,7 @@ export const sendInvoiceToCustomer = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      console.log('[Order] Starting WhatsApp invoice send for order:', args.orderId)
+      logger.info('[Order] Starting WhatsApp invoice send', { orderId: args.orderId })
 
       // Get the order details
       const order = await ctx.runQuery(api.customerOrders.getOrderById, {
@@ -788,13 +789,13 @@ export const sendInvoiceToCustomer = internalAction({
       }
 
       // Download the invoice PDF from Wafeq
-      console.log('[Order] Downloading invoice PDF from Wafeq')
+      logger.info('[Order] Downloading invoice PDF from Wafeq')
       const pdfData = await ctx.runAction(api.customerOrders.downloadInvoicePDF, {
         orderId: args.orderId,
       })
 
       // Convert base64 to blob and store temporarily in Convex storage
-      console.log('[Order] Storing PDF temporarily in Convex storage')
+      logger.info('[Order] Storing PDF temporarily in Convex storage')
 
       // Convert base64 string to Uint8Array (without using fetch with data: URLs)
       const binaryString = atob(pdfData.pdfBase64)
@@ -814,7 +815,7 @@ export const sendInvoiceToCustomer = internalAction({
         throw new Error("Failed to get public URL for PDF")
       }
 
-      console.log('[Order] PDF stored temporarily, public URL generated')
+      logger.info('[Order] PDF stored temporarily, public URL generated')
 
       const invoiceDate = new Date(order._creationTime).toLocaleDateString('en-GB')
       const taxAmount = order.taxAmount || (order.total - order.subtotal)
@@ -823,7 +824,7 @@ export const sendInvoiceToCustomer = internalAction({
 
       try {
         // Send invoice via WhatsApp
-        console.log('[Order] Sending invoice via WhatsApp')
+        logger.info('[Order] Sending invoice via WhatsApp')
         await ctx.runAction(internal.whatsappInvoice.sendInvoiceViaWhatsApp, {
           customerName: order.customerName || "Customer",
           customerPhone: order.customerPhone,
@@ -834,16 +835,16 @@ export const sendInvoiceToCustomer = internalAction({
           pdfUrl,
         })
 
-        console.log('[Order] Invoice sent successfully via WhatsApp')
+        logger.info('[Order] Invoice sent successfully via WhatsApp')
 
         // Schedule PDF deletion after 5 minutes to give WhatsApp time to download it
-        console.log('[Order] Scheduling PDF deletion in 5 minutes')
+        logger.info('[Order] Scheduling PDF deletion in 5 minutes')
         await ctx.scheduler.runAfter(
           5 * 60 * 1000, // 5 minutes in milliseconds
           internal.customerOrders.deletePdfFromStorage,
           { storageId }
         )
-        console.log('[Order] PDF will be automatically deleted in 5 minutes')
+        logger.info('[Order] PDF will be automatically deleted in 5 minutes')
 
         return { success: true }
       } catch (whatsappError) {
@@ -851,7 +852,7 @@ export const sendInvoiceToCustomer = internalAction({
         console.error('[Order] WhatsApp sending failed, cleaning up temporary PDF:', whatsappError)
         try {
           await ctx.storage.delete(storageId)
-          console.log('[Order] Temporary PDF deleted after failed send')
+          logger.info('[Order] Temporary PDF deleted after failed send')
         } catch (deleteError) {
           console.error('[Order] Failed to delete temporary PDF:', deleteError)
         }
@@ -873,9 +874,9 @@ export const deletePdfFromStorage = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      console.log('[Order] Deleting scheduled PDF from storage:', args.storageId)
+      logger.info('[Order] Deleting scheduled PDF from storage', { storageId: args.storageId })
       await ctx.storage.delete(args.storageId as any)
-      console.log('[Order] Scheduled PDF deleted successfully')
+      logger.info('[Order] Scheduled PDF deleted successfully')
     } catch (error) {
       console.error('[Order] Failed to delete scheduled PDF:', error)
       // Don't throw - this is a cleanup operation
@@ -913,7 +914,7 @@ export const downloadInvoicePDF = action({
     }
 
     try {
-      console.log(`[Wafeq] Downloading invoice PDF for: ${order.invoiceNumber}`)
+      logger.info('[Wafeq] Downloading invoice PDF', { invoiceNumber: order.invoiceNumber })
 
       const response = await fetch(
         `https://api.wafeq.com/v1/invoices/${order.invoiceNumber}/download/`,
@@ -942,7 +943,7 @@ export const downloadInvoicePDF = action({
       }
       const base64Pdf = btoa(binary)
 
-      console.log(`[Wafeq] Successfully downloaded invoice PDF (${pdfBuffer.byteLength} bytes)`)
+      logger.info('[Wafeq] Successfully downloaded invoice PDF', { bytes: pdfBuffer.byteLength })
 
       return {
         success: true,
