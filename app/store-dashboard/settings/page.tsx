@@ -187,7 +187,7 @@ export default function StoreDashboardSettingsPage() {
   const validateSaudiCRNumber = (crNumber: string): boolean => {
     if (!crNumber.trim()) {
       setCrNumberError("")
-      return true // Will be validated as required in save function
+      return true;
     }
 
     const cleanNumber = crNumber.replace(/[^0-9]/g, '')
@@ -196,8 +196,8 @@ export default function StoreDashboardSettingsPage() {
       return false
     }
 
-    if (!cleanNumber.startsWith('1') && !cleanNumber.startsWith('2')) {
-      setCrNumberError(language === 'ar' ? 'يجب أن يبدأ رقم السجل التجاري السعودي بالرقم 1 أو 2' : 'Saudi Commercial Registration number must start with 1 or 2')
+    if (!cleanNumber.startsWith('1') && !cleanNumber.startsWith('2') && !cleanNumber.startsWith('7')) {
+      setCrNumberError(language === 'ar' ? 'يجب أن يبدأ رقم السجل التجاري السعودي بالرقم 1 أو 2 أو 7' : 'Saudi Commercial Registration number must start with 1 or 2 or 7')
       return false
     }
 
@@ -682,7 +682,7 @@ export default function StoreDashboardSettingsPage() {
                         let documentStorageId = null
                         if (pendingDocumentFile) {
                           // Get upload URL from Convex
-                          const uploadUrl = await generateUploadUrl()
+                          const uploadUrl = await generateUploadUrl({ fileType: "document" })
 
                           // Upload file to Convex storage
                           const result = await fetch(uploadUrl, {

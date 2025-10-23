@@ -189,12 +189,6 @@ export default function BrandDashboardSettingsPage() {
       setCrNumberError(language === 'ar' ? 'يجب أن يتكون رقم السجل التجاري السعودي من 10 أرقام' : 'Saudi Commercial Registration number must be exactly 10 digits')
       return false
     }
-
-    if (!cleanNumber.startsWith('1') && !cleanNumber.startsWith('2')) {
-      setCrNumberError(language === 'ar' ? 'يجب أن يبدأ رقم السجل التجاري السعودي بالرقم 1 أو 2' : 'Saudi Commercial Registration number must start with 1 or 2')
-      return false
-    }
-
     setCrNumberError("")
     return true
   }
