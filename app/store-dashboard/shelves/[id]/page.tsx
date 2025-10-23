@@ -404,8 +404,7 @@ export default function ShelfDetailsPage() {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                disabled={shelfData.status === "rented"}
-                title={shelfData.status === "rented" ? t("shelf_details.cannot_edit_rented") : t("shelf_details.edit_shelf")}
+                title={t("shelf_details.edit_shelf")}
                 onClick={() => router.push(`/store-dashboard/shelves/${shelfIdParam}/edit`)}
               >
                 <Edit className="h-3.5 w-3.5" />
