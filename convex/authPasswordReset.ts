@@ -2,6 +2,7 @@ import { Email } from "@convex-dev/auth/providers/Email";
 import { Resend as ResendAPI } from "resend";
 import { generateEmailHTML } from "../lib/email-template";
 import { alphabet, generateRandomString } from "oslo/crypto";
+import { logger } from "./logger";
 
 // Create the Resend OTP Password Reset provider
 export const ResendOTPPasswordReset = Email({
@@ -15,13 +16,13 @@ export const ResendOTPPasswordReset = Email({
   async sendVerificationRequest({ identifier: email, token, provider }: any) {
     // Use development mode if no API key
     if (!process.env.RESEND_API_KEY) {
-      console.log('\n' + '='.repeat(50))
-      console.log('📧 PASSWORD RESET OTP')
-      console.log('='.repeat(50))
-      console.log(`To: ${email}`)
-      console.log(`OTP Code: ${token}`)
-      console.log(`Valid for: 10 minutes`)
-      console.log('='.repeat(50) + '\n')
+      logger.debug('Password Reset OTP Email')
+      
+      
+      logger.debug('OTP Email', { to: email, token })
+      
+      
+      
       return
     }
 
@@ -57,28 +58,19 @@ export const ResendOTPPasswordReset = Email({
       });
 
       if (error) {
-        console.error('Resend error:', error);
-        // Fall back to console logging in development
-        console.log('\n' + '='.repeat(50))
-        console.log('📧 PASSWORD RESET OTP (Resend failed, showing in console)')
-        console.log('='.repeat(50))
-        console.log(`To: ${email}`)
-        console.log(`OTP Code: ${token}`)
-        console.log(`Valid for: 10 minutes`)
-        console.log('='.repeat(50) + '\n')
+        logger.error('Resend error', error);
+        // Fall back to debug logging in development
+        logger.debug('Password Reset OTP Email', { to: email, token })
         // Don't throw error, just log it
         return;
       }
     } catch (err) {
-      // Fall back to console logging if Resend fails
-      console.error('Failed to send email via Resend:', err);
-      console.log('\n' + '='.repeat(50))
-      console.log('📧 PASSWORD RESET OTP (Email service error)')
-      console.log('='.repeat(50))
-      console.log(`To: ${email}`)
-      console.log(`OTP Code: ${token}`)
-      console.log(`Valid for: 10 minutes`)
-      console.log('='.repeat(50) + '\n')
+      // Fall back to debug logging if Resend fails
+      logger.error('Failed to send email via Resend', err);
+      logger.debug('Password Reset OTP Email (Email service error)', { to: email, token })
+      
+      
+      
     }
   },
 });

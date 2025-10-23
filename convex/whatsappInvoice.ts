@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { internalAction } from "./_generated/server"
 import { internal } from "./_generated/api"
@@ -20,7 +21,7 @@ export const sendInvoiceViaWhatsApp = internalAction({
     const karzounSenderId = process.env.KARZOUN_SENDER_ID
     const invoiceTemplateName = process.env.KARZOUN_INVOICE_TEMPLATE_NAME || 'invoice'
 
-    console.log('[WhatsApp Invoice] Sending invoice to:', args.customerPhone)
+    logger.info('[WhatsApp Invoice] Sending invoice to:', args.customerPhone)
 
     if (!karzounToken || !karzounSenderId) {
       throw new Error('Karzoun API credentials not configured. Please set KARZOUN_API_TOKEN and KARZOUN_SENDER_ID in environment variables.')
@@ -50,10 +51,10 @@ export const sendInvoiceViaWhatsApp = internalAction({
         `&param_4=${encodeURIComponent(args.invoiceDate)}` +
         `&param_5=${encodeURIComponent(args.invoiceTotal)}`
 
-      console.log('[WhatsApp Invoice] Calling Karzoun API with template:', invoiceTemplateName)
-      console.log('[WhatsApp Invoice] Customer:', args.customerName, 'Phone:', formattedPhone)
-      console.log('[WhatsApp Invoice] Brand:', args.brandName, 'Invoice:', args.invoiceNumber, 'Total:', args.invoiceTotal)
-      console.log('[WhatsApp Invoice] Full API URL (without token):', apiUrl.replace(karzounToken, 'REDACTED'))
+      logger.info('[WhatsApp Invoice] Calling Karzoun API with template:', invoiceTemplateName)
+      logger.info('[WhatsApp Invoice] Customer:', args.customerName, 'Phone:', formattedPhone)
+      logger.info('[WhatsApp Invoice] Brand:', args.brandName, 'Invoice:', args.invoiceNumber, 'Total:', args.invoiceTotal)
+      logger.info('[WhatsApp Invoice] Full API URL (without token):', apiUrl.replace(karzounToken, 'REDACTED'))
 
       // Make the API request
       const response = await fetch(apiUrl, {
@@ -71,7 +72,7 @@ export const sendInvoiceViaWhatsApp = internalAction({
 
       const result = await response.json()
 
-      console.log('[WhatsApp Invoice] Karzoun API Response:', result)
+      logger.info('[WhatsApp Invoice] Karzoun API Response:', result)
 
       // Check if the API returned an error
       if (result.error) {
@@ -82,7 +83,7 @@ export const sendInvoiceViaWhatsApp = internalAction({
         throw new Error(`Karzoun API error: ${errorMessage}`)
       }
 
-      console.log('[WhatsApp Invoice] Invoice sent successfully:', {
+      logger.info('[WhatsApp Invoice] Invoice sent successfully:', {
         phoneNumber: formattedPhone,
         invoiceNumber: args.invoiceNumber,
         response: result

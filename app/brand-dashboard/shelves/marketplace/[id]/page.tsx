@@ -1,5 +1,6 @@
 "use client"
 
+import { logger } from "@/lib/error-logger";
 import type React from "react"
 import { useState, useEffect, use } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -246,14 +247,14 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       // In production with proper webhook URL, this provides a fallback if webhook is delayed
       const verifyPayment = async () => {
         try {
-          console.log('Verifying payment...', { chargeId, rentalRequestIdFromUrl })
+          logger.logDebug('Verifying payment...', { chargeId, rentalRequestIdFromUrl })
           const result = await verifyAndConfirmPayment({
             chargeId,
             rentalRequestId: rentalRequestIdFromUrl,
           })
 
           if (result.success) {
-            console.log('Payment verified successfully')
+            logger.logDebug('Payment verified successfully')
             // Convex reactivity will update the UI automatically
           } else {
             console.error('Payment verification failed:', result.error)

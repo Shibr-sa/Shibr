@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { mutation, action, internalMutation, internalQuery } from "./_generated/server"
 import { api, internal } from "./_generated/api"
@@ -195,7 +196,7 @@ export const verifyAndConfirmPayment = action({
 
     const tapSecretKey = getTapSecretKey()
 
-    console.log(`[verifyAndConfirmPayment] Manually verifying charge ${args.chargeId} for rental ${args.rentalRequestId}`)
+    logger.info(`[verifyAndConfirmPayment] Manually verifying charge ${args.chargeId} for rental ${args.rentalRequestId}`)
 
     try {
       // Verify the charge with Tap API (same as webhook does)
@@ -212,7 +213,7 @@ export const verifyAndConfirmPayment = action({
 
       const charge = await response.json()
 
-      console.log(`[verifyAndConfirmPayment] Charge status: ${charge.status}`)
+      logger.info(`[verifyAndConfirmPayment] Charge status: ${charge.status}`)
 
       // Only proceed if payment was captured
       if (charge.status !== "CAPTURED") {
@@ -229,7 +230,7 @@ export const verifyAndConfirmPayment = action({
         chargeId: charge.id,
       })
 
-      console.log(`[verifyAndConfirmPayment] Successfully confirmed payment for rental ${args.rentalRequestId}`)
+      logger.info(`[verifyAndConfirmPayment] Successfully confirmed payment for rental ${args.rentalRequestId}`)
 
       return {
         success: true,

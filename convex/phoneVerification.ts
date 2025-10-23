@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { mutation, internalAction } from "./_generated/server"
 import { internal } from "./_generated/api"
@@ -348,7 +349,7 @@ export const sendPhoneOTPViaKarzoun = internalAction({
     const karzounSenderId = process.env.KARZOUN_SENDER_ID
     const templateName = process.env.KARZOUN_OTP_TEMPLATE_NAME
 
-    console.log('Sending WhatsApp OTP to:', args.phoneNumber)
+    logger.info('Sending WhatsApp OTP to:', args.phoneNumber)
 
     if (!karzounToken || !karzounSenderId || !templateName) {
       throw new Error('Karzoun API credentials are not configured. Please set KARZOUN_API_TOKEN, KARZOUN_SENDER_ID, and KARZOUN_OTP_TEMPLATE_NAME in environment variables.')
@@ -359,8 +360,8 @@ export const sendPhoneOTPViaKarzoun = internalAction({
       // url_button parameter is required if the template has a URL button
       const apiUrl = `https://api.karzoun.app/CloudApi.php?token=${encodeURIComponent(karzounToken)}&sender_id=${encodeURIComponent(karzounSenderId)}&phone=${args.phoneNumber}&template=${templateName}&param_1=${args.otp}&url_button=${args.otp}`
 
-      console.log('Calling Karzoun API with template:', templateName)
-      console.log('Phone:', args.phoneNumber, 'OTP:', args.otp)
+      logger.info('Calling Karzoun API with template:', templateName)
+      logger.info('Phone:', args.phoneNumber, 'OTP:', args.otp)
 
       // Make the API request
       const response = await fetch(apiUrl, {
@@ -378,7 +379,7 @@ export const sendPhoneOTPViaKarzoun = internalAction({
 
       const result = await response.json()
 
-      console.log('Karzoun API Response:', result)
+      logger.info('Karzoun API Response:', result)
 
       // Check if the API returned an error
       if (result.error) {
@@ -389,7 +390,7 @@ export const sendPhoneOTPViaKarzoun = internalAction({
         throw new Error(`Karzoun API error: ${errorMessage}`)
       }
 
-      console.log('WhatsApp OTP sent successfully:', {
+      logger.info('WhatsApp OTP sent successfully:', {
         phoneNumber: args.phoneNumber,
         response: result
       })
@@ -464,7 +465,7 @@ export const sendCheckoutOTP = mutation({
       verified: false,
     })
 
-    console.log('[Checkout OTP] Sending OTP to:', formattedPhone)
+    logger.info('[Checkout OTP] Sending OTP to:', formattedPhone)
 
     // Schedule WhatsApp OTP sending via Karzoun API
     await ctx.scheduler.runAfter(0, internal.phoneVerification.sendPhoneOTPViaKarzoun, {
@@ -541,7 +542,7 @@ export const verifyCheckoutOTP = mutation({
       verified: true
     })
 
-    console.log('[Checkout OTP] Phone number verified successfully:', formattedPhone)
+    logger.info('[Checkout OTP] Phone number verified successfully:', formattedPhone)
 
     return {
       success: true,

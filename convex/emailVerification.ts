@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { mutation, internalAction } from "./_generated/server"
 import { internal } from "./_generated/api"
@@ -324,13 +325,13 @@ export const sendSignupOTPEmail = internalAction({
 
     // Development mode - just log the OTP
     if (isDevelopment && !resendApiKey) {
-      console.log('\n' + '='.repeat(50))
-      console.log('📧 SIGNUP EMAIL VERIFICATION OTP')
-      console.log('='.repeat(50))
-      console.log(`To: ${args.email}`)
-      console.log(`Name: ${args.userName}`)
-      console.log(`OTP Code: ${args.otp}`)
-      console.log('='.repeat(50) + '\n')
+      logger.info('\n' + '='.repeat(50))
+      logger.info('📧 SIGNUP EMAIL VERIFICATION OTP')
+      logger.info('='.repeat(50))
+      logger.info(`To: ${args.email}`)
+      logger.info(`Name: ${args.userName}`)
+      logger.info(`OTP Code: ${args.otp}`)
+      logger.info('='.repeat(50) + '\n')
       return { success: true, messageId: 'dev-mode' }
     }
 

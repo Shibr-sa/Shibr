@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import { v } from "convex/values"
 import { mutation, query, internalQuery } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
@@ -972,7 +973,7 @@ export const confirmPayment = mutation({
     // Idempotency check: If already active, return success
     // This prevents errors when webhook is called multiple times (retries, duplicates, etc.)
     if (request.status === "active") {
-      console.log(`[confirmPayment] Request ${args.requestId} already confirmed (status: active)`)
+      logger.info(`[confirmPayment] Request ${args.requestId} already confirmed (status: active)`)
       return { success: true, alreadyProcessed: true }
     } else {
       // Verify the request status is valid for payment confirmation

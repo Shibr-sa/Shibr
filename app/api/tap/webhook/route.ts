@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Parse the webhook payload from Tap
     const payload = await request.json()
 
-    console.log("[Tap Webhook] Received webhook:", {
+    logger.logInfo("[Tap Webhook] Received webhook:", {
       id: payload.id,
       status: payload.status,
       object: payload.object,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       metadata,
     })
 
-    console.log("[Tap Webhook] Successfully processed webhook:", chargeId)
+    logger.logInfo("[Tap Webhook] Successfully processed webhook:", chargeId)
 
     // Return success response to Tap
     return NextResponse.json(
