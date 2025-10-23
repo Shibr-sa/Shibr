@@ -365,44 +365,88 @@ export const getBranchStoreById = query({
     branchId: v.id("branches"),
   },
   handler: async (ctx, args) => {
-    // 1. Get branch by ID
+    // 1. Get branch
     const branch = await ctx.db.get(args.branchId)
+    if (!branch) return null
 
-    if (!branch) {
-      return null
-    }
-
-    // 2. Get all active shelves in this branch
-    const shelves = await ctx.db
+    // 2. Get ONLY rented shelves in this branch using compound index
+    const rentedShelves = await ctx.db
       .query("shelves")
-      .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_branch_status", (q) =>
+        q.eq("branchId", branch._id).eq("status", "rented")
+      )
       .collect()
 
-    // 3. Get all active rentals for these shelves
-    const activeRentals = await Promise.all(
-      shelves.map(async (shelf) =>
-        ctx.db
-          .query("rentalRequests")
-          .withIndex("by_shelf_status", (q) =>
-            q.eq("shelfId", shelf._id).eq("status", "active")
-          )
-          .collect()
-      )
-    ).then((results) => results.flat())
+    // Early return if no rented shelves
+    if (rentedShelves.length === 0) {
+      const storeProfile = await ctx.db.get(branch.storeProfileId)
+      return {
+        branch,
+        storeName: storeProfile?.storeName,
+        products: [],
+        location: branch.location,
+        city: branch.city,
+        branchName: branch.branchName,
+      }
+    }
 
-    // 4. Aggregate products from all rentals
-    const productMap = new Map()
+    // 3. Batch fetch active rentals for rented shelves using compound index
+    const activeRentals = (
+      await Promise.all(
+        rentedShelves.map((shelf) =>
+          ctx.db
+            .query("rentalRequests")
+            .withIndex("by_shelf_status", (q) =>
+              q.eq("shelfId", shelf._id).eq("status", "active")
+            )
+            .collect()
+        )
+      )
+    ).flat()
+
+    // Early return if no active rentals
+    if (activeRentals.length === 0) {
+      const storeProfile = await ctx.db.get(branch.storeProfileId)
+      return {
+        branch,
+        storeName: storeProfile?.storeName,
+        products: [],
+        location: branch.location,
+        city: branch.city,
+        branchName: branch.branchName,
+      }
+    }
+
+    // 4. Batch fetch all brand profiles
+    const brandProfileIds = [...new Set(activeRentals.map((r) => r.brandProfileId))]
+    const brandProfiles = await Promise.all(
+      brandProfileIds.map((id) => ctx.db.get(id))
+    )
+    const brandProfileMap = new Map(
+      brandProfiles.filter(Boolean).map((p) => [p!._id, p])
+    )
+
+    // 5. Batch fetch all products (fix N+1)
+    const productIds = [
+      ...new Set(activeRentals.flatMap((r) => r.selectedProducts.map((p) => p.productId))),
+    ]
+    const products = await Promise.all(productIds.map((id) => ctx.db.get(id)))
+    const productMap = new Map(products.filter(Boolean).map((p) => [p!._id, p]))
+
+    // 6. Aggregate products with quantities using Map lookups (O(1) instead of O(n))
+    const aggregatedProducts = new Map()
     for (const rental of activeRentals) {
-      const brandProfile = await ctx.db.get(rental.brandProfileId)
+      const brandProfile = brandProfileMap.get(rental.brandProfileId)
 
       for (const item of rental.selectedProducts) {
-        const product = await ctx.db.get(item.productId)
+        const product = productMap.get(item.productId)
+        if (!product) continue
+
         const key = item.productId
 
-        if (productMap.has(key)) {
+        if (aggregatedProducts.has(key)) {
           // Aggregate quantities from multiple rentals
-          const existing = productMap.get(key)
+          const existing = aggregatedProducts.get(key)
           existing.shelfQuantity += item.quantity
           existing.rentals.push({
             rentalId: rental._id,
@@ -410,9 +454,13 @@ export const getBranchStoreById = query({
             brandName: brandProfile?.brandName,
           })
         } else {
-          productMap.set(key, {
-            ...product,
-            ...item,
+          aggregatedProducts.set(key, {
+            _id: product._id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            category: product.category,
+            imageUrl: product.imageUrl,
             shelfQuantity: item.quantity,
             available: item.quantity > 0,
             brandName: brandProfile?.brandName,
@@ -428,13 +476,13 @@ export const getBranchStoreById = query({
       }
     }
 
-    // 5. Return store data
+    // 7. Return store data
     const storeProfile = await ctx.db.get(branch.storeProfileId)
 
     return {
       branch,
       storeName: storeProfile?.storeName,
-      products: Array.from(productMap.values()),
+      products: Array.from(aggregatedProducts.values()),
       location: branch.location,
       city: branch.city,
       branchName: branch.branchName,

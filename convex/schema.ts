@@ -171,6 +171,7 @@ const schema = defineSchema({
     .index("by_store_profile", ["storeProfileId"])
     .index("by_branch", ["branchId"])
     .index("by_status", ["status"])
+    .index("by_branch_status", ["branchId", "status"])
     .index("by_price", ["monthlyPrice"]),
 
   // Rental requests
