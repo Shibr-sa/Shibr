@@ -113,7 +113,7 @@ export default function StoreDetailsPage() {
   const [hasInitialPaymentsData, setHasInitialPaymentsData] = useState(false)
 
   // Fetch store data from Convex
-  const storesResult = useQuery(api.admin.getStores, {
+  const storesResult = useQuery(api.admin.stores.getStores, {
     searchQuery: "",
     page: 1,
     limit: 100,
@@ -122,7 +122,7 @@ export default function StoreDetailsPage() {
   const store = storesResult?.items?.find((s: any) => s.id === storeId)
 
   // Fetch shelves for this store with server-side search - store.id is the profileId
-  const shelvesResult = useQuery(api.admin.getStoreShelves,
+  const shelvesResult = useQuery(api.admin.stores.getStoreShelves,
     store?.id ? {
       profileId: store.id as Id<"userProfiles">,
       searchQuery: debouncedSearchQuery,
@@ -134,13 +134,13 @@ export default function StoreDetailsPage() {
   const shelves = shelvesResult?.items || []
 
   // Fetch rentals for this store
-  const rentalsQuery = useQuery(api.admin.getStoreRentals,
+  const rentalsQuery = useQuery(api.admin.stores.getStoreRentals,
     store?.id ? { profileId: store.id as Id<"userProfiles"> } : "skip"
   )
   const rentals = useMemo(() => rentalsQuery || [], [rentalsQuery])
 
   // Fetch payment summary
-  const paymentsQuery = useQuery(api.admin.getStorePayments,
+  const paymentsQuery = useQuery(api.admin.stores.getStorePayments,
     store?.id ? { profileId: store.id as Id<"userProfiles"> } : "skip"
   )
   const payments = useMemo(() => paymentsQuery || [], [paymentsQuery])

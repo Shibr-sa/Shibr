@@ -52,8 +52,8 @@ export const sendInvoiceViaWhatsApp = internalAction({
         `&param_5=${encodeURIComponent(args.invoiceTotal)}`
 
       logger.info('[WhatsApp Invoice] Calling Karzoun API with template:', invoiceTemplateName)
-      logger.info('[WhatsApp Invoice] Customer:', args.customerName, 'Phone:', formattedPhone)
-      logger.info('[WhatsApp Invoice] Brand:', args.brandName, 'Invoice:', args.invoiceNumber, 'Total:', args.invoiceTotal)
+      logger.info('[WhatsApp Invoice] Customer details', { customerName: args.customerName, phone: formattedPhone })
+      logger.info('[WhatsApp Invoice] Invoice details', { brandName: args.brandName, invoiceNumber: args.invoiceNumber, total: args.invoiceTotal })
       logger.info('[WhatsApp Invoice] Full API URL (without token):', apiUrl.replace(karzounToken, 'REDACTED'))
 
       // Make the API request

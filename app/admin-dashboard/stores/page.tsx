@@ -76,7 +76,7 @@ export default function StoresPage() {
   }, [activeTab, searchQuery, timePeriod, currentPage, postsSearchQuery, filterStatus, postsCurrentPage, pathname, router])
   
   // Fetch stats data with time period
-  const statsResult = useQuery(api.admin.getStores, {
+  const statsResult = useQuery(api.admin.stores.getStores, {
     searchQuery: "",
     page: 1,
     limit: 1, // We only need stats, not items
@@ -84,7 +84,7 @@ export default function StoresPage() {
   })
   
   // Fetch stores table data with debounced search
-  const storesResult = useQuery(api.admin.getStores, {
+  const storesResult = useQuery(api.admin.stores.getStores, {
     searchQuery: debouncedSearchQuery, // Use debounced value for API call
     page: currentPage,
     limit: itemsPerPage,
@@ -104,7 +104,7 @@ export default function StoresPage() {
   }, [storesResult, hasInitialStoresData])
   
   // Fetch posts data with debounced search
-  const postsResult = useQuery(api.admin.getPosts, {
+  const postsResult = useQuery(api.admin.platform.getPosts, {
     searchQuery: debouncedPostsSearchQuery, // Use debounced value for API call
     status: filterStatus,
     page: postsCurrentPage,

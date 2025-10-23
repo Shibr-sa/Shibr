@@ -1,8 +1,8 @@
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
+import { query, mutation } from "../_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { getUserProfile } from "./profileHelpers"
-import { requireAuthWithProfile } from "./helpers"
+import { getUserProfile } from "../profileHelpers"
+import { requireAuthWithProfile } from "../helpers"
 
 // Get current admin profile
 export const getCurrentAdminProfile = query({
@@ -13,15 +13,15 @@ export const getCurrentAdminProfile = query({
       // Return null instead of throwing to avoid console errors on signout
       return null
     }
-    
+
     const profileData = await getUserProfile(ctx, userId)
-    
+
     if (!profileData || profileData.type !== "admin") {
       // Return null instead of throwing to avoid console errors
       return null
     }
-    
-    const adminProfile = profileData.profile as any
+
+    const adminProfile = profileData.profile
     
     // Get the auth user for email, name, and image
     const authUser = await ctx.db.get(userId)
@@ -56,7 +56,7 @@ export const updateAdminProfile = mutation({
       throw new Error("Unauthorized: Admin access required")
     }
 
-    const adminProfile = profileData.profile as any
+    const adminProfile = profileData.profile
     
     // Get current user for email comparison
     const currentUser = await ctx.db.get(userId)
@@ -188,18 +188,21 @@ export const getAdminUsers = query({
     let adminProfiles = await ctx.db
       .query("adminProfiles")
       .collect()
-    
-    // Get emails and names from users table for each admin
-    const adminUsersWithEmails = await Promise.all(
-      adminProfiles.map(async (profile) => {
-        const authUser = await ctx.db.get(profile.userId)
-        return {
-          ...profile,
-          email: authUser?.email,
-          name: authUser?.name
-        }
-      })
-    )
+
+    // BATCH FETCH: Get all unique user IDs upfront (avoid N+1 queries)
+    const userIds = [...new Set(adminProfiles.map(p => p.userId))];
+    const users = await Promise.all(userIds.map(id => ctx.db.get(id)));
+    const userMap = new Map(users.filter(u => u !== null).map(u => [u!._id.toString(), u!]));
+
+    // Build admin users with user data using pre-fetched map
+    const adminUsersWithEmails = adminProfiles.map(profile => {
+      const authUser = userMap.get(profile.userId.toString());
+      return {
+        ...profile,
+        email: authUser?.email,
+        name: authUser?.name
+      };
+    });
     
     // Filter by search query if provided
     let filteredAdmins = adminUsersWithEmails
@@ -361,12 +364,12 @@ export const toggleAdminUserStatus = mutation({
     }
     
     const targetProfileData = await getUserProfile(ctx, args.targetUserId)
-    
+
     if (!targetProfileData) {
       throw new Error("User profile not found")
     }
-    
-    const targetProfile = targetProfileData.profile as any
+
+    const targetProfile = targetProfileData.profile
 
     // Toggle active status
     const newStatus = !targetProfile.isActive
@@ -483,7 +486,7 @@ export const deleteAdminUser = mutation({
       throw new Error("Unauthorized: Super admin access required")
     }
 
-    const adminProfile = profileData.profile as any
+    const adminProfile = profileData.profile
     if (adminProfile.adminRole !== "super_admin") {
       throw new Error("Unauthorized: Super admin access required")
     }
@@ -494,12 +497,12 @@ export const deleteAdminUser = mutation({
     }
 
     const targetProfileData = await getUserProfile(ctx, args.targetUserId)
-    
+
     if (!targetProfileData) {
       throw new Error("User profile not found")
     }
-    
-    const targetProfile = targetProfileData.profile as any
+
+    const targetProfile = targetProfileData.profile
 
     // Delete the user profile
     await ctx.db.delete(targetProfile._id)

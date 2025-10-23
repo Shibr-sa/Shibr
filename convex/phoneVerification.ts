@@ -361,7 +361,7 @@ export const sendPhoneOTPViaKarzoun = internalAction({
       const apiUrl = `https://api.karzoun.app/CloudApi.php?token=${encodeURIComponent(karzounToken)}&sender_id=${encodeURIComponent(karzounSenderId)}&phone=${args.phoneNumber}&template=${templateName}&param_1=${args.otp}&url_button=${args.otp}`
 
       logger.info('Calling Karzoun API with template:', templateName)
-      logger.info('Phone:', args.phoneNumber, 'OTP:', args.otp)
+      logger.info('Phone OTP details', { phone: args.phoneNumber, otp: args.otp })
 
       // Make the API request
       const response = await fetch(apiUrl, {

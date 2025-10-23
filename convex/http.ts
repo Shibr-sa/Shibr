@@ -155,7 +155,7 @@ http.route({
       if (body.object === "refund") {
         // Handle refund updates
         // You can add refund handling logic here
-        logger.info("Refund processed:", body.id, "Status:", body.status)
+        logger.info("Refund processed", { refundId: body.id, status: body.status })
       }
 
       return new Response(JSON.stringify({ success: true }), {

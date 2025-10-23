@@ -52,14 +52,14 @@ export default function SettingsPage() {
   }, [activeTab, searchQuery, pathname, router])
   
   // Fetch data from Convex - let Convex handle auth errors
-  const adminProfile = useQuery(api.adminSettings.getCurrentAdminProfile)
-  const platformSettings = useQuery(api.adminSettings.getPlatformSettings)
-  const adminUsersData = useQuery(api.adminSettings.getAdminUsers, { searchQuery: debouncedSearchQuery })
-  const updatePlatformSettings = useMutation(api.admin.updatePlatformSettings)
-  const updateAdminProfile = useMutation(api.adminSettings.updateAdminProfile)
-  const toggleAdminStatus = useMutation(api.adminSettings.toggleAdminUserStatus)
-  const addAdminUser = useMutation(api.adminSettings.addAdminUser)
-  const createAdminProfile = useMutation(api.adminSettings.createAdminProfile)
+  const adminProfile = useQuery(api.admin.settings.getCurrentAdminProfile)
+  const platformSettings = useQuery(api.admin.settings.getPlatformSettings)
+  const adminUsersData = useQuery(api.admin.settings.getAdminUsers, { searchQuery: debouncedSearchQuery })
+  const updatePlatformSettings = useMutation(api.admin.platform.updatePlatformSettings)
+  const updateAdminProfile = useMutation(api.admin.settings.updateAdminProfile)
+  const toggleAdminStatus = useMutation(api.admin.settings.toggleAdminUserStatus)
+  const addAdminUser = useMutation(api.admin.settings.addAdminUser)
+  const createAdminProfile = useMutation(api.admin.settings.createAdminProfile)
   const [newAdminData, setNewAdminData] = useState({
     username: "",
     email: "",

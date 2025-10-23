@@ -90,7 +90,7 @@ export default function PaymentsPage() {
   }, [searchQuery, filterStatus, currentPage, pathname, router])
   
   // Fetch stats data without filters (for stat cards)
-  const statsResult = useQuery(api.admin.getPayments, {
+  const statsResult = useQuery(api.admin.payments.getPayments, {
     searchQuery: "",
     status: "all",
     page: 1,
@@ -98,7 +98,7 @@ export default function PaymentsPage() {
   })
   
   // Fetch table data with debounced search
-  const paymentsResult = useQuery(api.admin.getPayments, {
+  const paymentsResult = useQuery(api.admin.payments.getPayments, {
     searchQuery: debouncedSearchQuery,
     status: filterStatus,
     page: currentPage,
@@ -303,7 +303,7 @@ export default function PaymentsPage() {
               <>
                 {payments.map((payment, index) => (
                   <TableRow
-                    key={payment.invoiceNumber}
+                    key={payment.id}
                     className={`h-[72px] ${index < payments.length - 1 ? 'border-b' : ''}`}
                   >
                     <TableCell className="py-3 font-medium">{payment.invoiceNumber}</TableCell>
