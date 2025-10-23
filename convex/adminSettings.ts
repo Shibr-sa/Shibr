@@ -382,6 +382,94 @@ export const toggleAdminUserStatus = mutation({
   },
 });
 
+// Seed initial super admin (for initial setup only)
+export const seedInitialSuperAdmin = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if any admin exists
+    const existingAdmins = await ctx.db
+      .query("adminProfiles")
+      .collect()
+
+    // Return the count for debugging
+    if (existingAdmins.length > 0) {
+      return {
+        success: false,
+        message: `Found ${existingAdmins.length} admin users. IDs: ${existingAdmins.map(a => a._id).join(', ')}`,
+        count: existingAdmins.length,
+        admins: existingAdmins
+      }
+    }
+
+    // Hard-coded admin credentials for initial setup
+    const adminEmail = "it@shibr.io"
+    const adminPassword = "wwadnj0aw2nc@!!"
+    const adminName = "Shibr Admin"
+
+    // Check if user with this email exists
+    const existingUsers = await ctx.db.query("users").collect()
+    const existingUser = existingUsers.find(u => u.email === adminEmail.toLowerCase())
+
+    if (existingUser) {
+      // Create admin profile for existing user
+      await ctx.db.insert("adminProfiles", {
+        userId: existingUser._id,
+        adminRole: "super_admin",
+        permissions: ["all"],
+        isActive: true,
+        department: undefined,
+      })
+
+      return {
+        success: true,
+        message: `Existing user ${adminEmail} promoted to super admin`
+      }
+    }
+
+    // Import password hashing utilities
+    const { sha256 } = await import("@oslojs/crypto/sha2")
+    const { encodeBase64 } = await import("@oslojs/encoding")
+
+    // Hash the password
+    const encoder = new TextEncoder()
+    const passwordData = encoder.encode(adminPassword)
+    const hashedPasswordBuffer = sha256(passwordData)
+    const hashedPassword = encodeBase64(hashedPasswordBuffer)
+
+    // Create the user
+    const userId = await ctx.db.insert("users", {
+      email: adminEmail.toLowerCase(),
+      emailVerificationTime: Date.now(),
+      name: adminName,
+      isAnonymous: false,
+    })
+
+    // Create auth account
+    await ctx.db.insert("authAccounts", {
+      userId,
+      provider: "password",
+      providerAccountId: adminEmail.toLowerCase(),
+      secret: hashedPassword,
+    })
+
+    // Create admin profile
+    await ctx.db.insert("adminProfiles", {
+      userId,
+      adminRole: "super_admin",
+      permissions: ["all"],
+      isActive: true,
+      department: undefined,
+    })
+
+    return {
+      success: true,
+      message: `Super admin created successfully with email: ${adminEmail}`,
+      userId,
+      email: adminEmail
+    }
+  },
+})
+
 // Delete admin user
 export const deleteAdminUser = mutation({
   args: {
