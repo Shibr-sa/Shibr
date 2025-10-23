@@ -79,7 +79,7 @@ export default function BrandDetailsPage() {
   const isProductSearching = productSearch !== debouncedProductSearch
 
   // Fetch brand data from Convex
-  const brandsResult = useQuery(api.admin.getBrands, {
+  const brandsResult = useQuery(api.admin.brands.getBrands, {
     searchQuery: "",
     page: 1,
     limit: 100,
@@ -90,7 +90,7 @@ export default function BrandDetailsPage() {
   // Fetch products currently displayed on shelves for this brand
   // Note: This shows products that are actively displayed on rented shelves,
   // not all products owned by the brand
-  const productsQuery = useQuery(api.admin.getBrandProducts,
+  const productsQuery = useQuery(api.admin.brands.getBrandProducts,
     brand?.id ? {
       profileId: brand.id as Id<"userProfiles">,
       searchQuery: debouncedProductSearch,
@@ -99,7 +99,7 @@ export default function BrandDetailsPage() {
   const products = useMemo(() => productsQuery || [], [productsQuery])
 
   // Fetch rental requests for this brand
-  const rentalsResult = useQuery(api.admin.getBrandRentals,
+  const rentalsResult = useQuery(api.admin.brands.getBrandRentals,
     brand?.id ? {
       profileId: brand.id as Id<"userProfiles">,
       searchQuery: debouncedPaymentSearch,

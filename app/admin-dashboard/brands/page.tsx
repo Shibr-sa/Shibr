@@ -59,7 +59,7 @@ export default function BrandsPage() {
   }, [searchQuery, timePeriod, currentPage, pathname, router])
   
   // Fetch stats data with time period
-  const statsResult = useQuery(api.admin.getBrands, {
+  const statsResult = useQuery(api.admin.brands.getBrands, {
     searchQuery: "",
     page: 1,
     limit: 1, // We only need stats, not items
@@ -67,7 +67,7 @@ export default function BrandsPage() {
   })
   
   // Fetch brands table data with debounced search
-  const brandsResult = useQuery(api.admin.getBrands, {
+  const brandsResult = useQuery(api.admin.brands.getBrands, {
     searchQuery: debouncedSearchQuery,
     page: currentPage,
     limit: itemsPerPage,

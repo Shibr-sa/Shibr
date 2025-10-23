@@ -71,7 +71,7 @@ export default function ShelfDetailsPage() {
   )
   
   // Get the store info
-  const storesResult = useQuery(api.admin.getStores, {
+  const storesResult = useQuery(api.admin.stores.getStores, {
     searchQuery: "",
     page: 1,
     limit: 100,

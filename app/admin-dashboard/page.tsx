@@ -67,8 +67,8 @@ export default function AdminDashboard() {
   }, [timePeriod, pathname, router])
   
   // Fetch real stats from Convex
-  const adminStats = useQuery(api.admin.getAdminStats, { timePeriod })
-  const chartData = useQuery(api.admin.getAdminChartData, {}) // Separate query for charts
+  const adminStats = useQuery(api.admin.analytics.getAdminStats, { timePeriod })
+  const chartData = useQuery(api.admin.analytics.getAdminChartData, {}) // Separate query for charts
   const isLoading = adminStats === undefined
   const isChartLoading = chartData === undefined
 
