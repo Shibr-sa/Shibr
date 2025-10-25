@@ -24,6 +24,8 @@ import Image from "next/image"
 import { useState } from "react"
 import { useLanguage } from "@/contexts/localization-context"
 import { useToast } from "@/hooks/use-toast"
+import { useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 export default function ContactPage() {
   const { t, language, direction } = useLanguage()
@@ -31,13 +33,15 @@ export default function ContactPage() {
   const isArabic = language === "ar"
   const fontFamily = isArabic ? "font-cairo" : "font-inter"
 
+  const submitContactForm = useMutation(api.contactForm.submitContactForm)
+
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    subject: "general",
+    subject: "general" as "general" | "support" | "business" | "complaint",
     message: ""
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -154,8 +158,14 @@ export default function ContactPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Submit to backend (Convex mutation)
+      await submitContactForm({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+      })
 
       setIsSubmitted(true)
       toast({
@@ -165,6 +175,7 @@ export default function ContactPage() {
           : "We'll get back to you as soon as possible",
       })
     } catch (error) {
+      console.error("Error submitting contact form:", error)
       toast({
         title: isArabic ? "خطأ" : "Error",
         description: isArabic
