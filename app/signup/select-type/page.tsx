@@ -23,8 +23,8 @@ export default function SelectAccountTypePage() {
     if (isAuthenticated && userWithProfile) {
       const dashboardPath =
         userWithProfile.accountType === "store_owner" ? "/store-dashboard" :
-        userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
-        userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
+          userWithProfile.accountType === "brand_owner" ? "/brand-dashboard" :
+            userWithProfile.accountType === "admin" ? "/admin-dashboard" : "/dashboard"
 
       router.push(dashboardPath)
     }
@@ -47,7 +47,6 @@ export default function SelectAccountTypePage() {
               height={48}
               className="h-12 w-12"
             />
-            <span className="text-3xl font-bold text-foreground">{t("common.shibr")}</span>
           </div>
         </div>
 
