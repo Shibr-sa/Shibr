@@ -29,8 +29,7 @@ next-env.d.ts
 # convex
 .env.local
 .env.production
-# Commit generated types for production builds (Coolify)
-# convex/_generated/
+convex/_generated/
 
 # macOS
 .DS_Store
