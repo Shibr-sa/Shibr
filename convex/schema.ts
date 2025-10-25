@@ -433,6 +433,46 @@ const schema = defineSchema({
     .index("by_customer_phone", ["customerPhone"])
     .index("by_invoice_number", ["invoiceNumber"])
     .index("by_payment_reference", ["paymentReference"]), // For duplicate order prevention
+
+  // Support Tickets (Contact Form Submissions)
+  supportTickets: defineTable({
+    // Contact information
+    name: v.string(),
+    email: v.string(),
+    phone: v.string(),
+
+    // Message details
+    subject: v.union(
+      v.literal("general"),
+      v.literal("support"),
+      v.literal("business"),
+      v.literal("complaint")
+    ),
+    message: v.string(),
+
+    // Status tracking
+    status: v.union(
+      v.literal("new"),
+      v.literal("in_progress"),
+      v.literal("resolved"),
+      v.literal("closed")
+    ),
+
+    // Admin assignment (optional)
+    assignedToAdminId: v.optional(v.id("adminProfiles")),
+
+    // Admin notes (optional)
+    adminNotes: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_email", ["email"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_assigned_admin", ["assignedToAdminId"]),
 })
 
 export default schema
