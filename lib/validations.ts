@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod'
+import { emailSchema } from './validation/security-schemas'
 
 // ============================================
 // NOTE: Auth validations are in /lib/validations/auth.ts

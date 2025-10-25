@@ -220,8 +220,8 @@ export default function SignUpPage() {
             <Image
               src="/logo.svg"
               alt={t("common.logo_alt")}
-              width={48}
-              height={48}
+              width={72}
+              height={72}
               className="h-12 w-12"
             />
             <span className="text-3xl font-bold text-foreground">{t("common.shibr")}</span>
