@@ -29,7 +29,8 @@ next-env.d.ts
 # convex
 .env.local
 .env.production
-convex/_generated/
+# Commit _generated for production Docker builds
+# convex/_generated/
 
 # macOS
 .DS_Store
