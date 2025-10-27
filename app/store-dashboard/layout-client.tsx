@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
-import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut, Building2 } from "lucide-react"
+import { Home, Package, ShoppingCart, Settings, ChevronUp, LogOut, Building2, ExternalLink } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -229,11 +229,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     <ChevronUp className="ms-auto size-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  side="right" 
-                  align="end" 
+                <DropdownMenuContent
+                  side="right"
+                  align="end"
                   className="w-56"
                 >
+                  <DropdownMenuItem asChild>
+                    <Link href="/">
+                      <ExternalLink className="me-2 h-4 w-4" />
+                      <span>{t("dashboard.view_landing_page")}</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                     <LogOut className="me-2 h-4 w-4" />
                     <span>{t("dashboard.logout")}</span>
