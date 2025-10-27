@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Store, Package, ArrowRight, ArrowLeft } from "lucide-react"
+import { Store, Package, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -88,10 +88,6 @@ export default function SelectAccountTypePage() {
                 </ul>
                 <Button className="w-full mt-4 group-hover:bg-primary group-hover:text-primary-foreground">
                   {t("auth.continue_as_store_owner")}
-                  <ArrowRight className={cn(
-                    "h-4 w-4 ms-2",
-                    direction === "rtl" && "rotate-180"
-                  )} />
                 </Button>
               </div>
             </CardContent>
@@ -127,10 +123,6 @@ export default function SelectAccountTypePage() {
                 </ul>
                 <Button className="w-full mt-4 group-hover:bg-primary group-hover:text-primary-foreground">
                   {t("auth.continue_as_brand_owner")}
-                  <ArrowRight className={cn(
-                    "h-4 w-4 ms-2",
-                    direction === "rtl" && "rotate-180"
-                  )} />
                 </Button>
               </div>
             </CardContent>

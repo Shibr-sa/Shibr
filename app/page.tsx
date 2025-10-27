@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Users, Store, TrendingUp, Award, Menu, Zap, Phone, Mail, MapPin, Building2, ShoppingBag, Target, UserPlus, DollarSign, PackageCheck, Settings, Search, CalendarCheck, BarChart3, Twitter, Linkedin, Loader2 } from "lucide-react"
@@ -131,6 +131,7 @@ export default function ShibrLandingPage() {
               size="sm"
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? t("nav.close_menu") : t("nav.open_menu")}
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -181,64 +182,136 @@ export default function ShibrLandingPage() {
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="container py-20 md:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div className="space-y-8">
-            <div className="space-y-6">
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl text-start">
-                {t("hero.title")} <span className="text-primary">{t("hero.highlight")}</span>
-              </h1>
+      <main>
+        {/* Hero Section */}
+        <section className="py-20 md:py-28 lg:py-32">
+        <div className="container">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl text-start">
+                  {t("hero.title")} <span className="text-primary">{t("hero.highlight")}</span>
+                </h1>
 
-              <p className="text-base md:text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl text-start">
-                {t("hero.description")}
-              </p>
+                <p className="text-base md:text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl text-start">
+                  {t("hero.description")}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-start">
+                {authLoading || (isAuthenticated && user === undefined) ? (
+                  <Button size="lg" disabled>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("common.loading")}
+                  </Button>
+                ) : isAuthenticated && user ? (
+                  <Link href={getDashboardPath()}>
+                    <Button size="lg">
+                      {t("hero.go_to_dashboard")}
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/signup/select-type">
+                    <Button size="lg">
+                      {t("hero.start_now")}
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-start">
-              {authLoading || (isAuthenticated && user === undefined) ? (
-                <Button size="lg" className="text-base px-6 py-5" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("common.loading")}
-                </Button>
-              ) : isAuthenticated && user ? (
-                <Link href={getDashboardPath()}>
-                  <Button size="lg" className="text-base px-6 py-5">
-                    {t("hero.go_to_dashboard")}
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/signup/select-type">
-                  <Button size="lg" className="text-base px-6 py-5">
-                    {t("hero.start_now")}
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <div className="relative w-full h-full">
-            <div className="relative aspect-[4/3] lg:aspect-square w-full overflow-hidden rounded-2xl shadow-2xl">
-              <Image
-                src="/hero_image.png"
-                alt={`${t("hero.title")} ${t("hero.highlight")}`}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
-                className="object-cover object-center transition-transform duration-500"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+            <div className="relative w-full h-full">
+              <div className="relative aspect-[4/3] lg:aspect-square w-full overflow-hidden rounded-2xl shadow-2xl">
+                <Image
+                  src="/hero_image.png"
+                  alt={`${t("hero.title")} ${t("hero.highlight")}`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                  className="object-cover object-center transition-transform duration-500"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Video Section */}
+      <section className="bg-muted py-16 md:py-20 lg:py-24">
+        <div className="container">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl text-start">
+                  {t("video.title")} <span className="text-primary">{t("video.highlight")}</span>
+                </h2>
+
+                <p className="text-lg text-muted-foreground leading-7 mb-0 text-start">{t("video.description")}</p>
+              </div>
+
+              <div className="flex justify-start">
+                <Link href="/marketplace">
+                  <Button size="lg" className="text-base mt-6">
+                    {t("video.start_journey")}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <Card className="overflow-hidden group">
+                <CardContent className="p-0 relative">
+                  <div className="aspect-[3/4] relative w-full overflow-hidden bg-muted">
+                    <Image
+                      src="/jaddah_image.png"
+                      alt={t("video.jeddah_stores")}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden group">
+                <CardContent className="p-0 relative">
+                  <div className="aspect-[3/4] relative w-full overflow-hidden bg-muted">
+                    <Image
+                      src="/riyadh_image.jpg"
+                      alt={t("video.riyadh_stores")}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stores Section */}
+      <section className="py-16 md:py-20 lg:py-24">
+        <div className="container">
+          <div className="max-w-4xl mx-auto text-center space-y-6">
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              {t("stores.title")}
+            </h2>
+            <p className="text-lg md:text-xl text-muted-foreground leading-7">
+              {t("stores.description")}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* شبر Section */}
-      <section className="bg-muted py-16">
+      <section className="bg-muted py-16 md:py-20 lg:py-24">
         <div className="container text-center">
           <div className="space-y-6 mb-12">
-            <h2 className="text-2xl font-medium tracking-tight md:text-3xl">
-              {t("shibr.title")} <span className="text-primary">{t("shibr.highlight")}</span> {t("shibr.subtitle")}
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              {t("shibr.title")} <span className="text-primary">{t("shibr.highlight")}</span>
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground leading-7">{t("shibr.description")}</p>
           </div>
@@ -246,16 +319,14 @@ export default function ShibrLandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Button
               size="lg"
-              className="text-base"
               variant={activeServiceType === "stores" ? "default" : "outline"}
               onClick={() => setActiveServiceType("stores")}
             >
               {t("shibr.service_stores")}
             </Button>
             <Button
-              variant={activeServiceType === "centers" ? "default" : "outline"}
               size="lg"
-              className="text-base border-gray-300"
+              variant={activeServiceType === "centers" ? "default" : "outline"}
               onClick={() => setActiveServiceType("centers")}
             >
               {t("shibr.commercial_centers")}
@@ -266,76 +337,100 @@ export default function ShibrLandingPage() {
             {activeServiceType === "stores" ? (
               <>
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <UserPlus className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <UserPlus className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.smart_service")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.smart_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.smart_service_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Settings className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <Settings className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.fast_service")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.fast_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.fast_service_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <DollarSign className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <DollarSign className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.integrated_service")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.integrated_service")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.integrated_service_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
               </>
             ) : (
               <>
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Search className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <Search className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.premium_locations")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.centers.premium_locations")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.centers.premium_locations_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <CalendarCheck className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <CalendarCheck className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.high_traffic")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.centers.high_traffic")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.centers.high_traffic_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <BarChart3 className="h-6 w-6 text-primary" />
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <BarChart3 className="h-6 w-6 text-primary" aria-hidden="true" />
+                      </div>
                     </div>
-                    <h3 className="mb-2 text-base font-medium">{t("shibr.centers.targeted_audience")}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-center">{t("shibr.centers.targeted_audience")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <CardDescription>
                       {t("shibr.centers.targeted_audience_desc")}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
               </>
@@ -344,68 +439,15 @@ export default function ShibrLandingPage() {
         </div>
       </section>
 
-      {/* Video Section */}
-      <section className="container py-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-medium tracking-tight text-start">
-                {t("video.title")} <span className="text-primary">{t("video.highlight")}</span>
-              </h2>
-
-              <p className="text-lg text-muted-foreground leading-7 mb-0 text-start">{t("video.description")}</p>
-            </div>
-
-            <div className="flex justify-start">
-              <Link href="/marketplace">
-                <Button size="lg" className="text-base mt-6">
-                  {t("video.start_journey")}
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Card className="overflow-hidden group">
-              <CardContent className="p-0 relative">
-                <div className="aspect-[3/4] relative w-full overflow-hidden bg-muted">
-                  <Image
-                    src="/jaddah_image.png"
-                    alt={t("video.jeddah_stores")}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover object-center"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden group">
-              <CardContent className="p-0 relative">
-                <div className="aspect-[3/4] relative w-full overflow-hidden bg-muted">
-                  <Image
-                    src="/riyadh_image.jpg"
-                    alt={t("video.riyadh_stores")}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover object-center"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* Why Choose شبر Section */}
-      <section id="why-choose" className="bg-muted py-16">
+      <section id="why-choose" className="py-16 md:py-20 lg:py-24">
         <div className="container">
           <div className="grid lg:grid-cols-[1fr_1fr] gap-16 items-center">
             {/* Content Section */}
             <div className="space-y-8 text-start">
               <div className="space-y-6">
-                <h2 className="text-3xl font-medium tracking-tight text-start">
-                  <span className="text-primary">{t("why_choose.title")}</span> {t("why_choose.subtitle")}
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl text-start">
+                  {t("why_choose.subtitle")} <span className="text-primary">{t("why_choose.title")}</span>
                 </h2>
                 <p className="text-lg text-muted-foreground leading-7 text-start">
                   {t("why_choose.description")}
@@ -416,58 +458,66 @@ export default function ShibrLandingPage() {
             {/* Feature Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
-                <CardContent className="p-8">
-                  <div className="flex flex-col items-center text-center space-y-4">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <Users className="h-8 w-8 text-primary" />
+                      <Users className="h-8 w-8 text-primary" aria-hidden="true" />
                     </div>
-                    <h3 className="text-lg font-medium text-center">{t("features.clear_rights.title")}</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {t("features.clear_rights.description")}
-                    </p>
                   </div>
+                  <CardTitle className="text-center text-lg">{t("features.clear_rights.title")}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <CardDescription>
+                    {t("features.clear_rights.description")}
+                  </CardDescription>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-8">
-                  <div className="flex flex-col items-center text-center space-y-4">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <TrendingUp className="h-8 w-8 text-primary" />
+                      <TrendingUp className="h-8 w-8 text-primary" aria-hidden="true" />
                     </div>
-                    <h3 className="text-lg font-medium text-center">{t("features.empty_spaces.title")}</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {t("features.empty_spaces.description")}
-                    </p>
                   </div>
+                  <CardTitle className="text-center text-lg">{t("features.empty_spaces.title")}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <CardDescription>
+                    {t("features.empty_spaces.description")}
+                  </CardDescription>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-8">
-                  <div className="flex flex-col items-center text-center space-y-4">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <Store className="h-8 w-8 text-primary" />
+                      <Store className="h-8 w-8 text-primary" aria-hidden="true" />
                     </div>
-                    <h3 className="text-lg font-medium text-center">{t("features.real_reach.title")}</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {t("features.real_reach.description")}
-                    </p>
                   </div>
+                  <CardTitle className="text-center text-lg">{t("features.real_reach.title")}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <CardDescription>
+                    {t("features.real_reach.description")}
+                  </CardDescription>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-8">
-                  <div className="flex flex-col items-center text-center space-y-4">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <Award className="h-8 w-8 text-primary" />
+                      <Award className="h-8 w-8 text-primary" aria-hidden="true" />
                     </div>
-                    <h3 className="text-lg font-medium text-center">{t("features.flexible_rental.title")}</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {t("features.flexible_rental.description")}
-                    </p>
                   </div>
+                  <CardTitle className="text-center text-lg">{t("features.flexible_rental.title")}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <CardDescription>
+                    {t("features.flexible_rental.description")}
+                  </CardDescription>
                 </CardContent>
               </Card>
             </div>
@@ -476,36 +526,39 @@ export default function ShibrLandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section className="container py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-medium tracking-tight">
-                {t("faq.title")} <span className="text-primary">{t("faq.highlight")}</span>
-              </h2>
+      <section className="bg-muted py-16 md:py-20 lg:py-24">
+        <div className="container">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="space-y-6">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                  {t("faq.title")} <span className="text-primary">{t("faq.highlight")}</span>
+                </h2>
 
-              <p className="text-xl text-muted-foreground leading-7">{t("faq.description")}</p>
+                <p className="text-xl text-muted-foreground leading-7">{t("faq.description")}</p>
+              </div>
             </div>
-          </div>
 
-          <Accordion type="single" collapsible className="w-full space-y-4">
-            {faqItems.map((item, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="border rounded-lg"
-              >
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:no-underline text-start">
-                  {item.question}
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-sm text-muted-foreground text-start">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              {faqItems.map((item, index) => (
+                <AccordionItem
+                  key={index}
+                  value={`item-${index}`}
+                  className="border rounded-lg bg-background"
+                >
+                  <AccordionTrigger className="px-6 py-4 text-base font-medium hover:no-underline text-start">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-4 text-sm text-muted-foreground text-start">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <SharedFooter />

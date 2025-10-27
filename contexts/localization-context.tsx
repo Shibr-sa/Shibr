@@ -144,7 +144,7 @@ const translations = {
 
     // Navigation
     "nav.home": "الرئيسية",
-    "nav.renter_store": "المستأجر والمتجر",
+    "nav.renter_store": "انضم لمجتمع شبر",
     "nav.stores": "المحلات",
     "nav.why_us_nav": "لماذا نحن",
     "nav.contact": "تواصل معنا",
@@ -157,7 +157,9 @@ const translations = {
     "nav.verify_email": "تحقق من البريد الإلكتروني",
     "nav.email_not_verified": "البريد الإلكتروني غير محقق",
     "nav.navigation": "التنقل",
-    "nav.questions": "المستأجر والمتجر",
+    "nav.open_menu": "فتح القائمة",
+    "nav.close_menu": "إغلاق القائمة",
+    "nav.questions": "انضم لمجتمع شبر",
     "nav.services": "المحلات",
     "nav.why_us": "لماذا نحن",
 
@@ -1116,8 +1118,8 @@ const translations = {
     "contact.subject.complaint": "شكوى",
 
     // Contact Page
-    "contact.page_title": "تواصل معنا",
-    "contact.page_description": "نحن هنا لمساعدتك. تواصل معنا لأي استفسارات أو دعم أو اقتراحات",
+    "contact.page_title": "على مدار الساعة شبر متواجدين لدعمك",
+    "contact.page_description": "حنّا هنا جاهزين لأي استفسارات أو حلول أو اقتراحات..",
     "contact.info_title": "معلومات التواصل",
     "contact.info_phone": "الهاتف",
     "contact.info_email": "البريد الإلكتروني",
@@ -1685,11 +1687,11 @@ const translations = {
     "review.already_reviewed": "لقد قمت بتقييم هذا الإيجار بالفعل",
 
     // Landing Page
-    "hero.title": "منصة ذكية تربط بين المتاجر",
-    "hero.highlight": "الواقعية والإلكترونية",
+    "hero.title": "شبر تربط",
+    "hero.highlight": "نقاط البيع بالعلامات التجارية",
     "hero.description":
-      "شبر هي منصة تقنية تربط بين المتاجر الإلكترونية والمحلات التجارية الواقعية من خلال عرض وتأجير مساحات رفوف مخصصة داخل المحلات، بهدف تحويل المساحات غير المستغلة إلى نقاط بيع فورية.",
-    "hero.start_now": "ابدأ الآن",
+      "ندعمك تتوسّع، توصل، وتزيد أرباح متجرك الإلكتروني أو محلك التجاري بكل بساطة وأقل جهد وتكلفة، عن طريق عرض منتجاتك في مساحات متاحة لدى شركاء شبر بدون فتح أي فرع.",
+    "hero.start_now": "ابدأ تجربتك",
     "hero.go_to_dashboard": "انتقل إلى لوحة التحكم",
     "hero.verify_email_now": "تحقق من بريدك الإلكتروني الآن",
     "hero.learn_more": "تعلم المزيد",
@@ -1697,22 +1699,22 @@ const translations = {
     // Features
     "features.title": "ميزاتنا",
     "features.subtitle": "اكتشف كيف تساعدك شبر في تحقيق أهدافك التجارية",
-    "features.clear_rights.title": "حقوق واضحة لكل الأطراف",
+    "features.clear_rights.title": "حقوق واضحة",
     "features.clear_rights.description": "كل منتج مربوط بكود QR خاص، يضمن تتبع كل عملية شراء بدقة، ويعطي كل طرف حقه من العمولة أو الإيراد.",
-    "features.empty_spaces.title": "تحويل المساحات الفارغة إلى دخل",
-    "features.empty_spaces.description": "لو عندك رف، جدار أو زاوية غير مستخدمة.. شبر تساعدك تأجرها وتحقق منها دخل شهري أو نسبة من المبيعات بكل سهولة.",
-    "features.real_reach.title": "وصول حقيقي بدون فتح فرع",
+    "features.empty_spaces.title": "عائد مربح",
+    "features.empty_spaces.description": "لو عندك رف، جدار أو زاوية متاحة، نساعدك تستثمرها وتحقق منها ربح بكل سهولة",
+    "features.real_reach.title": "وصول مكفول",
     "features.real_reach.description": "لأصحاب المتاجر الإلكترونية، تقدر تحط منتجاتك في أحياء ومدن مختلفة بدون ما تفتح فرع أو توظف أحد.",
-    "features.flexible_rental.title": "نظام تأجير مرن",
-    "features.flexible_rental.description": "اختر طريقة الدفع المناسبة لك: مبلغ شهري، نسبة من المبيعات، أو مزيج بينهم.. وأنت المتحكم في الشروط.",
+    "features.flexible_rental.title": "مرونة تفهمك",
+    "features.flexible_rental.description": "ناقش أي شرط من شروط الشراكة عبر الدردشة الفورية.",
 
     // FAQ
     "faq.title": "أسئلتك المهمة…",
     "faq.subtitle": "إجابات على أكثر الأسئلة شيوعاً حول منصة شبر",
     "faq.q1": "كيف تعمل منصة شبر؟",
-    "faq.a1": "شبر تربط العلامات التجارية بالمساحات القابلة للمشاركة لعرض منتجاتهم. التاجر يعرض، والمتجر يستثمر المساحات المتوفرة.",
-    "faq.q2": "كيف يتم تتبع المبيعات؟",
-    "faq.a2": "كل عملية بيع تُسجل تلقائياً في لوحة التحكم، وتُعرض الأرباح والعمولات بشفافية لحظة بلحظة.",
+    "faq.a1": "شبر منصة رقمية تربط نقاط البيع بالعلامات التجارية لعرض منتجاتهم. نقطة البيع تشارك مساحة، والعلامة تستثمر بها.",
+    "faq.q2": "هل يمكنني الاستثمار بأكثر من مساحة في نفس الوقت؟",
+    "faq.a2": "أكيد! يمكنك الاستثمار في عدة نقاط بيع وبأكثر من منطقة لتوسيع حضورك وزيادة ربحك.",
     "faq.q3": "هل يمكنني تغيير الشروط؟",
     "faq.a3": "نعم، يمكنك تعديل التفاصيل أو الأسعار في المحادثة بين الطرفين، قبل تأكيد الطلب من الطرف الآخر.",
     "faq.q4": "هل يمكنني استئجار أكثر من رف في نفس الوقت؟",
@@ -1728,10 +1730,10 @@ const translations = {
     "footer.rights": "جميع الحقوق محفوظة",
 
     // شبر Section
-    "shibr.title": "سواء عندك محل أو متجر إلكتروني...",
-    "shibr.highlight": "شبر",
-    "shibr.subtitle": "يربطكم",
-    "shibr.description": "ويفتح لك باب دخل واشتراك في نفس الوقت",
+    "shibr.title": "بين التوسع وزيادة الربح…",
+    "shibr.highlight": "شـبــــر",
+    "shibr.subtitle": "",
+    "shibr.description": "شارك مساحة في محلك التجاري أو اعرض منتجاتك في نقاط بيع مختلفة عبر خطوات سهلة... سريعة... ومربحة",
     "shibr.service_stores": "صاحب المحل التجاري",
     "shibr.commercial_centers": "صاحب العلامة التجارية",
     "shibr.smart_service": "الخطوة الأولى",
@@ -1750,18 +1752,22 @@ const translations = {
     "shibr.centers.targeted_audience_desc": "اربط منتجاتك بواسطة رمز QR وتابع طلباتك",
 
     // Video Section
-    "video.title": "استعرض المحلات المتاحة…",
-    "video.highlight": "واختر موقع رفك القادم",
+    "video.title": "لأصحاب العلامات التجارية شيّك على المساحات المتاحة…",
+    "video.highlight": "واحجز مكانك ونقطة البيع اللي تناسبك",
     "video.description":
-      "تصفّح قائمة المحلات المشاركة في منصة شبر بمختلف المدن والأحياء، واعرف تفاصيل كل مساحة معروضة: نوع الرف، موقعه داخل المحل، عدد الزوار، والسعر أو العمولة المقترحة. كل اللي تحتاجه علشان تحجز مكانك في السوق الحقيقي صار قدامك.",
-    "video.start_journey": "تصفح المتاجر المتاحة",
+      "لأن التفاصيل مهمة، اعرف كل تفصيلة عن مساحة مشروعك القادمة، حدّد المكان الصح لمنتجاتك واضمن حضور فعلي وتواجد ملموس.",
+    "video.start_journey": "تصفح المساحات المتاحة",
     "video.jeddah_stores": "جدة - مواقع المتاجر المتاحة",
     "video.riyadh_stores": "الرياض - مواقع المتاجر المتاحة",
 
+    // Stores Section
+    "stores.title": "لأصحاب المحلات التجارية استفيد من كل مساحة عندك… شاركنا تفاصيلها ووسع دخلك",
+    "stores.description": "لأن كل شبر هو فرصة، استثمر مساحتك المتاحة وشاركها كنقاط بيع، عرّفنا على مكانك وزودنا بمعلوماته واكسب ربح إضافي بكل يسر وسهولة.",
+
     // Why Choose Section
     "why_choose.title": "ليش تختار شبر؟",
-    "why_choose.subtitle": "شبر تجمع بين التجارة الواقعية والرقمية في مكان واحد",
-    "why_choose.description": "سواء كنت صاحب محل تبغى تزيد دخلك، أو متجر إلكتروني تبغى توصل لعملائك في الواقع، شبر مصممة لتقدم لك تجربة سلسة، مرنة، وتحفظ حقوقك من أول رف إلى أول بيع.",
+    "why_choose.subtitle": "كل شبر تتوسع فيه يفرق..",
+    "why_choose.description": "منصة تجمع بين نقاط البيع والعلامات التجارية.. سواء كنت صاحب محل تبغى تزيد دخلك، أو متجر إلكتروني تبغى توسّع وصولك، منصة شبر مصممة لك، توفر لك تجربة سلسة.. مرنة.. وتحفظ حقوقك من أول شبر إلى أول بيع.",
 
     // Statistics
     "stats.why_choose": "ليش تختار",
@@ -1775,7 +1781,7 @@ const translations = {
 
     // FAQ
     "faq.highlight": "وجاوبنا عليها",
-    "faq.description": "هنا تلقى إجابات لأكثر الأسئلة اللي توصلنا من أصحاب المحلات والمتاجر الإلكترونية.",
+    "faq.description": "أسئلة تترواد لذهنك، وودك تعرف إجابتها… هنا ندعمك بأجوبة وافية… وإن كنت تبي زود.. تقدر تتواصل معنا مباشرة.",
 
     // Footer
     "footer.company": "روابط هامة",
@@ -1816,21 +1822,21 @@ const translations = {
     "auth.store_owner": "صاحب محل",
     "auth.im_store_owner": "صاحب محل",
     "auth.im_brand_owner": "صاحب متجر إلكتروني",
-    "auth.store_owner_description": "أملك محلاً تجارياً وأريد تأجير أرفف للعلامات التجارية",
-    "auth.brand_owner_description": "أملك متجراً إلكترونياً وأريد استئجار أرفف في المحلات",
-    "auth.select_account_type": "اختر نوع حسابك",
-    "auth.select_account_type_description": "كيف تريد استخدام منصة شبر؟",
-    "auth.i_have_store": "لدي محل تجاري",
-    "auth.i_am_merchant": "أنا تاجر إلكتروني",
-    "auth.store_benefit_1": "تأجير أرففك للعلامات التجارية",
-    "auth.store_benefit_2": "زيادة دخلك من المساحات غير المستخدمة",
-    "auth.store_benefit_3": "إدارة سهلة لجميع عمليات التأجير",
-    "auth.brand_benefit_1": "عرض منتجاتك في المحلات الواقعية",
+    "auth.store_owner_description": "أملك محلاً تجارياً وأريد مشاركة مساحة متاحة لدي",
+    "auth.brand_owner_description": "أملك متجر إلكتروني وأريد استثمار منتجاتي بمساحة محلية",
+    "auth.select_account_type": "شارك مساحة أو استثمر بها",
+    "auth.select_account_type_description": "عرّفنا على مشروعك أكثر... عشان نعرف كيف نخدمك، عندك نقطة بيع؟ أو علامة تجارية؟",
+    "auth.i_have_store": "نقطة بيع",
+    "auth.i_am_merchant": "علامة تجارية",
+    "auth.store_benefit_1": "الاستفادة من المساحات بعرض منتجات مميّزة",
+    "auth.store_benefit_2": "تحقيق أرباح من المساحات المتاحة",
+    "auth.store_benefit_3": "إدارة واضحة وسهلة لجميع العمليات",
+    "auth.brand_benefit_1": "عرض منتجاتك في المحلات التجارية",
     "auth.brand_benefit_2": "الوصول لعملاء جدد في مناطق مختلفة",
-    "auth.brand_benefit_3": "تتبع أداء منتجاتك في كل موقع",
+    "auth.brand_benefit_3": "تتبع أداء منتجاتك في جميع المساحات",
     "auth.continue": "المتابعة",
-    "auth.continue_as_store_owner": "المتابعة كصاحب محل",
-    "auth.continue_as_brand_owner": "المتابعة كتاجر إلكتروني",
+    "auth.continue_as_store_owner": "المتابعة كمحل تجاري",
+    "auth.continue_as_brand_owner": "المتابعة كعلامة تجارية",
     "auth.registering_as": "أنت تسجل كـ",
     "auth.change_account_type": "تغيير نوع الحساب",
     "auth.full_name": "الاسم الكامل",
@@ -2683,7 +2689,7 @@ const translations = {
 
     // Navigation
     "nav.home": "Home",
-    "nav.renter_store": "Renter & Store",
+    "nav.renter_store": "Join Shibr Community",
     "nav.stores": "Stores",
     "nav.why_us_nav": "Why Us",
     "nav.contact": "Contact Us",
@@ -2696,7 +2702,9 @@ const translations = {
     "nav.verify_email": "Verify Email",
     "nav.email_not_verified": "Email not verified",
     "nav.navigation": "Navigation",
-    "nav.questions": "Renter & Store",
+    "nav.open_menu": "Open menu",
+    "nav.close_menu": "Close menu",
+    "nav.questions": "Join Shibr Community",
     "nav.services": "Stores",
     "nav.why_us": "Why Us",
 
@@ -3652,8 +3660,8 @@ const translations = {
     "contact.subject.complaint": "Complaint",
 
     // Contact Page
-    "contact.page_title": "Contact Us",
-    "contact.page_description": "We're here to help. Contact us for any inquiries, support, or suggestions",
+    "contact.page_title": "Shibr is here to support you 24/7",
+    "contact.page_description": "We're here ready for any inquiries, solutions, or suggestions..",
     "contact.info_title": "Contact Information",
     "contact.info_phone": "Phone",
     "contact.info_email": "Email",
@@ -4220,11 +4228,11 @@ const translations = {
     "review.already_reviewed": "You have already reviewed this rental",
 
     // Landing Page
-    "hero.title": "Smart platform connecting",
-    "hero.highlight": "physical and online stores",
+    "hero.title": "Shibr connects",
+    "hero.highlight": "points of sale with brands",
     "hero.description":
-      "Shibr is a technology platform that connects online stores with physical retail shops through displaying and renting dedicated shelf spaces inside stores, aiming to transform unused spaces into instant points of sale.",
-    "hero.start_now": "Start Now",
+      "We help you expand, reach customers, and increase profits for your online store or physical shop simply with less effort and cost, by displaying your products in available spaces at Shibr partners without opening any branch.",
+    "hero.start_now": "Start Your Experience",
     "hero.go_to_dashboard": "Go to Dashboard",
     "hero.verify_email_now": "Verify Your Email Now",
     "hero.learn_more": "Learn More",
@@ -4232,22 +4240,22 @@ const translations = {
     // Features
     "features.title": "Our Features",
     "features.subtitle": "Discover how Shibr helps you achieve your business goals",
-    "features.clear_rights.title": "Clear Rights for All Parties",
+    "features.clear_rights.title": "Clear Rights",
     "features.clear_rights.description": "Each product is linked to a unique QR code, ensuring accurate tracking of every purchase and giving each party their rightful commission or revenue.",
-    "features.empty_spaces.title": "Turn Empty Spaces into Income",
-    "features.empty_spaces.description": "If you have an unused shelf, wall, or corner, Shibr helps you rent it out and generate monthly income or a percentage of sales easily.",
-    "features.real_reach.title": "Real Reach Without Opening a Branch",
+    "features.empty_spaces.title": "Profitable Returns",
+    "features.empty_spaces.description": "If you have an available shelf, wall, or corner, we help you invest it and make profit from it easily",
+    "features.real_reach.title": "Guaranteed Reach",
     "features.real_reach.description": "For online store owners, you can place your products in different neighborhoods and cities without opening a branch or hiring anyone.",
-    "features.flexible_rental.title": "Flexible Rental System",
-    "features.flexible_rental.description": "Choose the payment method that suits you: monthly amount, percentage of sales, or a mix of both. You're in control of the terms.",
+    "features.flexible_rental.title": "Flexible Understanding",
+    "features.flexible_rental.description": "Discuss any partnership terms through instant chat.",
 
     // FAQ
     "faq.title": "Your Important Questions",
     "faq.subtitle": "Answers to the most common questions about Shibr platform",
     "faq.q1": "How does the Shibr platform work?",
-    "faq.a1": "Shibr connects brands with shared spaces to display their products. The merchant displays, and the store monetizes available spaces.",
-    "faq.q2": "How are sales tracked?",
-    "faq.a2": "Every sale is automatically recorded in the dashboard, and profits and commissions are transparently displayed in real-time.",
+    "faq.a1": "Shibr is a digital platform that connects points of sale with brands to display their products. The point of sale shares space, and the brand invests in it.",
+    "faq.q2": "Can I invest in more than one space at the same time?",
+    "faq.a2": "Definitely! You can invest in multiple points of sale and in more than one area to expand your presence and increase your profit.",
     "faq.q3": "Can I change the terms?",
     "faq.a3": "Yes, you can modify details or prices in the conversation between parties, before the other party confirms the request.",
     "faq.q4": "Can I rent more than one shelf at the same time?",
@@ -4263,10 +4271,10 @@ const translations = {
     "footer.rights": "All rights reserved",
 
     // شبر Section
-    "shibr.title": "Whether you have a store or an online shop...",
+    "shibr.title": "Between expansion and increasing profits…",
     "shibr.highlight": "Shibr",
-    "shibr.subtitle": "connects you",
-    "shibr.description": "and opens the door to income and participation at the same time",
+    "shibr.subtitle": "",
+    "shibr.description": "Share space in your store or display your products in different points of sale through easy... fast... and profitable steps",
     "shibr.service_stores": "Store Owner",
     "shibr.commercial_centers": "Brand Owner",
     "shibr.smart_service": "Step One",
@@ -4285,18 +4293,22 @@ const translations = {
     "shibr.centers.targeted_audience_desc": "Link your products with QR code and track your orders",
 
     // Video Section
-    "video.title": "Browse available stores…",
-    "video.highlight": "and choose your next shelf location",
+    "video.title": "For Brand Owners Check available spaces…",
+    "video.highlight": "and book your place and point of sale that suits you",
     "video.description":
-      "Browse the list of stores participating in the Shibr platform across different cities and neighborhoods, and learn the details of each available space: shelf type, location inside the store, visitor count, and proposed price or commission. Everything you need to book your place in the real market is now in front of you.",
-    "video.start_journey": "Browse Available Stores",
+      "Because details matter, know every detail about your next project space, determine the right place for your products and ensure real presence and tangible existence.",
+    "video.start_journey": "Browse Available Spaces",
     "video.jeddah_stores": "Jeddah - Available store locations",
     "video.riyadh_stores": "Riyadh - Available store locations",
 
+    // Stores Section
+    "stores.title": "For Store Owners Benefit from every space you have... Share its details with us and expand your income",
+    "stores.description": "Because every inch is an opportunity, invest your available space and share it as points of sale, tell us about your place and provide us with its information and earn additional profit with ease.",
+
     // Why Choose Section
     "why_choose.title": "Why choose Shibr?",
-    "why_choose.subtitle": "The platform that brings together physical and digital commerce in one place",
-    "why_choose.description": "Whether you're a store owner looking to increase your income, or an online store wanting to reach customers in reality, Shibr is designed to provide you with a smooth, flexible experience that preserves your rights from the first shelf to the first sale.",
+    "why_choose.subtitle": "Every inch you expand makes a difference..",
+    "why_choose.description": "A platform that brings together points of sale and brands.. Whether you're a store owner looking to increase your income, or an online store wanting to expand your reach, Shibr platform is designed for you, providing you with a smooth.. flexible.. experience that preserves your rights from the first inch to the first sale.",
 
     // Statistics
     "stats.why_choose": "Why choose",
@@ -4311,7 +4323,7 @@ const translations = {
     // FAQ
     "faq.highlight": "and our answers to them",
     "faq.description":
-      "Here you'll find answers to the most common questions we receive from store owners and online merchants",
+      "Questions that come to mind, and you want to know the answers… Here we support you with comprehensive answers… And if you want more.. you can contact us directly.",
 
     // Footer
     "footer.company": "Important Links",
@@ -4352,21 +4364,21 @@ const translations = {
     "auth.store_owner": "Store Owner",
     "auth.im_store_owner": "Store Owner",
     "auth.im_brand_owner": "Brand Owner",
-    "auth.store_owner_description": "I own a physical store and want to rent out shelf space to brands",
-    "auth.brand_owner_description": "I own an online store and want to rent shelf space in physical stores",
-    "auth.select_account_type": "Select Your Account Type",
-    "auth.select_account_type_description": "How do you want to use Shibr platform?",
-    "auth.i_have_store": "I Have a Physical Store",
-    "auth.i_am_merchant": "I'm an Online Merchant",
-    "auth.store_benefit_1": "Rent out your shelves to brands",
-    "auth.store_benefit_2": "Increase income from unused spaces",
-    "auth.store_benefit_3": "Easy management of all rentals",
-    "auth.brand_benefit_1": "Display products in physical stores",
+    "auth.store_owner_description": "I own a physical store and want to share available space",
+    "auth.brand_owner_description": "I own an online store and want to invest my products in local space",
+    "auth.select_account_type": "Share Space or Invest in It",
+    "auth.select_account_type_description": "Tell us more about your project... so we know how to serve you, do you have a point of sale? Or a brand?",
+    "auth.i_have_store": "Point of Sale",
+    "auth.i_am_merchant": "Brand",
+    "auth.store_benefit_1": "Benefit from spaces by displaying distinctive products",
+    "auth.store_benefit_2": "Generate profits from available spaces",
+    "auth.store_benefit_3": "Clear and easy management of all operations",
+    "auth.brand_benefit_1": "Display your products in physical stores",
     "auth.brand_benefit_2": "Reach new customers in different areas",
-    "auth.brand_benefit_3": "Track product performance in each location",
+    "auth.brand_benefit_3": "Track your products performance in all spaces",
     "auth.continue": "Continue",
-    "auth.continue_as_store_owner": "Continue as Store Owner",
-    "auth.continue_as_brand_owner": "Continue as Brand Owner",
+    "auth.continue_as_store_owner": "Continue as Physical Store",
+    "auth.continue_as_brand_owner": "Continue as Brand",
     "auth.registering_as": "You are registering as",
     "auth.change_account_type": "Change account type",
     "auth.full_name": "Full Name",
