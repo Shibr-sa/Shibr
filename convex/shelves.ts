@@ -277,17 +277,26 @@ export const getAvailableShelves = query({
     )
 
     const validShelves = filteredShelves.filter(Boolean) as any[]
-    
+
     // Convert image storage IDs to URLs for filtered shelves
     return Promise.all(
       validShelves.map(async (shelf) => {
+        // Combine shelf images with branch images
+        const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
+        let allImages = shelf.images || []
+
+        // Include branch images (exterior/interior) - type guard for images property
+        if (branch && 'images' in branch && branch.images && Array.isArray(branch.images) && branch.images.length > 0) {
+          allImages = [...allImages, ...branch.images]
+        }
+
         const imagesWithUrls = await Promise.all(
-          (shelf.images || []).map(async (img: any) => ({
+          allImages.map(async (img: any) => ({
             ...img,
             url: await ctx.storage.getUrl(img.storageId)
           }))
         )
-        
+
         return {
           ...shelf,
           images: imagesWithUrls
@@ -392,9 +401,17 @@ export const getShelfById = query({
     // Get branch details if shelf has a branch
     const branch = shelf.branchId ? await ctx.db.get(shelf.branchId) : null
 
-    // Get image URLs from the images array
+    // Combine shelf images with branch images
+    let allImages = shelf.images || []
+
+    // Include branch images (exterior/interior) - type guard for images property
+    if (branch && 'images' in branch && branch.images && Array.isArray(branch.images) && branch.images.length > 0) {
+      allImages = [...allImages, ...branch.images]
+    }
+
+    // Get image URLs from the combined images array
     const imagesWithUrls = await Promise.all(
-      (shelf.images || []).map(async (img) => ({
+      allImages.map(async (img) => ({
         ...img,
         url: await ctx.storage.getUrl(img.storageId)
       }))
@@ -412,6 +429,7 @@ export const getShelfById = query({
       branchName: branch?.branchName,
       city: branch?.city,
       location: branch?.location,
+      storeBranch: branch?.branchName,
     }
   },
 })
