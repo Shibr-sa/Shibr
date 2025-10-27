@@ -415,7 +415,7 @@ export default function BrandDashboardPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={rental.status === "active" ? "default" : "secondary"}>
-                              {rental.status === "active" ? t("status.active") : t("stores.rental_status.expired")}
+                              {t(`stores.rental_status.${rental.status}`) || t("common.unknown")}
                             </Badge>
                           </TableCell>
                         </TableRow>

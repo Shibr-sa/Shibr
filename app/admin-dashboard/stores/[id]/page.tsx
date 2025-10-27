@@ -75,7 +75,7 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
     shelf: rental.shelfName,
     duration: `${rental.duration} ${language === "ar" ? "شهر" : "month(s)"}`,
     payment: rental.totalAmount,
-    status: (rental.status === "active" || rental.status === "expired") ? rental.status : "pending"
+    status: rental.status
   })),
   paymentSummary: (payments || []).map((payment: any) => ({
     month: payment.month,
@@ -179,6 +179,25 @@ export default function StoreDetailsPage() {
     }
   }
 
+  const getRentalStatusVariant = (status: string) => {
+    switch (status) {
+      case "active":
+        return "default"
+      case "completed":
+        return "default"
+      case "pending":
+      case "payment_pending":
+        return "secondary"
+      case "cancelled":
+      case "rejected":
+        return "destructive"
+      case "expired":
+        return "outline"
+      default:
+        return "secondary"
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
@@ -217,7 +236,7 @@ export default function StoreDetailsPage() {
               {t("stores.store_information")}
             </h3>
             <Badge variant={getStatusVariant(store.status)}>
-              {t(`stores.status.${store.status}`) || store.status}
+              {t(`stores.status.${store.status}`) || t("common.unknown")}
             </Badge>
           </div>
           <CardContent className="pt-6">
@@ -487,7 +506,7 @@ export default function StoreDetailsPage() {
                                 variant={shelf.status === "rented" ? "default" : "secondary"}
                                 className="font-normal"
                               >
-                                {t(`stores.shelf_status.${shelf.status}`) || shelf.status}
+                                {t(`stores.shelf_status.${shelf.status}`) || t("common.unknown")}
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3">{formatCurrency(shelf.monthlyPrice)}</TableCell>
@@ -609,10 +628,10 @@ export default function StoreDetailsPage() {
                             <TableCell className="py-3">{formatCurrency(rental.payment)}</TableCell>
                             <TableCell className="py-3">
                               <Badge
-                                variant={rental.status === "active" ? "default" : "secondary"}
+                                variant={getRentalStatusVariant(rental.status)}
                                 className="font-normal"
                               >
-                                {t(`stores.rental_status.${rental.status}`) || rental.status}
+                                {t(`stores.rental_status.${rental.status}`) || t("common.unknown")}
                               </Badge>
                             </TableCell>
                           </TableRow>

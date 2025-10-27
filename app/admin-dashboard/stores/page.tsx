@@ -399,7 +399,7 @@ export default function StoresPage() {
                           <TableCell className="py-3 text-muted-foreground hidden md:table-cell">{store.rentals}</TableCell>
                           <TableCell className="py-3">
                             <Badge variant={getStatusVariant(store.status)} className="font-normal">
-                              {t(`stores.status.${store.status}`) || store.status}
+                              {t(`stores.status.${store.status}`) || t("common.unknown")}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
@@ -589,7 +589,7 @@ export default function StoresPage() {
                       </TableCell>
                       <TableCell className="py-3">
                         <Badge variant={post.status === "published" ? "default" : "secondary"} className="font-normal">
-                          {t(`posts.status.${post.status}`) || post.status}
+                          {t(`posts.status.${post.status}`) || t("common.unknown")}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-3">

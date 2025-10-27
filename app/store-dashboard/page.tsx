@@ -307,7 +307,7 @@ export default function StoreDashboardPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={getRequestStatusBadgeVariant(request.status)}>
-                                {t(`status.${request.status}`) || request.status}
+                                {t(`status.${request.status}`) || t("common.unknown")}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-muted-foreground hidden lg:table-cell">

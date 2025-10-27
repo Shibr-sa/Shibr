@@ -432,7 +432,7 @@ export default function RequestDetailsPage() {
                             {product.name || "-"}
                           </h4>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {product.category ? t(`product_categories.${product.category}` as any) || product.category : t("common.not_specified")}
+                            {product.category ? (t(`product_categories.${product.category}`) || t("common.unknown")) : t("common.not_specified")}
                           </p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-xs text-muted-foreground">
@@ -467,7 +467,7 @@ export default function RequestDetailsPage() {
                             {product.name || "-"}
                           </h4>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {product.category ? t(`product_categories.${product.category}` as any) || product.category : t("common.not_specified")}
+                            {product.category ? (t(`product_categories.${product.category}`) || t("common.unknown")) : t("common.not_specified")}
                           </p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-xs text-muted-foreground">
