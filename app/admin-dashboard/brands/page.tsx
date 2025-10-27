@@ -315,7 +315,7 @@ export default function BrandsPage() {
                             <TableCell className="py-3 font-medium hidden md:table-cell">{formatCurrency(brand.revenue)}</TableCell>
                             <TableCell className="py-3">
                               <Badge variant={getStatusVariant(brand.status)} className="font-normal">
-                                {t(`brands.status.${brand.status}`) || brand.status}
+                                {t(`brands.status.${brand.status}`) || t("common.unknown")}
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3">

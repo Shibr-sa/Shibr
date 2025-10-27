@@ -262,7 +262,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                   <SelectItem value="all">{t("marketplace.all_types")}</SelectItem>
                   {availableProductTypes?.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {t(`product_categories.${type}` as any) || type}
+                      {t(`product_categories.${type}`) || t("common.unknown")}
                     </SelectItem>
                   ))}
                 </SelectContent>
