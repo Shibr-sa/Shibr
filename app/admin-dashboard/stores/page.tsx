@@ -39,12 +39,14 @@ export default function StoresPage() {
 
   // Helper function to translate city names
   const translateCity = (cityName: string) => {
+    if (!cityName) return "-"
     const cityKey = `city.${cityName.toLowerCase()}`
     return t(cityKey) !== cityKey ? t(cityKey) : cityName
   }
 
   // Helper function to translate shelf names
   const translateShelfName = (shelfName: string) => {
+    if (!shelfName) return "-"
     // Convert "Front Display" to "front_display"
     const shelfKey = `shelf_name.${shelfName.toLowerCase().replace(/\s+/g, '_')}`
     return t(shelfKey) !== shelfKey ? t(shelfKey) : shelfName
