@@ -437,9 +437,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                 {selectedRequest.status === "rejected" ? (
                   <div className="text-center py-2">
                     <p className="text-sm text-muted-foreground">
-                      {language === "ar" 
-                        ? "هذه المحادثة مغلقة ولا يمكن إرسال رسائل جديدة"
-                        : "This conversation is closed and new messages cannot be sent"}
+                      {t("chat.conversation_closed")}
                     </p>
                   </div>
                 ) : (

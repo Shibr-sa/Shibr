@@ -176,7 +176,7 @@ export default function BrandDetailsPage() {
             {t("brands.brand_information")}
           </h3>
           <Badge variant={getStatusVariant(brand.status)}>
-            {t(`brands.status.${brand.status}`)}
+            {t(`brands.status.${brand.status}`) || brand.status}
           </Badge>
         </div>
         <CardContent className="pt-6">

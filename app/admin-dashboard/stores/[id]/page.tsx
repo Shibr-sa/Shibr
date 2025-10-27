@@ -217,7 +217,7 @@ export default function StoreDetailsPage() {
               {t("stores.store_information")}
             </h3>
             <Badge variant={getStatusVariant(store.status)}>
-              {t(`stores.status.${store.status}`)}
+              {t(`stores.status.${store.status}`) || store.status}
             </Badge>
           </div>
           <CardContent className="pt-6">
@@ -487,7 +487,7 @@ export default function StoreDetailsPage() {
                                 variant={shelf.status === "rented" ? "default" : "secondary"}
                                 className="font-normal"
                               >
-                                {t(`stores.shelf_status.${shelf.status}`)}
+                                {t(`stores.shelf_status.${shelf.status}`) || shelf.status}
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3">{formatCurrency(shelf.monthlyPrice)}</TableCell>
@@ -612,7 +612,7 @@ export default function StoreDetailsPage() {
                                 variant={rental.status === "active" ? "default" : "secondary"}
                                 className="font-normal"
                               >
-                                {t(`stores.rental_status.${rental.status}`)}
+                                {t(`stores.rental_status.${rental.status}`) || rental.status}
                               </Badge>
                             </TableCell>
                           </TableRow>

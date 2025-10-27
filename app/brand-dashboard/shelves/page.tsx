@@ -163,10 +163,16 @@ export default function BrandShelvesPage() {
             {t("status.expired")}
           </Badge>
         )
+      case "cancelled":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {t("status.cancelled")}
+          </Badge>
+        )
       default:
         return (
           <Badge variant="secondary">
-            {status}
+            {t(`status.${status}`) || t("common.unknown")}
           </Badge>
         )
     }

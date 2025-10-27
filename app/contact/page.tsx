@@ -49,22 +49,22 @@ export default function ContactPage() {
   const subjects = [
     {
       value: "general",
-      label: isArabic ? "استفسار عام" : "General Inquiry",
+      label: t("contact.subject.general"),
       icon: <HelpCircle className="h-4 w-4" />
     },
     {
       value: "support",
-      label: isArabic ? "دعم فني" : "Technical Support",
+      label: t("contact.subject.support"),
       icon: <AlertCircle className="h-4 w-4" />
     },
     {
       value: "business",
-      label: isArabic ? "شراكة أعمال" : "Business Partnership",
+      label: t("contact.subject.business"),
       icon: <MessageSquare className="h-4 w-4" />
     },
     {
       value: "complaint",
-      label: isArabic ? "شكوى" : "Complaint",
+      label: t("contact.subject.complaint"),
       icon: <AlertCircle className="h-4 w-4" />
     }
   ]
@@ -72,30 +72,26 @@ export default function ContactPage() {
   const contactInfo = [
     {
       icon: <Phone className="h-5 w-5" />,
-      title: isArabic ? "الهاتف" : "Phone",
+      title: t("contact.info_phone"),
       value: "+966 53 641 2311",
       link: "tel:+966536412311",
       dir: "ltr"
     },
     {
       icon: <Mail className="h-5 w-5" />,
-      title: isArabic ? "البريد الإلكتروني" : "Email",
+      title: t("contact.info_email"),
       value: "info@shibr.io",
       link: "mailto:info@shibr.io"
     },
     {
       icon: <MapPin className="h-5 w-5" />,
-      title: isArabic ? "العنوان" : "Address",
-      value: isArabic
-        ? "الرياض، المملكة العربية السعودية"
-        : "Riyadh, Kingdom of Saudi Arabia"
+      title: t("contact.info_address"),
+      value: t("contact.address_value")
     },
     {
       icon: <Clock className="h-5 w-5" />,
-      title: isArabic ? "ساعات العمل" : "Working Hours",
-      value: isArabic
-        ? "الأحد - الخميس: 9:00 ص - 6:00 م"
-        : "Sunday - Thursday: 9:00 AM - 6:00 PM"
+      title: t("contact.info_working_hours"),
+      value: t("contact.working_hours_value")
     }
   ]
 
@@ -115,33 +111,31 @@ export default function ContactPage() {
     const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = isArabic ? "الاسم مطلوب" : "Name is required"
+      newErrors.name = t("contact.name_required")
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = isArabic ? "البريد الإلكتروني مطلوب" : "Email is required"
+      newErrors.email = t("contact.email_required")
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        newErrors.email = isArabic ? "البريد الإلكتروني غير صالح" : "Invalid email address"
+        newErrors.email = t("contact.email_invalid")
       }
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = isArabic ? "رقم الهاتف مطلوب" : "Phone number is required"
+      newErrors.phone = t("contact.phone_required")
     } else {
       const phoneRegex = /^[0-9+\-\s()]+$/
       if (!phoneRegex.test(formData.phone)) {
-        newErrors.phone = isArabic ? "رقم الهاتف غير صالح" : "Invalid phone number"
+        newErrors.phone = t("contact.phone_invalid")
       }
     }
 
     if (!formData.message.trim()) {
-      newErrors.message = isArabic ? "الرسالة مطلوبة" : "Message is required"
+      newErrors.message = t("contact.message_required")
     } else if (formData.message.length < 10) {
-      newErrors.message = isArabic
-        ? "الرسالة يجب أن تكون 10 أحرف على الأقل"
-        : "Message must be at least 10 characters"
+      newErrors.message = t("contact.message_too_short")
     }
 
     setErrors(newErrors)
@@ -169,18 +163,14 @@ export default function ContactPage() {
 
       setIsSubmitted(true)
       toast({
-        title: isArabic ? "تم الإرسال بنجاح" : "Sent Successfully",
-        description: isArabic
-          ? "سنتواصل معك في أقرب وقت ممكن"
-          : "We'll get back to you as soon as possible",
+        title: t("contact.sent_successfully"),
+        description: t("contact.sent_success_description"),
       })
     } catch (error) {
       console.error("Error submitting contact form:", error)
       toast({
-        title: isArabic ? "خطأ" : "Error",
-        description: isArabic
-          ? "حدث خطأ أثناء الإرسال. يرجى المحاولة مرة أخرى"
-          : "An error occurred while sending. Please try again",
+        title: t("contact.error"),
+        description: t("contact.error_description"),
         variant: "destructive",
       })
     } finally {
@@ -223,17 +213,15 @@ export default function ContactPage() {
               <div className="text-center space-y-4">
                 <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
                 <h1 className="text-2xl font-bold">
-                  {isArabic ? "تم إرسال رسالتك بنجاح" : "Message Sent Successfully"}
+                  {t("contact.message_sent_title")}
                 </h1>
                 <p className="text-muted-foreground">
-                  {isArabic
-                    ? "شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت ممكن."
-                    : "Thank you for contacting us. We'll respond to you as soon as possible."}
+                  {t("contact.message_sent_description")}
                 </p>
                 <div className="pt-4 space-y-3">
                   <Button asChild className="w-full">
                     <Link href="/">
-                      {isArabic ? "العودة إلى الصفحة الرئيسية" : "Back to Home"}
+                      {t("contact.back_to_home")}
                     </Link>
                   </Button>
                   <Button
@@ -250,7 +238,7 @@ export default function ContactPage() {
                       })
                     }}
                   >
-                    {isArabic ? "إرسال رسالة أخرى" : "Send Another Message"}
+                    {t("contact.send_another")}
                   </Button>
                 </div>
               </div>
@@ -292,12 +280,10 @@ export default function ContactPage() {
       <div className="bg-gradient-to-b from-primary/10 to-transparent py-16">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-bold mb-4">
-            {isArabic ? "تواصل معنا" : "Contact Us"}
+            {t("contact.page_title")}
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            {isArabic
-              ? "نحن هنا لمساعدتك. تواصل معنا لأي استفسارات أو دعم أو اقتراحات"
-              : "We're here to help. Contact us for any inquiries, support, or suggestions"}
+            {t("contact.page_description")}
           </p>
         </div>
       </div>
@@ -310,7 +296,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {isArabic ? "معلومات التواصل" : "Contact Information"}
+                  {t("contact.info_title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -339,7 +325,7 @@ export default function ContactPage() {
                 {/* Social Media */}
                 <div className="pt-6 border-t">
                   <p className={`font-medium mb-4 ${direction === "rtl" ? "text-right" : "text-left"}`}>
-                    {isArabic ? "تابعنا على" : "Follow Us"}
+                    {t("contact.follow_us")}
                   </p>
                   <div className="flex gap-3">
                     <Button variant="outline" size="icon" asChild>
@@ -413,7 +399,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className={direction === "rtl" ? "text-right" : "text-left"}>
-                  {isArabic ? "أرسل لنا رسالة" : "Send Us a Message"}
+                  {t("contact.send_message_title")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -421,12 +407,12 @@ export default function ContactPage() {
                   {/* Name Field */}
                   <div className="space-y-2">
                     <Label htmlFor="name" className={direction === "rtl" ? "text-right block" : "text-left block"}>
-                      {isArabic ? "الاسم الكامل" : "Full Name"}
+                      {t("contact.full_name")}
                     </Label>
                     <Input
                       id="name"
                       name="name"
-                      placeholder={isArabic ? "أدخل اسمك الكامل" : "Enter your full name"}
+                      placeholder={t("contact.full_name_placeholder")}
                       value={formData.name}
                       onChange={handleInputChange}
                       disabled={isLoading}
@@ -444,7 +430,7 @@ export default function ContactPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email" className={direction === "rtl" ? "text-right block" : "text-left block"}>
-                        {isArabic ? "البريد الإلكتروني" : "Email"}
+                        {t("contact.email")}
                       </Label>
                       <Input
                         id="email"
@@ -466,7 +452,7 @@ export default function ContactPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="phone" className={direction === "rtl" ? "text-right block" : "text-left block"}>
-                        {isArabic ? "رقم الهاتف" : "Phone Number"}
+                        {t("contact.phone")}
                       </Label>
                       <Input
                         id="phone"
@@ -491,7 +477,7 @@ export default function ContactPage() {
                   {/* Subject */}
                   <div className="space-y-2">
                     <Label className={direction === "rtl" ? "text-right block" : "text-left block"}>
-                      {isArabic ? "نوع الرسالة" : "Message Type"}
+                      {t("contact.message_type")}
                     </Label>
                     <RadioGroup
                       value={formData.subject}
@@ -522,14 +508,12 @@ export default function ContactPage() {
                   {/* Message */}
                   <div className="space-y-2">
                     <Label htmlFor="message" className={direction === "rtl" ? "text-right block" : "text-left block"}>
-                      {isArabic ? "الرسالة" : "Message"}
+                      {t("contact.message")}
                     </Label>
                     <Textarea
                       id="message"
                       name="message"
-                      placeholder={isArabic
-                        ? "اكتب رسالتك هنا..."
-                        : "Write your message here..."}
+                      placeholder={t("contact.message_placeholder")}
                       value={formData.message}
                       onChange={handleInputChange}
                       disabled={isLoading}
@@ -552,12 +536,12 @@ export default function ContactPage() {
                     {isLoading ? (
                       <>
                         <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                        {isArabic ? "جاري الإرسال..." : "Sending..."}
+                        {t("contact.sending")}
                       </>
                     ) : (
                       <>
                         <Send className={`h-4 w-4 ${direction === "rtl" ? "ms-2" : "me-2"}`} />
-                        {isArabic ? "إرسال الرسالة" : "Send Message"}
+                        {t("contact.send_message")}
                       </>
                     )}
                   </Button>

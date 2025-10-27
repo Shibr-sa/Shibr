@@ -314,7 +314,7 @@ export default function PaymentsPage() {
                     <TableCell className="py-3 font-medium">{formatCurrency(payment.amount)}</TableCell>
                           <TableCell className="py-3 hidden lg:table-cell">
                             <Badge variant="outline" className="font-normal">
-                              {t(`payments.method.${payment.method}`)}
+                              {t(`payments.method.${payment.method}`) || payment.method}
                             </Badge>
                     </TableCell>
                     <TableCell className="py-3">
@@ -322,7 +322,7 @@ export default function PaymentsPage() {
                               variant={getStatusVariant(payment.status)}
                               className="font-normal"
                             >
-                              {t(`payments.status.${payment.status}`)}
+                              {t(`payments.status.${payment.status}`) || payment.status}
                             </Badge>
                     </TableCell>
                     <TableCell className="py-3">

@@ -36,7 +36,20 @@ export default function StoresPage() {
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
-  
+
+  // Helper function to translate city names
+  const translateCity = (cityName: string) => {
+    const cityKey = `city.${cityName.toLowerCase()}`
+    return t(cityKey) !== cityKey ? t(cityKey) : cityName
+  }
+
+  // Helper function to translate shelf names
+  const translateShelfName = (shelfName: string) => {
+    // Convert "Front Display" to "front_display"
+    const shelfKey = `shelf_name.${shelfName.toLowerCase().replace(/\s+/g, '_')}`
+    return t(shelfKey) !== shelfKey ? t(shelfKey) : shelfName
+  }
+
   // Initialize state from URL params for persistence
   const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">(
     (searchParams.get("period") as "daily" | "weekly" | "monthly" | "yearly") || "monthly"
@@ -386,7 +399,7 @@ export default function StoresPage() {
                           <TableCell className="py-3 text-muted-foreground hidden md:table-cell">{store.rentals}</TableCell>
                           <TableCell className="py-3">
                             <Badge variant={getStatusVariant(store.status)} className="font-normal">
-                              {t(`stores.status.${store.status}`)}
+                              {t(`stores.status.${store.status}`) || store.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
@@ -563,28 +576,10 @@ export default function StoresPage() {
                         {post.storeName}
                       </TableCell>
                       <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
-                        {language === "ar" ?
-                          (post.branch === "Riyadh" ? "الرياض" :
-                           post.branch === "Jeddah" ? "جدة" :
-                           post.branch === "Dammam" ? "الدمام" :
-                           post.branch === "Mecca" ? "مكة" :
-                           post.branch)
-                          : post.branch
-                        }
+                        {translateCity(post.branch)}
                       </TableCell>
                       <TableCell className="py-3 font-medium">
-                        {language === "ar" ?
-                          (post.shelfName === "Front Display" ? "العرض الأمامي" :
-                           post.shelfName === "Premium Shelf" ? "الرف المميز" :
-                           post.shelfName === "Corner Unit" ? "وحدة الزاوية" :
-                           post.shelfName === "Main Aisle" ? "الممر الرئيسي" :
-                           post.shelfName === "Sports Section" ? "قسم الرياضة" :
-                           post.shelfName === "Electronics Corner" ? "ركن الإلكترونيات" :
-                           post.shelfName === "Entrance Display" ? "عرض المدخل" :
-                           post.shelfName === "Central Aisle" ? "الممر المركزي" :
-                           post.shelfName)
-                          : post.shelfName
-                        }
+                        {translateShelfName(post.shelfName)}
                       </TableCell>
                       <TableCell className="py-3 hidden lg:table-cell">
                         <span className="font-medium">{post.percentage}%</span>
@@ -594,7 +589,7 @@ export default function StoresPage() {
                       </TableCell>
                       <TableCell className="py-3">
                         <Badge variant={post.status === "published" ? "default" : "secondary"} className="font-normal">
-                          {t(`posts.status.${post.status}`)}
+                          {t(`posts.status.${post.status}`) || post.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-3">
