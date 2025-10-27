@@ -125,9 +125,7 @@ export function ChatInterface({
             {messages?.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
                 <p className={`text-sm `}>
-                  {language === "ar" 
-                    ? `ابدأ محادثة حول ${shelfName}`
-                    : `Start a conversation about ${shelfName}`}
+                  {`${t("chat.start_conversation_about")} ${shelfName}`}
                 </p>
               </div>
             ) : (
@@ -185,9 +183,7 @@ export function ChatInterface({
         {isArchived ? (
           <div className="p-4 border-t bg-muted">
             <p className={`text-center text-sm text-muted-foreground `}>
-              {language === "ar" 
-                ? "هذه المحادثة مغلقة ولا يمكن إرسال رسائل جديدة"
-                : "This conversation is closed and new messages cannot be sent"}
+              {t("chat.conversation_closed")}
             </p>
           </div>
         ) : (

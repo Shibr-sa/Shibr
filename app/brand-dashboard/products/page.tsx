@@ -280,7 +280,7 @@ export default function BrandProductsPage() {
                                 {product.sku || '-'}
                               </TableCell>
                               <TableCell className="text-muted-foreground py-3 hidden lg:table-cell">
-                                {product.category ? t(`brands.category.${product.category}`) : '-'}
+                                {product.category ? (t(`brands.category.${product.category}`) || product.category) : '-'}
                               </TableCell>
                               <TableCell className="py-3 hidden md:table-cell">
                                 <span className="font-medium">{formatCurrency(product.price, language)}</span>

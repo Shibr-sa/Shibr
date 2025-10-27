@@ -85,12 +85,21 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
       case "pending":
       case "under_discussion":
         return <Badge variant="default">{t("orders.under_review")}</Badge>
+      case "payment_pending":
+        return <Badge variant="default" className="bg-orange-500">{t("status.payment_pending")}</Badge>
       case "accepted":
+      case "active":
         return <Badge variant="default" className="bg-green-500">{t("orders.accepted")}</Badge>
+      case "completed":
+        return <Badge variant="default" className="bg-blue-500">{t("status.completed")}</Badge>
       case "rejected":
         return <Badge variant="destructive">{t("orders.rejected")}</Badge>
+      case "cancelled":
+        return <Badge variant="secondary">{t("status.cancelled")}</Badge>
+      case "expired":
+        return <Badge variant="secondary">{t("status.expired")}</Badge>
       default:
-        return null
+        return <Badge variant="outline">{t(`status.${request.status}`) || t("common.unknown")}</Badge>
     }
   }
   
