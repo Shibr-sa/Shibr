@@ -82,13 +82,15 @@ export default function ShibrLandingPage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image
-              src="/logo.svg"
-              alt={t("common.logo_alt")}
-              width={24}
-              height={24}
-              className="h-14 w-14"
-            />
+            <Link href="/">
+              <Image
+                src="/logo.svg"
+                alt={t("common.logo_alt")}
+                width={24}
+                height={24}
+                className="h-14 w-14"
+              />
+            </Link>
           </div>
 
           <nav className="hidden md:flex items-center gap-6">

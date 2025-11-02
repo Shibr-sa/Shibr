@@ -6,7 +6,10 @@
     "build": "next build",
     "dev": "concurrently \"bunx convex dev\" \"next dev\"",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "seed": "bunx convex run seedTestStoresWithLogos",
+    "seed:logos": "node scripts/seedWithUploadedLogos.js",
+    "seed:admin": "bunx convex run seedInitialAdmin"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.88",

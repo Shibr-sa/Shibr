@@ -8,11 +8,6 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as admin_analytics from "../admin/analytics.js";
 import type * as admin_brands from "../admin/brands.js";
 import type * as admin_helpers from "../admin/helpers.js";
@@ -45,6 +40,7 @@ import type * as rentalManagement from "../rentalManagement.js";
 import type * as rentalRequests from "../rentalRequests.js";
 import type * as security_rateLimiter from "../security/rateLimiter.js";
 import type * as security_webhookValidator from "../security/webhookValidator.js";
+import type * as seed from "../seed.js";
 import type * as seedInitialAdmin from "../seedInitialAdmin.js";
 import type * as shelves from "../shelves.js";
 import type * as stores from "../stores.js";
@@ -54,6 +50,12 @@ import type * as taxUtils from "../taxUtils.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as whatsappInvoice from "../whatsappInvoice.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -96,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   rentalRequests: typeof rentalRequests;
   "security/rateLimiter": typeof security_rateLimiter;
   "security/webhookValidator": typeof security_webhookValidator;
+  seed: typeof seed;
   seedInitialAdmin: typeof seedInitialAdmin;
   shelves: typeof shelves;
   stores: typeof stores;
@@ -106,11 +109,15 @@ declare const fullApi: ApiFromModules<{
   utils: typeof utils;
   whatsappInvoice: typeof whatsappInvoice;
 }>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {};

@@ -7,23 +7,43 @@ import { Badge } from "@/components/ui/badge"
 import { MapPin } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
 
-interface Store {
+interface Branch {
   _id: string
-  shelfName: string
+  branchName: string
   city: string
-  branch: string
   address?: string
   latitude?: number
   longitude?: number
-  monthlyPrice: number
-  storeCommission: number
+  location?: {
+    lat: number
+    lng: number
+    address: string
+  }
   ownerName?: string
+  ownerImage?: string
+  availableShelvesCount: number
+  priceRange: {
+    min: number
+    max: number
+  }
+  productTypes: string[]
+  earliestAvailable?: number
+  images?: Array<{
+    url: string | null
+    type: string
+    storageId?: string
+    order?: number
+  }>
+  status?: string
+  qrCodeUrl?: string
+  shelves?: unknown[]
 }
 
 interface StoreMapProps {
-  stores: Store[]
+  stores: Branch[]
   selectedStoreId?: string
-  onStoreSelect?: (storeId: string) => void
+  onStoreSelect?: (data: Branch | string) => void
+  isFullscreen?: boolean
 }
 
 // Default center for Saudi Arabia (Riyadh)
@@ -66,10 +86,11 @@ const mapStyles = [
 function StoreMapContent({
   stores,
   selectedStoreId,
-  onStoreSelect
+  onStoreSelect,
+  isFullscreen = false
 }: StoreMapProps) {
   const { t, direction, language } = useLanguage()
-  const [selectedMarker, setSelectedMarker] = useState<Store | null>(null)
+  const [selectedMarker, setSelectedMarker] = useState<Branch | null>(null)
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -111,11 +132,44 @@ function StoreMapContent({
     setMap(null)
   }, [])
 
+  // Request and track user's current location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported")
+      return
+    }
+
+    const handleLocationSuccess = (position: GeolocationPosition) => {
+      setUserLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      })
+    }
+
+    const handleLocationError = (error: GeolocationPositionError) => {
+      // Silently handle errors - map will use default center
+      const errorMessages: Record<number, string> = {
+        1: "Location permission denied",
+        2: "Location unavailable",
+        3: "Location request timeout",
+      }
+      setLocationError(errorMessages[error.code] || "Unable to get location")
+    }
+
+    // Request user's current position
+    navigator.geolocation.getCurrentPosition(handleLocationSuccess, handleLocationError, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 300000, // Cache for 5 minutes
+    })
+  }, [])
+
   // Handle marker click
-  const handleMarkerClick = (store: Store) => {
-    setSelectedMarker(store)
+  const handleMarkerClick = (branch: Branch) => {
+    setSelectedMarker(branch)
     if (onStoreSelect) {
-      onStoreSelect(store._id)
+      // In fullscreen mode, pass the entire branch object; otherwise pass just the ID
+      onStoreSelect(isFullscreen ? branch : branch._id)
     }
   }
 
@@ -247,33 +301,38 @@ function StoreMapContent({
             />
           )}
 
-          {/* Store Markers */}
-          {storesWithCoordinates.map((store, index) => (
-            <Marker
-              key={store._id}
-              position={{
-                lat: store.latitude!,
-                lng: store.longitude!,
-              }}
-              onClick={() => handleMarkerClick(store)}
-              label={{
-                text: (index + 1).toString(),
-                color: "white",
-                fontSize: "12px",
-                fontWeight: "bold",
-              }}
-              options={{
-                icon: {
+          {/* Store/Branch Markers */}
+          {storesWithCoordinates.map((store) => {
+            // Determine marker icon - use store logo if available, fallback to purple circle
+            const markerIcon = store.ownerImage
+              ? {
+                  url: store.ownerImage,
+                  scaledSize: new window.google.maps.Size(40, 40),
+                  anchor: new window.google.maps.Point(20, 40), // Bottom center
+                }
+              : {
                   path: window.google.maps.SymbolPath.CIRCLE,
                   scale: 15,
                   fillColor: "#725CAD",
                   fillOpacity: 1,
                   strokeColor: "white",
                   strokeWeight: 2,
-                } as google.maps.Symbol,
-              }}
-            />
-          ))}
+                }
+
+            return (
+              <Marker
+                key={store._id}
+                position={{
+                  lat: store.latitude!,
+                  lng: store.longitude!,
+                }}
+                onClick={() => handleMarkerClick(store)}
+                options={{
+                  icon: markerIcon as google.maps.Icon | google.maps.Symbol,
+                }}
+              />
+            )
+          })}
 
           {/* Info Window */}
           {selectedMarker && (
@@ -284,23 +343,40 @@ function StoreMapContent({
               }}
               onCloseClick={() => setSelectedMarker(null)}
             >
-              <div className="p-2 min-w-[200px]">
-                <h3 className="font-bold text-sm mb-1">{selectedMarker.shelfName}</h3>
+              <div className="p-2 min-w-[250px]">
+                <h3 className="font-bold text-sm mb-1">{selectedMarker.branchName}</h3>
                 <p className="text-xs text-muted-foreground mb-2">
-                  {selectedMarker.city} - {selectedMarker.branch}
+                  {selectedMarker.city} {selectedMarker.address ? `- ${selectedMarker.address}` : ""}
                 </p>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">
-                    {selectedMarker.monthlyPrice} {t("common.currency_symbol")}
-                  </span>
-                  {selectedMarker.storeCommission > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      -{selectedMarker.storeCommission}%
-                    </Badge>
-                  )}
+                <div className="mb-2">
+                  <p className="text-xs text-muted-foreground mb-1">{t("marketplace.available_shelves")}:</p>
+                  <p className="text-sm font-medium">{selectedMarker.availableShelvesCount}</p>
                 </div>
+                <div className="mb-2">
+                  <p className="text-xs text-muted-foreground mb-1">{t("marketplace.price_from")}:</p>
+                  <p className="text-sm font-medium">
+                    {t("common.currency_symbol")} {selectedMarker.priceRange.min} - {selectedMarker.priceRange.max}
+                  </p>
+                </div>
+                {selectedMarker.productTypes.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs text-muted-foreground mb-1">{t("marketplace.product_types")}:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedMarker.productTypes.slice(0, 3).map((type) => (
+                        <Badge key={type} variant="secondary" className="text-xs">
+                          {t(`product_categories.${type}`) || type}
+                        </Badge>
+                      ))}
+                      {selectedMarker.productTypes.length > 3 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{selectedMarker.productTypes.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {selectedMarker.ownerName && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {t("marketplace.owner")}: {selectedMarker.ownerName}
                   </p>
                 )}

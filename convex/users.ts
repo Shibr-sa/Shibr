@@ -110,6 +110,7 @@ export const checkBrandDataComplete = query({
 
     // Check required fields
     if (!brandProfile.brandName) missingFields.push("brandName");
+    if (!brandProfile.logo) missingFields.push("logo");
     if (!brandProfile.businessType) missingFields.push("businessType");
     
     // Check business type specific requirements
@@ -188,6 +189,7 @@ export const createStoreProfile = mutation({
 export const createBrandProfile = mutation({
   args: {
     brandName: v.string(),
+    logo: v.id("_storage"),
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
@@ -209,6 +211,7 @@ export const createBrandProfile = mutation({
       userId,
       isActive: true,
       brandName: args.brandName,
+      logo: args.logo,
       businessType: args.businessType,
       commercialRegisterNumber: args.commercialRegisterNumber,
       freelanceLicenseNumber: args.freelanceLicenseNumber,

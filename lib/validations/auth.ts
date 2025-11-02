@@ -21,6 +21,7 @@ export const createSignUpSchema = (t: (key: string) => string) => {
     accountType: z.enum(["store-owner", "brand-owner"]),
     storeName: z.string().optional(),
     brandName: z.string().optional(),
+    logo: z.instanceof(File).optional(),
     agreeToTerms: z.boolean().refine(val => val === true, t("validation.terms_required")),
   }).refine(data => {
     if (data.accountType === "store-owner") {
@@ -41,6 +42,14 @@ export const createSignUpSchema = (t: (key: string) => string) => {
   }, {
     message: t("validation.brand_name_required"),
     path: ["brandName"],
+  }).refine(data => {
+    if (data.accountType === "brand-owner") {
+      return data.logo !== undefined && data.logo !== null
+    }
+    return true
+  }, {
+    message: t("validation.logo_required"),
+    path: ["logo"],
   })
 }
 
@@ -55,6 +64,7 @@ export const signUpSchema = z.object({
   accountType: z.enum(["store-owner", "brand-owner"]),
   storeName: z.string().optional(),
   brandName: z.string().optional(),
+  logo: z.instanceof(File).optional(),
   agreeToTerms: z.boolean().refine(val => val === true, "You must agree to the terms and conditions"),
 }).refine(data => {
   if (data.accountType === "store-owner") {
@@ -75,6 +85,14 @@ export const signUpSchema = z.object({
 }, {
   message: "Brand name is required for brand owners",
   path: ["brandName"],
+}).refine(data => {
+  if (data.accountType === "brand-owner") {
+    return data.logo !== undefined && data.logo !== null
+  }
+  return true
+}, {
+  message: "Logo is required for brand owners",
+  path: ["logo"],
 })
 
 export function formatSaudiPhoneNumber(phone: string): string {

@@ -82,6 +82,28 @@ export const generateUploadUrl = mutation({
   },
 })
 
+// Generate upload URL for signup (unauthenticated)
+export const generateSignupUploadUrl = mutation({
+  args: {
+    fileType: v.optional(v.union(v.literal("image"), v.literal("document"))),
+    mimeType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Validate file type if provided
+    if (args.mimeType && args.fileType) {
+      const allowedTypes = ALLOWED_FILE_TYPES[args.fileType]
+      if (allowedTypes && !allowedTypes.includes(args.mimeType)) {
+        throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(", ")}`)
+      }
+    }
+
+    // Generate and return the upload URL (no auth required for signup)
+    const uploadUrl = await ctx.storage.generateUploadUrl()
+
+    return uploadUrl
+  },
+})
+
 // Get file URL from storage ID (with authentication)
 export const getFileUrl = mutation({
   args: {
