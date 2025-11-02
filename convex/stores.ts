@@ -153,8 +153,17 @@ export const getMarketplaceStores = query({
         const owner = ownerProfile ? ownerMap.get(ownerProfile.userId) : null
         const branch = branchesMap.get(shelf._id)
 
-        // Convert storage IDs to URLs using new structure
-        const imageUrls = await getImageUrlsFromArray(ctx, shelf.images)
+        // Convert storage IDs to URLs
+        const shelfImageUrls = await getImageUrlsFromArray(ctx, shelf.images)
+        const branchImageUrls = branch?.images ? await getImageUrlsFromArray(ctx, branch.images) : null
+
+        // Build images array for gallery - combine shelf and branch images
+        const imagesArray = [
+          shelfImageUrls.shelfImageUrl && { url: shelfImageUrls.shelfImageUrl, type: 'shelf' },
+          branchImageUrls?.exteriorImageUrl && { url: branchImageUrls.exteriorImageUrl, type: 'exterior' },
+          branchImageUrls?.interiorImageUrl && { url: branchImageUrls.interiorImageUrl, type: 'interior' },
+          ...shelfImageUrls.additionalImageUrls.map(url => ({ url, type: 'additional' }))
+        ].filter(Boolean)
 
         // Lookup current rental from map (no .find()!)
         const currentRental = rentalMap.get(shelf._id)
@@ -175,17 +184,16 @@ export const getMarketplaceStores = query({
           city: branch?.city,
           storeBranch: branch?.branchName,
           location: branch?.location,
-          shelfImage: imageUrls.shelfImageUrl,
-          exteriorImage: imageUrls.exteriorImageUrl,
-          interiorImage: imageUrls.interiorImageUrl,
+          shelfImage: shelfImageUrls.shelfImageUrl,
+          exteriorImage: branchImageUrls?.exteriorImageUrl || shelfImageUrls.exteriorImageUrl,
+          interiorImage: branchImageUrls?.interiorImageUrl || shelfImageUrls.interiorImageUrl,
+          images: imagesArray,
           ownerName: ownerProfile?.storeName,
           ownerEmail: owner?.email,
           ownerImage: owner?.image,
           businessCategory: ownerProfile?.businessCategory,
-          // Add latitude and longitude from location for map compatibility
           latitude: branch?.location?.lat,
           longitude: branch?.location?.lng,
-          // Add rental information
           currentRental: rentalInfo,
         }
       })
