@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, Store, ChevronRight, Clock } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, ChevronRight, Clock, Map as MapIcon, X, Navigation } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   Pagination,
   PaginationContent,
@@ -29,52 +31,47 @@ import { useDebounce } from "@/hooks/use-debounce"
 const StoreMap = lazy(() => import("./store-map"))
 
 // Constants
-const ITEMS_PER_PAGE = 3
+const ITEMS_PER_PAGE = 9
 const STORE_CARD_HEIGHT = "min-h-[240px]"
-const STORE_CARD_GAP = "mb-4"
 const DEFAULT_PRICE_RANGE = { min: 0, max: 9000 }
 
 interface MarketplaceContentProps {
   linkPrefix?: string
 }
 
-interface Store {
+interface Branch {
   _id: string
-  shelfName: string
+  branchName: string
   city: string
-  branch: string
   address?: string
   latitude?: number
   longitude?: number
-  monthlyPrice: number
-  storeCommission: number
-  availableFrom: string
-  productType?: string
-  width: string
-  length: string
-  depth: string
+  location?: {
+    lat: number
+    lng: number
+    address: string
+  }
   ownerName?: string
   ownerImage?: string
-  shelfImage?: string
-  exteriorImage?: string
-  interiorImage?: string
-  currentRental?: {
-    endDate: number
-    startDate: number
-    brandName: string
-    status: string
+  availableShelvesCount: number
+  priceRange: {
+    min: number
+    max: number
   }
-  shelfSize?: {
-    width: number
-    height: number
-    depth: number
-    unit: string
-  }
-  storeBranch?: string
+  productTypes: string[]
+  earliestAvailable: number
   images?: Array<{
-    url: string
+    url: string | null
     type: string
+    storageId?: string
+    order?: number
   }>
+  status?: string
+  qrCodeUrl?: string
+  totalScans?: number
+  totalOrders?: number
+  totalRevenue?: number
+  shelves?: unknown[]
 }
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
@@ -91,6 +88,10 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   const [sliderValue, setSliderValue] = useState(100)
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({})
 
+  // Map modal states
+  const [isMapOpen, setIsMapOpen] = useState(false)
+  const [selectedBranchInMap, setSelectedBranchInMap] = useState<Branch | null>(null)
+
   // Debounce search input to avoid too many queries
   const debouncedSearchQuery = useDebounce(searchInput, 500)
 
@@ -98,48 +99,40 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   const availableCities = useQuery(api.stores.getAvailableCities)
   const availableProductTypes = useQuery(api.stores.getAvailableProductTypes)
 
-  // Get platform settings to calculate total commission
-  const platformSettings = useQuery(api.platformSettings.getPlatformSettings)
-
-  // Get price range based on current filters (excluding price itself)
-  const priceRangeData = useQuery(api.stores.getPriceRange, {
-    city: selectedCity !== "all" ? selectedCity : undefined,
-    productType: selectedStoreType !== "all" ? selectedStoreType : undefined,
-    searchQuery: debouncedSearchQuery || undefined,
-    month: selectedMonth !== "all" ? selectedMonth : undefined,
-  })
-
-  // Fetch stores from Convex with backend pagination
-  const storesData = useQuery(api.stores.getMarketplaceStores, {
+  // Fetch branches from Convex with backend pagination
+  const branchesData = useQuery(api.branches.getMarketplaceBranches, {
     city: selectedCity !== "all" ? selectedCity : undefined,
     searchQuery: debouncedSearchQuery || undefined,
     minPrice: priceRange.min > 0 ? priceRange.min : undefined,
-    maxPrice: priceRange.max < (priceRangeData?.max || 9000) ? priceRange.max : undefined,
+    maxPrice: priceRange.max < DEFAULT_PRICE_RANGE.max ? priceRange.max : undefined,
     productType: selectedStoreType !== "all" ? selectedStoreType : undefined,
-    month: selectedMonth !== "all" ? selectedMonth : undefined,
     page: currentPage,
     pageSize: ITEMS_PER_PAGE,
   })
 
   // Loading states
-  const isLoading = storesData === undefined
+  const isLoading = branchesData === undefined
 
-  // Update price range when data loads or filters change
+  // Calculate price range from branches when data loads
   useEffect(() => {
-    if (priceRangeData) {
-      setPriceRange({ min: 0, max: priceRangeData.max })
+    if (branchesData && branchesData.branches.length > 0) {
+      // Find min and max prices across all branches
+      const allPrices = branchesData.branches.flatMap(b => [b.priceRange.min, b.priceRange.max])
+      const overallMin = Math.min(...allPrices)
+      const overallMax = Math.max(...allPrices)
+      setPriceRange({ min: 0, max: overallMax })
       setSliderValue(100)
     }
-  }, [priceRangeData?.min, priceRangeData?.max])
+  }, [branchesData?.branches.length])
 
   // Extract data from backend response
-  const stores = storesData?.shelves || []
-  const totalPages = storesData?.pagination.totalPages || 0
-  const totalCount = storesData?.pagination.totalCount || 0
+  const branches = branchesData?.branches || []
+  const totalPages = branchesData?.pagination.totalPages || 0
+  const totalCount = branchesData?.pagination.totalCount || 0
 
   // Get price range values
-  const minPrice = priceRangeData?.min || 0
-  const maxPrice = priceRangeData?.max || 9000
+  const minPrice = 0
+  const maxPrice = DEFAULT_PRICE_RANGE.max
 
   // Filter change handlers - reset to page 1 when filters change
   const handleCityChange = useCallback((value: string) => {
@@ -168,16 +161,18 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   }, [])
 
   const handleSliderCommit = useCallback((value: number) => {
-    const minPrice = priceRangeData?.min || 0
-    const maxPrice = priceRangeData?.max || 9000
+    // Get current price range from branches data
+    const currentMaxPrice = branchesData && branchesData.branches.length > 0
+      ? Math.max(...branchesData.branches.flatMap(b => [b.priceRange.max]))
+      : DEFAULT_PRICE_RANGE.max
 
     const selectedMax = value === 0
-      ? minPrice
-      : minPrice + Math.round((value / 100) * (maxPrice - minPrice))
+      ? 0
+      : Math.round((value / 100) * currentMaxPrice)
 
     setPriceRange({ min: 0, max: selectedMax })
     setCurrentPage(1)
-  }, [priceRangeData])
+  }, [branchesData])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
@@ -294,7 +289,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                 max={100}
                 step={1}
                 className="flex-1"
-                disabled={!priceRangeData || totalCount === 0}
+                disabled={!branchesData || totalCount === 0}
               />
               <span className="text-sm text-muted-foreground whitespace-nowrap">{sliderValue === 0 ? minPrice : minPrice + Math.round((sliderValue / 100) * (maxPrice - minPrice))} {t("common.currency_symbol")}</span>
             </div>
@@ -302,87 +297,63 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
         </CardContent>
       </Card>
 
-      {/* Content Grid - Responsive Layout */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        {/* Map Section - Responsive on Left */}
-        <div className="order-2 lg:order-1 h-[300px] md:h-[400px] lg:h-[600px]">
-          <Card className="h-full">
-            <CardContent className="p-0 h-full">
-              <Suspense
-                fallback={
-                  <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <MapPin className="h-12 w-12 text-primary mx-auto mb-2 animate-pulse" />
-                      <p className="text-muted-foreground">{t("common.loading")}...</p>
-                    </div>
-                  </div>
-                }
-              >
-                {isLoading ? (
-                  <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
-                    <Skeleton className="w-full h-full" />
-                  </div>
-                ) : (
-                  <StoreMap
-                    key="marketplace-map"
-                    stores={stores}
-                    onStoreSelect={(storeId) => {
-                      const element = document.getElementById(`store-${storeId}`)
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }
-                    }}
-                  />
-                )}
-              </Suspense>
-            </CardContent>
-          </Card>
-        </div>
+      {/* View Map Button */}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsMapOpen(true)}
+          className="gap-2"
+        >
+          <MapIcon className="h-4 w-4" />
+          {t("marketplace.view_map") || "View Map"}
+        </Button>
+      </div>
 
-        {/* Store Listings - Responsive with Pagination at Bottom */}
-        <div className="order-1 lg:order-2 flex flex-col">
+      {/* Store Listings - Full Width */}
+      <div className="flex flex-col">
           {/* Stores Container */}
           <div className="flex-1 flex flex-col justify-start store-listings">
             {isLoading ? (
-              <>
-                <Skeleton className={`${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} rounded-lg`} />
-                <Skeleton className={`${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} rounded-lg`} />
-                <Skeleton className={`${STORE_CARD_HEIGHT} rounded-lg`} />
-              </>
-            ) : stores.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <Skeleton key={i} className="min-h-[240px] rounded-lg" />
+                ))}
+              </div>
+            ) : branches.length === 0 ? (
+              <div className="col-span-full flex items-center justify-center h-64 text-muted-foreground">
                 <div className="text-center">
                   <Store className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>{t("marketplace.no_stores_found")}</p>
                 </div>
               </div>
             ) : (
-              <div>
-                {stores.map((store) => {
-                  const allImages = store.images || []
-                  const currentImageIndex = imageIndexes[store._id] || 0
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {branches.map((branch) => {
+                  const allImages = branch.images || []
+                  const currentImageIndex = imageIndexes[branch._id] || 0
                   const hasMultipleImages = allImages.length > 1
 
                   const navigateImage = (delta: number) => {
                     const newIndex = (currentImageIndex + delta + allImages.length) % allImages.length
-                    setImageIndexes(prev => ({ ...prev, [store._id]: newIndex }))
+                    setImageIndexes(prev => ({ ...prev, [branch._id]: newIndex }))
                   }
 
                   return (
                     <Card
-                      key={store._id}
-                      id={`store-${store._id}`}
-                      className={`overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border shadow-lg ${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} last:mb-0`}
+                      key={branch._id}
+                      id={`branch-${branch._id}`}
+                      className="overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border shadow-lg min-h-[240px]"
                     >
                       <CardContent className="p-0">
-                        <div className="flex min-h-[240px]">
-                          {/* Store Image Gallery */}
-                          <div className="w-1/3 relative bg-gradient-to-br from-muted/50 to-muted group">
+                        <div className="flex flex-col sm:flex-row min-h-[240px]">
+                          {/* Branch Image Gallery */}
+                          <div className="w-full sm:w-1/3 h-48 sm:h-auto relative bg-gradient-to-br from-muted/50 to-muted group">
                             {allImages.length > 0 ? (
                               <>
                                 <Image
                                   src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
-                                  alt={`${store.shelfName} - ${allImages[currentImageIndex]?.type}`}
+                                  alt={`${branch.branchName} - ${allImages[currentImageIndex]?.type}`}
                                   fill
                                   className="object-cover"
                                   unoptimized
@@ -430,78 +401,70 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                             )}
                           </div>
 
-                          {/* Store Info - Simplified and Clear */}
+                          {/* Branch Info */}
                           <Link
-                            href={`${linkPrefix}/${store._id}`}
+                            href={`${linkPrefix}/branch/${branch._id}`}
                             className="flex-1 p-4 flex flex-col hover:bg-muted/30 transition-colors"
-                            aria-label={`View details for ${store.shelfName}`}
+                            aria-label={`View shelves for ${branch.branchName}`}
                           >
                             {/* Header with Name and Location */}
                             <div className="mb-3">
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <h3 className="text-base font-semibold text-foreground">
-                                  {store.shelfName}
-                                </h3>
-                                {/* Rental Status Badge */}
-                                {store.currentRental && (
-                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                                    <Clock className="h-3 w-3 me-1" />
-                                    {t("marketplace.rented_until")} {new Date(store.currentRental.endDate).toLocaleDateString()}
-                                  </Badge>
-                                )}
-                              </div>
+                              <h3 className="text-base font-semibold text-foreground mb-1">
+                                {branch.branchName}
+                              </h3>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <MapPin className="h-3.5 w-3.5" />
-                                <span>{store.city}, {store.storeBranch}</span>
+                                <span>{branch.city}</span>
                               </div>
                             </div>
 
                             {/* Key Information Grid */}
                             <div className="grid grid-cols-2 gap-3 mb-3">
-                              {/* Monthly Rent */}
+                              {/* Available Shelves */}
                               <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.available_shelves")}</p>
                                 <p className="text-lg font-bold text-primary">
-                                  {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
+                                  {branch.availableShelvesCount}
                                 </p>
                               </div>
 
-                              {/* Commission */}
+                              {/* Price Range */}
                               <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.price_from")}</p>
                                 <p className="text-lg font-bold">
-                                  {((store.storeCommission ?? 0) + (platformSettings?.brandSalesCommission ?? 0))}%
+                                  {t("common.currency_symbol")} {branch.priceRange.min.toLocaleString()}
                                 </p>
                               </div>
 
-                              {/* Shelf Size */}
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.shelf_size")}</p>
-                                <p className="text-sm font-medium">
-                                  {store.shelfSize?.width || 0}×{store.shelfSize?.height || 0}×{store.shelfSize?.depth || 0} cm
-                                </p>
-                              </div>
-
-                              {/* Available From */}
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.available_from")}</p>
-                                <p className="text-sm font-medium">
-                                  {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </p>
+                              {/* Product Types */}
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground mb-1">{t("marketplace.product_type")}</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {branch.productTypes.slice(0, 3).map((type: string) => (
+                                    <Badge key={type} variant="secondary" className="text-xs">
+                                      {t(`product_categories.${type}`) || type}
+                                    </Badge>
+                                  ))}
+                                  {branch.productTypes.length > 3 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{branch.productTypes.length - 3}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
                             {/* Footer with Store Owner */}
-                            <div className="flex items-center pt-3 border-t">
+                            <div className="flex items-center pt-3 border-t mt-auto">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-7 w-7">
-                                  <AvatarImage src={store.ownerImage} alt={store.ownerName} />
+                                  {branch.ownerImage && <AvatarImage src={branch.ownerImage} alt={branch.ownerName} />}
                                   <AvatarFallback className="text-xs">
-                                    {store.ownerName?.slice(0, 2).toUpperCase() || "SO"}
+                                    {branch.ownerName?.slice(0, 2).toUpperCase() || "SO"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-xs font-medium">{store.ownerName || "-"}</p>
+                                  <p className="text-xs font-medium">{branch.ownerName || "-"}</p>
                                 </div>
                               </div>
                             </div>
@@ -520,17 +483,17 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     className={currentPage === 1 || totalPages === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     aria-disabled={currentPage === 1 || totalPages === 0}
                   />
                 </PaginationItem>
-                
+
                 {totalPages === 0 ? (
                   // Show single disabled page when no results
                   <PaginationItem>
-                    <PaginationLink 
+                    <PaginationLink
                       isActive
                       className="pointer-events-none"
                     >
@@ -549,7 +512,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                     } else {
                       pageNum = currentPage - 2 + i
                     }
-                    
+
                     return (
                       <PaginationItem key={pageNum}>
                         <PaginationLink
@@ -563,15 +526,15 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                     )
                   })
                 )}
-                
+
                 {totalPages > 5 && currentPage < totalPages - 2 && (
                   <PaginationItem>
                     <span className="px-2">...</span>
                   </PaginationItem>
                 )}
-                
+
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     className={currentPage === totalPages || totalPages === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     aria-disabled={currentPage === totalPages || totalPages === 0}
@@ -580,8 +543,124 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
               </PaginationContent>
             </Pagination>
           </div>
-        </div>
       </div>
+
+      {/* Fullscreen Map Modal */}
+      <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+        <DialogContent className="max-w-full h-screen p-0 rounded-none border-0 gap-0">
+          <div className="flex flex-col h-full w-full bg-white">
+            {/* Map Header with Close Button */}
+            <div className="flex items-center justify-between p-4 border-b bg-white z-10">
+              <h2 className="text-lg font-semibold">{t("marketplace.view_map") || "View Map"}</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMapOpen(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Map Container */}
+            <div className="flex-1 relative">
+              <Suspense
+                fallback={
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <div className="text-center">
+                      <MapIcon className="h-12 w-12 text-primary mx-auto mb-2 animate-pulse" />
+                      <p className="text-muted-foreground">{t("common.loading")}...</p>
+                    </div>
+                  </div>
+                }
+              >
+                {isLoading ? (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <Skeleton className="w-full h-full" />
+                  </div>
+                ) : (
+                  <StoreMap
+                    key="marketplace-fullscreen-map"
+                    stores={branches}
+                    selectedStoreId={selectedBranchInMap?._id}
+                    onStoreSelect={(data) => {
+                      if (typeof data === 'string') {
+                        // Only ID is provided in non-fullscreen mode
+                        const branch = branches.find(b => b._id === data)
+                        if (branch) setSelectedBranchInMap(branch as Branch)
+                      } else {
+                        // Full branch object in fullscreen mode
+                        setSelectedBranchInMap(data as Branch)
+                      }
+                    }}
+                    isFullscreen={true}
+                  />
+                )}
+              </Suspense>
+
+              {/* Current Location Button - Floating */}
+              <Button
+                variant="default"
+                size="icon"
+                className="absolute bottom-20 end-4 rounded-full shadow-lg z-20 h-10 w-10"
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        // Location obtained - map will handle it
+                      },
+                      () => {
+                        // Error handling
+                      }
+                    )
+                  }
+                }}
+                title={t("marketplace.use_current_location") || "Use current location"}
+              >
+                <Navigation className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Branch Details Panel - Bottom */}
+            {selectedBranchInMap && (
+              <div className="border-t bg-white p-4 shadow-lg">
+                <div className="max-w-full">
+                  <h3 className="text-lg font-semibold mb-2">{selectedBranchInMap.branchName}</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.location")}</p>
+                      <p className="font-medium flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {selectedBranchInMap.city}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.available_shelves")}</p>
+                      <p className="font-semibold text-primary">
+                        {selectedBranchInMap.availableShelvesCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.price_from")}</p>
+                      <p className="font-medium">{t("common.currency_symbol")} {selectedBranchInMap.priceRange.min.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.store_owner")}</p>
+                      <p className="font-medium">{selectedBranchInMap.ownerName || "-"}</p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`${linkPrefix}/branch/${selectedBranchInMap._id}`}
+                    className="mt-4 block"
+                  >
+                    <Button className="w-full">{t("marketplace.view_shelves")}</Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

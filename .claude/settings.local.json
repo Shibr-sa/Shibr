@@ -29,7 +29,8 @@
       "WebFetch(domain:www.tap.company)",
       "WebFetch(domain:developers.tap.company)",
       "Bash(bunx convex logs:*)",
-      "Bash(CONVEX_DEPLOYMENT=dev:warmhearted-capybara-335 bunx convex env list)"
+      "Bash(CONVEX_DEPLOYMENT=dev:warmhearted-capybara-335 bunx convex env list)",
+      "WebFetch(domain:stackoverflow.com)"
     ],
     "deny": [],
     "ask": []

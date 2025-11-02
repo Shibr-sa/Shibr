@@ -519,3 +519,256 @@ export const incrementBranchStoreStats = mutation({
     await ctx.db.patch(args.branchId, updates)
   },
 })
+
+/**
+ * Marketplace Queries - Branch-Based Marketplace
+ */
+
+// Get marketplace branches with aggregated shelf data
+export const getMarketplaceBranches = query({
+  args: {
+    city: v.optional(v.string()),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    productType: v.optional(v.string()),
+    searchQuery: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const pageSize = args.pageSize || 3
+    const page = args.page || 1
+
+    // Get all active branches
+    let branchesQuery: any = ctx.db.query("branches")
+
+    // Apply city filter if specified
+    if (args.city && args.city !== "all") {
+      branchesQuery = ctx.db
+        .query("branches")
+        .withIndex("by_city", (q) => q.eq("city", args.city as string))
+    }
+
+    const allBranches = await branchesQuery.collect()
+
+    // Aggregate shelf data for each branch
+    const branchesWithShelves = await Promise.all(
+      allBranches.map(async (branch: (typeof allBranches)[number]) => {
+        // Get all active shelves for this branch
+        const shelves = await ctx.db
+          .query("shelves")
+          .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
+          .collect()
+
+        const activeShelves = shelves.filter(s => s.status === "active" || s.status === "rented")
+
+        // Calculate price range
+        const prices = activeShelves.map(s => s.monthlyPrice)
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
+
+        // Collect all product types
+        const productTypes = new Set<string>()
+        activeShelves.forEach(shelf => {
+          if (shelf.productTypes && Array.isArray(shelf.productTypes)) {
+            shelf.productTypes.forEach(type => productTypes.add(type))
+          }
+        })
+
+        // Get earliest availability date
+        const availDates = activeShelves.map(s => s.availableFrom)
+        const earliestAvailable = availDates.length > 0 ? Math.min(...availDates) : Date.now()
+
+        // Get branch images with URLs
+        const imagesWithUrls = branch.images
+          ? await Promise.all(
+              branch.images.map(async (img: (typeof branch.images)[number]) => ({
+                ...img,
+                url: await ctx.storage.getUrl(img.storageId),
+              }))
+            )
+          : []
+
+        // Get owner info
+        let ownerName = ""
+        let ownerImage = null
+
+        try {
+          const storeProfile = await ctx.db.get(branch.storeProfileId)
+          if (storeProfile && "storeName" in storeProfile) {
+            ownerName = storeProfile.storeName as string
+          }
+
+          // Try to get user image if store profile has userId
+          if (storeProfile && "userId" in storeProfile) {
+            const user = await ctx.db.get(storeProfile.userId as Id<"users">)
+            if (user && "image" in user) {
+              ownerImage = user.image
+            }
+          }
+        } catch (error) {
+          // Silently handle errors getting owner info
+        }
+
+        return {
+          _id: branch._id,
+          branchName: branch.branchName,
+          city: branch.city,
+          address: branch.location?.address,
+          latitude: branch.location?.lat,
+          longitude: branch.location?.lng,
+          location: branch.location,
+          images: imagesWithUrls,
+          status: branch.status,
+          qrCodeUrl: branch.qrCodeUrl,
+          availableShelvesCount: activeShelves.length,
+          priceRange: {
+            min: minPrice,
+            max: maxPrice,
+          },
+          productTypes: Array.from(productTypes),
+          earliestAvailable: earliestAvailable,
+          totalScans: branch.totalScans || 0,
+          totalOrders: branch.totalOrders || 0,
+          totalRevenue: branch.totalRevenue || 0,
+          ownerName,
+          ownerImage,
+          shelves: activeShelves,
+        }
+      })
+    )
+
+    // Apply filters
+    let filteredBranches = branchesWithShelves.filter(branch => {
+      // Filter by search query
+      if (args.searchQuery) {
+        const query = args.searchQuery.toLowerCase()
+        const matchesSearch =
+          branch.branchName.toLowerCase().includes(query) ||
+          branch.city.toLowerCase().includes(query)
+        if (!matchesSearch) return false
+      }
+
+      // Filter by price range
+      if (args.minPrice !== undefined || args.maxPrice !== undefined) {
+        const min = args.minPrice !== undefined ? args.minPrice : 0
+        const max = args.maxPrice !== undefined ? args.maxPrice : Infinity
+        if (branch.priceRange.min > max || branch.priceRange.max < min) {
+          return false
+        }
+      }
+
+      // Filter by product type
+      if (args.productType && args.productType !== "all") {
+        if (!branch.productTypes.includes(args.productType)) {
+          return false
+        }
+      }
+
+      // Only include branches with available shelves
+      return branch.availableShelvesCount > 0
+    })
+
+    // Calculate pagination
+    const totalCount = filteredBranches.length
+    const totalPages = Math.ceil(totalCount / pageSize)
+    const startIndex = (page - 1) * pageSize
+    const paginatedBranches = filteredBranches.slice(startIndex, startIndex + pageSize)
+
+    return {
+      branches: paginatedBranches,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
+      },
+    }
+  },
+})
+
+// Get all shelves for a specific branch
+export const getBranchShelves = query({
+  args: { branchId: v.id("branches") },
+  handler: async (ctx, args) => {
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch) {
+      return null
+    }
+
+    // Get all active shelves for this branch
+    const shelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_branch", (q) => q.eq("branchId", args.branchId))
+      .collect()
+
+    // Get branch images for fallback
+    const branchImagesWithUrls = branch.images
+      ? await Promise.all(
+          branch.images.map(async (img) => ({
+            ...img,
+            url: await ctx.storage.getUrl(img.storageId),
+          }))
+        )
+      : []
+
+    // Get owner info
+    const storeProfile = await ctx.db.get(branch.storeProfileId)
+    const owner = storeProfile ? await ctx.db.get(storeProfile.userId) : null
+
+    // Process each shelf with images
+    const shelvesWithDetails = await Promise.all(
+      shelves.map(async (shelf) => {
+        // Get shelf images
+        const shelfImagesWithUrls = shelf.images
+          ? await Promise.all(
+              shelf.images.map(async (img) => ({
+                ...img,
+                url: await ctx.storage.getUrl(img.storageId),
+              }))
+            )
+          : []
+
+        // Combine shelf images with branch images (branch as fallback)
+        const allImages = [...shelfImagesWithUrls, ...branchImagesWithUrls]
+
+        // Get current rental info if exists
+        const rental = await ctx.db
+          .query("rentalRequests")
+          .withIndex("by_shelf", (q) => q.eq("shelfId", shelf._id))
+          .filter(q => q.eq(q.field("status"), "active"))
+          .first()
+
+        return {
+          ...shelf,
+          city: branch.city,
+          storeBranch: branch.branchName,
+          location: branch.location,
+          images: allImages,
+          ownerName: storeProfile?.storeName,
+          ownerImage: owner?.image,
+          latitude: branch.location?.lat,
+          longitude: branch.location?.lng,
+          currentRental: rental || null,
+        }
+      })
+    )
+
+    return {
+      branch: {
+        _id: branch._id,
+        branchName: branch.branchName,
+        city: branch.city,
+        address: branch.location?.address,
+        latitude: branch.location?.lat,
+        longitude: branch.location?.lng,
+        location: branch.location,
+        images: branchImagesWithUrls,
+        status: branch.status,
+        ownerName: storeProfile?.storeName,
+        ownerImage: owner?.image,
+      },
+      shelves: shelvesWithDetails,
+    }
+  },
+})

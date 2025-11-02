@@ -39,6 +39,9 @@ const schema = defineSchema({
       v.literal("freelancer")
     )),
 
+    // Brand logo (required during signup)
+    logo: v.optional(v.id("_storage")),
+
     // Business documents
     commercialRegisterNumber: v.optional(v.string()),
     freelanceLicenseNumber: v.optional(v.string()),
