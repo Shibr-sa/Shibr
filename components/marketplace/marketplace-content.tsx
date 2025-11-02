@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useMemo, useCallback, lazy, Suspense, useEffect } from "react"
+import { useState, useCallback, lazy, Suspense, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, Store, Loader2, Package, Ruler, Calendar, Check, Clock } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, ChevronRight, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -22,7 +22,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { useLanguage } from "@/contexts/localization-context"
 import { useDebounce } from "@/hooks/use-debounce"
 
@@ -72,10 +71,14 @@ interface Store {
     unit: string
   }
   storeBranch?: string
+  images?: Array<{
+    url: string
+    type: string
+  }>
 }
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
-  const { t } = useLanguage()
+  const { t, direction } = useLanguage()
   const [locationPermissionAsked, setLocationPermissionAsked] = useState(false)
 
   // Search and filter states
@@ -85,8 +88,8 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   const [priceRange, setPriceRange] = useState(DEFAULT_PRICE_RANGE)
   const [selectedMonth, setSelectedMonth] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
-  const [sliderValue, setSliderValue] = useState(100) // Visual slider position
-  const [committedSliderValue, setCommittedSliderValue] = useState(100) // Actual filter value
+  const [sliderValue, setSliderValue] = useState(100)
+  const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({})
 
   // Debounce search input to avoid too many queries
   const debouncedSearchQuery = useDebounce(searchInput, 500)
@@ -124,10 +127,8 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   // Update price range when data loads or filters change
   useEffect(() => {
     if (priceRangeData) {
-      // Reset to show full range when filters change
       setPriceRange({ min: 0, max: priceRangeData.max })
-      setSliderValue(100) // Reset visual slider
-      setCommittedSliderValue(100) // Reset committed value
+      setSliderValue(100)
     }
   }, [priceRangeData?.min, priceRangeData?.max])
 
@@ -167,22 +168,14 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
   }, [])
 
   const handleSliderCommit = useCallback((value: number) => {
-    // Commit the actual filter value when user releases the slider
     const minPrice = priceRangeData?.min || 0
     const maxPrice = priceRangeData?.max || 9000
-    
-    // When slider is at 0%, we want to show only the minimum price
-    // When slider is at 100%, we want to show the full range
-    let selectedMax: number
-    if (value === 0) {
-      selectedMax = minPrice // Show only items at minimum price
-    } else {
-      const range = maxPrice - minPrice
-      selectedMax = minPrice + Math.round((value / 100) * range)
-    }
-    
+
+    const selectedMax = value === 0
+      ? minPrice
+      : minPrice + Math.round((value / 100) * (maxPrice - minPrice))
+
     setPriceRange({ min: 0, max: selectedMax })
-    setCommittedSliderValue(value)
     setCurrentPage(1)
   }, [priceRangeData])
 
@@ -365,111 +358,159 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
               </div>
             ) : (
               <div>
-                {stores.map((store) => (
-                    <Link 
-                      href={`${linkPrefix}/${store._id}`} 
-                      key={store._id} 
-                      className={`block ${STORE_CARD_GAP} last:mb-0`}
-                      aria-label={`View details for ${store.shelfName}`}
+                {stores.map((store) => {
+                  const allImages = store.images || []
+                  const currentImageIndex = imageIndexes[store._id] || 0
+                  const hasMultipleImages = allImages.length > 1
+
+                  const navigateImage = (delta: number) => {
+                    const newIndex = (currentImageIndex + delta + allImages.length) % allImages.length
+                    setImageIndexes(prev => ({ ...prev, [store._id]: newIndex }))
+                  }
+
+                  return (
+                    <Card
+                      key={store._id}
+                      id={`store-${store._id}`}
+                      className={`overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border shadow-lg ${STORE_CARD_HEIGHT} ${STORE_CARD_GAP} last:mb-0`}
                     >
-                      <Card
-                        id={`store-${store._id}`}
-                        className={`overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border shadow-lg ${STORE_CARD_HEIGHT}`}
-                      >
-                        <CardContent className="p-0">
-                          <div className="flex min-h-[240px]">
-                            {/* Store Image */}
-                            <div className="w-1/3 relative bg-gradient-to-br from-muted/50 to-muted">
-                              {(store.shelfImage || store.exteriorImage || store.interiorImage) ? (
-                                <img
-                                  src={store.shelfImage || store.exteriorImage || store.interiorImage}
-                                  alt={store.shelfName}
-                                  className="h-full w-full object-cover absolute inset-0"
+                      <CardContent className="p-0">
+                        <div className="flex min-h-[240px]">
+                          {/* Store Image Gallery */}
+                          <div className="w-1/3 relative bg-gradient-to-br from-muted/50 to-muted group">
+                            {allImages.length > 0 ? (
+                              <>
+                                <Image
+                                  src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
+                                  alt={`${store.shelfName} - ${allImages[currentImageIndex]?.type}`}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
                                 />
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <Store className="h-12 w-12 text-muted-foreground/50" />
-                                </div>
-                              )}
-                            </div>
 
-                            {/* Store Info - Simplified and Clear */}
-                            <div className="flex-1 p-4 flex flex-col">
-                              {/* Header with Name and Location */}
-                              <div className="mb-3">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <h3 className="text-base font-semibold text-foreground">
-                                    {store.shelfName}
-                                  </h3>
-                                  {/* Rental Status Badge */}
-                                  {store.currentRental && (
-                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                                      <Clock className="h-3 w-3 me-1" />
-                                      {t("marketplace.rented_until")} {new Date(store.currentRental.endDate).toLocaleDateString()}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  <span>{store.city}, {store.storeBranch}</span>
-                                </div>
-                              </div>
-
-                              {/* Key Information Grid */}
-                              <div className="grid grid-cols-2 gap-3 mb-3">
-                                {/* Monthly Rent */}
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
-                                  <p className="text-lg font-bold text-primary">
-                                    {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
-                                  </p>
-                                </div>
-                                
-                                {/* Commission */}
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
-                                  <p className="text-lg font-bold">
-                                    {((store.storeCommission ?? 0) + (platformSettings?.brandSalesCommission ?? 0))}%
-                                  </p>
-                                </div>
-
-                                {/* Shelf Size */}
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.shelf_size")}</p>
-                                  <p className="text-sm font-medium">
-                                    {store.shelfSize?.width || 0}×{store.shelfSize?.height || 0}×{store.shelfSize?.depth || 0} cm
-                                  </p>
-                                </div>
-
-                                {/* Available From */}
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.available_from")}</p>
-                                  <p className="text-sm font-medium">
-                                    {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Footer with Store Owner */}
-                              <div className="flex items-center pt-3 border-t">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-7 w-7">
-                                    <AvatarImage src={store.ownerImage} alt={store.ownerName} />
-                                    <AvatarFallback className="text-xs">
-                                      {store.ownerName?.slice(0, 2).toUpperCase() || "SO"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="text-xs font-medium">{store.ownerName || "-"}</p>
+                                {/* Image counter */}
+                                {hasMultipleImages && (
+                                  <div className="absolute top-2 start-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                                    {currentImageIndex + 1} / {allImages.length}
                                   </div>
+                                )}
+
+                                {/* Navigation arrows */}
+                                {hasMultipleImages && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        navigateImage(direction === "rtl" ? 1 : -1)
+                                      }}
+                                      className="absolute start-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                                      aria-label={direction === "rtl" ? "Next image" : "Previous image"}
+                                    >
+                                      {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        navigateImage(direction === "rtl" ? -1 : 1)
+                                      }}
+                                      className="absolute end-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                                      aria-label={direction === "rtl" ? "Previous image" : "Next image"}
+                                    >
+                                      {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Store className="h-12 w-12 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Store Info - Simplified and Clear */}
+                          <Link
+                            href={`${linkPrefix}/${store._id}`}
+                            className="flex-1 p-4 flex flex-col hover:bg-muted/30 transition-colors"
+                            aria-label={`View details for ${store.shelfName}`}
+                          >
+                            {/* Header with Name and Location */}
+                            <div className="mb-3">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <h3 className="text-base font-semibold text-foreground">
+                                  {store.shelfName}
+                                </h3>
+                                {/* Rental Status Badge */}
+                                {store.currentRental && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                    <Clock className="h-3 w-3 me-1" />
+                                    {t("marketplace.rented_until")} {new Date(store.currentRental.endDate).toLocaleDateString()}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin className="h-3.5 w-3.5" />
+                                <span>{store.city}, {store.storeBranch}</span>
+                              </div>
+                            </div>
+
+                            {/* Key Information Grid */}
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              {/* Monthly Rent */}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
+                                <p className="text-lg font-bold text-primary">
+                                  {t("common.currency_symbol")} {store.monthlyPrice.toLocaleString()}
+                                </p>
+                              </div>
+
+                              {/* Commission */}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.sales_commission")}</p>
+                                <p className="text-lg font-bold">
+                                  {((store.storeCommission ?? 0) + (platformSettings?.brandSalesCommission ?? 0))}%
+                                </p>
+                              </div>
+
+                              {/* Shelf Size */}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.shelf_size")}</p>
+                                <p className="text-sm font-medium">
+                                  {store.shelfSize?.width || 0}×{store.shelfSize?.height || 0}×{store.shelfSize?.depth || 0} cm
+                                </p>
+                              </div>
+
+                              {/* Available From */}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.available_from")}</p>
+                                <p className="text-sm font-medium">
+                                  {new Date(store.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Footer with Store Owner */}
+                            <div className="flex items-center pt-3 border-t">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={store.ownerImage} alt={store.ownerName} />
+                                  <AvatarFallback className="text-xs">
+                                    {store.ownerName?.slice(0, 2).toUpperCase() || "SO"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-xs font-medium">{store.ownerName || "-"}</p>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                ))}
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             )}
           </div>
