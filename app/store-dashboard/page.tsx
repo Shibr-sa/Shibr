@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Inbox, Layout, Eye, Star, AlertCircle } from "lucide-react"
+import { TrendingUp, ShoppingBag, PlusCircle, AlertTriangle, ArrowRight, Package, Inbox, Layout, Eye, AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RequestDetailsDialog, type RentalRequestDetails } from "@/components/dialogs/request-details-dialog"
@@ -235,8 +235,8 @@ export default function StoreDashboardPage() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-lg font-semibold">{t("dashboard.rental_requests")}</h2>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             disabled={isLoading || !isStoreDataComplete}
             asChild
@@ -246,17 +246,17 @@ export default function StoreDashboardPage() {
             </Link>
           </Button>
         </div>
-        
-        <div className="rounded-md border overflow-x-auto">
+
+        {/* Desktop/Tablet Table View */}
+        <div className="hidden md:block rounded-md border overflow-x-auto">
             <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("table.store")}</TableHead>
-                      <TableHead className="text-start hidden md:table-cell">{t("table.branch")}</TableHead>
-                      <TableHead className="text-start hidden md:table-cell">{t("table.rental_duration")}</TableHead>
+                      <TableHead className="text-start">{t("table.branch")}</TableHead>
+                      <TableHead className="text-start">{t("table.rental_duration")}</TableHead>
                       <TableHead className="text-start">{t("table.status")}</TableHead>
                       <TableHead className="text-start hidden lg:table-cell">{t("table.request_date")}</TableHead>
-                      <TableHead className="text-start hidden lg:table-cell">{t("table.rating")}</TableHead>
                       <TableHead className="text-start">{t("table.options")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -266,18 +266,17 @@ export default function StoreDashboardPage() {
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-request-${index}`} className="h-[72px]">
                           <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
                           <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                         </TableRow>
                       ))
                     ) : recentRequests.length === 0 ? (
                       // Empty state
                       <TableRow>
-                        <TableCell colSpan={7} className="h-[216px] text-center">
+                        <TableCell colSpan={6} className="h-[216px] text-center">
                           <div className="flex h-full w-full items-center justify-center">
                             <div className="flex flex-col items-center gap-1 py-10">
                               <Inbox className="h-10 w-10 text-muted-foreground/40 mb-2" />
@@ -299,8 +298,8 @@ export default function StoreDashboardPage() {
                             <TableCell className="font-medium">
                               {request.otherUserName}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">{request.shelfBranch || "-"}</TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell>{request.shelfBranch || "-"}</TableCell>
+                            <TableCell>
                               {request.startDate && request.endDate
                                 ? formatDuration(request.startDate, request.endDate, language)
                                 : "-"}
@@ -314,16 +313,6 @@ export default function StoreDashboardPage() {
                               {request.createdAt
                                 ? formatDate(request.createdAt, language)
                                 : formatDate(new Date(request._creationTime), language)}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              {request.status === "approved" && request.rating ? (
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span className="text-sm">{request.rating}/5</span>
-                                </div>
-                              ) : (
-                                "-"
-                              )}
                             </TableCell>
                             <TableCell>
                               <Button
@@ -343,7 +332,7 @@ export default function StoreDashboardPage() {
                         {/* Fill remaining rows to maintain consistent height */}
                         {recentRequests.length < 3 && Array.from({ length: 3 - recentRequests.length }).map((_, index) => (
                           <TableRow key={`filler-request-${index}`} className="h-[72px]">
-                            <TableCell className="py-3" colSpan={7}>&nbsp;</TableCell>
+                            <TableCell className="py-3" colSpan={6}>&nbsp;</TableCell>
                           </TableRow>
                         ))}
                       </>
@@ -351,14 +340,115 @@ export default function StoreDashboardPage() {
                   </TableBody>
                 </Table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {!hasInitialData ? (
+            // Loading skeletons
+            Array.from({ length: 3 }).map((_, index) => (
+              <Card key={`skeleton-request-card-${index}`}>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <div className="flex justify-end">
+                      <Skeleton className="h-9 w-20" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : recentRequests.length === 0 ? (
+            // Empty state
+            <Card>
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center text-center">
+                  <Inbox className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                  <h3 className="font-medium">
+                    {t("dashboard.no_rental_requests")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t("dashboard.rental_requests_will_appear_here")}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Actual request cards
+            recentRequests.map((request: any) => (
+              <Card key={request._id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    {/* Header with name and status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-medium text-sm truncate flex-1">
+                        {request.otherUserName}
+                      </h3>
+                      <Badge variant={getRequestStatusBadgeVariant(request.status)} className="flex-shrink-0">
+                        {t(`status.${request.status}`) || t("common.unknown")}
+                      </Badge>
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("table.branch")}:</span>
+                        <span className="font-medium truncate ms-2">{request.shelfBranch || "-"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("table.rental_duration")}:</span>
+                        <span className="font-medium ms-2">
+                          {request.startDate && request.endDate
+                            ? formatDuration(request.startDate, request.endDate, language)
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("table.request_date")}:</span>
+                        <span className="font-medium text-xs ms-2">
+                          {request.createdAt
+                            ? formatDate(request.createdAt, language)
+                            : formatDate(new Date(request._creationTime), language)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action button */}
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          setSelectedRequest(request)
+                          setShowDetailsDialog(true)
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                        {t("table.view_details")}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Shelves Section */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-lg font-semibold">{t("dashboard.your_shelves")}</h2>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             disabled={isLoading || !isStoreDataComplete}
             asChild
@@ -368,14 +458,15 @@ export default function StoreDashboardPage() {
             </Link>
           </Button>
         </div>
-        
-        <div className="rounded-md border overflow-x-auto">
+
+        {/* Desktop/Tablet Table View */}
+        <div className="hidden md:block rounded-md border overflow-x-auto">
             <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-start">{t("shelves.table.shelf_name")}</TableHead>
-                      <TableHead className="text-start hidden md:table-cell">{t("shelves.table.branch_name")}</TableHead>
-                      <TableHead className="text-start hidden md:table-cell">{t("shelves.table.renter")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.branch_name")}</TableHead>
+                      <TableHead className="text-start">{t("shelves.table.renter")}</TableHead>
                       <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.price")}</TableHead>
                       <TableHead className="text-start hidden lg:table-cell">{t("shelves.table.net_revenue")}</TableHead>
                       <TableHead className="text-start">{t("shelves.table.status")}</TableHead>
@@ -389,8 +480,8 @@ export default function StoreDashboardPage() {
                       Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={`skeleton-${index}`} className="h-[72px]">
                           <TableCell className="py-3"><Skeleton className="h-4 w-[120px]" /></TableCell>
-                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
-                          <TableCell className="py-3 hidden md:table-cell"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
+                          <TableCell className="py-3"><Skeleton className="h-4 w-[100px]" /></TableCell>
                           <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                           <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                           <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
@@ -411,9 +502,9 @@ export default function StoreDashboardPage() {
                               <p className="text-sm text-muted-foreground">
                                 {t("dashboard.shelves_will_appear_here")}
                               </p>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="mt-4"
                                 disabled={isLoading || !isStoreDataComplete}
                                 onClick={() => router.push("/store-dashboard/shelves/new")}
@@ -431,8 +522,8 @@ export default function StoreDashboardPage() {
                         {recentShelves.map((shelf: any) => (
                           <TableRow key={shelf._id} className="h-[72px]">
                             <TableCell className="font-medium">{shelf.shelfName}</TableCell>
-                            <TableCell className="hidden md:table-cell">{shelf.branch?.branchName || '-'}</TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell>{shelf.branch?.branchName || '-'}</TableCell>
+                            <TableCell>
                               {shelf.renterName || "-"}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
@@ -484,6 +575,131 @@ export default function StoreDashboardPage() {
                     )}
                   </TableBody>
                 </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {!hasInitialData ? (
+            // Loading skeletons
+            Array.from({ length: 3 }).map((_, index) => (
+              <Card key={`skeleton-shelf-card-${index}`}>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <div className="flex justify-end">
+                      <Skeleton className="h-9 w-20" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : recentShelves.length === 0 ? (
+            // Empty state
+            <Card>
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center text-center">
+                  <Layout className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                  <h3 className="font-medium">
+                    {t("dashboard.no_shelves_displayed")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t("dashboard.shelves_will_appear_here")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    disabled={isLoading || !isStoreDataComplete}
+                    onClick={() => router.push("/store-dashboard/shelves/new")}
+                  >
+                    <PlusCircle className="h-4 w-4 me-2" />
+                    {t("dashboard.display_shelf_now")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Actual shelf cards
+            recentShelves.map((shelf: any) => (
+              <Card key={shelf._id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    {/* Header with name and status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-medium text-sm truncate flex-1">
+                        {shelf.shelfName}
+                      </h3>
+                      <Badge variant={getShelfStatusBadgeVariant(shelf)} className="flex-shrink-0">
+                        {shelf.status === "rented"
+                          ? t("shelves.status.rented")
+                          : shelf.status === "active"
+                          ? t("shelves.status.available")
+                          : shelf.status === "suspended"
+                          ? t("shelves.status.suspended")
+                          : t("shelves.status.unavailable")
+                        }
+                      </Badge>
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("shelves.table.branch_name")}:</span>
+                        <span className="font-medium truncate ms-2">{shelf.branch?.branchName || '-'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("shelves.table.renter")}:</span>
+                        <span className="font-medium truncate ms-2">{shelf.renterName || "-"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("shelves.table.price")}:</span>
+                        <span className="font-medium ms-2">
+                          {formatCurrency(shelf.monthlyPrice || 0, language)}
+                        </span>
+                      </div>
+                      {shelf.netRevenue && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{t("shelves.table.net_revenue")}:</span>
+                          <span className="font-medium ms-2">
+                            {formatCurrency(shelf.netRevenue, language)}
+                          </span>
+                        </div>
+                      )}
+                      {shelf.nextCollectionDate && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{t("shelves.table.next_collection")}:</span>
+                          <span className="font-medium text-xs ms-2">
+                            {new Date(shelf.nextCollectionDate).toLocaleDateString("en-US")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action button */}
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => router.push(`/store-dashboard/shelves/${shelf._id}`)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        {t("table.view_details")}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 

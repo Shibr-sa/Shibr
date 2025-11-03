@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation"
 import { formatDate, formatDuration } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { ReviewDialog } from "@/components/dialogs/review-dialog"
 
 export default function StoreDashboardOrdersPage() {
   const { t, direction, language } = useLanguage()
@@ -54,6 +55,12 @@ export default function StoreDashboardOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [hasInitialData, setHasInitialData] = useState(false)
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
+  const [selectedRequestForReview, setSelectedRequestForReview] = useState<{
+    requestId: Id<"rentalRequests">
+    revieweeId: Id<"users">
+    revieweeName: string
+  } | null>(null)
   const itemsPerPage = 5
 
   // Debounced search value for better performance
@@ -293,8 +300,8 @@ export default function StoreDashboardOrdersPage() {
             ) : paginatedRequests.length > 0 ? (
               // Data state - show requests with empty row fillers
               <>
-                {paginatedRequests.map((request) => (
-                  <TableRow key={request._id} className="h-[72px]">
+                {paginatedRequests.map((request, index) => (
+                  <TableRow key={`${request._id}-${index}`} className="h-[72px]">
                     <TableCell className="py-3 font-medium">
                       {request.otherUserName}
                     </TableCell>
@@ -350,7 +357,12 @@ export default function StoreDashboardOrdersPage() {
                                   variant="ghost"
                                   className="h-8 w-8"
                                   onClick={() => {
-                                    // TODO: Implement rating dialog
+                                    setSelectedRequestForReview({
+                                      requestId: request._id,
+                                      revieweeId: request.otherUserId as Id<"users">,
+                                      revieweeName: request.otherUserName || t("orders.brand_owner")
+                                    })
+                                    setReviewDialogOpen(true)
                                   }}
                                 >
                                   <Star className="h-4 w-4" />
@@ -470,6 +482,27 @@ export default function StoreDashboardOrdersPage() {
           </PaginationItem>
         </PaginationContent>
       </Pagination>
+
+      {/* Review Dialog */}
+      {selectedRequestForReview && (
+        <ReviewDialog
+          rentalRequestId={selectedRequestForReview.requestId}
+          revieweeId={selectedRequestForReview.revieweeId}
+          revieweeName={selectedRequestForReview.revieweeName}
+          open={reviewDialogOpen}
+          onOpenChange={(open) => {
+            setReviewDialogOpen(open)
+            if (!open) {
+              setSelectedRequestForReview(null)
+            }
+          }}
+          onSuccess={() => {
+            // Optionally refresh the rental requests data
+            setReviewDialogOpen(false)
+            setSelectedRequestForReview(null)
+          }}
+        />
+      )}
     </div>
   )
 }

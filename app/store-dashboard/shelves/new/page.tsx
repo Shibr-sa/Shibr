@@ -17,7 +17,7 @@ export default function AddShelfPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full px-12">
       <ShelfForm mode="create" />
     </div>
   )

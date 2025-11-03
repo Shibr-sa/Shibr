@@ -580,9 +580,9 @@ export const getRentalRequestById = query({
         ? await ctx.storage.getUrl(brandOwnerProfile.freelanceLicenseDocument)
         : undefined,
       ownerName: brandOwnerProfile?.brandName,
-      // Rating information (fields not available yet in schema)
-      brandRating: 0, // brandOwner?.averageRating || 0,
-      brandTotalRatings: 0, // brandOwner?.totalRatings || 0,
+      // Rating information
+      brandRating: brandOwnerProfile?.averageRating || 0,
+      brandTotalRatings: brandOwnerProfile?.totalRatings || 0,
       // Products
       products: products,
       // Branch store information (now at branch level instead of shelf level)

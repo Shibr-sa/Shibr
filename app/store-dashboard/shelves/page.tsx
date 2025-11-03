@@ -189,7 +189,8 @@ export default function StoreDashboardShelvesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full px-12">
+      <div className="space-y-6">
       {/* Header with Time Period Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -538,6 +539,7 @@ export default function StoreDashboardShelvesPage() {
               </PaginationContent>
             </Pagination>
           </div>
+      </div>
       </div>
     </div>
   )

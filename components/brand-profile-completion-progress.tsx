@@ -18,7 +18,12 @@ interface ProfileField {
   section: "general" | "brand-data" | "payment"
 }
 
-export function BrandProfileCompletionProgress({ showDetails = true }: { showDetails?: boolean }) {
+interface BrandProfileCompletionProgressProps {
+  showDetails?: boolean
+  onCompletionChange?: (percentage: number) => void
+}
+
+export function BrandProfileCompletionProgress({ showDetails = true, onCompletionChange }: BrandProfileCompletionProgressProps) {
   const { t } = useLanguage()
   const { userData } = useBrandData()
   const [completionPercentage, setCompletionPercentage] = useState(0)
@@ -64,6 +69,20 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
         section: "brand-data"
       },
       {
+        key: "logo",
+        label: t("settings.general.upload_logo"),
+        value: userData.image,
+        required: true,
+        section: "brand-data"
+      },
+      {
+        key: "businessType",
+        label: t("settings.brand_data.business_type"),
+        value: profile.businessType,
+        required: true,
+        section: "brand-data"
+      },
+      {
         key: "businessCategory",
         label: t("settings.brand_data.business_category"),
         value: profile.businessCategory,
@@ -84,7 +103,7 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
         label: profile.businessType === "freelancer"
           ? t("settings.brand_data.freelance_license_document")
           : t("settings.brand_data.commercial_register_document"),
-        value: profile.freelanceLicenseDocumentUrl || profile.commercialRegisterDocumentUrl,
+        value: profile.freelanceLicenseDocument || profile.commercialRegisterDocument,
         required: true,
         section: "brand-data"
       },
@@ -96,13 +115,6 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
         value: profile.website,
         required: false,
         section: "brand-data"
-      },
-      {
-        key: "profileImage",
-        label: t("settings.general.upload_logo"),
-        value: userData.image,
-        required: false,
-        section: "general"
       }
     ]
 
@@ -117,7 +129,12 @@ export function BrandProfileCompletionProgress({ showDetails = true }: { showDet
     setCompletionPercentage(percentage)
     setMissingFields(missing)
     setCompletedFields(completed)
-  }, [userData, t])
+
+    // Notify parent component of completion change
+    if (onCompletionChange) {
+      onCompletionChange(percentage)
+    }
+  }, [userData, t, onCompletionChange])
 
   const getProgressColor = () => {
     if (completionPercentage === 100) return "bg-green-500"

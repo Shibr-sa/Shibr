@@ -183,16 +183,16 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-semibold">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <DialogTitle className="text-lg sm:text-xl font-semibold break-words">
                 {t("orders.request_details")}
               </DialogTitle>
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <span>{t("orders.cancel_warning")}</span>
+              <div className="flex items-center gap-2 text-sm text-destructive flex-shrink-0">
+                <AlertTriangle className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">{t("orders.cancel_warning")}</span>
               </div>
             </div>
             <Separator />
@@ -202,22 +202,22 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
         {selectedRequest && (
           <div className="space-y-6 mt-4">
             {/* Brand Info Header */}
-            <div className="flex items-start gap-4 pb-4">
+            <div className="flex items-start gap-3 sm:gap-4 pb-3 sm:pb-4">
               {selectedRequest.brandLogo ? (
-                <img 
-                  src={selectedRequest.brandLogo} 
+                <img
+                  src={selectedRequest.brandLogo}
                   alt={selectedRequest.otherUserName || "Brand"}
-                  className="h-16 w-16 rounded-lg object-cover border"
+                  className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg object-cover border flex-shrink-0"
                 />
               ) : (
-                <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center border">
-                  <Building2 className="h-8 w-8 text-muted-foreground" />
+                <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-muted flex items-center justify-center border flex-shrink-0">
+                  <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                 </div>
               )}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold">{selectedRequest.otherUserName || "-"}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-semibold line-clamp-2">{selectedRequest.otherUserName || "-"}</h3>
                 {selectedRequest.activityType && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
                     {selectedRequest.activityType}
                   </p>
                 )}
@@ -225,53 +225,53 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
             </div>
 
             {/* Brand Details Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.owner_name")}</p>
-                <p className="font-medium">{selectedRequest.ownerName || "-"}</p>
+            <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 sm:gap-4">
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.owner_name")}</p>
+                <p className="font-medium text-sm sm:text-base line-clamp-2">{selectedRequest.ownerName || "-"}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.activity_type")}</p>
-                <p className="font-medium">{selectedRequest.activityType || "-"}</p>
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.activity_type")}</p>
+                <p className="font-medium text-sm sm:text-base line-clamp-2">{selectedRequest.activityType || "-"}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.mobile_number")}</p>
-                <p className="font-medium dir-ltr text-start">{selectedRequest.mobileNumber || selectedRequest.phoneNumber || "-"}</p>
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.mobile_number")}</p>
+                <p className="font-medium text-sm sm:text-base dir-ltr text-start">{selectedRequest.mobileNumber || selectedRequest.phoneNumber || "-"}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.email")}</p>
-                <p className="font-medium break-all">{selectedRequest.otherUserEmail || selectedRequest.email || "-"}</p>
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.email")}</p>
+                <p className="font-medium text-sm sm:text-base break-words">{selectedRequest.otherUserEmail || selectedRequest.email || "-"}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.website")}</p>
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.website")}</p>
                 {selectedRequest.website ? (
-                  <a 
+                  <a
                     href={selectedRequest.website.startsWith('http') ? selectedRequest.website : `https://${selectedRequest.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                    className="font-medium text-primary hover:underline flex items-center gap-1.5 py-1 sm:py-0"
                   >
-                    <Globe className="h-3 w-3" />
-                    <span className="text-sm">{t("common.visit")}</span>
+                    <Globe className="h-3.5 w-3.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm">{t("common.visit")}</span>
                   </a>
                 ) : (
-                  <p className="font-medium">-</p>
+                  <p className="font-medium text-sm sm:text-base">-</p>
                 )}
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{t("orders.commercial_register_number")}</p>
-                <p className="font-medium">{selectedRequest.commercialRegisterNumber || selectedRequest.crNumber || "-"}</p>
+              <div className="space-y-1 p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg sm:rounded-none">
+                <p className="text-xs sm:text-sm text-muted-foreground">{t("orders.commercial_register_number")}</p>
+                <p className="font-medium text-sm sm:text-base">{selectedRequest.commercialRegisterNumber || selectedRequest.crNumber || "-"}</p>
               </div>
             </div>
 
             {/* Business Registration Document */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">{t("orders.commercial_register")}</p>
               {selectedRequest.commercialRegisterFile || selectedRequest.crFile ? (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 gap-2"
+                  className="w-full sm:w-auto min-h-[48px] sm:h-10 gap-2"
                   onClick={() => {
                     const fileUrl = selectedRequest.commercialRegisterFile || selectedRequest.crFile
                     if (fileUrl) {
@@ -289,90 +289,136 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
 
             <Separator />
 
-            {/* Request Details Table */}
+            {/* Request Details */}
             <div>
-              <h3 className="font-semibold mb-4">{t("orders.request_details_title")}</h3>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-start">{t("orders.branch")}</TableHead>
-                      <TableHead className="text-start">{t("orders.activity")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_duration")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_type")}</TableHead>
-                      <TableHead className="text-start">{t("orders.rental_date")}</TableHead>
-                      <TableHead className="text-start">{t("orders.notes")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        {selectedRequest.shelfBranch || "-"}
-                      </TableCell>
-                      <TableCell>{selectedRequest.shelfName || "-"}</TableCell>
-                      <TableCell>
-                        {selectedRequest.startDate && selectedRequest.endDate 
-                          ? formatDuration(selectedRequest.startDate, selectedRequest.endDate, language)
-                          : "-"}
-                      </TableCell>
-                      <TableCell>{selectedRequest.rentalType || "-"}</TableCell>
-                      <TableCell>
-                        {selectedRequest.createdAt 
-                          ? formatDate(selectedRequest.createdAt, language, 'long')
-                          : selectedRequest._creationTime
-                          ? formatDate(new Date(selectedRequest._creationTime), language, 'long')
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {selectedRequest.additionalNotes || "-"}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+              <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">{t("orders.request_details_title")}</h3>
+
+              {/* Mobile Card Layout */}
+              <div className="block md:hidden border rounded-lg overflow-hidden bg-muted/10">
+                <div className="divide-y">
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.branch")}</span>
+                    <span className="text-sm font-medium text-end">{selectedRequest.shelfBranch || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.activity")}</span>
+                    <span className="text-sm font-medium text-end">{selectedRequest.shelfName || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.rental_duration")}</span>
+                    <span className="text-sm font-medium text-end">
+                      {selectedRequest.startDate && selectedRequest.endDate
+                        ? formatDuration(selectedRequest.startDate, selectedRequest.endDate, language)
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.rental_type")}</span>
+                    <span className="text-sm font-medium text-end">{selectedRequest.rentalType || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.rental_date")}</span>
+                    <span className="text-sm font-medium text-end">
+                      {selectedRequest.createdAt
+                        ? formatDate(selectedRequest.createdAt, language, 'long')
+                        : selectedRequest._creationTime
+                        ? formatDate(new Date(selectedRequest._creationTime), language, 'long')
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start gap-3 p-3">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t("orders.notes")}</span>
+                    <span className="text-sm font-medium text-end break-words">
+                      {selectedRequest.additionalNotes || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.branch")}</TableHead>
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.activity")}</TableHead>
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.rental_duration")}</TableHead>
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.rental_type")}</TableHead>
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.rental_date")}</TableHead>
+                        <TableHead className="text-start text-xs sm:text-sm whitespace-nowrap">{t("orders.notes")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                          {selectedRequest.shelfBranch || "-"}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">{selectedRequest.shelfName || "-"}</TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                          {selectedRequest.startDate && selectedRequest.endDate
+                            ? formatDuration(selectedRequest.startDate, selectedRequest.endDate, language)
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">{selectedRequest.rentalType || "-"}</TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                          {selectedRequest.createdAt
+                            ? formatDate(selectedRequest.createdAt, language, 'long')
+                            : selectedRequest._creationTime
+                            ? formatDate(new Date(selectedRequest._creationTime), language, 'long')
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm max-w-[200px] truncate">
+                          {selectedRequest.additionalNotes || "-"}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
 
             {/* Additional Info */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-800">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs sm:text-sm text-amber-800">
                 {t("orders.agreement_confirmation")}
               </p>
             </div>
 
             {/* Communication Section */}
             <div className="border rounded-lg overflow-hidden">
-              <div className="p-4 bg-muted/30 border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <h4 className="font-medium">{t("orders.communication")}</h4>
+              <div className="p-3 sm:p-4 bg-muted/30 border-b">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <h4 className="font-medium text-sm sm:text-base truncate">{t("orders.communication")}</h4>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs flex-shrink-0 max-w-[120px] truncate">
                     {selectedRequest?.otherUserName}
                   </Badge>
                 </div>
               </div>
               
               {/* Messages Area */}
-              <div className="h-[300px] bg-background relative">
+              <div className="h-[200px] sm:h-[300px] bg-background relative">
                 {messages && messages.length > 0 ? (
-                  <ScrollArea className="h-full p-4">
-                    <div className="space-y-3">
+                  <ScrollArea className="h-full p-3 sm:p-4">
+                    <div className="space-y-2 sm:space-y-3">
                       {messages.map((msg) => {
                         const isCurrentUser = msg.senderId === userId
                         const messageDate = new Date(msg.createdAt)
-                        
+
                         return (
                           <div
                             key={msg._id}
                             className={cn(
-                              "flex gap-2",
+                              "flex gap-1.5 sm:gap-2",
                               isCurrentUser ? "justify-end" : "justify-start"
                             )}
                           >
                             {!isCurrentUser && (
-                              <Avatar className="h-8 w-8">
+                              <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                                 <AvatarFallback className="text-xs">
                                   {msg.senderName?.charAt(0).toUpperCase()}
                                 </AvatarFallback>
@@ -380,7 +426,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                             )}
                             <div
                               className={cn(
-                                "max-w-[60%] rounded-lg p-3",
+                                "max-w-[75%] sm:max-w-[60%] rounded-lg p-2 sm:p-3",
                                 isCurrentUser
                                   ? "bg-primary text-primary-foreground"
                                   : "bg-muted"
@@ -391,11 +437,11 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                                   {msg.senderName}
                                 </p>
                               )}
-                              <p className="text-sm whitespace-pre-wrap">
+                              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">
                                 {msg.text}
                               </p>
                               <p className={cn(
-                                "text-xs mt-1",
+                                "text-[10px] sm:text-xs mt-1",
                                 isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
                               )}>
                                 {messageDate.toLocaleTimeString("en-US", {
@@ -405,7 +451,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                               </p>
                             </div>
                             {isCurrentUser && (
-                              <Avatar className="h-8 w-8">
+                              <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                                 <AvatarFallback className="text-xs">
                                   {user?.fullName?.charAt(0).toUpperCase() || "S"}
                                 </AvatarFallback>
@@ -418,25 +464,25 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                     </div>
                   </ScrollArea>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex items-center justify-center h-full px-4">
                     <div className="flex flex-col items-center text-center">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-sm text-muted-foreground">
+                      <MessageSquare className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground/50 mb-2 sm:mb-3" />
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {t("chat.no_messages_yet")}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         {t("orders.start_conversation_description")}
                       </p>
                     </div>
                   </div>
                 )}
               </div>
-              
+
               {/* Message Input */}
-              <div className="p-4 border-t bg-background">
+              <div className="p-3 sm:p-4 border-t bg-background">
                 {selectedRequest.status === "rejected" ? (
                   <div className="text-center py-2">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {t("chat.conversation_closed")}
                     </p>
                   </div>
@@ -453,12 +499,13 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
                         placeholder={t("chat.type_message_placeholder")}
-                        className="flex-1"
+                        className="flex-1 text-sm h-12 sm:h-10"
                         disabled={false} // TODO: Fix status type issue
                       />
                       <Button
                         type="submit"
                         size="icon"
+                        className="h-12 w-12 sm:h-10 sm:w-10 flex-shrink-0"
                         disabled={!messageText.trim()} // TODO: Fix status type issue
                       >
                         <Send className="h-4 w-4" />
@@ -476,13 +523,13 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
 
             {/* Action Buttons - Only show for pending requests */}
             {selectedRequest.status === "pending" && (
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-2">
                 <Button
                   variant="outline"
                   size="default"
                   onClick={handleReject}
                   disabled={isProcessing}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto min-h-[48px]"
                 >
                   <X className="h-4 w-4" />
                   {t("orders.reject")}
@@ -492,7 +539,7 @@ export function RequestDetailsDialog({ open, onOpenChange, request: selectedRequ
                   size="default"
                   onClick={handleAccept}
                   disabled={isProcessing}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto min-h-[48px]"
                 >
                   <Check className="h-4 w-4" />
                   {t("orders.accept")}

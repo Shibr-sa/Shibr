@@ -34,6 +34,7 @@ import React, { useMemo } from "react"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import BrandShelvesLoading from "./loading"
 import { formatCurrency } from "@/lib/formatters"
+import { ReviewDialog } from "@/components/dialogs/review-dialog"
 
 // Helper function to calculate rental months
 const calculateRentalMonths = (startDate: number | undefined, endDate: number | undefined) => {
@@ -59,6 +60,12 @@ export default function BrandShelvesPage() {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly")
   const [currentPage, setCurrentPage] = useState(1)
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
+  const [selectedRequestForReview, setSelectedRequestForReview] = useState<{
+    requestId: Id<"rentalRequests">
+    revieweeId: Id<"users">
+    revieweeName: string
+  } | null>(null)
 
   // Payment now redirects to Tap payment page instead of using dialog
   const itemsPerPage = 5
@@ -334,7 +341,12 @@ export default function BrandShelvesPage() {
                     variant="ghost"
                     className="h-8 w-8 p-0"
                     onClick={() => {
-                      // TODO: Implement rating dialog
+                      setSelectedRequestForReview({
+                        requestId: request._id,
+                        revieweeId: request.otherUserId as Id<"users">,
+                        revieweeName: request.otherUserName || t("orders.store_owner")
+                      })
+                      setReviewDialogOpen(true)
                     }}
                   >
                     <Star className="h-4 w-4" />
@@ -720,6 +732,26 @@ export default function BrandShelvesPage() {
             </PaginationContent>
           </Pagination>
       </div>
+
+      {/* Review Dialog */}
+      {selectedRequestForReview && (
+        <ReviewDialog
+          rentalRequestId={selectedRequestForReview.requestId}
+          revieweeId={selectedRequestForReview.revieweeId}
+          revieweeName={selectedRequestForReview.revieweeName}
+          open={reviewDialogOpen}
+          onOpenChange={(open) => {
+            setReviewDialogOpen(open)
+            if (!open) {
+              setSelectedRequestForReview(null)
+            }
+          }}
+          onSuccess={() => {
+            setReviewDialogOpen(false)
+            setSelectedRequestForReview(null)
+          }}
+        />
+      )}
     </div>
   )
 }

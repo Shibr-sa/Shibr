@@ -20,6 +20,11 @@ const schema = defineSchema({
 
     // Website
     website: v.optional(v.string()),
+
+    // Rating and reviews
+    averageRating: v.optional(v.number()),
+    totalRatings: v.optional(v.number()),
+    ratingSum: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_active", ["isActive"]),
@@ -51,8 +56,11 @@ const schema = defineSchema({
     // Website
     website: v.optional(v.string()),
 
-    // Rating
-    rating: v.optional(v.number()),
+    // Rating and reviews
+    rating: v.optional(v.number()), // Legacy field (same as averageRating)
+    averageRating: v.optional(v.number()),
+    totalRatings: v.optional(v.number()),
+    ratingSum: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_active", ["isActive"]),
@@ -403,6 +411,20 @@ const schema = defineSchema({
     verified: v.optional(v.boolean()),
   })
     .index("by_type_identifier", ["type", "identifier"]),
+
+  // Reviews for rentals (stores rating brands and vice versa)
+  reviews: defineTable({
+    rentalRequestId: v.id("rentalRequests"),
+    reviewerId: v.id("users"), // User who submitted the review
+    reviewerType: v.union(v.literal("store_owner"), v.literal("brand_owner")),
+    revieweeId: v.id("users"), // User being reviewed
+    rating: v.number(), // 1-5 stars
+    createdAt: v.number(), // Timestamp
+  })
+    .index("by_rental_request", ["rentalRequestId"])
+    .index("by_reviewer", ["reviewerId"])
+    .index("by_reviewee", ["revieweeId"])
+    .index("by_rental_and_reviewer", ["rentalRequestId", "reviewerId"]), // Prevent duplicate reviews
 
   // Customer Orders from branch stores
   customerOrders: defineTable({

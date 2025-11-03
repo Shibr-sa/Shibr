@@ -168,33 +168,36 @@ export default function RequestDetailsPage() {
               <h3 className="text-base font-semibold">
                 {t("orders.brand_details")}
               </h3>
-              <div className="flex items-center gap-3">
-                {rentalRequest.brandRating > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {rentalRequest.brandRating.toFixed(1)}/5
-                    </span>
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star 
-                          key={star} 
-                          className={cn(
-                            "h-4 w-4",
-                            star <= Math.round(rentalRequest.brandRating)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-muted-foreground"
-                          )}
-                        />
-                      ))}
-                    </div>
-                    {rentalRequest.brandTotalRatings > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        ({rentalRequest.brandTotalRatings})
+              {/* Rating display - Admin only */}
+              {user?.isAdmin && (
+                <div className="flex items-center gap-3">
+                  {rentalRequest.brandRating > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {rentalRequest.brandRating.toFixed(1)}/5
                       </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={cn(
+                              "h-4 w-4",
+                              star <= Math.round(rentalRequest.brandRating)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        ))}
+                      </div>
+                      {rentalRequest.brandTotalRatings > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          ({rentalRequest.brandTotalRatings})
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <CardContent className="pt-6">
               <div className="space-y-4">

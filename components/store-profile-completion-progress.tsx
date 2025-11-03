@@ -18,7 +18,12 @@ interface ProfileField {
   section: "general" | "store-data" | "payment"
 }
 
-export function StoreProfileCompletionProgress({ showDetails = true }: { showDetails?: boolean }) {
+interface StoreProfileCompletionProgressProps {
+  showDetails?: boolean
+  onCompletionChange?: (percentage: number) => void
+}
+
+export function StoreProfileCompletionProgress({ showDetails = true, onCompletionChange }: StoreProfileCompletionProgressProps) {
   const { t } = useLanguage()
   const { userData } = useStoreData()
   const [completionPercentage, setCompletionPercentage] = useState(0)
@@ -113,7 +118,12 @@ export function StoreProfileCompletionProgress({ showDetails = true }: { showDet
     setCompletionPercentage(percentage)
     setMissingFields(missing)
     setCompletedFields(completed)
-  }, [userData, t])
+
+    // Notify parent component of completion change
+    if (onCompletionChange) {
+      onCompletionChange(percentage)
+    }
+  }, [userData, t, onCompletionChange])
 
   const getProgressColor = () => {
     if (completionPercentage === 100) return "bg-green-500"
