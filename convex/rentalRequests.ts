@@ -46,6 +46,7 @@ export const createRentalRequest = mutation({
     
     // Get store owner profile from shelf's storeProfileId
     const storeOwnerProfile = shelf.storeProfileId ? await ctx.db.get(shelf.storeProfileId) : null
+    const storeOwner = storeOwnerProfile?.userId ? await ctx.db.get(storeOwnerProfile.userId) : null
 
     // Check for date overlaps with existing active/pending rentals
     const requestedStartDate = new Date(args.startDate).getTime()
@@ -238,12 +239,22 @@ export const createRentalRequest = mutation({
         messageType: "rental_request",
       })
     }
-    
+
+    // Send WhatsApp notification to store owner
+    if (storeOwnerProfile && storeOwner?.phone) {
+      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendNewRequestNotification, {
+        storeOwnerPhone: storeOwner.phone,
+        storeName: storeOwnerProfile.storeName || "المتجر",
+        brandName: brandOwnerProfile.brandName || "العلامة التجارية",
+        requestId: requestId,
+      })
+    }
+
     // No longer need to update conversation with rental request ID
-    
-    return { 
+
+    return {
       requestId,
-      isUpdate: false 
+      isUpdate: false
     }
   },
 })
@@ -332,7 +343,17 @@ export const acceptRentalRequest = mutation({
         messageType: "rental_accepted",
       })
     }
-    
+
+    // Send WhatsApp notification to brand owner
+    if (brandOwner?.phone && brandProfile && storeProfile) {
+      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendRequestAcceptedNotification, {
+        brandOwnerPhone: brandOwner.phone,
+        brandName: brandProfile.brandName || "العلامة التجارية",
+        storeName: storeProfile.storeName || "المتجر",
+        requestId: args.requestId,
+      })
+    }
+
     return { success: true }
   },
 })
@@ -366,6 +387,9 @@ export const rejectRentalRequest = mutation({
     
     // Send system message in conversation if exists
     const storeProfile = request.storeProfileId ? await ctx.db.get(request.storeProfileId) : null
+    const brandProfile = request.brandProfileId ? await ctx.db.get(request.brandProfileId) : null
+    const brandOwner = brandProfile?.userId ? await ctx.db.get(brandProfile.userId) : null
+
     if (request.conversationId && storeProfile) {
       await ctx.runMutation(api.chats.sendSystemMessage, {
         conversationId: request.conversationId,
@@ -374,7 +398,17 @@ export const rejectRentalRequest = mutation({
         messageType: "rental_rejected",
       })
     }
-    
+
+    // Send WhatsApp notification to brand owner
+    if (brandOwner?.phone && brandProfile && storeProfile) {
+      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendRequestRejectedNotification, {
+        brandOwnerPhone: brandOwner.phone,
+        brandName: brandProfile.brandName || "العلامة التجارية",
+        storeName: storeProfile.storeName || "المتجر",
+        requestId: args.requestId,
+      })
+    }
+
     return { success: true }
   },
 })
@@ -1041,7 +1075,30 @@ export const confirmPayment = mutation({
         isRead: false,
       })
     }
-    
+
+    // Send WhatsApp notifications to both parties
+    if (brandOwner?.phone && brandProfile && storeProfile) {
+      // Notify brand owner
+      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendRentalActiveNotification, {
+        recipientPhone: brandOwner.phone,
+        recipientName: brandProfile.brandName || "العلامة التجارية",
+        partnerName: storeProfile.storeName || "المتجر",
+        requestId: args.requestId,
+        dashboardType: "brand",
+      })
+    }
+
+    if (storeOwner?.phone && storeProfile && brandProfile) {
+      // Notify store owner
+      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendRentalActiveNotification, {
+        recipientPhone: storeOwner.phone,
+        recipientName: storeProfile.storeName || "المتجر",
+        partnerName: brandProfile.brandName || "العلامة التجارية",
+        requestId: args.requestId,
+        dashboardType: "store",
+      })
+    }
+
     return { success: true }
   },
 })

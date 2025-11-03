@@ -55,6 +55,7 @@ import type * as taxUtils from "../taxUtils.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as whatsappInvoice from "../whatsappInvoice.js";
+import type * as whatsappNotifications from "../whatsappNotifications.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   utils: typeof utils;
   whatsappInvoice: typeof whatsappInvoice;
+  whatsappNotifications: typeof whatsappNotifications;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
