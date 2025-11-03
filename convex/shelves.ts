@@ -445,14 +445,14 @@ export const getByBranch = query({
     const page = args.page || 1
     const pageSize = args.pageSize || 12
 
-    // Get all active shelves for this branch
-    const allShelves = await ctx.db
+    // Get all shelves for this branch (exclude only suspended shelves)
+    // Brands can book rented shelves for dates after current rental ends
+    const allBranchShelves = await ctx.db
       .query("shelves")
-      .withIndex("by_branch_status", (q) =>
-        q.eq("branchId", args.branchId)
-          .eq("status", "active")
-      )
+      .filter((q) => q.eq(q.field("branchId"), args.branchId))
       .collect()
+
+    const allShelves = allBranchShelves.filter(shelf => shelf.status !== "suspended")
 
     // Calculate pagination
     const totalCount = allShelves.length
