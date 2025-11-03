@@ -17,7 +17,7 @@ export default function EditBranchPage() {
 
   if (!branch) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="w-full px-12">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96" />
       </div>
@@ -25,14 +25,7 @@ export default function EditBranchPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t("branches.edit_title")}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t("branches.edit_description")}
-        </p>
-      </div>
-
+    <div className="w-full px-12">
       <BranchForm mode="edit" branchId={branchId} initialData={branch} />
     </div>
   )

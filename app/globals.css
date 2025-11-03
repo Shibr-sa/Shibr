@@ -79,26 +79,34 @@
   * {
     @apply border-border;
   }
+
+  /* Set font on html based on direction */
+  html[dir="rtl"] {
+    font-family: var(--font-cairo), "Cairo", sans-serif !important;
+  }
+
+  html[dir="ltr"] {
+    font-family: var(--font-inter), "Inter", sans-serif !important;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Inherit font from html */
+    font-family: inherit !important;
+  }
+
+  /* Force all children to inherit */
+  * {
+    font-family: inherit !important;
   }
 }
 
-/* Font families */
+/* Font families utility classes */
 .font-cairo {
   font-family: var(--font-cairo), "Cairo", sans-serif !important;
 }
 
 .font-inter {
-  font-family: var(--font-inter), "Inter", sans-serif !important;
-}
-
-/* Ensure Arabic font applies to all elements when in RTL mode */
-[dir="rtl"] * {
-  font-family: var(--font-cairo), "Cairo", sans-serif !important;
-}
-
-[dir="ltr"] * {
   font-family: var(--font-inter), "Inter", sans-serif !important;
 }
 

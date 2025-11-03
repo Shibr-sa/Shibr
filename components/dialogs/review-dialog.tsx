@@ -32,8 +32,7 @@ export function ReviewDialog({
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  // submitReview function is not implemented yet
-  // const submitReview = useMutation(api.rentalManagement.submitReview)
+  const submitReview = useMutation(api.reviews.submitReview)
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -47,21 +46,19 @@ export function ReviewDialog({
 
     setIsLoading(true)
     try {
-      // TODO: Implement submitReview function
-      // await submitReview({
-      //   rentalRequestId,
-      //   rating,
-      //   revieweeId
-      // })
-      
+      await submitReview({
+        rentalRequestId,
+        rating,
+      })
+
       toast({
         title: t("review.submitted"),
         description: t("review.thank_you"),
       })
-      
+
       onSuccess?.()
       onOpenChange(false)
-      
+
       // Reset form
       setRating(0)
     } catch (error: any) {

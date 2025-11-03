@@ -32,19 +32,21 @@ export default function EditShelfPage({ params }: EditShelfPageProps) {
   // Loading state
   if (!existingShelf) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">{t("common.loading")}</p>
+      <div className="w-full px-12">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">{t("common.loading")}</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <ShelfForm 
-        mode="edit" 
+    <div className="w-full px-12">
+      <ShelfForm
+        mode="edit"
         shelfId={shelfId as Id<"shelves">}
         initialData={existingShelf}
       />

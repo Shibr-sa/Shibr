@@ -52,7 +52,7 @@ export default function StoreDashboardSettingsPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
-  const [isStoreDataLocked, setIsStoreDataLocked] = useState(false)
+  const [completionPercentage, setCompletionPercentage] = useState(0)
   const documentInputRef = useRef<HTMLInputElement>(null)
 
   // Validation states
@@ -127,11 +127,6 @@ export default function StoreDashboardSettingsPage() {
       setArea(profile?.storeLocation?.area || "")
       setAddress(profile?.storeLocation?.address || "")
       setProfileImageUrl(storeUserData.image || null)
-
-      // Check if store data is already submitted (locked)
-      if (profile?.storeName && profile?.businessCategory && profile?.commercialRegisterNumber) {
-        setIsStoreDataLocked(true)
-      }
 
       // Handle initial document URL loading
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || null
@@ -304,7 +299,10 @@ export default function StoreDashboardSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Profile Completion Progress */}
-      <StoreProfileCompletionProgress showDetails={true} />
+      <StoreProfileCompletionProgress
+        showDetails={true}
+        onCompletionChange={(percentage) => setCompletionPercentage(percentage)}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-3xl">
@@ -352,7 +350,7 @@ export default function StoreDashboardSettingsPage() {
                     size="sm"
                     variant="outline"
                     className="gap-2"
-                    disabled={isLoading}
+                    disabled={isLoading || !!storeUserData?.image}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Camera className="h-4 w-4" />
@@ -389,15 +387,20 @@ export default function StoreDashboardSettingsPage() {
           <Card>
             <CardContent className="space-y-6 pt-6">
               {/* Warning Message for Locked Data */}
-              {isStoreDataLocked && (
-                <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
-                  <Info className="h-4 w-4 text-orange-600" />
-                  <AlertTitle className="text-orange-800 dark:text-orange-400">
-                    {t("settings.store_data.locked_title")}
-                  </AlertTitle>
-                  <AlertDescription className="text-orange-700 dark:text-orange-300">
-                    {t("settings.store_data.locked_description")}
+              {completionPercentage === 100 ? (
+                <Alert>
+                  <Lock className="h-4 w-4" />
+                  <AlertTitle>{t("settings.locked_at_100")}</AlertTitle>
+                  <AlertDescription>
+                    {t("settings.brand_data.profile_locked_description")}
                   </AlertDescription>
+                </Alert>
+              ) : completionPercentage > 0 && (
+                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertTitle className="text-blue-800 dark:text-blue-400">
+                    {t("settings.complete_remaining")}
+                  </AlertTitle>
                 </Alert>
               )}
 
@@ -407,32 +410,30 @@ export default function StoreDashboardSettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="storeName" className="block">
                       {t("settings.store_data.store_name")} *
-                      {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                     </Label>
                     <Input
                       id="storeName"
                       value={storeName}
-                      onChange={(e) => !isStoreDataLocked && setStoreName(e.target.value)}
+                      onChange={(e) => setStoreName(e.target.value)}
                       placeholder={t("settings.store_data.store_name_placeholder")}
-                      disabled={isStoreDataLocked}
-                      className={isStoreDataLocked ? "bg-muted" : ""}
+                      disabled={!!storeUserData?.profile?.storeName}
+                      className={!!storeUserData?.profile?.storeName ? "bg-muted" : ""}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="businessCategory" className="block">
                       {t("settings.store_data.store_type")} *
-                      {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                     </Label>
                     <Combobox
                       value={businessCategory}
-                      onChange={(value) => !isStoreDataLocked && setBusinessCategory(value)}
+                      onChange={setBusinessCategory}
                       options={language === 'ar' ? [...STORE_BUSINESS_CATEGORIES_AR] : [...STORE_BUSINESS_CATEGORIES_EN]}
                       placeholder={t("settings.store_data.store_type_placeholder")}
                       searchPlaceholder={language === 'ar' ? 'ابحث عن فئة الأعمال...' : 'Search business categories...'}
                       emptyMessage={language === 'ar' ? 'لا توجد فئات مطابقة' : 'No matching categories found'}
-                      disabled={isStoreDataLocked}
-                      className={isStoreDataLocked ? "bg-muted" : ""}
+                      disabled={!!storeUserData?.profile?.businessCategory}
+                      className={!!storeUserData?.profile?.businessCategory ? "bg-muted" : ""}
                     />
                   </div>
                 </div>
@@ -441,22 +442,19 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="website" className="block">
                     {t("settings.store_data.website")}
-                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
                   <Input
                     id="website"
                     type="url"
                     value={website}
                     onChange={(e) => {
-                      if (!isStoreDataLocked) {
-                        setWebsite(e.target.value)
-                        validateWebsite(e.target.value)
-                      }
+                      setWebsite(e.target.value)
+                      validateWebsite(e.target.value)
                     }}
                     placeholder={t("settings.store_data.website_placeholder")}
-                    disabled={isStoreDataLocked}
+                    disabled={!!storeUserData?.profile?.website}
                     className={cn(
-                      isStoreDataLocked ? "bg-muted" : "",
+                      !!storeUserData?.profile?.website ? "bg-muted" : "",
                       websiteError ? "border-red-500 focus:border-red-500" : ""
                     )}
                   />
@@ -469,22 +467,19 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="commercialRegisterNumber" className="block">
                     {t("settings.store_data.commercial_reg")} *
-                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
                   <Input
                     id="commercialRegisterNumber"
                     value={commercialRegisterNumber}
                     onChange={(e) => {
-                      if (!isStoreDataLocked) {
-                        const value = e.target.value.replace(/[^0-9]/g, '')
-                        setCommercialRegisterNumber(value)
-                        validateSaudiCRNumber(value)
-                      }
+                      const value = e.target.value.replace(/[^0-9]/g, '')
+                      setCommercialRegisterNumber(value)
+                      validateSaudiCRNumber(value)
                     }}
                     placeholder={t("settings.store_data.commercial_reg_placeholder")}
-                    disabled={isStoreDataLocked}
+                    disabled={!!storeUserData?.profile?.commercialRegisterNumber}
                     className={cn(
-                      isStoreDataLocked ? "bg-muted" : "",
+                      !!storeUserData?.profile?.commercialRegisterNumber ? "bg-muted" : "",
                       crNumberError ? "border-red-500 focus:border-red-500" : ""
                     )}
                     pattern="[0-9]*"
@@ -500,7 +495,6 @@ export default function StoreDashboardSettingsPage() {
                 <div className="space-y-2">
                   <Label className="block">
                     {t("settings.store_data.commercial_register_document")} *
-                    {isStoreDataLocked && <Lock className="inline-block h-3 w-3 ms-1 text-muted-foreground" />}
                   </Label>
                   <div className="border-2 border-dashed border-muted rounded-lg p-6">
                     {documentUrl ? (
@@ -531,7 +525,7 @@ export default function StoreDashboardSettingsPage() {
                             <Eye className="h-4 w-4" />
                             {t("settings.store_data.preview_document")}
                           </Button>
-                          {!isStoreDataLocked && (
+                          {completionPercentage < 100 && (
                             <Button
                               type="button"
                               variant="outline"
@@ -549,7 +543,7 @@ export default function StoreDashboardSettingsPage() {
                           )}
                         </div>
                       </div>
-                    ) : !isStoreDataLocked ? (
+                    ) : completionPercentage < 100 ? (
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <input
                           ref={documentInputRef}
@@ -618,8 +612,8 @@ export default function StoreDashboardSettingsPage() {
                 </div>
               </div>
 
-              {/* Save Button - Hide when data is locked */}
-              {!isStoreDataLocked && (
+              {/* Save Button - Hide when profile is 100% complete */}
+              {completionPercentage < 100 && (
                 <div className="flex justify-end">
                   <Button
                     className="gap-2"

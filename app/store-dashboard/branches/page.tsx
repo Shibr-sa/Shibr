@@ -110,7 +110,8 @@ export default function BranchesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full px-12">
+      <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {branchStats ? (
@@ -267,6 +268,7 @@ export default function BranchesPage() {
             )}
           </TableBody>
         </Table>
+      </div>
       </div>
     </div>
   )

@@ -396,7 +396,7 @@ export default function BrandDashboardPage() {
                   ) : activeRentals.length > 0 ? (
                     <>
                       {activeRentals.map((rental, index) => (
-                        <TableRow key={rental._id} className="h-[52px]">
+                        <TableRow key={`${rental._id}-${index}`} className="h-[52px]">
                           <TableCell className="font-medium">
                             {rental.otherUserName || "-"}
                           </TableCell>
@@ -481,9 +481,12 @@ export default function BrandDashboardPage() {
                   <>
                     {/* Show only first 3 sales operations */}
                     {salesOperations.slice(0, 3).map((sale, index) => (
-                      <TableRow key={sale.invoiceNumber} className="h-[52px]">
+                      <TableRow key={`${sale.invoiceNumber}-${index}`} className="h-[52px]">
                         <TableCell className="font-medium">
-                          {sale.invoiceNumber}
+                          {sale.invoiceNumber.startsWith('PENDING')
+                            ? t("common.processing")
+                            : sale.invoiceNumber
+                          }
                         </TableCell>
                         <TableCell>
                           {sale.productName}

@@ -7,14 +7,7 @@ export default function NewBranchPage() {
   const { t } = useLanguage()
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t("branches.create_title")}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t("branches.create_description")}
-        </p>
-      </div>
-
+    <div className="w-full px-12">
       <BranchForm mode="create" />
     </div>
   )

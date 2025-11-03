@@ -38,6 +38,7 @@ import type * as products from "../products.js";
 import type * as profileHelpers from "../profileHelpers.js";
 import type * as rentalManagement from "../rentalManagement.js";
 import type * as rentalRequests from "../rentalRequests.js";
+import type * as reviews from "../reviews.js";
 import type * as security_rateLimiter from "../security/rateLimiter.js";
 import type * as security_webhookValidator from "../security/webhookValidator.js";
 import type * as seed from "../seed.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   profileHelpers: typeof profileHelpers;
   rentalManagement: typeof rentalManagement;
   rentalRequests: typeof rentalRequests;
+  reviews: typeof reviews;
   "security/rateLimiter": typeof security_rateLimiter;
   "security/webhookValidator": typeof security_webhookValidator;
   seed: typeof seed;

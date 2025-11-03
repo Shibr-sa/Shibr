@@ -173,7 +173,7 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                           src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
                           alt={branch.branchName}
                           fill
-                          className="object-cover cursor-pointer"
+                          className="object-cover cursor-pointer z-0"
                           onClick={() => {
                             const images = allImages.map(img => ({
                               url: img.url || "/placeholder.svg",
@@ -192,6 +192,7 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                             <button
                               type="button"
                               onClick={(e) => {
+                                e.preventDefault()
                                 e.stopPropagation()
                                 navigateImage(direction === "rtl" ? 1 : -1)
                               }}
@@ -203,6 +204,7 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                             <button
                               type="button"
                               onClick={(e) => {
+                                e.preventDefault()
                                 e.stopPropagation()
                                 navigateImage(direction === "rtl" ? -1 : 1)
                               }}

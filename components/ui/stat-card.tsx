@@ -32,14 +32,6 @@ export function StatCard({
             {description && (
               <p className="text-xs text-muted-foreground mt-1">{description}</p>
             )}
-            {trend && (
-              <p className={cn(
-                "text-xs mt-1",
-                trend.value > 0 ? "text-green-600" : trend.value < 0 ? "text-red-600" : "text-muted-foreground"
-              )}>
-                {trend.value >= 0 ? "+" : ""}{trend.value}% {trend.label}
-              </p>
-            )}
           </div>
           {icon && (
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">

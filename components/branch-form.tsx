@@ -289,7 +289,8 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
   const isSubmitDisabled = submitting || uploadingImages
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-8">
       {/* Branch Name */}
       <div className="space-y-2">
         <Label htmlFor="branchName">{t("branches.branch_name_label")}</Label>
@@ -329,22 +330,21 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
       <div className="space-y-4">
         <Label>{t("branches.location_label")}</Label>
 
-        <div className="h-[300px] md:h-[400px] rounded-lg overflow-hidden">
-          <MapPicker
-            center={{
-              lat: selectedLocation.latitude,
-              lng: selectedLocation.longitude
-            }}
-            onLocationSelect={(location) => {
-              setSelectedLocation(prev => ({
-                ...prev,
-                latitude: location.lat,
-                longitude: location.lng,
-                address: location.address
-              }))
-            }}
-          />
-        </div>
+        <MapPicker
+          center={{
+            lat: selectedLocation.latitude,
+            lng: selectedLocation.longitude
+          }}
+          height="600px"
+          onLocationSelect={(location) => {
+            setSelectedLocation(prev => ({
+              ...prev,
+              latitude: location.lat,
+              longitude: location.lng,
+              address: location.address
+            }))
+          }}
+        />
 
         <div className="flex gap-4 text-sm text-muted-foreground">
           <div>
@@ -453,5 +453,6 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
         </Button>
       </div>
     </form>
+    </div>
   )
 }

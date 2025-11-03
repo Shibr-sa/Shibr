@@ -67,7 +67,7 @@ export default function BrandDashboardSettingsPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [pendingDocumentFile, setPendingDocumentFile] = useState<File | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
-  const [isBrandDataLocked, setIsBrandDataLocked] = useState(false)
+  const [completionPercentage, setCompletionPercentage] = useState(0)
   const documentInputRef = useRef<HTMLInputElement>(null)
 
   // Validation states
@@ -121,11 +121,6 @@ export default function BrandDashboardSettingsPage() {
       setFreelanceLicenseNumber(profile?.freelanceLicenseNumber || "")
       setIsFreelance(profile?.businessType === "freelancer" || false)
       setProfileImageUrl(brandUserData.image || null)
-
-      // Check if brand data should be locked (when critical fields are filled)
-      if (profile?.brandName && profile?.businessCategory && (profile?.commercialRegisterNumber || profile?.freelanceLicenseNumber)) {
-        setIsBrandDataLocked(true)
-      }
 
       // Handle initial document URL loading
       const backendDocumentUrl = profile?.commercialRegisterDocumentUrl || profile?.freelanceLicenseDocumentUrl || null
@@ -320,7 +315,10 @@ export default function BrandDashboardSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Profile Completion Progress */}
-      <BrandProfileCompletionProgress showDetails={true} />
+      <BrandProfileCompletionProgress
+        showDetails={true}
+        onCompletionChange={(percentage) => setCompletionPercentage(percentage)}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-3xl">
@@ -368,7 +366,7 @@ export default function BrandDashboardSettingsPage() {
                     size="sm"
                     variant="outline"
                     className="gap-2"
-                    disabled={isLoading}
+                    disabled={isLoading || !!brandUserData?.image}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Camera className="h-4 w-4" />
@@ -379,93 +377,21 @@ export default function BrandDashboardSettingsPage() {
 
               <Separator />
 
-              {/* Contact Information */}
+              {/* Basic Information - Read Only */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-start">{t("settings.general.contact_info")}</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerName" className="text-start block">{t("settings.general.owner_name")}</Label>
+                <h3 className="text-lg font-semibold">{t("settings.general.basic_info")}</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName" className="block">{t("settings.general.owner_name")}</Label>
+                  <div className="flex items-center gap-2">
                     <Input
                       id="ownerName"
                       value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
-                      className="text-start"
+                      disabled
+                      className="bg-muted"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-start block">{t("settings.general.phone_number")}</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+966 5X XXX XXXX"
-                      className="text-start"
-
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-start block">{t("settings.general.email")}</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="text-start"
-
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-start block">{t("settings.general.password")}</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="text-start"
-                    />
+                    <span className="text-xs text-muted-foreground">{t("settings.general.cannot_change")}</span>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  disabled={isLoading || !user?.id}
-                  onClick={async () => {
-                    if (!user?.id) return
-
-                    setIsLoading(true)
-                    try {
-                      const updateData: any = {}
-                      if (ownerName) updateData.name = ownerName
-                      if (phoneNumber) updateData.phone = phoneNumber
-                      if (email) updateData.email = email
-                      if (password) updateData.password = password
-
-                      await updateGeneralSettings({
-                        ...updateData
-                      })
-
-                      toast({
-                        title: t("settings.general.success"),
-                        description: t("settings.general.success_message"),
-                      })
-                    } catch (error) {
-                      toast({
-                        title: t("settings.general.error"),
-                        description: t("settings.general.error_message"),
-                        variant: "destructive",
-                      })
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
-                >
-                  <Save className="h-4 w-4" />
-                  {isLoading ? t("settings.general.saving") : t("settings.general.save_changes")}
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -473,6 +399,24 @@ export default function BrandDashboardSettingsPage() {
 
         {/* Brand Data Tab */}
         <TabsContent value="brand-data" className="space-y-6">
+          {/* Lock Warning Alert */}
+          {completionPercentage === 100 ? (
+            <Alert>
+              <Lock className="h-4 w-4" />
+              <AlertTitle>{t("settings.locked_at_100")}</AlertTitle>
+              <AlertDescription>
+                {t("settings.brand_data.profile_locked_description")}
+              </AlertDescription>
+            </Alert>
+          ) : completionPercentage > 0 && (
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-800 dark:text-blue-400">
+                {t("settings.complete_remaining")}
+              </AlertTitle>
+            </Alert>
+          )}
+
           <Card>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-4">
@@ -489,6 +433,7 @@ export default function BrandDashboardSettingsPage() {
                       placeholder={t("settings.brand_data.brand_name_placeholder")}
                       className="text-start"
                       required
+                      disabled={!!brandUserData?.profile?.brandName}
                     />
                   </div>
                   <div className="space-y-2">
@@ -502,6 +447,7 @@ export default function BrandDashboardSettingsPage() {
                       placeholder={t("settings.brand_data.business_category_placeholder")}
                       searchPlaceholder={language === 'ar' ? 'ابحث عن فئة الأعمال...' : 'Search business categories...'}
                       emptyMessage={language === 'ar' ? 'لا توجد فئات مطابقة' : 'No matching categories found'}
+                      disabled={!!brandUserData?.profile?.businessCategory}
                     />
                   </div>
                 </div>
@@ -524,6 +470,7 @@ export default function BrandDashboardSettingsPage() {
                       "text-start",
                       websiteError ? "border-red-500 focus:border-red-500" : ""
                     )}
+                    disabled={!!brandUserData?.profile?.website}
                   />
                   {websiteError && (
                     <p className="text-xs text-red-500">{websiteError}</p>
@@ -556,6 +503,7 @@ export default function BrandDashboardSettingsPage() {
                     pattern={isFreelance ? undefined : "[0-9]*"}
                     inputMode={isFreelance ? "text" : "numeric"}
                     required
+                    disabled={!!(brandUserData?.profile?.commercialRegisterNumber || brandUserData?.profile?.freelanceLicenseNumber)}
                   />
                   {!isFreelance && crNumberError && (
                     <p className="text-xs text-red-500">{crNumberError}</p>
@@ -570,6 +518,7 @@ export default function BrandDashboardSettingsPage() {
                     onCheckedChange={(checked) => {
                       setIsFreelance(checked as boolean)
                     }}
+                    disabled={!!brandUserData?.profile?.businessType}
                   />
                   <Label
                     htmlFor="noCommercialReg"
@@ -613,20 +562,22 @@ export default function BrandDashboardSettingsPage() {
                             <Eye className="h-4 w-4" />
                             {t("settings.brand_data.preview_document")}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setDocumentUrl(null)
-                              setPendingDocumentFile(null)
-                              if (documentInputRef.current) {
-                                documentInputRef.current.value = ''
-                              }
-                            }}
-                          >
-                            {t("settings.brand_data.remove_document")}
-                          </Button>
+                          {completionPercentage < 100 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setDocumentUrl(null)
+                                setPendingDocumentFile(null)
+                                if (documentInputRef.current) {
+                                  documentInputRef.current.value = ''
+                                }
+                              }}
+                            >
+                              {t("settings.brand_data.remove_document")}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -681,7 +632,7 @@ export default function BrandDashboardSettingsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => documentInputRef.current?.click()}
-                          disabled={isLoading}
+                          disabled={isLoading || !!(brandUserData?.profile?.commercialRegisterDocument || brandUserData?.profile?.freelanceLicenseDocument)}
                         >
                           {isLoading ? t("settings.general.uploading") : t("settings.brand_data.choose_file")}
                         </Button>
@@ -692,11 +643,12 @@ export default function BrandDashboardSettingsPage() {
               </div>
 
               {/* Save Button */}
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  disabled={isLoading || !user?.id}
-                  onClick={async () => {
+              {completionPercentage < 100 && (
+                <div className="flex justify-end">
+                  <Button
+                    className="gap-2"
+                    disabled={isLoading || !user?.id}
+                    onClick={async () => {
                     if (!user?.id) return
 
                     // Validate required fields
@@ -819,6 +771,7 @@ export default function BrandDashboardSettingsPage() {
                   {isLoading ? t("settings.brand_data.saving") : t("settings.brand_data.save_changes")}
                 </Button>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
