@@ -13,16 +13,18 @@ const cairo = Cairo({
   subsets: ["arabic", "latin"],
   weight: ["300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-cairo",
-  display: "optional", // Changed from swap to optional to prevent flicker
+  display: "swap", // Use swap for better font loading
   preload: true,
+  fallback: ['Arial', 'Tahoma', 'sans-serif'],
 })
 
 const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-inter",
-  display: "optional", // Changed from swap to optional to prevent flicker
+  display: "swap", // Use swap for better font loading
   preload: true,
+  fallback: ['Arial', 'sans-serif'],
 })
 
 export const metadata: Metadata = {

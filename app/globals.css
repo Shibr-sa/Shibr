@@ -86,11 +86,20 @@
 
 /* Font families */
 .font-cairo {
-  font-family: var(--font-cairo), sans-serif;
+  font-family: var(--font-cairo), "Cairo", sans-serif !important;
 }
 
 .font-inter {
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-inter), "Inter", sans-serif !important;
+}
+
+/* Ensure Arabic font applies to all elements when in RTL mode */
+[dir="rtl"] * {
+  font-family: var(--font-cairo), "Cairo", sans-serif !important;
+}
+
+[dir="ltr"] * {
+  font-family: var(--font-inter), "Inter", sans-serif !important;
 }
 
 /* Arabic numerals styling */
