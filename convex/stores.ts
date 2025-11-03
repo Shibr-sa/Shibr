@@ -3,8 +3,303 @@ import { query } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 import { getImageUrlsFromArray } from "./helpers"
 
+// Get all stores with aggregated data for marketplace
+export const getAllStores = query({
+  args: {
+    city: v.optional(v.string()),
+    searchQuery: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get all active store profiles
+    let storeProfiles = await ctx.db
+      .query("storeProfiles")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect()
 
-// Get all available stores for marketplace
+    // Get all branches and shelves for aggregation
+    const branches = await ctx.db.query("branches").collect()
+    const shelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_status")
+      .filter((q) => q.or(
+        q.eq(q.field("status"), "active"),
+        q.eq(q.field("status"), "rented")
+      ))
+      .collect()
+
+    // Create maps for efficient lookups
+    const branchesByStore = new Map<string, typeof branches[0][]>()
+    branches.forEach(branch => {
+      if (branch.storeProfileId) {
+        const existing = branchesByStore.get(branch.storeProfileId) || []
+        branchesByStore.set(branch.storeProfileId, [...existing, branch])
+      }
+    })
+
+    const shelvesByBranch = new Map<string, typeof shelves[0][]>()
+    shelves.forEach(shelf => {
+      if (shelf.branchId) {
+        const existing = shelvesByBranch.get(shelf.branchId) || []
+        shelvesByBranch.set(shelf.branchId, [...existing, shelf])
+      }
+    })
+
+    // Apply search filter
+    if (args.searchQuery) {
+      const query = args.searchQuery.toLowerCase()
+      storeProfiles = storeProfiles.filter(store =>
+        store.storeName.toLowerCase().includes(query) ||
+        store.businessCategory?.toLowerCase().includes(query)
+      )
+    }
+
+    // Process stores with aggregated data
+    const storesWithData = await Promise.all(
+      storeProfiles.map(async (store) => {
+        const storeBranches = branchesByStore.get(store._id) || []
+
+        // Get unique cities from branches
+        const cities = [...new Set(storeBranches.map(b => b.city).filter(Boolean))]
+
+        // Calculate total available shelves and price range
+        let totalAvailableShelves = 0
+        let minPrice = Infinity
+        let maxPrice = 0
+        const allProductTypes = new Set<string>()
+
+        storeBranches.forEach(branch => {
+          const branchShelves = shelvesByBranch.get(branch._id) || []
+          totalAvailableShelves += branchShelves.length
+
+          branchShelves.forEach(shelf => {
+            if (shelf.monthlyPrice < minPrice) minPrice = shelf.monthlyPrice
+            if (shelf.monthlyPrice > maxPrice) maxPrice = shelf.monthlyPrice
+            shelf.productTypes?.forEach(type => allProductTypes.add(type))
+          })
+        })
+
+        // Get owner information
+        const owner = await ctx.db.get(store.userId)
+
+        return {
+          _id: store._id,
+          storeName: store.storeName,
+          businessCategory: store.businessCategory,
+          logo: owner?.image,
+          branchCount: storeBranches.length,
+          cities,
+          totalAvailableShelves,
+          priceRange: {
+            min: minPrice === Infinity ? 0 : minPrice,
+            max: maxPrice
+          },
+          productTypes: Array.from(allProductTypes),
+          createdAt: store._creationTime
+        }
+      })
+    )
+
+    // Apply city filter after aggregation
+    let filteredStores = storesWithData
+    if (args.city && args.city !== "all") {
+      filteredStores = storesWithData.filter(store =>
+        store.cities.includes(args.city!)
+      )
+    }
+
+    // Filter out stores with no branches
+    filteredStores = filteredStores.filter(store => store.branchCount > 0)
+
+    // Sort by creation date (newest first)
+    filteredStores.sort((a, b) => b.createdAt - a.createdAt)
+
+    // Pagination
+    const totalCount = filteredStores.length
+    const page = args.page || 1
+    const pageSize = args.pageSize || 12
+    const startIndex = (page - 1) * pageSize
+    const paginatedStores = filteredStores.slice(startIndex, startIndex + pageSize)
+
+    return {
+      stores: paginatedStores,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        hasMore: startIndex + pageSize < totalCount,
+      },
+    }
+  },
+})
+
+// Get a single store with its branches
+export const getStoreWithBranches = query({
+  args: {
+    storeProfileId: v.id("storeProfiles"),
+    city: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get store profile
+    const storeProfile = await ctx.db.get(args.storeProfileId)
+    if (!storeProfile || !storeProfile.isActive) {
+      return null
+    }
+
+    // Get owner information
+    const owner = await ctx.db.get(storeProfile.userId)
+
+    // Get all branches for this store
+    let branches = await ctx.db
+      .query("branches")
+      .withIndex("by_store_profile", (q) => q.eq("storeProfileId", args.storeProfileId))
+      .collect()
+
+    // Apply city filter if provided
+    if (args.city && args.city !== "all") {
+      branches = branches.filter(branch => branch.city === args.city)
+    }
+
+    // Get shelves for each branch and aggregate data
+    const branchesWithData = await Promise.all(
+      branches.map(async (branch) => {
+        const shelves = await ctx.db
+          .query("shelves")
+          .withIndex("by_branch_status")
+          .filter((q) => q.and(
+            q.eq(q.field("branchId"), branch._id),
+            q.or(
+              q.eq(q.field("status"), "active"),
+              q.eq(q.field("status"), "rented")
+            )
+          ))
+          .collect()
+
+        // Calculate price range and get product types for this branch
+        let minPrice = Infinity
+        let maxPrice = 0
+        const productTypes = new Set<string>()
+
+        shelves.forEach(shelf => {
+          if (shelf.monthlyPrice < minPrice) minPrice = shelf.monthlyPrice
+          if (shelf.monthlyPrice > maxPrice) maxPrice = shelf.monthlyPrice
+          shelf.productTypes?.forEach(type => productTypes.add(type))
+        })
+
+        // Get branch images
+        const branchImages = await getImageUrlsFromArray(ctx, branch.images)
+
+        return {
+          _id: branch._id,
+          branchName: branch.branchName,
+          city: branch.city,
+          location: branch.location,
+          availableShelvesCount: shelves.length,
+          priceRange: {
+            min: minPrice === Infinity ? 0 : minPrice,
+            max: maxPrice
+          },
+          productTypes: Array.from(productTypes),
+          images: [
+            branchImages.exteriorImageUrl && { url: branchImages.exteriorImageUrl, type: 'exterior' },
+            branchImages.interiorImageUrl && { url: branchImages.interiorImageUrl, type: 'interior' }
+          ].filter(Boolean),
+          createdAt: branch._creationTime,
+          ownerName: storeProfile.storeName,
+          ownerImage: owner?.image
+        }
+      })
+    )
+
+    // Sort branches by creation date
+    branchesWithData.sort((a, b) => b.createdAt - a.createdAt)
+
+    // Pagination for branches
+    const totalCount = branchesWithData.length
+    const page = args.page || 1
+    const pageSize = args.pageSize || 12
+    const startIndex = (page - 1) * pageSize
+    const paginatedBranches = branchesWithData.slice(startIndex, startIndex + pageSize)
+
+    return {
+      store: {
+        _id: storeProfile._id,
+        storeName: storeProfile.storeName,
+        businessCategory: storeProfile.businessCategory,
+        logo: owner?.image,
+        ownerEmail: owner?.email,
+        totalBranches: branchesWithData.length
+      },
+      branches: paginatedBranches,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        hasMore: startIndex + pageSize < totalCount,
+      },
+    }
+  },
+})
+
+// Get available cities for stores (or specific store)
+export const getAvailableCitiesByStore = query({
+  args: {
+    storeProfileId: v.optional(v.id("storeProfiles"))
+  },
+  handler: async (ctx, args) => {
+    if (args.storeProfileId) {
+      // Get cities for a specific store
+      const branches = await ctx.db
+        .query("branches")
+        .withIndex("by_store_profile", (q) => q.eq("storeProfileId", args.storeProfileId!))
+        .collect()
+
+      const cities = [...new Set(branches.map(b => b.city).filter(Boolean))]
+      return cities.sort()
+    } else {
+      // Get all cities where stores have branches with available shelves
+      const branches = await ctx.db.query("branches").collect()
+      const branchIds = branches.map(b => b._id)
+
+      // Check which branches have available shelves
+      const branchesWithShelves = new Set<string>()
+      for (const branchId of branchIds) {
+        const shelves = await ctx.db
+          .query("shelves")
+          .withIndex("by_branch_status")
+          .filter((q) => q.and(
+            q.eq(q.field("branchId"), branchId),
+            q.or(
+              q.eq(q.field("status"), "active"),
+              q.eq(q.field("status"), "rented")
+            )
+          ))
+          .first()
+
+        if (shelves) {
+          branchesWithShelves.add(branchId)
+        }
+      }
+
+      // Get cities from branches that have shelves
+      const cities = [...new Set(
+        branches
+          .filter(b => branchesWithShelves.has(b._id))
+          .map(b => b.city)
+          .filter(Boolean)
+      )]
+      return cities.sort()
+    }
+  },
+})
+
+
+// Get all available stores for marketplace (DEPRECATED - now gets shelves)
 export const getMarketplaceStores = query({
   args: {
     city: v.optional(v.string()),

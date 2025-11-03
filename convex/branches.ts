@@ -154,6 +154,36 @@ export const getBranchById = query({
   },
 })
 
+// Get branch by ID (public - no auth required)
+export const getById = query({
+  args: { branchId: v.id("branches") },
+  handler: async (ctx, args) => {
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch) {
+      return null
+    }
+
+    // Get image URLs
+    const imagesWithUrls = branch.images
+      ? await Promise.all(
+          branch.images.map(async (img) => ({
+            ...img,
+            url: await ctx.storage.getUrl(img.storageId),
+          }))
+        )
+      : []
+
+    return {
+      _id: branch._id,
+      branchName: branch.branchName,
+      city: branch.city,
+      location: branch.location,
+      storeProfileId: branch.storeProfileId,
+      images: imagesWithUrls,
+    }
+  },
+})
+
 // Get branch statistics
 export const getBranchStats = query({
   args: {},

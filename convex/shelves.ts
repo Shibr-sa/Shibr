@@ -434,6 +434,70 @@ export const getShelfById = query({
   },
 })
 
+// Get shelves by branch ID (for public marketplace)
+export const getByBranch = query({
+  args: {
+    branchId: v.id("branches"),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const page = args.page || 1
+    const pageSize = args.pageSize || 12
+
+    // Get all active shelves for this branch
+    const allShelves = await ctx.db
+      .query("shelves")
+      .withIndex("by_branch_status", (q) =>
+        q.eq("branchId", args.branchId)
+          .eq("status", "active")
+      )
+      .collect()
+
+    // Calculate pagination
+    const totalCount = allShelves.length
+    const totalPages = Math.ceil(totalCount / pageSize)
+    const startIndex = (page - 1) * pageSize
+    const endIndex = startIndex + pageSize
+
+    // Get paginated shelves with image URLs
+    const shelves = await Promise.all(
+      allShelves.slice(startIndex, endIndex).map(async (shelf) => {
+        // Get image URLs
+        const imageUrls = shelf.images ? await Promise.all(
+          shelf.images.map(async (img) => await ctx.storage.getUrl(img.storageId))
+        ) : []
+
+        return {
+          _id: shelf._id,
+          name: shelf.shelfName,
+          description: shelf.description,
+          pricePerMonth: shelf.monthlyPrice,
+          storeCommission: shelf.storeCommission,
+          status: shelf.status,
+          dimensions: {
+            width: shelf.shelfSize.width,
+            height: shelf.shelfSize.height,
+            depth: shelf.shelfSize.depth,
+          },
+          productTypes: shelf.productTypes || [],
+          images: imageUrls,
+        }
+      })
+    )
+
+    return {
+      shelves,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        pageSize,
+      },
+    }
+  },
+})
+
 // Get shelf statistics for owner dashboard
 export const getShelfStats = query({
   args: { ownerId: v.id("users") },
