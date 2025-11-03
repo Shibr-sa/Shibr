@@ -169,8 +169,11 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                   <div className="relative h-64 bg-muted group">
                     {allImages.length > 0 ? (
                       <>
-                        <div
-                          className="relative h-full cursor-pointer"
+                        <Image
+                          src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
+                          alt={branch.branchName}
+                          fill
+                          className="object-cover cursor-pointer"
                           onClick={() => {
                             const images = allImages.map(img => ({
                               url: img.url || "/placeholder.svg",
@@ -178,14 +181,7 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                             }))
                             openImageModal(images, currentImageIndex)
                           }}
-                        >
-                          <Image
-                            src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
-                            alt={branch.branchName}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
+                        />
 
                         {hasMultipleImages && (
                           <>
@@ -194,23 +190,23 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                             </div>
 
                             <button
+                              type="button"
                               onClick={(e) => {
-                                e.preventDefault()
                                 e.stopPropagation()
                                 navigateImage(direction === "rtl" ? 1 : -1)
                               }}
-                              className="absolute start-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                              className="absolute start-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center opacity-75 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 hover:bg-white shadow-lg"
                             >
                               {direction === "rtl" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                             </button>
 
                             <button
+                              type="button"
                               onClick={(e) => {
-                                e.preventDefault()
                                 e.stopPropagation()
                                 navigateImage(direction === "rtl" ? -1 : 1)
                               }}
-                              className="absolute end-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                              className="absolute end-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center opacity-75 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 hover:bg-white shadow-lg"
                             >
                               {direction === "rtl" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </button>
