@@ -116,6 +116,9 @@ export function ImageModal({ images, initialIndex = 0, isOpen, onClose }: ImageM
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-full h-full p-0 bg-black/95 border-0">
+        <VisuallyHidden>
+          <DialogTitle>Image Viewer</DialogTitle>
+        </VisuallyHidden>
         <div className="relative w-full h-full flex items-center justify-center">
           {/* Close button */}
           <Button
