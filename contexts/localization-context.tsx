@@ -2361,6 +2361,7 @@ const translations = {
     "marketplace.branch_details": "تفاصيل الفرع",
     "marketplace.all_shelves": "جميع الأرفف",
     "marketplace.product_types": "أنواع المنتجات",
+    "marketplace.request_rental": "طلب الإيجار",
 
     // Marketplace Details Page
     "marketplace.details.send_request_title": "أرسل طلبك لاستئجار هذا الرف",
@@ -4982,6 +4983,7 @@ const translations = {
     "marketplace.branch_details": "Branch Details",
     "marketplace.all_shelves": "All Shelves",
     "marketplace.product_types": "Product Types",
+    "marketplace.request_rental": "Request Rental",
 
     // Marketplace Details Page
     "marketplace.details.send_request_title": "Send your rental request",

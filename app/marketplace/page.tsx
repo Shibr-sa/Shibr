@@ -174,7 +174,7 @@ export default function MarketplacePage() {
       {/* Main Content */}
       <div className="container py-8">
         <MarketplaceContent
-          linkPrefix="/signin?redirect=/marketplace"
+          linkPrefix="/marketplace"
         />
       </div>
 

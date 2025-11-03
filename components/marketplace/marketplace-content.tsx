@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, Store, ChevronRight, Clock, Map as MapIcon, X, Navigation } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, ChevronRight, Clock, Map as MapIcon, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -58,7 +58,6 @@ interface StoreData {
 
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
   const { t, direction } = useLanguage()
-  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false)
 
   // Search and filter states
   const [searchInput, setSearchInput] = useState("")
@@ -81,6 +80,11 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
     searchQuery: debouncedSearchQuery || undefined,
     page: currentPage,
     pageSize: ITEMS_PER_PAGE,
+  })
+
+  // Fetch branches for map display
+  const branchesForMap = useQuery(api.branches.getBranchesForMarketplace, {
+    city: selectedCity !== "all" ? selectedCity : undefined,
   })
 
   // Loading states
@@ -111,30 +115,9 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
     }
   }, [])
 
-  // Request location permission on mount
-  useEffect(() => {
-    if (!locationPermissionAsked && navigator.geolocation) {
-      setLocationPermissionAsked(true)
-      // Just trigger the permission request, the map component will handle the result
-      navigator.geolocation.getCurrentPosition(
-        () => {}, // Success callback - handled in map
-        () => {}, // Error callback - handled in map
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      )
-    }
-  }, [locationPermissionAsked])
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Location Permission Alert */}
-      {!locationPermissionAsked && (
-        <Alert className="bg-blue-50 border-blue-200">
-          <MapPin className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            {t("marketplace.location_prompt") || "Allow location access to see stores near you and get directions"}
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Search Filters */}
       <Card>
@@ -321,12 +304,12 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                 ) : (
                   <StoreMap
                     key="marketplace-fullscreen-map"
-                    stores={stores}
+                    stores={branchesForMap || []}
                     selectedStoreId={selectedStoreInMap?._id}
                     onStoreSelect={(data) => {
                       if (typeof data === 'string') {
                         // Only ID is provided in non-fullscreen mode
-                        const branch = stores.find(b => b._id === data)
+                        const branch = branchesForMap?.find(b => b._id === data)
                         if (branch) setSelectedStoreInMap(branch as any)
                       } else {
                         // Full branch object in fullscreen mode
@@ -337,64 +320,44 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                   />
                 )}
               </Suspense>
-
-              {/* Current Location Button - Floating */}
-              <Button
-                variant="default"
-                size="icon"
-                className="absolute bottom-20 end-4 rounded-full shadow-lg z-20 h-10 w-10"
-                onClick={() => {
-                  if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                      (position) => {
-                        // Location obtained - map will handle it
-                      },
-                      () => {
-                        // Error handling
-                      }
-                    )
-                  }
-                }}
-                title={t("marketplace.use_current_location") || "Use current location"}
-              >
-                <Navigation className="h-4 w-4" />
-              </Button>
             </div>
 
             {/* Branch Details Panel - Bottom */}
             {selectedStoreInMap && (
               <div className="border-t bg-white p-4 shadow-lg">
                 <div className="max-w-full">
-                  <h3 className="text-lg font-semibold mb-2">{selectedStoreInMap.storeName}</h3>
+                  <h3 className="text-lg font-semibold mb-2">{selectedStoreInMap.branchName}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">{selectedStoreInMap.storeName}</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.cities_covered")}</p>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.location")}</p>
                       <p className="font-medium flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5" />
-                        {selectedStoreInMap.cities?.slice(0, 2).join(", ")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.total_branches")}</p>
-                      <p className="font-semibold text-primary">
-                        {selectedStoreInMap.branchCount}
+                        {selectedStoreInMap.city}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">{t("marketplace.available_shelves")}</p>
-                      <p className="font-medium">{selectedStoreInMap.totalAvailableShelves}</p>
+                      <p className="font-semibold text-primary">
+                        {selectedStoreInMap.availableShelvesCount || 0}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.price_from")}</p>
-                      <p className="font-medium">{t("common.currency_symbol")} {selectedStoreInMap.priceRange?.min?.toLocaleString()}</p>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.price_range")}</p>
+                      <p className="font-medium">
+                        {t("common.currency_symbol")} {selectedStoreInMap.priceRange?.min?.toLocaleString()} - {selectedStoreInMap.priceRange?.max?.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">{t("marketplace.product_types")}</p>
+                      <p className="font-medium">{selectedStoreInMap.productTypes?.length || 0} {t("common.types")}</p>
                     </div>
                   </div>
-                  <Link
-                    href={`${linkPrefix}/store/${selectedStoreInMap._id}`}
-                    className="mt-4 block"
-                  >
-                    <Button className="w-full">{t("marketplace.view_branches")}</Button>
-                  </Link>
+                  {selectedStoreInMap.address && (
+                    <p className="text-xs text-muted-foreground mt-3">
+                      {t("marketplace.address")}: {selectedStoreInMap.address}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

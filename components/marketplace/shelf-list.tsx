@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { MapPin, Store, ArrowLeft, Ruler, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/localization-context"
+import { ImageModal } from "@/components/ui/image-modal"
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +30,9 @@ interface ShelfListProps {
 export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
   const { t, direction } = useLanguage()
   const [currentPage, setCurrentPage] = useState(initialPage)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalImages, setModalImages] = useState<{ url: string; alt?: string }[]>([])
+  const [modalInitialIndex, setModalInitialIndex] = useState(0)
 
   // Fetch shelves for this branch
   const shelvesData = useQuery(api.shelves.getByBranch, {
@@ -50,6 +54,12 @@ export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
     }
+  }
+
+  const openImageModal = (images: { url: string; alt?: string }[], initialIndex: number = 0) => {
+    setModalImages(images)
+    setModalInitialIndex(initialIndex)
+    setModalOpen(true)
   }
 
   if (!isLoading && !branch) {
@@ -102,8 +112,19 @@ export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {shelves.map((shelf) => (
-              <Card key={shelf._id} className="overflow-hidden hover:shadow-lg transition-all">
-                <div className="relative h-48 bg-muted">
+              <Card key={shelf._id} className="overflow-hidden hover:shadow-lg transition-all h-full">
+                <div
+                  className="relative h-64 bg-muted cursor-pointer"
+                  onClick={() => {
+                    if (shelf.images && shelf.images.length > 0) {
+                      const images = shelf.images.map(img => ({
+                        url: img || "/placeholder.svg",
+                        alt: shelf.name
+                      }))
+                      openImageModal(images, 0)
+                    }
+                  }}
+                >
                   {shelf.images && shelf.images.length > 0 ? (
                     <Image
                       src={shelf.images[0] || "/placeholder.svg"}
@@ -117,50 +138,63 @@ export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
                     </div>
                   )}
                   {shelf.status === "available" && (
-                    <div className="absolute top-2 end-2 bg-green-600 text-white px-3 py-1 rounded">
+                    <div className="absolute top-2 end-2 bg-green-600 text-white px-3 py-1 rounded pointer-events-none">
                       <span className="text-xs font-medium">{t("marketplace.available")}</span>
+                    </div>
+                  )}
+                  {shelf.images && shelf.images.length > 1 && (
+                    <div className="absolute top-2 start-2 bg-black/70 text-white px-2 py-1 rounded text-xs pointer-events-none">
+                      1 / {shelf.images.length}
                     </div>
                   )}
                 </div>
 
-                <CardContent className="p-4">
-                  <h3 className="text-xl font-bold mb-2">{shelf.name}</h3>
+                <Link href={`/signin?redirect=/brand-dashboard/request-shelf/${shelf._id}`}>
+                  <CardContent className="p-4 cursor-pointer">
+                    <h3 className="text-xl font-bold mb-2">{shelf.name}</h3>
 
-                  {shelf.description && (
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {shelf.description}
-                    </p>
-                  )}
+                    {shelf.description && (
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        {shelf.description}
+                      </p>
+                    )}
 
-                  <div className="flex items-center gap-2 mb-3">
-                    <Ruler className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      {shelf.dimensions.width} x {shelf.dimensions.height} x {shelf.dimensions.depth} {t("common.cm")}
-                    </span>
-                  </div>
-
-                  <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
-                    <p className="text-lg font-semibold text-primary">
-                      {t("common.currency_symbol")} {shelf.pricePerMonth.toLocaleString()}/{t("common.month")}
-                    </p>
-                  </div>
-
-                  {shelf.productTypes && shelf.productTypes.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {shelf.productTypes.slice(0, 2).map((type, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {type}
-                        </Badge>
-                      ))}
-                      {shelf.productTypes.length > 2 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{shelf.productTypes.length - 2}
-                        </Badge>
-                      )}
+                    <div className="flex items-center gap-2 mb-3">
+                      <Ruler className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        {shelf.dimensions.width} x {shelf.dimensions.height} x {shelf.dimensions.depth} {t("common.cm")}
+                      </span>
                     </div>
-                  )}
-                </CardContent>
+
+                    <div className="mb-3">
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("marketplace.monthly_rent")}</p>
+                      <p className="text-lg font-semibold text-primary">
+                        {t("common.currency_symbol")} {shelf.pricePerMonth.toLocaleString()}/{t("common.month")}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <p className="text-sm font-medium text-primary">
+                        {t("marketplace.request_rental")} →
+                      </p>
+                    </div>
+
+                    {shelf.productTypes && shelf.productTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {shelf.productTypes.slice(0, 2).map((type, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {type}
+                          </Badge>
+                        ))}
+                        {shelf.productTypes.length > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{shelf.productTypes.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Link>
               </Card>
             ))}
           </div>
@@ -201,6 +235,14 @@ export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Image Modal */}
+      <ImageModal
+        images={modalImages}
+        initialIndex={modalInitialIndex}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   )
 }

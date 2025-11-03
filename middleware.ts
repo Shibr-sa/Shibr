@@ -69,36 +69,25 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  const isAuthenticated = await convexAuth.isAuthenticated();
   const pathname = request.nextUrl.pathname;
 
-  // Create response that will be enhanced with security headers
-  let response: NextResponse | undefined;
-
-  // Don't process signin/signup pages - let them handle their own redirects
-  // This allows the signin page to redirect directly to the dashboard
-
-  // Allow public routes without authentication
+  // Allow public routes without any authentication check
   if (isPublicRoute(request)) {
-    response = NextResponse.next();
-  }
-  // Check if user is authenticated for protected routes
-  else if (!isAuthenticated) {
-    return nextjsMiddlewareRedirect(request, "/signin");
-  }
-  // Allow authenticated users to access their dashboards
-  else {
-    response = NextResponse.next();
-  }
-
-  // Add security headers to all responses
-  if (response) {
+    const response = NextResponse.next();
     return addSecurityHeaders(response);
   }
 
-  // Role-based access control will be handled at the page/layout level
-  // No email verification check needed - users only exist if verified
-  return;
+  // Only check authentication for protected routes
+  const isAuthenticated = await convexAuth.isAuthenticated();
+
+  // Redirect unauthenticated users to signin for protected routes
+  if (!isAuthenticated) {
+    return nextjsMiddlewareRedirect(request, "/signin");
+  }
+
+  // Allow authenticated users to access all routes
+  const response = NextResponse.next();
+  return addSecurityHeaders(response);
 }, {
   apiRoute: "/api/auth",
   verbose: false // Set to true for debugging

@@ -3,17 +3,20 @@ import { ShelfList } from "@/components/marketplace/shelf-list"
 import { MarketplaceBreadcrumbs } from "@/components/marketplace/marketplace-breadcrumbs"
 
 interface BranchDetailsPageProps {
-  params: {
+  params: Promise<{
     storeId: string
     branchId: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     page?: string
-  }
+  }>
 }
 
-export default function BranchDetailsPage({ params, searchParams }: BranchDetailsPageProps) {
-  if (!params.storeId || !params.branchId) {
+export default async function BranchDetailsPage({ params, searchParams }: BranchDetailsPageProps) {
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
+
+  if (!resolvedParams.storeId || !resolvedParams.branchId) {
     notFound()
   }
 
@@ -22,14 +25,14 @@ export default function BranchDetailsPage({ params, searchParams }: BranchDetail
       {/* Breadcrumbs */}
       <MarketplaceBreadcrumbs
         currentLevel="shelves"
-        storeId={params.storeId}
-        branchId={params.branchId}
+        storeId={resolvedParams.storeId}
+        branchId={resolvedParams.branchId}
       />
 
       {/* Shelf Listing */}
       <ShelfList
-        branchId={params.branchId}
-        initialPage={searchParams.page ? parseInt(searchParams.page, 10) : 1}
+        branchId={resolvedParams.branchId}
+        initialPage={resolvedSearchParams.page ? parseInt(resolvedSearchParams.page, 10) : 1}
       />
     </div>
   )

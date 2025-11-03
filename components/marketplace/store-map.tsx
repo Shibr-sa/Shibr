@@ -49,35 +49,57 @@ interface StoreMapProps {
   isFullscreen?: boolean
 }
 
-// City coordinates mapping for Saudi Arabia
+// City coordinates mapping for Saudi Arabia - Use exact city names from DB
 const CITY_COORDINATES: Record<string, { center: { lat: number; lng: number }; zoom: number }> = {
+  // Primary names (as they come from the database)
+  "Riyadh": { center: { lat: 24.7136, lng: 46.6753 }, zoom: 11 },
+  "Jeddah": { center: { lat: 21.5433, lng: 39.1728 }, zoom: 11 },
+  "Dammam": { center: { lat: 26.3927, lng: 49.9777 }, zoom: 12 },
+  "Khobar": { center: { lat: 26.2172, lng: 50.1971 }, zoom: 12 },
+  "Al-Khobar": { center: { lat: 26.2172, lng: 50.1971 }, zoom: 12 },
+  "Abha": { center: { lat: 18.2164, lng: 42.5053 }, zoom: 12 },
+  "Medina": { center: { lat: 24.5247, lng: 39.5692 }, zoom: 11 },
+  "Madinah": { center: { lat: 24.5247, lng: 39.5692 }, zoom: 11 },
+  "Mecca": { center: { lat: 21.3891, lng: 39.8579 }, zoom: 11 },
+  "Makkah": { center: { lat: 21.3891, lng: 39.8579 }, zoom: 11 },
+  "Taif": { center: { lat: 21.2703, lng: 40.4158 }, zoom: 12 },
+  "Buraidah": { center: { lat: 26.3662, lng: 43.9750 }, zoom: 12 },
+  "Buraydah": { center: { lat: 26.3662, lng: 43.9750 }, zoom: 12 },
+  "Tabuk": { center: { lat: 28.3838, lng: 36.5550 }, zoom: 12 },
+  "Hail": { center: { lat: 27.5114, lng: 41.7208 }, zoom: 12 },
+  "Najran": { center: { lat: 17.5065, lng: 44.1316 }, zoom: 12 },
+  "Jazan": { center: { lat: 16.8892, lng: 42.5611 }, zoom: 12 },
+  "Jizan": { center: { lat: 16.8892, lng: 42.5611 }, zoom: 12 },
+  "Yanbu": { center: { lat: 24.0943, lng: 38.0618 }, zoom: 12 },
+  "Hafar Al-Batin": { center: { lat: 28.4337, lng: 45.9601 }, zoom: 12 },
+  "Jubail": { center: { lat: 27.0046, lng: 49.6469 }, zoom: 12 },
+  "Al-Jubail": { center: { lat: 27.0046, lng: 49.6469 }, zoom: 12 },
+  "Khamis Mushait": { center: { lat: 18.3060, lng: 42.7297 }, zoom: 12 },
+  "Al-Kharj": { center: { lat: 24.1556, lng: 47.3347 }, zoom: 12 },
+  "Al-Ahsa": { center: { lat: 25.3794, lng: 49.5877 }, zoom: 11 },
+  "Dhahran": { center: { lat: 26.2361, lng: 50.0393 }, zoom: 12 },
+  "Al-Qatif": { center: { lat: 26.5196, lng: 50.0115 }, zoom: 12 },
+  "Unaizah": { center: { lat: 26.0840, lng: 43.9935 }, zoom: 12 },
+  "Arar": { center: { lat: 30.9753, lng: 41.0381 }, zoom: 12 },
+  "Sakaka": { center: { lat: 29.9697, lng: 40.2064 }, zoom: 12 },
+
+  // Lowercase versions for normalization
   riyadh: { center: { lat: 24.7136, lng: 46.6753 }, zoom: 11 },
   jeddah: { center: { lat: 21.5433, lng: 39.1728 }, zoom: 11 },
   dammam: { center: { lat: 26.3927, lng: 49.9777 }, zoom: 12 },
   khobar: { center: { lat: 26.2172, lng: 50.1971 }, zoom: 12 },
-  al_khobar: { center: { lat: 26.2172, lng: 50.1971 }, zoom: 12 }, // Alias for Khobar
   abha: { center: { lat: 18.2164, lng: 42.5053 }, zoom: 12 },
   medina: { center: { lat: 24.5247, lng: 39.5692 }, zoom: 11 },
-  madinah: { center: { lat: 24.5247, lng: 39.5692 }, zoom: 11 }, // Alias
   mecca: { center: { lat: 21.3891, lng: 39.8579 }, zoom: 11 },
-  makkah: { center: { lat: 21.3891, lng: 39.8579 }, zoom: 11 }, // Alias
   taif: { center: { lat: 21.2703, lng: 40.4158 }, zoom: 12 },
   buraidah: { center: { lat: 26.3662, lng: 43.9750 }, zoom: 12 },
-  buraydah: { center: { lat: 26.3662, lng: 43.9750 }, zoom: 12 }, // Alias
   tabuk: { center: { lat: 28.3838, lng: 36.5550 }, zoom: 12 },
   hail: { center: { lat: 27.5114, lng: 41.7208 }, zoom: 12 },
   najran: { center: { lat: 17.5065, lng: 44.1316 }, zoom: 12 },
   jazan: { center: { lat: 16.8892, lng: 42.5611 }, zoom: 12 },
-  jizan: { center: { lat: 16.8892, lng: 42.5611 }, zoom: 12 }, // Alias
   yanbu: { center: { lat: 24.0943, lng: 38.0618 }, zoom: 12 },
-  hafar_al_batin: { center: { lat: 28.4337, lng: 45.9601 }, zoom: 12 },
   jubail: { center: { lat: 27.0046, lng: 49.6469 }, zoom: 12 },
-  al_jubail: { center: { lat: 27.0046, lng: 49.6469 }, zoom: 12 }, // Alias
-  khamis_mushait: { center: { lat: 18.3060, lng: 42.7297 }, zoom: 12 },
-  al_kharj: { center: { lat: 24.1556, lng: 47.3347 }, zoom: 12 },
-  al_ahsa: { center: { lat: 25.3794, lng: 49.5877 }, zoom: 11 },
   dhahran: { center: { lat: 26.2361, lng: 50.0393 }, zoom: 12 },
-  al_qatif: { center: { lat: 26.5196, lng: 50.0115 }, zoom: 12 },
   unaizah: { center: { lat: 26.0840, lng: 43.9935 }, zoom: 12 },
   arar: { center: { lat: 30.9753, lng: 41.0381 }, zoom: 12 },
   sakaka: { center: { lat: 29.9697, lng: 40.2064 }, zoom: 12 },
@@ -101,26 +123,6 @@ function normalizeCityName(cityName: string): string {
     .replace(/\s+/g, "_")
     .replace(/-/g, "_")
     .replace(/al_/g, "al_") // Keep al_ prefix consistent
-}
-
-// Helper function to find closest city to user location
-function findClosestCity(userLat: number, userLng: number): string | null {
-  let closestCity: string | null = null
-  let minDistance = Infinity
-
-  Object.entries(CITY_COORDINATES).forEach(([cityKey, cityData]) => {
-    const distance = Math.sqrt(
-      Math.pow(userLat - cityData.center.lat, 2) +
-      Math.pow(userLng - cityData.center.lng, 2)
-    )
-
-    if (distance < minDistance && distance < 2) { // Within ~200km radius
-      minDistance = distance
-      closestCity = cityKey
-    }
-  })
-
-  return closestCity
 }
 
 // Map options
@@ -157,10 +159,7 @@ function StoreMapContent({
   const { t, direction, language } = useLanguage()
   const [selectedMarker, setSelectedMarker] = useState<Branch | null>(null)
   const [map, setMap] = useState<google.maps.Map | null>(null)
-  const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null)
-  const [locationError, setLocationError] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string>("all")
-  const [userCity, setUserCity] = useState<string | null>(null)
 
   // Get Google Maps API key from environment variable
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
@@ -171,12 +170,24 @@ function StoreMapContent({
   })
 
   // Get available cities from Convex
-  const availableCities = useQuery(api.stores.getAvailableCities)
+  const availableCities = useQuery(api.stores.getAvailableCitiesByStore)
 
-  // Filter stores with valid coordinates
+  // Filter stores with valid coordinates - check both formats
   const storesWithCoordinates = stores.filter(
-    store => store.latitude && store.longitude
-  )
+    store => (store.latitude && store.longitude) || (store.location?.lat && store.location?.lng)
+  ).map(store => {
+    // Normalize the coordinate format
+    if (store.latitude && store.longitude) {
+      return store
+    } else if (store.location?.lat && store.location?.lng) {
+      return {
+        ...store,
+        latitude: store.location.lat,
+        longitude: store.location.lng
+      }
+    }
+    return store
+  })
   
   // Create a key based on store IDs to force map updates
   const storesKey = storesWithCoordinates.map(s => s._id).join(',')
@@ -185,81 +196,14 @@ function StoreMapContent({
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map)
 
-    // Set initial center based on user's city or location
-    if (userCity && CITY_COORDINATES[userCity]) {
-      // Zoom to user's city
-      const cityData = CITY_COORDINATES[userCity]
-      map.setCenter(cityData.center)
-      map.setZoom(cityData.zoom)
-    } else if (userLocation) {
-      // Center on exact user location
-      map.setCenter(userLocation)
-      map.setZoom(13)
-    } else {
-      // Default to Riyadh
-      map.setCenter(DEFAULT_CENTER)
-      map.setZoom(11)
-    }
-  }, [userLocation, userCity])
+    // Always start with default center (Riyadh)
+    map.setCenter(DEFAULT_CENTER)
+    map.setZoom(11)
+  }, [])
 
   const onUnmount = useCallback(() => {
     setMap(null)
   }, [])
-
-  // Request and track user's current location
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation not supported")
-      return
-    }
-
-    const handleLocationSuccess = (position: GeolocationPosition) => {
-      const lat = position.coords.latitude
-      const lng = position.coords.longitude
-
-      setUserLocation({ lat, lng })
-
-      // Find the closest city to user's location
-      const closestCity = findClosestCity(lat, lng)
-      if (closestCity) {
-        setUserCity(closestCity)
-
-        // Find matching city name from available cities (to get proper case)
-        if (availableCities) {
-          const matchingCity = availableCities.find(city =>
-            normalizeCityName(city) === closestCity
-          )
-          if (matchingCity) {
-            setSelectedCity(matchingCity)
-          }
-        }
-
-        // If map is already loaded, zoom to the city
-        if (map && CITY_COORDINATES[closestCity]) {
-          const cityData = CITY_COORDINATES[closestCity]
-          map.setCenter(cityData.center)
-          map.setZoom(cityData.zoom)
-        }
-      }
-    }
-
-    const handleLocationError = (error: GeolocationPositionError) => {
-      // Silently handle errors - map will use default center
-      const errorMessages: Record<number, string> = {
-        1: "Location permission denied",
-        2: "Location unavailable",
-        3: "Location request timeout",
-      }
-      setLocationError(errorMessages[error.code] || "Unable to get location")
-    }
-
-    // Request user's current position
-    navigator.geolocation.getCurrentPosition(handleLocationSuccess, handleLocationError, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 300000, // Cache for 5 minutes
-    })
-  }, [map, availableCities])
 
   // Handle city selection from dropdown
   const handleCityChange = useCallback((cityKey: string) => {
@@ -282,12 +226,21 @@ function StoreMapContent({
         map.setZoom(11)
       }
     } else {
-      // Zoom to selected city
-      const normalizedKey = normalizeCityName(cityKey)
-      const cityData = CITY_COORDINATES[normalizedKey]
+      // Try to find city data with exact match first, then normalized, then lowercase
+      let cityData = CITY_COORDINATES[cityKey]
+      if (!cityData) {
+        const normalizedKey = normalizeCityName(cityKey)
+        cityData = CITY_COORDINATES[normalizedKey]
+      }
+      if (!cityData) {
+        cityData = CITY_COORDINATES[cityKey.toLowerCase()]
+      }
+
       if (cityData) {
         map.setCenter(cityData.center)
         map.setZoom(cityData.zoom)
+      } else {
+        console.warn('City coordinates not found for:', cityKey)
       }
     }
   }, [map, storesWithCoordinates])
@@ -416,12 +369,6 @@ function StoreMapContent({
               ))}
             </SelectContent>
           </Select>
-          {/* Show indicator if user's city was auto-detected */}
-          {userCity && normalizeCityName(selectedCity) === userCity && (
-            <p className="text-xs text-green-600 mt-1 bg-white px-2 py-1 rounded shadow-sm">
-              {t("marketplace.detected_your_city") || "📍 Detected your location"}
-            </p>
-          )}
         </div>
 
         <GoogleMap
@@ -434,25 +381,6 @@ function StoreMapContent({
             gestureHandling: 'greedy', // Allow single finger pan on mobile
           }}
         >
-          {/* User Location Marker */}
-          {userLocation && (
-            <Marker
-              position={userLocation}
-              options={{
-                icon: {
-                  path: window.google.maps.SymbolPath.CIRCLE,
-                  scale: 10,
-                  fillColor: "#3B82F6",
-                  fillOpacity: 0.4,
-                  strokeColor: "#3B82F6",
-                  strokeWeight: 3,
-                } as google.maps.Symbol,
-                title: t("marketplace.your_location") || "Your Location",
-                zIndex: 1000,
-              }}
-            />
-          )}
-
           {/* Store/Branch Markers */}
           {storesWithCoordinates.map((store) => {
             const isSelected = selectedMarker?._id === store._id

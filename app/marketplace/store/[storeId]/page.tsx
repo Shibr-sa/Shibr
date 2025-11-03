@@ -3,17 +3,20 @@ import { BranchList } from "@/components/marketplace/branch-list"
 import { MarketplaceBreadcrumbs } from "@/components/marketplace/marketplace-breadcrumbs"
 
 interface StoreDetailsPageProps {
-  params: {
+  params: Promise<{
     storeId: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     city?: string
     page?: string
-  }
+  }>
 }
 
-export default function StoreDetailsPage({ params, searchParams }: StoreDetailsPageProps) {
-  if (!params.storeId) {
+export default async function StoreDetailsPage({ params, searchParams }: StoreDetailsPageProps) {
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
+
+  if (!resolvedParams.storeId) {
     notFound()
   }
 
@@ -22,14 +25,14 @@ export default function StoreDetailsPage({ params, searchParams }: StoreDetailsP
       {/* Breadcrumbs */}
       <MarketplaceBreadcrumbs
         currentLevel="branches"
-        storeId={params.storeId}
+        storeId={resolvedParams.storeId}
       />
 
       {/* Branch Listing */}
       <BranchList
-        storeId={params.storeId}
-        initialCity={searchParams.city}
-        initialPage={searchParams.page ? parseInt(searchParams.page, 10) : 1}
+        storeId={resolvedParams.storeId}
+        initialCity={resolvedSearchParams.city}
+        initialPage={resolvedSearchParams.page ? parseInt(resolvedSearchParams.page, 10) : 1}
       />
     </div>
   )
