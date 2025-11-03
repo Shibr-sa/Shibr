@@ -468,13 +468,15 @@ export default function StoreDashboardShelvesPage() {
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={(e) => {
                       e.preventDefault()
                       setCurrentPage(prev => Math.max(1, prev - 1))
                     }}
                     className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
+                  >
+                    {t("pagination.previous")}
+                  </PaginationPrevious>
                 </PaginationItem>
                 
                 {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map(page => {
@@ -523,13 +525,15 @@ export default function StoreDashboardShelvesPage() {
                 })}
                 
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={(e) => {
                       e.preventDefault()
                       setCurrentPage(prev => Math.min(Math.max(1, totalPages), prev + 1))
                     }}
                     className={currentPage === totalPages || totalPages <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
+                  >
+                    {t("pagination.next")}
+                  </PaginationNext>
                 </PaginationItem>
               </PaginationContent>
             </Pagination>

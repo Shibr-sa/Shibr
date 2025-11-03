@@ -43,9 +43,6 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
     longitude: mode === "edit" ? (initialData?.location?.lng ?? 46.6753) : 46.6753
   })
 
-  const [userLocationRequested, setUserLocationRequested] = useState(false)
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
-
   // City coordinates in Saudi Arabia
   const cityCoordinates: Record<string, { lat: number; lng: number }> = {
     "Riyadh": { lat: 24.7136, lng: 46.6753 },
@@ -74,48 +71,29 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
     "Al-Ahsa": { lat: 25.3487, lng: 49.5856 }
   }
 
-  // Request user location on mount (only in create mode)
-  useEffect(() => {
-    if (mode === "create" && !userLocationRequested) {
-      setUserLocationRequested(true)
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setSelectedLocation({
-              address: "",
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            })
-          },
-          (error) => {
-            setLocationPermissionDenied(true)
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        )
-      }
-    }
-  }, [mode, userLocationRequested])
-
   // Load existing images when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
       const loadImages = () => {
         const previews: any = {}
+        const existing: any = {}
 
         if (initialData.images && Array.isArray(initialData.images)) {
           for (const img of initialData.images) {
             if (img.url && img.type) {
               previews[img.type] = img.url
+              // Store the existing image data (without the URL)
+              existing[img.type] = {
+                storageId: img.storageId,
+                type: img.type,
+                order: img.order
+              }
             }
           }
         }
 
         setImagePreviews(previews)
+        setExistingImages(existing)
       }
       loadImages()
     }
@@ -141,6 +119,11 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
     exterior?: string | null,
     interior?: string | null
   }>({})
+  // Track existing images from the database
+  const [existingImages, setExistingImages] = useState<{
+    exterior?: { storageId: Id<"_storage">, type: "exterior" | "interior", order: number } | null,
+    interior?: { storageId: Id<"_storage">, type: "exterior" | "interior", order: number } | null
+  }>({})
   const [uploadingImages, setUploadingImages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -159,15 +142,19 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
     if (file) {
       setImages(prev => ({ ...prev, [type]: file }))
       setImagePreviews(prev => ({ ...prev, [type]: URL.createObjectURL(file) }))
+      // Remove existing image reference when a new file is selected
+      setExistingImages(prev => ({ ...prev, [type]: null }))
     } else {
       setImages(prev => ({ ...prev, [type]: null }))
       setImagePreviews(prev => ({ ...prev, [type]: null }))
+      // Also remove existing image reference when clearing
+      setExistingImages(prev => ({ ...prev, [type]: null }))
     }
   }
 
-  // Upload images to Convex storage
+  // Upload images to Convex storage and combine with existing
   const uploadImages = async () => {
-    const uploadedImages: Array<{
+    const finalImages: Array<{
       storageId: Id<"_storage">
       type: "exterior" | "interior"
       order: number
@@ -175,6 +162,19 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
 
     let order = 0
 
+    // First, add any existing images that weren't replaced
+    for (const [type, existingImage] of Object.entries(existingImages)) {
+      if (existingImage && !images[type as "exterior" | "interior"]) {
+        // Keep the existing image if no new file was uploaded for this type
+        finalImages.push({
+          storageId: existingImage.storageId,
+          type: existingImage.type,
+          order: order++
+        })
+      }
+    }
+
+    // Then, upload and add new images
     for (const [type, file] of Object.entries(images)) {
       if (file) {
         const uploadUrl = await generateUploadUrl()
@@ -186,7 +186,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
 
         const { storageId } = await result.json()
 
-        uploadedImages.push({
+        finalImages.push({
           storageId,
           type: type as "exterior" | "interior",
           order: order++
@@ -194,7 +194,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
       }
     }
 
-    return uploadedImages
+    return finalImages
   }
 
   // Form validation
@@ -249,7 +249,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
           description: t("branches.created_success")
         })
       } else {
-        // In edit mode, only include updated images
+        // In edit mode, always include the complete image list
         const updatedData: any = {
           branchId: branchId!,
           branchName,
@@ -259,7 +259,8 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
           address: selectedLocation.address,
         }
 
-        // Only update images if new ones were uploaded
+        // Always send the complete image list when we have any images
+        // This ensures we don't lose existing images when updating other fields
         if (uploadedImages.length > 0) {
           updatedData.images = uploadedImages
         }

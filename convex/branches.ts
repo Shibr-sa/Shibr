@@ -154,6 +154,128 @@ export const getBranchById = query({
   },
 })
 
+// Get branch by ID (public - no auth required)
+export const getById = query({
+  args: { branchId: v.id("branches") },
+  handler: async (ctx, args) => {
+    const branch = await ctx.db.get(args.branchId)
+    if (!branch) {
+      return null
+    }
+
+    // Get image URLs
+    const imagesWithUrls = branch.images
+      ? await Promise.all(
+          branch.images.map(async (img) => ({
+            ...img,
+            url: await ctx.storage.getUrl(img.storageId),
+          }))
+        )
+      : []
+
+    return {
+      _id: branch._id,
+      branchName: branch.branchName,
+      city: branch.city,
+      location: branch.location,
+      address: branch.location.address,
+      storeProfileId: branch.storeProfileId,
+      images: imagesWithUrls,
+    }
+  },
+})
+
+// Get all branches for marketplace map (public - no auth required)
+export const getBranchesForMarketplace = query({
+  args: {
+    city: v.optional(v.string()),
+    storeId: v.optional(v.id("storeProfiles")),
+  },
+  handler: async (ctx, args) => {
+    // Start with all branches query
+    let branchesQuery = ctx.db.query("branches")
+
+    // Get all branches first
+    let branches = await branchesQuery.collect()
+
+    // Filter by city if provided
+    if (args.city && args.city !== "all") {
+      branches = branches.filter(b => b.city === args.city)
+    }
+
+    // Filter by store if provided
+    if (args.storeId) {
+      branches = branches.filter(b => b.storeProfileId === args.storeId)
+    }
+
+    // Get detailed data for each branch
+    const branchesWithData = await Promise.all(
+      branches.map(async (branch) => {
+        // Get store profile
+        const storeProfile = await ctx.db.get(branch.storeProfileId)
+        if (!storeProfile || !storeProfile.isActive) {
+          return null
+        }
+
+        // Get owner info
+        const owner = await ctx.db.get(storeProfile.userId)
+
+        // Get available shelves count
+        const shelves = await ctx.db
+          .query("shelves")
+          .withIndex("by_branch", (q) => q.eq("branchId", branch._id))
+          .filter(q => q.eq(q.field("status"), "active"))
+          .collect()
+
+        // Calculate price range
+        let minPrice = Infinity
+        let maxPrice = 0
+        const productTypes = new Set<string>()
+
+        shelves.forEach(shelf => {
+          if (shelf.monthlyPrice < minPrice) minPrice = shelf.monthlyPrice
+          if (shelf.monthlyPrice > maxPrice) maxPrice = shelf.monthlyPrice
+          shelf.productTypes?.forEach(type => productTypes.add(type))
+        })
+
+        // Get image URLs
+        const imagesWithUrls = branch.images
+          ? await Promise.all(
+              branch.images.map(async (img) => ({
+                ...img,
+                url: await ctx.storage.getUrl(img.storageId),
+              }))
+            )
+          : []
+
+        return {
+          _id: branch._id,
+          branchName: branch.branchName,
+          storeName: storeProfile.storeName,
+          city: branch.city,
+          address: branch.location?.address,
+          latitude: branch.location?.lat,
+          longitude: branch.location?.lng,
+          location: branch.location,
+          ownerName: owner?.name,
+          ownerImage: owner?.image,
+          availableShelvesCount: shelves.length,
+          priceRange: {
+            min: minPrice === Infinity ? 0 : minPrice,
+            max: maxPrice,
+          },
+          productTypes: Array.from(productTypes),
+          images: imagesWithUrls,
+          qrCodeUrl: branch.qrCodeUrl,
+        }
+      })
+    )
+
+    // Filter out null entries (inactive stores)
+    return branchesWithData.filter(b => b !== null)
+  },
+})
+
 // Get branch statistics
 export const getBranchStats = query({
   args: {},

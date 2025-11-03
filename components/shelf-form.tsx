@@ -813,7 +813,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                         <img
                           src={imagePreviews.shelf}
                           alt="Shelf preview"
-                          className="w-full h-32 object-cover rounded-md mb-2"
+                          className="w-full h-48 object-cover rounded-md mb-2"
                         />
                       ) : (
                         <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>

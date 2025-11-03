@@ -419,7 +419,9 @@ export default function StoreDashboardOrdersPage() {
                 (currentPage === 1 || totalPages === 0) && "pointer-events-none opacity-50"
               )}
               aria-disabled={currentPage === 1 || totalPages === 0}
-            />
+            >
+              {t("pagination.previous")}
+            </PaginationPrevious>
           </PaginationItem>
 
           {totalPages > 0 ? (
@@ -462,7 +464,9 @@ export default function StoreDashboardOrdersPage() {
                 (currentPage === totalPages || totalPages <= 1) && "pointer-events-none opacity-50"
               )}
               aria-disabled={currentPage === totalPages || totalPages <= 1}
-            />
+            >
+              {t("pagination.next")}
+            </PaginationNext>
           </PaginationItem>
         </PaginationContent>
       </Pagination>
