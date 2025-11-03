@@ -9,11 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun run build` - Build production bundle (runs `bunx convex codegen` then `next build`)
 - `bun start` - Start production server
 - `bun run lint` - Run Next.js linter
-- `bunx convex codegen --typecheck disable` - Generate TypeScript types from Convex schema (MUST run manually after schema changes)
-
-### Database Seeding
-- `bun seed` - Basic test data with minimal setup
-- `bun seed:logos` - Full seeding with SVG logos, images, QR codes (creates 5 stores, 8 branches, 18 shelves)
+- `bunx convex codegen --typecheck disable` - Generate TypeScript types from Convex schema
 
 ### Testing & Debugging
 - `bunx convex run <function> <args>` - Run Convex functions directly
@@ -41,27 +37,54 @@ bunx convex run rentalRequests:getById '{"requestId":"<id>"}'
 - `bunx convex dev` - Start Convex dev server independently
 - `bunx convex deploy -y` - Deploy to production (auto-confirm)
 - `bunx convex env set <KEY> <VALUE>` - Set environment variables in Convex
-- `bunx convex env list` - List current environment variables
 - Dashboard: https://dashboard.convex.dev
 
 ### Package Management
-This project uses **Bun exclusively**. Install dependencies with `bun install`.
-- ALWAYS use `bunx` prefix for executing packages (not `npx`)
-- Use `bun add` for adding dependencies
-- Use `bun add -d` for dev dependencies
+This project uses Bun. Install dependencies with `bun install`.
 
-**Note**: Cursor rules reference Yarn, but the project uses Bun for ALL operations.
+**Note**: Cursor rules reference Yarn, but the project uses Bun for all operations.
 
-## Critical Configuration Notes
+## Development Workflow
 
-### Build Configuration
-⚠️ **WARNING**: TypeScript errors are IGNORED in production builds (`ignoreBuildErrors: true` in next.config.mjs). This means builds will succeed even with type errors. Always check TypeScript manually before deploying.
+### Quick Start
+```bash
+# Install dependencies
+bun install
 
-### Convex Codegen
-After ANY schema changes in `/convex/schema.ts`:
-1. Run `bunx convex codegen --typecheck disable`
-2. This is NOT automatic - must be done manually
-3. Generates types in `/convex/_generated/`
+# Set up environment variables
+cp .env.example .env.local
+# Add your Convex deployment URL and API keys
+
+# Start development servers
+bun dev
+# Opens: http://localhost:3000
+```
+
+### Common Development Tasks
+
+#### Adding a New Feature
+1. Create feature branch from `development`
+2. Update schema if needed: `/convex/schema.ts`
+3. Run `bunx convex codegen --typecheck disable` after schema changes
+4. Implement backend functions in `/convex/`
+5. Create UI components (prefer Server Components)
+6. Add translations to `/contexts/localization-context.tsx`
+7. Test with both English and Arabic languages
+8. Verify RTL layout in Arabic mode
+
+#### Working with Forms
+1. Define Zod schema in `/lib/validations.ts`
+2. Use React Hook Form with zodResolver
+3. Implement Server Action for submission
+4. Add loading states and error handling
+5. Test validation with edge cases
+
+#### Adding New Routes
+1. Create folder in appropriate dashboard (`/app/[role]-dashboard/`)
+2. Add `page.tsx` (Server Component by default)
+3. Add `loading.tsx` for Suspense fallback
+4. Update navigation in dashboard layout
+5. Add route protection if needed
 
 ## Architecture Overview
 
@@ -73,10 +96,9 @@ After ANY schema changes in `/convex/schema.ts`:
 #### Authentication Flow (Verify-Before-Create Pattern)
 1. **Signup**: User data stored in sessionStorage → Email OTP sent → Verify OTP → Create account & profile
 2. **Password Reset**: Uses Convex Auth's built-in OTP system via `authPasswordReset.ts`
-3. **Email Provider**: Resend API with `noreply@shibr.io` domain (emails lowercase normalized)
+3. **Email Provider**: Resend API with `noreply@shibr.io` domain
 4. **Phone Verification**: Alternative OTP system in `/convex/phoneVerification.ts` (574 lines)
 5. **Session Management**: JWT-based with Convex Auth, 30-day expiry
-6. **OTP System**: Unified table for email/phone, 6-digit codes, 10-minute expiry, 3 attempt limit
 
 #### Rental Workflow State Machine
 ```
@@ -84,10 +106,9 @@ pending → payment_pending → active → completed/cancelled
          ↓                    ↓
     rejected              suspended
 ```
-- **Note**: `payment_pending` replaces old "accepted" status
-- Webhook validation for payment confirmation via Tap Gateway
+- Webhook validation for payment confirmation
 - Automatic status updates via Convex mutations
-- Commission structure: Platform (8%) + Store (10%) stored as array objects
+- Commission calculation (platform fees applied at checkout)
 
 #### User Journey
 1. Users sign up selecting role (store owner or brand owner)
@@ -105,16 +126,14 @@ pending → payment_pending → active → completed/cancelled
 - **Language**: TypeScript with strict mode
 - **Database**: Convex (real-time, reactive backend with WebSocket sync)
 - **Authentication**: Convex Auth (password-based with OTP verification)
-- **Email**: Resend API (noreply@shibr.io)
-- **SMS**: Karzoun API integration
-- **Payments**: Tap Payment Gateway (rentals) + Wafeq (QR store invoices)
+- **Email**: Resend API
+- **Payments**: Tap Payment Gateway integration
 - **UI Components**: 52 shadcn/ui components (Radix UI primitives)
 - **Styling**: Tailwind CSS with CSS variables for theming
 - **Forms**: React Hook Form + Zod validation
 - **Maps**: Google Maps API (for location selection)
-- **i18n**: Custom context-based implementation (296KB translation file)
+- **i18n**: Custom context-based implementation
 - **QR Codes**: react-qr-code for store generation
-- **File Storage**: Convex built-in storage (5GB limit per deployment)
 
 ### Route Structure & User Roles
 
@@ -122,14 +141,14 @@ Three distinct user types with role-based access control:
 
 1. **Admin Dashboard** (`/admin-dashboard/*`)
    - User management with 4-role RBAC system:
-     - `super_admin`: Full system access (initial: it@shibr.io / wwadnj0aw2nc@!!)
+     - `super_admin`: Full system access
      - `support`: User/content management
      - `finance`: Financial operations
      - `operations`: Platform operations
    - Platform settings and configuration
    - Analytics and metrics dashboard
    - Content moderation and approval workflows
-   - Implementation: `/convex/admin.ts` (1635 lines) + 8 admin modules
+   - Implementation: `/convex/admin.ts` (1635 lines)
 
 2. **Brand Dashboard** (`/brand-dashboard/*`)
    - Browse marketplace with filters
@@ -156,13 +175,12 @@ Three distinct user types with role-based access control:
 
 ### Convex Database Schema
 
-Complete schema in `/convex/schema.ts` (481 lines) with strategic indexing for performance.
+Complete schema in `/convex/schema.ts` (436 lines) with strategic indexing for performance.
 
-#### Core Tables (26+ total)
+#### Core Tables
 - **users** - Convex Auth managed user accounts
 - **authAccounts** - Authentication providers (password)
 - **authSessions** - Active user sessions (30-day expiry)
-- **authOTPs** - Unified OTP storage for email/phone verification
 - **storeProfiles** - Physical store details (name, location, phone, status)
 - **brandProfiles** - Brand details (name, website, category, verification)
 - **adminProfiles** - Admin user profiles with role-based permissions
@@ -177,11 +195,11 @@ Complete schema in `/convex/schema.ts` (481 lines) with strategic indexing for p
 - **rentalRequests** - Booking workflow
   - Status state machine (see Rental Workflow above)
   - Selected products array
-  - Commission rates as array: `[{type: "platform", rate: 8}, {type: "store", rate: 10}]`
+  - Commission rates (platform + store)
   - Payment references (Tap gateway)
   - Duration and pricing details
 - **products** - Brand inventory
-  - Multiple images support (up to 5)
+  - Multiple images support
   - Stock tracking
   - Category and tags
   - Price and discount fields
@@ -200,7 +218,7 @@ Complete schema in `/convex/schema.ts` (481 lines) with strategic indexing for p
 - **platformSettings** - Global configuration
   - Commission rates
   - Terms and conditions
-  - Tax settings (15% VAT for display only)
+  - Tax settings (15% VAT)
 - **branches** - Store locations
   - Permanent QR codes
   - Analytics tracking
@@ -217,10 +235,10 @@ Complete schema in `/convex/schema.ts` (481 lines) with strategic indexing for p
   - Verification status
 
 #### Supporting Tables
-- **phoneVerificationOTP** - Phone number verification (separate from authOTPs)
+- **emailVerificationOTP** - Temporary OTP storage (10-minute expiry)
+- **phoneVerificationOTP** - Phone number verification
 - **auditLogs** - Admin action tracking
 - **supportTickets** - Customer support system
-- **_storage** - Convex file storage metadata
 
 ### Authentication System
 
@@ -239,7 +257,7 @@ Complete schema in `/convex/schema.ts` (481 lines) with strategic indexing for p
 
 ### Internationalization (Critical)
 
-The app is fully bilingual with RTL/LTR support (296KB translation file):
+The app is fully bilingual with RTL/LTR support:
 
 #### Implementation
 - Context: `/contexts/localization-context.tsx` (500+ translation keys)
@@ -251,22 +269,9 @@ The app is fully bilingual with RTL/LTR support (296KB translation file):
 - **Every key needs both languages**: `"key": { en: "English", ar: "العربية" }`
 - **Direction-aware styling**: Use `direction` for RTL/LTR layouts
 - **Font switching**: `${direction === "rtl" ? "font-cairo" : "font-inter"}`
-- **Number formatting**: ALWAYS English numerals (0-9), use `formatters.ts` with `en-US` locale
-- **Date system**: Gregorian calendar only, format: `DD/MM/YYYY`
+- **Number formatting**: ALWAYS English numerals (0-9), use `formatters.ts`
+- **Date system**: Gregorian calendar only
 - **Phone numbers**: Saudi format validation (05XXXXXXXX)
-- **Currency**: SAR with 2 decimal places
-
-### Tax & Financial Calculations
-
-**CRITICAL**: 15% VAT is calculated for DISPLAY ONLY - never stored in database:
-```typescript
-// In formatters.ts
-export const formatPriceWithTax = (price: number) => {
-  const VAT_RATE = 0.15
-  const priceWithTax = price * (1 + VAT_RATE)
-  return formatCurrency(priceWithTax)
-}
-```
 
 ### shadcn/ui Component Usage
 
@@ -281,7 +286,6 @@ export const formatPriceWithTax = (price: number) => {
 - NEVER create custom components if shadcn/ui equivalent exists
 - ALWAYS follow shadcn patterns for consistency
 - Use component composition over customization
-- 52 components available in project
 
 ### Real-time Features
 
@@ -300,9 +304,9 @@ export const formatPriceWithTax = (price: number) => {
 ### Performance Patterns
 
 - **Search**: Server-side with debouncing (300ms)
-- **Pagination**: Backend cursor-based (10 items default)
+- **Pagination**: Backend pagination (10 items default)
 - **Loading**: Skeletons on initial load, preserve data during updates
-- **Images**: Convex file storage with URL generation (5GB limit)
+- **Images**: Convex file storage with URL generation
 - **Caching**: Convex handles query caching automatically
 
 ### Form Patterns
@@ -311,7 +315,6 @@ export const formatPriceWithTax = (price: number) => {
 - State: React Hook Form with `useForm`
 - Errors: Field-level validation on blur
 - Submission: Optimistic updates where appropriate
-- Multi-step forms: Progress stored in sessionStorage
 
 ### RTL/LTR Support
 
@@ -339,8 +342,6 @@ RESEND_API_KEY=<resend-api-key>
 SITE_URL=<production-url>
 JWT_PRIVATE_KEY=<auth-private-key>
 TAP_SECRET_KEY=<tap-secret-key>
-KARZOUN_API_KEY=<sms-provider-key>
-WAFEQ_API_KEY=<invoice-api-key>
 ```
 
 ### Deployment
@@ -354,7 +355,7 @@ WAFEQ_API_KEY=<invoice-api-key>
 #### Deployment Process
 1. Merge to master
 2. `bunx convex deploy -y`
-3. `bun run build` (will succeed even with TS errors!)
+3. `bun run build`
 4. Deploy Next.js app to hosting
 
 ### Common Patterns
@@ -413,23 +414,9 @@ if (userWithProfile?.adminRole !== "super_admin") {
 - `/convex/payments.ts` (428 lines) - Payment processing with Tap
 - `/convex/admin.ts` (1635 lines) - Complete admin system
 - `/convex/emailVerification.ts` (383 lines) - OTP system
-- `/convex/phoneVerification.ts` (574 lines) - Phone verification
 - `/convex/branches.ts` (412 lines) - Store branch management
 - `/convex/products.ts` (623 lines) - Inventory management
 - `/convex/conversations.ts` (387 lines) - Real-time chat
-- `/convex/customerOrders.ts` - QR store orders
-- `/convex/notifications.ts` - Alert system
-- `/convex/auditLogs.ts` - Admin activity tracking
-
-#### Admin Modules (in `/convex/admin/`)
-- `shelves.ts` - Shelf management
-- `users.ts` - User administration
-- `dashboard.ts` - Analytics
-- `support.ts` - Customer support
-- `finance.ts` - Financial operations
-- `operations.ts` - Platform operations
-- `content.ts` - Content management
-- `settings.ts` - System configuration
 
 #### Common Convex Patterns
 ```typescript
@@ -442,18 +429,15 @@ export const myFunction = mutation({
   }
 })
 
-// Paginated queries with cursor
+// Paginated queries
 export const list = query({
-  args: {
-    cursor: v.optional(v.string()),
-    limit: v.optional(v.number())
-  },
-  handler: async (ctx, { cursor, limit = 10 }) => {
+  args: { page: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, { page, limit = 10 }) => {
     const results = await ctx.db
       .query("shelves")
       .withIndex("by_status")
       .filter(q => q.eq(q.field("status"), "available"))
-      .paginate({ cursor, numItems: limit })
+      .paginate({ numItems: limit, cursor: page })
     return results
   }
 })
@@ -462,7 +446,7 @@ export const list = query({
 export const approveRequest = mutation({
   handler: async (ctx, { requestId }) => {
     // Update request status
-    await ctx.db.patch(requestId, { status: "payment_pending" })
+    await ctx.db.patch(requestId, { status: "active" })
     // Create payment record
     await ctx.db.insert("payments", { ... })
     // Send notification
@@ -473,26 +457,22 @@ export const approveRequest = mutation({
 
 ### Important Files
 
-- `/convex/schema.ts` - Database schema definition (481 lines)
+- `/convex/schema.ts` - Database schema definition
 - `/convex/auth.ts` - Authentication configuration
-- `/contexts/localization-context.tsx` - All translations (296KB)
-- `/lib/formatters.ts` - Number/date/currency formatting with VAT
+- `/contexts/localization-context.tsx` - All translations
+- `/lib/formatters.ts` - Number/date/currency formatting
 - `/lib/validations.ts` - Zod validation schemas
 - `/lib/constants.ts` - App-wide constants
-- `/lib/error-logger.ts` - Centralized error logging (280 lines)
-- `/middleware.ts` - Route protection + CSP headers
-- `/components/ui/` - 52 shadcn/ui components
-- `/hooks/` - Custom React hooks
+- `/middleware.ts` - Route protection logic
 
 ### Security Patterns
 
 #### Content Security Policy
 Configured in `/middleware.ts` with specific exemptions:
 - Google Maps API for location selection
-- Tap Payment Gateway for checkout frames
+- Tap Payment Gateway for checkout
 - Convex WebSocket for real-time features
 - Strict CSP headers for XSS protection
-- HSTS enabled only in production
 
 #### Payment Security
 - Webhook signature verification for Tap callbacks
@@ -505,7 +485,6 @@ Configured in `/middleware.ts` with specific exemptions:
 - OTP rate limiting (3 attempts per 10 minutes)
 - Session invalidation on password change
 - Secure password requirements (8+ chars, complexity)
-- Email addresses normalized to lowercase
 
 ### Error Handling & Logging
 
@@ -535,7 +514,6 @@ Levels: DEBUG, INFO, WARN, ERROR, FATAL
 - Separate indexes for status filtering
 - Geographic indexes for location search
 - Text indexes for search functionality
-- Cursor-based pagination for large datasets
 
 #### Query Optimization
 - Batch fetching to prevent N+1 queries
@@ -549,32 +527,51 @@ Levels: DEBUG, INFO, WARN, ERROR, FATAL
 - Route-based code splitting
 - Tree shaking with proper imports
 
+### Testing Infrastructure
+
+**Current Status**: No automated testing configured
+
+#### Recommended Setup
+```bash
+# Install testing dependencies (not currently present)
+bun add -d vitest @testing-library/react @testing-library/user-event
+bun add -d @vitejs/plugin-react playwright
+```
+
+#### Suggested Test Structure
+```
+__tests__/
+├── unit/           # Utility functions, hooks
+├── integration/    # API routes, Convex functions
+├── e2e/           # User flows with Playwright
+└── fixtures/      # Test data and mocks
+```
+
 ### Non-Obvious Systems
 
 #### Tax Calculation
-- 15% VAT applied at display time, NOT stored in DB
+- 15% VAT applied at display time, not stored in DB
 - Calculated in `/lib/formatters.ts`
 - Shown on all pricing displays
 - Included in payment processing
+
+#### Phone Verification System (`/convex/phoneVerification.ts`)
+- Alternative to email OTP
+- Saudi number format validation
+- SMS provider integration ready
+- 574 lines of implementation
 
 #### Multi-Step Form System
 - Shelf creation: 7-step wizard (34KB component)
 - Progress persistence in sessionStorage
 - Validation at each step
-- Image upload with preview (up to 5 images)
+- Image upload with preview
 
 #### QR Store System
 - Permanent URLs: `/store/[branchId]`
 - Customer can browse without auth
 - Cart stored in localStorage
 - Order placement with contact details
-- Integration with Wafeq for invoicing
-
-#### File Storage
-- Uses Convex built-in storage
-- 5GB limit per deployment
-- Automatic URL generation
-- Supports images and documents
 
 ### Cursor Rules Integration
 
@@ -593,7 +590,7 @@ Levels: DEBUG, INFO, WARN, ERROR, FATAL
 
 ### Code Standards
 
-- TypeScript: Strict mode, avoid `any` (but build errors ignored in production!)
+- TypeScript: Strict mode, avoid `any`
 - Components: Functional only, one per file, Server Components by default
 - Hooks: Prefix with `use`, custom hooks in `/hooks/`
 - Imports: Clean up unused, use named exports
@@ -601,5 +598,3 @@ Levels: DEBUG, INFO, WARN, ERROR, FATAL
 - Commits: Conventional format (feat:, fix:, refactor:, etc.)
 - Error Boundaries: Wrap async components
 - Loading States: Use Suspense with loading.tsx files
-- Numbers: Always format with English numerals (0-9)
-- Dates: Use DD/MM/YYYY format
