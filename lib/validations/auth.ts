@@ -42,14 +42,6 @@ export const createSignUpSchema = (t: (key: string) => string) => {
   }, {
     message: t("validation.brand_name_required"),
     path: ["brandName"],
-  }).refine(data => {
-    if (data.accountType === "brand-owner") {
-      return data.logo !== undefined && data.logo !== null
-    }
-    return true
-  }, {
-    message: t("validation.logo_required"),
-    path: ["logo"],
   })
 }
 

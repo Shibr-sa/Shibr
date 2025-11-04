@@ -307,7 +307,7 @@ export const createStoreProfile = mutation({
 export const createBrandProfile = mutation({
   args: {
     brandName: v.string(),
-    logo: v.id("_storage"),
+    logo: v.optional(v.id("_storage")),
     businessType: v.optional(v.union(
       v.literal("registered_company"),
       v.literal("freelancer")
@@ -329,7 +329,7 @@ export const createBrandProfile = mutation({
       userId,
       isActive: true,
       brandName: args.brandName,
-      logo: args.logo,
+      logo: args.logo, // Optional during signup, required later in settings
       businessType: args.businessType,
       commercialRegisterNumber: args.commercialRegisterNumber,
       freelanceLicenseNumber: args.freelanceLicenseNumber,

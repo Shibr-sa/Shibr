@@ -32,12 +32,8 @@ export default function SignUpPage() {
     password: "",
     storeName: "",
     brandName: "",
-    logo: null as File | null,
     agreeToTerms: false,
   })
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [logoStorageId, setLogoStorageId] = useState<string | null>(null)
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const router = useRouter()
@@ -78,15 +74,6 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Check if logo is uploaded for brand owners
-    if (accountType === "brand-owner" && !logoStorageId) {
-      setErrors(prev => ({
-        ...prev,
-        logo: t("validation.logo_required"),
-      }))
-      return
-    }
 
     // Validate all fields
     try {
@@ -135,7 +122,6 @@ export default function SignUpPage() {
         accountType,
         storeName: accountType === "store-owner" ? formData.storeName.trim() : undefined,
         brandName: accountType === "brand-owner" ? formData.brandName.trim() : undefined,
-        logoStorageId: accountType === "brand-owner" ? logoStorageId : undefined,
       }
 
       // First, check if both email and phone are available
@@ -224,73 +210,6 @@ export default function SignUpPage() {
 
   const handleEmailBlur = () => {
     validateField("email", formData.email)
-  }
-
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setErrors(prev => ({ ...prev, logo: t("validation.logo_invalid_type") }))
-        return
-      }
-
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({ ...prev, logo: t("validation.logo_too_large") }))
-        return
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        logo: file,
-      }))
-      validateField("logo", file)
-
-      // Create preview
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-
-      // Upload logo to Convex storage
-      setIsUploadingLogo(true)
-      try {
-        // Get upload URL
-        const uploadUrl = await generateSignupUploadUrl({
-          fileType: "image",
-          mimeType: file.type,
-        })
-
-        // Upload file
-        const response = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        })
-
-        if (!response.ok) {
-          throw new Error("Upload failed")
-        }
-
-        const { storageId } = await response.json()
-        setLogoStorageId(storageId)
-        setErrors(prev => ({ ...prev, logo: "" }))
-      } catch (error: any) {
-        setErrors(prev => ({
-          ...prev,
-          logo: t("validation.logo_upload_failed"),
-        }))
-        toast({
-          title: t("auth.error"),
-          description: t("validation.logo_upload_failed"),
-          variant: "destructive",
-        })
-      } finally {
-        setIsUploadingLogo(false)
-      }
-    }
   }
 
   return (
@@ -427,60 +346,6 @@ export default function SignUpPage() {
                   </div>
                 )}
               </div>
-
-              {/* Logo Upload - Only for Brand Owners */}
-              {accountType === "brand-owner" && (
-                <div className="space-y-2">
-                  <Label htmlFor="logo">
-                    {t("auth.brand_logo")} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="space-y-3">
-                    <input
-                      id="logo"
-                      name="logo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      disabled={isLoading}
-                      className="hidden"
-                      aria-invalid={!!errors.logo}
-                      aria-describedby={errors.logo ? "logo-error" : undefined}
-                    />
-                    <label
-                      htmlFor="logo"
-                      className={`flex items-center justify-center w-full px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                        errors.logo
-                          ? "border-destructive bg-destructive/5"
-                          : "border-muted-foreground/25 hover:border-primary hover:bg-primary/5"
-                      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <div className="text-center">
-                        {logoPreview ? (
-                          <div className="space-y-2">
-                            <Image
-                              src={logoPreview}
-                              alt="Logo preview"
-                              width={80}
-                              height={80}
-                              className="mx-auto h-20 w-20 object-contain"
-                            />
-                            <p className="text-sm text-muted-foreground">{t("auth.change_logo")}</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="text-3xl">📸</div>
-                            <p className="text-sm font-medium">{t("auth.upload_logo")}</p>
-                            <p className="text-xs text-muted-foreground">{t("auth.or_drag_drop")}</p>
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                    {errors.logo && (
-                      <p id="logo-error" className="text-xs text-destructive">{errors.logo}</p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Contact Fields - Side by Side */}
               <div className="grid gap-4 sm:grid-cols-2">

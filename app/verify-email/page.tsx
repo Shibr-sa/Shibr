@@ -167,7 +167,6 @@ export default function VerifyEmailPage() {
           } else {
             await createBrandProfile({
               brandName: signupData.brandName,
-              logo: signupData.logoStorageId,
             })
           }
 
