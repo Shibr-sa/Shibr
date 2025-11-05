@@ -182,12 +182,13 @@ export const verifySignupAndCreateAccount = mutation({
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim()
+    const otp = args.otp.trim() // Trim OTP input to handle whitespace
 
-    // Find the OTP record
+    // Get the most recent OTP record for this email (don't filter by OTP yet)
     const otpRecord = await ctx.db
       .query("verificationOTP")
       .withIndex("by_type_identifier", (q) => q.eq("type", "email").eq("identifier", email))
-      .filter((q) => q.eq(q.field("otp"), args.otp))
+      .order("desc") // Get most recent first
       .first()
 
     if (!otpRecord) {
@@ -197,7 +198,7 @@ export const verifySignupAndCreateAccount = mutation({
       }
     }
 
-    // Check if expired
+    // Check if expired first (before checking OTP or attempts)
     if (otpRecord.expiresAt < Date.now()) {
       await ctx.db.delete(otpRecord._id)
       return {
@@ -206,7 +207,7 @@ export const verifySignupAndCreateAccount = mutation({
       }
     }
 
-    // Check attempts
+    // Check if too many attempts
     if (otpRecord.attempts >= MAX_VERIFICATION_ATTEMPTS) {
       await ctx.db.delete(otpRecord._id)
       return {
@@ -215,20 +216,30 @@ export const verifySignupAndCreateAccount = mutation({
       }
     }
 
-    // Update attempts
-    await ctx.db.patch(otpRecord._id, {
-      attempts: otpRecord.attempts + 1
-    })
+    // NOW check if OTP matches
+    if (otpRecord.otp !== otp) {
+      // Increment attempts for failed verification
+      const newAttempts = otpRecord.attempts + 1
 
-    // Verify the OTP matches
-    if (otpRecord.otp !== args.otp) {
+      if (newAttempts >= MAX_VERIFICATION_ATTEMPTS) {
+        await ctx.db.delete(otpRecord._id)
+        return {
+          success: false,
+          error: "auth.rate_limit_exceeded"
+        }
+      }
+
+      await ctx.db.patch(otpRecord._id, {
+        attempts: newAttempts
+      })
+
       return {
         success: false,
         error: "verification.invalid_code"
       }
     }
 
-    // OTP is valid - delete it
+    // OTP is valid - delete it immediately to prevent reuse
     await ctx.db.delete(otpRecord._id)
 
     // Create user account using Convex Auth

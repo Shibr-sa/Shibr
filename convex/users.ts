@@ -110,7 +110,7 @@ export const checkBrandDataComplete = query({
 
     // Check required fields
     if (!brandProfile.brandName) missingFields.push("brandName");
-    if (!brandProfile.logo) missingFields.push("logo");
+    // Logo is now optional - removed requirement as per commit 78994dc
     if (!brandProfile.businessType) missingFields.push("businessType");
     
     // Check business type specific requirements

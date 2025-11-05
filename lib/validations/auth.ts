@@ -77,14 +77,6 @@ export const signUpSchema = z.object({
 }, {
   message: "Brand name is required for brand owners",
   path: ["brandName"],
-}).refine(data => {
-  if (data.accountType === "brand-owner") {
-    return data.logo !== undefined && data.logo !== null
-  }
-  return true
-}, {
-  message: "Logo is required for brand owners",
-  path: ["logo"],
 })
 
 export function formatSaudiPhoneNumber(phone: string): string {
