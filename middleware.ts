@@ -21,6 +21,8 @@ const isPublicRoute = createRouteMatcher([
   "/privacy",
   "/contact",
   "/store/(.*)", // Public store pages for customer purchases
+  "/brand-dashboard/shelves/marketplace", // Brand marketplace browsing (authentication handled in page)
+  "/brand-dashboard/shelves/marketplace/(.*)", // Brand marketplace browsing (authentication handled in page)
   "/api/auth", // Auth callback route
   "/api/auth/(.*)"
 ]);

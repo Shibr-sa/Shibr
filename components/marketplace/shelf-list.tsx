@@ -149,7 +149,7 @@ export function ShelfList({ branchId, initialPage = 1 }: ShelfListProps) {
                   )}
                 </div>
 
-                <Link href={`/signin?redirect=/brand-dashboard/request-shelf/${shelf._id}`}>
+                <Link href={`/brand-dashboard/shelves/marketplace/${shelf._id}`}>
                   <CardContent className="p-4 cursor-pointer">
                     <h3 className="text-xl font-bold mb-2">{shelf.name}</h3>
 
