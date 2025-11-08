@@ -188,7 +188,7 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stores.map((store) => (
-                  <StoreCard key={store._id} store={store} linkPrefix={linkPrefix} />
+                  <StoreCard key={store._id} store={store} />
                 ))}
               </div>
             )}
