@@ -8,6 +8,11 @@
  * @module
  */
 
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 import type * as admin_analytics from "../admin/analytics.js";
 import type * as admin_brands from "../admin/brands.js";
 import type * as admin_helpers from "../admin/helpers.js";
@@ -52,12 +57,6 @@ import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as whatsappInvoice from "../whatsappInvoice.js";
 import type * as whatsappNotifications from "../whatsappNotifications.js";
-
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -113,15 +112,11 @@ declare const fullApi: ApiFromModules<{
   whatsappInvoice: typeof whatsappInvoice;
   whatsappNotifications: typeof whatsappNotifications;
 }>;
-declare const fullApiWithMounts: typeof fullApi;
-
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
-
-export declare const components: {};
