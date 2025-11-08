@@ -21,15 +21,16 @@ interface StoreCardProps {
       max: number
     }
   }
+  linkPrefix?: string
 }
 
-export function StoreCard({ store }: StoreCardProps) {
+export function StoreCard({ store, linkPrefix = "/marketplace" }: StoreCardProps) {
   const { t } = useLanguage()
 
   return (
     <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 border-border/50 bg-card h-full group shadow-lg">
       <Link
-        href={`/marketplace/store/${store._id}`}
+        href={`${linkPrefix}/store/${store._id}`}
         className="block h-full"
         aria-label={`View branches for ${store.storeName}`}
       >
