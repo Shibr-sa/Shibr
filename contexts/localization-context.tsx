@@ -1963,6 +1963,7 @@ const translations = {
     "auth.unknown_error": "حدث خطأ غير متوقع",
     "auth.creating_account": "جاري إنشاء الحساب",
     "auth.please_wait": "يرجى الانتظار",
+    "auth.setting_up_profile": "جاري إعداد الملف الشخصي",
 
     // Password Reset
     "auth.forgot_password_description": "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور",
@@ -4608,6 +4609,7 @@ const translations = {
     "auth.unknown_error": "An unexpected error occurred",
     "auth.creating_account": "Creating Account",
     "auth.please_wait": "Please wait",
+    "auth.setting_up_profile": "Setting up your profile",
 
     // Password Reset
     "auth.forgot_password_description": "Enter your email and we'll send you a password reset link",
