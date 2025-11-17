@@ -349,6 +349,12 @@ export const sendPhoneOTPViaKarzoun = internalAction({
     const karzounSenderId = process.env.KARZOUN_SENDER_ID
     const templateName = process.env.KARZOUN_OTP_TEMPLATE_NAME
 
+    // Log OTP in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    if (isDevelopment) {
+      logger.info(`[DEV] Phone OTP for ${args.phoneNumber}: ${args.otp}`)
+    }
+
     logger.info('Sending WhatsApp OTP to:', args.phoneNumber)
 
     if (!karzounToken || !karzounSenderId || !templateName) {

@@ -334,6 +334,14 @@ export const sendSignupOTPEmail = internalAction({
     const isDevelopment = process.env.NODE_ENV === 'development'
     const resendApiKey = process.env.RESEND_API_KEY
 
+    // Log OTP in development mode
+    if (isDevelopment) {
+      logger.info(`[DEV] Email OTP for ${args.email}: ${args.otp}`)
+    }
+
+    // Always log OTP for development debugging (matches phone pattern at line 370)
+    logger.info('Email OTP details', { email: args.email, otp: args.otp })
+
     // Development mode - just log the OTP
     if (isDevelopment && !resendApiKey) {
       logger.info('\n' + '='.repeat(50))

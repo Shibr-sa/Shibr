@@ -34,6 +34,12 @@ const isBrandRoute = createRouteMatcher(["/brand-dashboard", "/brand-dashboard/(
 
 // Security headers configuration
 function addSecurityHeaders(response: NextResponse): NextResponse {
+  // Environment-specific connect-src for Convex
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const convexConnectSrc = isDevelopment
+    ? "'self' http://127.0.0.1:* ws://127.0.0.1:* https://*.convex.cloud wss://*.convex.cloud"
+    : "'self' https://*.convex.cloud wss://*.convex.cloud";
+
   // Content Security Policy - adjust based on your needs
   const cspHeader = [
     "default-src 'self'",
@@ -41,7 +47,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: http:",
-    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://api.tap.company https://maps.googleapis.com https://*.googleapis.com",
+    `connect-src ${convexConnectSrc} https://api.tap.company https://maps.googleapis.com https://*.googleapis.com`,
     "frame-src 'self' https://checkout.tap.company",
     "object-src 'none'",
     "base-uri 'self'",
