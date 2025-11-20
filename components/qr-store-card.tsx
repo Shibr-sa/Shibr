@@ -11,6 +11,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { useLanguage } from "@/contexts/localization-context"
 import { formatCurrency } from "@/lib/formatters"
 import { StatCard } from "@/components/ui/stat-card"
+import Link from "next/link"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -143,11 +145,14 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
           <div className="flex items-center gap-4">
             <div className="bg-white p-4 rounded-lg border">
               {qrCodeDataUrl ? (
-                <img
+                <Image
                   src={qrCodeDataUrl}
                   alt="QR Code"
+                  width={128}
+                  height={128}
                   className="w-32 h-32 cursor-pointer"
                   onClick={() => setShowQRDialog(true)}
+                  unoptimized
                 />
               ) : (
                 <div className="w-32 h-32 flex items-center justify-center">
@@ -232,10 +237,13 @@ export function QRStoreCard({ rentalRequestId, className }: QRStoreCardProps) {
           {qrCodeDataUrl && branchStore && (
             <div className="space-y-4 overflow-hidden">
               <div className="bg-white p-4 rounded-lg flex items-center justify-center">
-                <img
+                <Image
                   src={qrCodeDataUrl}
                   alt="QR Code"
+                  width={256}
+                  height={256}
                   className="w-48 h-48 sm:w-64 sm:h-64"
+                  unoptimized
                 />
               </div>
 

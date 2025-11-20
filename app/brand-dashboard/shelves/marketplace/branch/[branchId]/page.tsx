@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, use } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useQuery } from "convex/react"
@@ -15,12 +15,13 @@ import { useLanguage } from "@/contexts/localization-context"
 import { useDebounce } from "@/hooks/use-debounce"
 
 interface BrandMarketplaceBranchProps {
-  params: {
+  params: Promise<{
     branchId: string
-  }
+  }>
 }
 
 export default function BrandMarketplaceBranchPage({ params }: BrandMarketplaceBranchProps) {
+  const { branchId } = use(params)
   const { t, direction } = useLanguage()
   const [searchInput, setSearchInput] = useState("")
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({})
@@ -29,7 +30,7 @@ export default function BrandMarketplaceBranchPage({ params }: BrandMarketplaceB
 
   // Fetch branch and shelves data
   const branchData = useQuery(api.branches.getBranchShelves, {
-    branchId: params.branchId as Id<"branches">,
+    branchId: branchId as Id<"branches">,
   })
 
   const isLoading = branchData === undefined

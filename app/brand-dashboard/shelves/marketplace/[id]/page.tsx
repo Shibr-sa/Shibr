@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { MapPin, CalendarDays, Ruler, Box, AlertCircle, MessageSquare, Package, Calendar as CalendarIcon, Store, Tag, Layers, Send, RefreshCw, X, Building, Navigation, DollarSign, Star, FileText, Check, Clock, CreditCard, CheckCircle, XCircle } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -32,8 +33,11 @@ import { ChatInterface } from "@/components/chat/chat-interface"
 import { QRStoreCard } from "@/components/qr-store-card"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useBrandData } from "@/contexts/brand-data-context"
+import { toast } from "sonner"
+import { BrandShippingForm } from "@/components/shipping/brand-shipping-form"
 
-interface ShelfDetails {
+interface ShelfDetails
+{
   _id: string
   shelfName: string
   city: string
@@ -73,7 +77,8 @@ interface ShelfDetails {
   }>
 }
 
-export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function MarketDetailsPage({ params }: { params: Promise<{ id: string }> })
+{
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t, language, direction } = useLanguage()
@@ -124,14 +129,16 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   const [processingPayment, setProcessingPayment] = useState(false)
 
   // Helper function to calculate rental months
-  const calculateRentalMonths = (from: Date | undefined, to: Date | undefined) => {
+  const calculateRentalMonths = (from: Date | undefined, to: Date | undefined) =>
+  {
     if (!from || !to) return 0
     const daysDiff = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
     return Math.max(1, Math.ceil(daysDiff / 30))
   }
 
   // Calculate the first available date for booking
-  const getFirstAvailableDate = () => {
+  const getFirstAvailableDate = () =>
+  {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     tomorrow.setHours(0, 0, 0, 0)
@@ -142,17 +149,20 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
     let firstAvailable = availableFrom > tomorrow ? availableFrom : tomorrow
 
     // If there are active rentals, find the first available date after all rentals
-    if (rentalSchedule && rentalSchedule.length > 0) {
+    if (rentalSchedule && rentalSchedule.length > 0)
+    {
       const activeRentals = rentalSchedule
         .filter(r => r.status === "active" || r.status === "payment_pending")
         .sort((a, b) => b.endDate - a.endDate) // Sort by end date, latest first
 
-      if (activeRentals.length > 0) {
+      if (activeRentals.length > 0)
+      {
         const lastRentalEnd = new Date(activeRentals[0].endDate)
         lastRentalEnd.setDate(lastRentalEnd.getDate() + 1) // Day after last rental ends
         lastRentalEnd.setHours(0, 0, 0, 0)
 
-        if (lastRentalEnd > firstAvailable) {
+        if (lastRentalEnd > firstAvailable)
+        {
           firstAvailable = lastRentalEnd
         }
       }
@@ -170,8 +180,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   )
 
   // Set conversation ID from existing request if available
-  useEffect(() => {
-    if (existingRequest?.conversationId && !conversationId) {
+  useEffect(() =>
+  {
+    if (existingRequest?.conversationId && !conversationId)
+    {
       setConversationId(existingRequest.conversationId)
       setHasSubmittedRequest(true)
     }
@@ -207,20 +219,24 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
   // Set conversation and submission state if there's an existing request
   // Also restore the form data from the existing request
-  useEffect(() => {
-    if (activeRequest) {
+  useEffect(() =>
+  {
+    if (activeRequest)
+    {
       setConversationId(activeRequest.conversationId || null)
       setHasSubmittedRequest(true)
 
       // Restore form data from existing request
-      if (activeRequest.startDate && activeRequest.endDate) {
+      if (activeRequest.startDate && activeRequest.endDate)
+      {
         setDateRange({
           from: new Date(activeRequest.startDate),
           to: new Date(activeRequest.endDate)
         })
       }
       // Restore selected products from existing request
-      if (activeRequest.selectedProducts && activeRequest.selectedProducts.length > 0) {
+      if (activeRequest.selectedProducts && activeRequest.selectedProducts.length > 0)
+      {
         // Handle new format with selectedProducts array
         const restoredProducts = activeRequest.selectedProducts.map((product: any) => ({
           id: product.productId,
@@ -234,8 +250,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Detect if user is returning from payment
   // In local dev: manually verify payment (webhooks can't reach localhost)
   // In production: webhook will handle it automatically
-  useEffect(() => {
-    if (chargeId && rentalRequestIdFromUrl) {
+  useEffect(() =>
+  {
+    if (chargeId && rentalRequestIdFromUrl)
+    {
       // User returned from Tap payment gateway
       setIsVerifyingPayment(true)
 
@@ -245,25 +263,31 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
       // Manual verification for local development (webhooks won't work on localhost)
       // In production with proper webhook URL, this provides a fallback if webhook is delayed
-      const verifyPayment = async () => {
-        try {
+      const verifyPayment = async () =>
+      {
+        try
+        {
           logger.logDebug('Verifying payment...', { chargeId, rentalRequestIdFromUrl })
           const result = await verifyAndConfirmPayment({
             chargeId,
             rentalRequestId: rentalRequestIdFromUrl,
           })
 
-          if (result.success) {
+          if (result.success)
+          {
             logger.logDebug('Payment verified successfully')
             // Convex reactivity will update the UI automatically
-          } else {
+          } else
+          {
             console.error('Payment verification failed:', result.error)
-            alert(result.error || 'Payment verification failed')
+            toast.error(result.error || 'Payment verification failed')
           }
-        } catch (error) {
+        } catch (error)
+        {
           console.error('Error verifying payment:', error)
           // Don't show error to user - might be already processed by webhook
-        } finally {
+        } finally
+        {
           setIsVerifyingPayment(false)
         }
       }
@@ -277,14 +301,17 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   // Test Cards for Tap Payments:
   // Visa: 4508750015741019, 4440000009900010
   // MasterCard: 5123450000000008
-  const handlePayment = async () => {
-    if (!user || !activeRequest || !userData) {
+  const handlePayment = async () =>
+  {
+    if (!user || !activeRequest || !userData)
+    {
       return
     }
 
     setProcessingPayment(true)
 
-    try {
+    try
+    {
       const session = await createCheckoutSession({
         amount: activeRequest.totalAmount,
         description: `Shelf rental for ${shelfDetails?.shelfName || "Shelf"}`,
@@ -297,41 +324,50 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
         }
       })
 
-      if (session.success && session.checkoutUrl) {
+      if (session.success && session.checkoutUrl)
+      {
         window.location.href = session.checkoutUrl
-      } else {
-        alert(language === "ar" ? "فشل إنشاء جلسة الدفع" : "Failed to create payment session")
+      } else
+      {
+        toast.error(language === "ar" ? "فشل إنشاء جلسة الدفع" : "Failed to create payment session")
       }
-    } catch (error) {
+    } catch (error)
+    {
       const errorMessage = error instanceof Error
         ? error.message
         : (language === "ar" ? "فشل الدفع" : "Payment failed")
-      alert(errorMessage)
-    } finally {
+      toast.error(errorMessage)
+    } finally
+    {
       setProcessingPayment(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) =>
+  {
     e.preventDefault()
 
     // Note: Removed shelf availability check - users can now book future dates
 
-    if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0) {
-      alert(t("form.fill_required_fields"))
+    if (!dateRange?.from || !dateRange?.to || selectedProducts.length === 0)
+    {
+      toast.error(t("form.fill_required_fields"))
       return
     }
 
-    if (!userId || !userProfileId || !shelfDetails?.storeProfileId) {
+    if (!userId || !userProfileId || !shelfDetails?.storeProfileId)
+    {
       // Auth check failed - missing required data
-      alert(t("form.login_first"))
+      toast.error(t("form.login_first"))
       return
     }
 
-    try {
+    try
+    {
       // First, create or get conversation
       let convId = conversationId
-      if (!convId) {
+      if (!convId)
+      {
         convId = await getOrCreateConversation({
           brandProfileId: userProfileId,
           storeProfileId: shelfDetails.storeProfileId as Id<"storeProfiles">,
@@ -351,11 +387,13 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
       })
 
       // Show success message based on whether it was created or updated
-      if (result.isUpdate) {
-        alert(t("form.request_updated_success"))
+      if (result.isUpdate)
+      {
+        toast.success(t("form.request_updated_success"))
         // Don't reset form fields when updating - preserve user's data
-      } else {
-        alert(t("form.request_submitted_success"))
+      } else
+      {
+        toast.success(t("form.request_submitted_success"))
         // Only reset form fields for new requests
         setDateRange(undefined)
         setSelectedProducts([])
@@ -364,13 +402,15 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
 
       // Mark that request has been submitted
       setHasSubmittedRequest(true)
-    } catch (error) {
-      alert(t("form.submit_error"))
+    } catch (error)
+    {
+      toast.error(t("form.submit_error"))
     }
   }
 
   // Loading state
-  if (!shelfDetails) {
+  if (!shelfDetails)
+  {
     return (
       <div className="flex flex-col gap-8">
         <Card>
@@ -402,19 +442,19 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
   return (
     <div className="h-full">
       <div className="space-y-6">
-        {/* Shelf Details Card with Images - Combined Design */}
+        {/* Shelf Details Card with Images - Combined Design */ }
         <div>
           <Card className="overflow-hidden">
             <div className="bg-muted/50 px-6 py-3 border-b">
               <h3 className="text-base font-semibold">
-                {t("marketplace.shelf_details")}
+                { t("marketplace.shelf_details") }
               </h3>
             </div>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left side - Shelf Information */}
+                {/* Left side - Shelf Information */ }
                 <div className="lg:col-span-2 space-y-4">
-                  {/* First Row - Shelf Name, Branch, Address */}
+                  {/* First Row - Shelf Name, Branch, Address */ }
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -422,10 +462,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.shelf_name")}
+                          { t("marketplace.shelf_name") }
                         </Label>
-                        <p className="text-sm font-medium truncate" title={shelfDetails.shelfName}>
-                          {shelfDetails.shelfName}
+                        <p className="text-sm font-medium truncate" title={ shelfDetails.shelfName }>
+                          { shelfDetails.shelfName }
                         </p>
                       </div>
                     </div>
@@ -436,10 +476,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.branch")}
+                          { t("marketplace.branch") }
                         </Label>
-                        <p className="text-sm font-medium truncate" title={shelfDetails.storeBranch}>
-                          {shelfDetails.storeBranch}
+                        <p className="text-sm font-medium truncate" title={ shelfDetails.storeBranch }>
+                          { shelfDetails.storeBranch }
                         </p>
                       </div>
                     </div>
@@ -450,36 +490,34 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("common.address")}
+                          { t("common.address") }
                         </Label>
-                        {shelfDetails.location ? (
-                          <a
-                            href={`https://www.google.com/maps?q=${shelfDetails.location.lat},${shelfDetails.location.lng}`}
+                        { shelfDetails.location ? (
+                          <Link href={ `https://www.google.com/maps?q=${shelfDetails.location.lat},${shelfDetails.location.lng}` }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm font-medium text-primary hover:underline block truncate"
-                            title={shelfDetails.location.address || shelfDetails.city}
+                            title={ shelfDetails.location.address || shelfDetails.city }
                           >
-                            {shelfDetails.location.address || shelfDetails.city || t("marketplace.view_on_map")}
-                          </a>
+                            { shelfDetails.location.address || shelfDetails.city || t("marketplace.view_on_map") }
+                          </Link>
                         ) : shelfDetails.coordinates ? (
-                          <a
-                            href={`https://www.google.com/maps?q=${shelfDetails.coordinates.lat},${shelfDetails.coordinates.lng}`}
+                          <Link href={ `https://www.google.com/maps?q=${shelfDetails.coordinates.lat},${shelfDetails.coordinates.lng}` }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm font-medium text-primary hover:underline block truncate"
-                            title={shelfDetails.address || shelfDetails.city}
+                            title={ shelfDetails.address || shelfDetails.city }
                           >
-                            {shelfDetails.address || shelfDetails.city || t("marketplace.view_on_map")}
-                          </a>
+                            { shelfDetails.address || shelfDetails.city || t("marketplace.view_on_map") }
+                          </Link>
                         ) : (
                           <p className="text-sm font-medium">-</p>
-                        )}
+                        ) }
                       </div>
                     </div>
                   </div>
 
-                  {/* Second Row - Price & Commission, Dimensions, Available From */}
+                  {/* Second Row - Price & Commission, Dimensions, Available From */ }
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -487,14 +525,14 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.price_and_commission")}
+                          { t("marketplace.price_and_commission") }
                         </Label>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate" title={formatCurrency(shelfDetails.monthlyPrice, language)}>
-                            {formatCurrency(shelfDetails.monthlyPrice, language)}
+                          <p className="text-sm font-medium truncate" title={ formatCurrency(shelfDetails.monthlyPrice, language) }>
+                            { formatCurrency(shelfDetails.monthlyPrice, language) }
                           </p>
                           <Badge variant="secondary" className="text-xs px-2 py-0">
-                            {`${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%`}
+                            { `${(shelfDetails.storeCommission || 0) + (platformSettings?.brandSalesCommission || 8)}%` }
                           </Badge>
                         </div>
                       </div>
@@ -506,10 +544,10 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.dimensions")}
+                          { t("marketplace.dimensions") }
                         </Label>
-                        <p className="text-sm font-medium truncate" title={`${shelfDetails.shelfSize.width}×${shelfDetails.shelfSize.height}×${shelfDetails.shelfSize.depth}${shelfDetails.shelfSize.unit}`}>
-                          {shelfDetails.shelfSize.width}×{shelfDetails.shelfSize.height}×{shelfDetails.shelfSize.depth}{shelfDetails.shelfSize.unit}
+                        <p className="text-sm font-medium truncate" title={ `${shelfDetails.shelfSize.width}×${shelfDetails.shelfSize.height}×${shelfDetails.shelfSize.depth}${shelfDetails.shelfSize.unit}` }>
+                          { shelfDetails.shelfSize.width }×{ shelfDetails.shelfSize.height }×{ shelfDetails.shelfSize.depth }{ shelfDetails.shelfSize.unit }
                         </p>
                       </div>
                     </div>
@@ -520,45 +558,46 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <Label className="text-xs text-muted-foreground font-normal">
-                          {t("marketplace.available_from")}
+                          { t("marketplace.available_from") }
                         </Label>
                         <p className="text-sm font-medium truncate">
-                          {new Date(shelfDetails.availableFrom).toLocaleDateString(
+                          { new Date(shelfDetails.availableFrom).toLocaleDateString(
                             "en-US",
                             { month: 'short', day: 'numeric', year: 'numeric' }
-                          )}
+                          ) }
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Store Description Section */}
+                  {/* Store Description Section */ }
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("common.description")}
+                        { t("common.description") }
                       </Label>
                       <p className="text-sm leading-relaxed">
-                        {shelfDetails.description || "-"}
+                        { shelfDetails.description || "-" }
                       </p>
                     </div>
                   </div>
 
-                  {/* Product Types Section */}
+                  {/* Product Types Section */ }
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Package className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">
-                        {t("marketplace.shelf_type")}
+                        { t("marketplace.shelf_type") }
                       </Label>
                       <div className="flex flex-wrap gap-2">
-                        {shelfDetails.productTypes && shelfDetails.productTypes.length > 0 ? (
-                          shelfDetails.productTypes.map((type, index) => {
+                        { shelfDetails.productTypes && shelfDetails.productTypes.length > 0 ? (
+                          shelfDetails.productTypes.map((type, index) =>
+                          {
                             // Try product_categories translation first
                             let translationKey = `product_categories.${type}`;
                             let translation = t(translationKey as any);
@@ -571,107 +610,107 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                               : translation;
 
                             return (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {displayText}
+                              <Badge key={ index } variant="secondary" className="text-xs">
+                                { displayText }
                               </Badge>
                             );
                           })
                         ) : (
                           <Badge variant="secondary" className="text-xs">
-                            {t("product_categories.other")}
+                            { t("product_categories.other") }
                           </Badge>
-                        )}
+                        ) }
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Right side - Shelf Images */}
+                {/* Right side - Shelf Images */ }
                 <div className="lg:col-span-1">
-                  {shelfDetails.images && shelfDetails.images.length > 0 ? (
+                  { shelfDetails.images && shelfDetails.images.length > 0 ? (
                     <div className="space-y-4">
-                      {/* Main Image */}
+                      {/* Main Image */ }
                       <div className="relative">
                         <Image
-                          src={selectedImage || (shelfDetails.images?.[0]?.url) || "/placeholder.svg?height=400&width=600"}
-                          alt={shelfDetails.shelfName}
-                          width={600}
-                          height={400}
+                          src={ selectedImage || (shelfDetails.images?.[0]?.url) || "/placeholder.svg?height=400&width=600" }
+                          alt={ shelfDetails.shelfName }
+                          width={ 600 }
+                          height={ 400 }
                           className="w-full h-64 object-cover rounded-lg"
                           unoptimized
                         />
-                        {shelfDetails.images && shelfDetails.images.length > 1 && (
+                        { shelfDetails.images && shelfDetails.images.length > 1 && (
                           <Badge className="absolute top-3 start-3 bg-background/90 backdrop-blur-sm">
-                            {shelfDetails.images.findIndex(img => img.url === (selectedImage || shelfDetails.images![0]?.url)) + 1} / {shelfDetails.images!.length}
+                            { shelfDetails.images.findIndex(img => img.url === (selectedImage || shelfDetails.images![0]?.url)) + 1 } / { shelfDetails.images!.length }
                           </Badge>
-                        )}
+                        ) }
                       </div>
 
-                      {/* Thumbnail Images - Only show if multiple images exist */}
-                      {shelfDetails.images && shelfDetails.images.length > 1 && (
+                      {/* Thumbnail Images - Only show if multiple images exist */ }
+                      { shelfDetails.images && shelfDetails.images.length > 1 && (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {shelfDetails.images.slice(0, 3).map((image, index) => (
+                          { shelfDetails.images.slice(0, 3).map((image, index) => (
                             <div
-                              key={index}
+                              key={ index }
                               className="relative group cursor-pointer"
-                              onClick={() => setSelectedImage(image.url)}
+                              onClick={ () => setSelectedImage(image.url) }
                             >
                               <Image
-                                src={image.url}
-                                alt={`${shelfDetails.shelfName} - ${image.type}`}
-                                width={80}
-                                height={64}
-                                className={`w-full h-16 object-cover rounded-md border-2 transition-colors ${(selectedImage === image.url || (!selectedImage && index === 0))
+                                src={ image.url }
+                                alt={ `${shelfDetails.shelfName} - ${image.type}` }
+                                width={ 80 }
+                                height={ 64 }
+                                className={ `w-full h-16 object-cover rounded-md border-2 transition-colors ${(selectedImage === image.url || (!selectedImage && index === 0))
                                   ? 'border-primary' : 'border-transparent hover:border-primary/50'
-                                  }`}
+                                  }` }
                                 unoptimized
                               />
                               <div className="absolute inset-0 bg-primary/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                          ))}
+                          )) }
                         </div>
-                      )}
+                      ) }
                     </div>
                   ) : (
                     <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
                       <Store className="h-16 w-16 text-muted-foreground/50" />
                     </div>
-                  )}
+                  ) }
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Note about approval - Always shown */}
+        {/* Note about approval - Always shown */ }
         <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
           <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-            {t("marketplace.details.approval_notice")}
+            { t("marketplace.details.approval_notice") }
           </p>
         </div>
 
-        {/* QR Store Section - Only for active rentals */}
-        {activeRequest?.status === 'active' && activeRequest._id && (
+        {/* QR Store Section - Only for active rentals */ }
+        { activeRequest?.status === 'active' && activeRequest._id && (
           <div className="mb-6">
-            <QRStoreCard rentalRequestId={activeRequest._id as Id<"rentalRequests">} />
+            <QRStoreCard rentalRequestId={ activeRequest._id as Id<"rentalRequests"> } />
           </div>
-        )}
+        ) }
 
-        {/* Bottom Row - Rental Request and Chat */}
+        {/* Bottom Row - Rental Request and Chat */ }
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Rental Request Form - Enhanced Design */}
+          {/* Rental Request Form - Enhanced Design */ }
           <Card className="overflow-hidden lg:col-span-2">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={ handleSubmit }>
               <div className="bg-muted/50 px-6 py-3 border-b">
                 <h3 className="text-base font-semibold">
-                  {t("marketplace.details.send_request_title")}
+                  { t("marketplace.details.send_request_title") }
                 </h3>
               </div>
               <CardContent className="p-6 space-y-6">
-                {/* Combined Product Selection and Summary in Single Card */}
+                {/* Combined Product Selection and Summary in Single Card */ }
                 <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 overflow-hidden">
-                  {/* Products Summary Header */}
+                  {/* Products Summary Header */ }
                   <div className="p-4 border-b border-primary/10">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-3">
@@ -680,85 +719,90 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                         </div>
                         <div>
                           <p className="text-sm font-medium">
-                            {selectedProducts.length} {t("marketplace.details.products_selected")}
+                            { selectedProducts.length } { t("marketplace.details.products_selected") }
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {selectedProducts.reduce((total, p) => total + p.quantity, 0)} {language === "ar" ? "إجمالي القطع" : "total items"}
+                            { selectedProducts.reduce((total, p) => total + p.quantity, 0) } { language === "ar" ? "إجمالي القطع" : "total items" }
                           </p>
                         </div>
                       </div>
                       <div className="text-left sm:text-right">
-                        <p className="text-xs text-muted-foreground">{t("marketplace.details.total_value")}</p>
+                        <p className="text-xs text-muted-foreground">{ t("marketplace.details.total_value") }</p>
                         <p className="text-lg font-bold text-primary">
-                          {t("common.currency_symbol")} {selectedProducts.reduce((total, selectedProduct) => {
+                          { t("common.currency_symbol") } { selectedProducts.reduce((total, selectedProduct) =>
+                          {
                             const product = userProducts?.find(p => p._id === selectedProduct.id)
                             return total + ((product?.price || 0) * selectedProduct.quantity)
-                          }, 0).toLocaleString()}
+                          }, 0).toLocaleString() }
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Product Selection List Inside Same Card */}
+                  {/* Product Selection List Inside Same Card */ }
                   <div className="p-4 bg-background/30">
-                    {!userProducts || userProducts.length === 0 ? (
+                    { !userProducts || userProducts.length === 0 ? (
                       <div className="min-h-[320px] flex items-center justify-center px-6">
                         <div className="text-center">
                           <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                           <p className="text-muted-foreground">
-                            {language === "ar"
+                            { language === "ar"
                               ? "لم تقم بإضافة منتجات بعد"
-                              : "You haven't added any products yet"}
+                              : "You haven't added any products yet" }
                           </p>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="mt-4"
-                            onClick={() => router.push("/brand-dashboard/products")}
+                            onClick={ () => router.push("/brand-dashboard/products") }
                           >
-                            {t("products.add_product")}
+                            { t("products.add_product") }
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className={`space-y-1.5 ${userProducts.length > 3 ? 'max-h-[200px] overflow-y-auto scrollbar-thin' : ''}`}>
-                        {userProducts.map((product) => {
+                      <div className={ `space-y-1.5 ${userProducts.length > 3 ? 'max-h-[200px] overflow-y-auto scrollbar-thin' : ''}` }>
+                        { userProducts.map((product) =>
+                        {
                           const selectedProduct = selectedProducts.find(p => p.id === product._id)
                           const isSelected = !!selectedProduct
 
                           return (
                             <div
-                              key={product._id}
-                              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isSelected
+                              key={ product._id }
+                              className={ `flex items-center gap-3 p-3 rounded-lg border transition-all ${isSelected
                                 ? 'bg-primary/5 border-primary/20'
                                 : 'border-transparent hover:bg-muted/30'
-                                }`}
+                                }` }
                             >
                               <Checkbox
-                                id={product._id}
-                                checked={isSelected}
-                                disabled={isFormDisabled}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
+                                id={ product._id }
+                                checked={ isSelected }
+                                disabled={ isFormDisabled }
+                                onCheckedChange={ (checked) =>
+                                {
+                                  if (checked)
+                                  {
                                     setSelectedProducts([...selectedProducts, { id: product._id, quantity: 1 }])
-                                  } else {
+                                  } else
+                                  {
                                     setSelectedProducts(selectedProducts.filter(p => p.id !== product._id))
                                   }
-                                }}
+                                } }
                                 className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                               />
                               <label
-                                htmlFor={product._id}
+                                htmlFor={ product._id }
                                 className="flex-1 cursor-pointer flex items-center justify-between gap-3"
                               >
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm truncate">{product.name}</div>
+                                  <div className="font-medium text-sm truncate">{ product.name }</div>
                                   <div className="text-xs text-muted-foreground mt-0.5">
-                                    {t("common.currency_symbol")} {product.price.toLocaleString()} • {product.quantity} {language === "ar" ? "متاح" : "available"}
+                                    { t("common.currency_symbol") } { product.price.toLocaleString() } • { product.quantity } { language === "ar" ? "متاح" : "available" }
                                   </div>
                                 </div>
-                                {isSelected ? (
+                                { isSelected ? (
                                   <div className="flex items-center gap-2">
                                     <div className="flex items-center border rounded-md">
                                       <Button
@@ -766,73 +810,77 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 hover:bg-muted"
-                                        disabled={selectedProduct?.quantity === 1 || isFormDisabled}
-                                        onClick={(e) => {
+                                        disabled={ selectedProduct?.quantity === 1 || isFormDisabled }
+                                        onClick={ (e) =>
+                                        {
                                           e.preventDefault()
                                           e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
-                                          if (currentQty > 1) {
+                                          if (currentQty > 1)
+                                          {
                                             setSelectedProducts(selectedProducts.map(p =>
                                               p.id === product._id
                                                 ? { ...p, quantity: currentQty - 1 }
                                                 : p
                                             ))
                                           }
-                                        }}
+                                        } }
                                       >
                                         <span className="text-sm">−</span>
                                       </Button>
                                       <span className="px-3 text-sm font-medium border-x">
-                                        {selectedProduct?.quantity || 1}
+                                        { selectedProduct?.quantity || 1 }
                                       </span>
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 hover:bg-muted"
-                                        disabled={selectedProduct?.quantity === (product.quantity || 0) || isFormDisabled}
-                                        onClick={(e) => {
+                                        disabled={ selectedProduct?.quantity === (product.quantity || 0) || isFormDisabled }
+                                        onClick={ (e) =>
+                                        {
                                           e.preventDefault()
                                           e.stopPropagation()
                                           const currentQty = selectedProduct?.quantity || 1
-                                          if (currentQty < (product.quantity || 0)) {
+                                          if (currentQty < (product.quantity || 0))
+                                          {
                                             setSelectedProducts(selectedProducts.map(p =>
                                               p.id === product._id
                                                 ? { ...p, quantity: currentQty + 1 }
                                                 : p
                                             ))
                                           }
-                                        }}
+                                        } }
                                       >
                                         <span className="text-sm">+</span>
                                       </Button>
                                     </div>
                                     <div className="text-right min-w-fit">
                                       <div className="text-sm font-semibold">
-                                        {t("common.currency_symbol")} {((selectedProduct?.quantity || 1) * product.price).toLocaleString()}
+                                        { t("common.currency_symbol") } { ((selectedProduct?.quantity || 1) * product.price).toLocaleString() }
                                       </div>
                                     </div>
                                   </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
-                                    {language === "ar" ? "اختر" : "Select"}
+                                    { language === "ar" ? "اختر" : "Select" }
                                   </span>
-                                )}
+                                ) }
                               </label>
                             </div>
                           )
-                        })}
+                        }) }
                       </div>
-                    )}
+                    ) }
                   </div>
                 </div>
 
-                {/* Booking Details */}
+                {/* Booking Details */ }
 
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="booking-date" className="text-sm">
-                      {t("marketplace.details.booking_duration")}*
+                      { t("marketplace.details.booking_duration") }*
                     </Label>
 
                     <div className="flex items-start gap-3">
@@ -841,34 +889,35 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                           <Button
                             id="booking-date"
                             variant="outline"
-                            className={cn(
+                            className={ cn(
                               "flex-1 justify-start text-left font-normal",
                               !dateRange && "text-muted-foreground"
-                            )}
+                            ) }
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
+                            { dateRange?.from ? (
                               dateRange.to ? (
                                 <>
-                                  {format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS })} -
-                                  {format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })}
+                                  { format(dateRange.from, "MMM d", { locale: language === "ar" ? ar : enUS }) } -
+                                  { format(dateRange.to, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS }) }
                                 </>
                               ) : (
                                 format(dateRange.from, "MMM d, yyyy", { locale: language === "ar" ? ar : enUS })
                               )
                             ) : (
-                              <span>{t("marketplace.details.pick_dates")}</span>
-                            )}
+                              <span>{ t("marketplace.details.pick_dates") }</span>
+                            ) }
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="range"
-                            defaultMonth={dateRange?.from || getFirstAvailableDate()}
-                            selected={dateRange}
-                            onSelect={setDateRange}
-                            numberOfMonths={1}
-                            disabled={(date) => {
+                            defaultMonth={ dateRange?.from || getFirstAvailableDate() }
+                            selected={ dateRange }
+                            onSelect={ setDateRange }
+                            numberOfMonths={ 1 }
+                            disabled={ (date) =>
+                            {
                               // Calculate minimum date (either availableFrom or tomorrow)
                               const tomorrow = new Date()
                               tomorrow.setDate(tomorrow.getDate() + 1)
@@ -882,17 +931,21 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                               if (date < minDate) return true
 
                               // Check if date falls within any rental period
-                              if (rentalSchedule) {
-                                for (const rental of rentalSchedule) {
+                              if (rentalSchedule)
+                              {
+                                for (const rental of rentalSchedule)
+                                {
                                   // Only block dates for active or payment_pending rentals
                                   if (rental.status === "active" ||
-                                    rental.status === "payment_pending") {
+                                    rental.status === "payment_pending")
+                                  {
                                     const rentalStart = new Date(rental.startDate)
                                     const rentalEnd = new Date(rental.endDate)
                                     rentalStart.setHours(0, 0, 0, 0)
                                     rentalEnd.setHours(23, 59, 59, 999)
 
-                                    if (date >= rentalStart && date <= rentalEnd) {
+                                    if (date >= rentalStart && date <= rentalEnd)
+                                    {
                                       return true // Date is within a rental period
                                     }
                                   }
@@ -900,24 +953,24 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                               }
 
                               return false
-                            }}
+                            } }
                           />
                         </PopoverContent>
                       </Popover>
 
-                      {/* Rental Duration Display - Always Visible */}
+                      {/* Rental Duration Display - Always Visible */ }
                       <div
                         className="flex flex-col items-center justify-center min-w-[100px] h-10 px-4 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
-                        data-selected={!!(dateRange?.from && dateRange?.to)}
+                        data-selected={ !!(dateRange?.from && dateRange?.to) }
                       >
                         <div className="flex items-baseline gap-1">
                           <span className="text-sm font-medium">
-                            {dateRange?.from && dateRange?.to
+                            { dateRange?.from && dateRange?.to
                               ? calculateRentalMonths(dateRange.from, dateRange.to)
-                              : "1"}
+                              : "1" }
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {dateRange?.from && dateRange?.to ? (
+                            { dateRange?.from && dateRange?.to ? (
                               language === "ar"
                                 ? calculateRentalMonths(dateRange.from, dateRange.to) === 1
                                   ? "شهر"
@@ -929,115 +982,134 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                                   : "months"
                             ) : (
                               language === "ar" ? "شهر كحد أدنى" : "month minimum"
-                            )}
+                            ) }
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Rental Schedule Display */}
-                    {rentalSchedule && rentalSchedule.length > 0 && (
+                    {/* Rental Schedule Display */ }
+                    { rentalSchedule && rentalSchedule.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">
-                          {language === "ar" ? "الحجوزات الحالية" : "Current Bookings"}
+                          { language === "ar" ? "الحجوزات الحالية" : "Current Bookings" }
                         </Label>
                         <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                          {rentalSchedule
+                          { rentalSchedule
                             .filter(r => r.status === "active" || r.status === "payment_pending")
                             .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
                             .map((rental, index) => (
-                              <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
-                                <span className="font-medium">{rental.brandName}</span>
+                              <div key={ index } className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
+                                <span className="font-medium">{ rental.brandName }</span>
                                 <span className="text-muted-foreground">
-                                  {new Date(rental.startDate).toLocaleDateString()} - {new Date(rental.endDate).toLocaleDateString()}
+                                  { new Date(rental.startDate).toLocaleDateString() } - { new Date(rental.endDate).toLocaleDateString() }
                                 </span>
                               </div>
-                            ))}
+                            )) }
                         </div>
                       </div>
-                    )}
+                    ) }
 
-                    {/* Price Display - Always Visible */}
+                    {/* Price Display - Always Visible */ }
                     <div
                       className="flex items-center justify-between min-h-[52px] p-3 rounded-md border border-input bg-background transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:border-primary/20"
-                      data-selected={!!(dateRange?.from && dateRange?.to)}
+                      data-selected={ !!(dateRange?.from && dateRange?.to) }
                     >
                       <span className="text-sm text-muted-foreground">
-                        {dateRange?.from && dateRange?.to
+                        { dateRange?.from && dateRange?.to
                           ? t("rental.total_price")
-                          : t("marketplace.price_per_month")}
+                          : t("marketplace.price_per_month") }
                       </span>
                       <span className="text-lg font-semibold flex items-baseline gap-1">
-                        {dateRange?.from && dateRange?.to ? (
+                        { dateRange?.from && dateRange?.to ? (
                           formatCurrency(
                             shelfDetails.monthlyPrice * calculateRentalMonths(dateRange.from, dateRange.to),
                             language
                           )
                         ) : (
                           <>
-                            {formatCurrency(shelfDetails.monthlyPrice, language)}
-                            <span className="text-sm font-normal text-muted-foreground">/{language === "ar" ? "شهر" : "month"}</span>
+                            { formatCurrency(shelfDetails.monthlyPrice, language) }
+                            <span className="text-sm font-normal text-muted-foreground">/{ language === "ar" ? "شهر" : "month" }</span>
                           </>
-                        )}
+                        ) }
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* Brand Shipping Form - After Payment */}
+                {activeRequest?.status === "awaiting_shipment" && (
+                  <Card className="overflow-hidden">
+                    <div className="bg-muted/50 px-6 py-3 border-b">
+                      <h3 className="text-base font-semibold">
+                        {t("shipping.ship_products_title")}
+                      </h3>
+                    </div>
+                    <CardContent className="pt-6">
+                      <BrandShippingForm
+                        requestId={activeRequest._id}
+                        onSuccess={() => {
+                          toast.success(t("shipping.submitted_success"))
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
                 <div className="space-y-2">
-                  {activeRequest?.status === 'payment_pending' ? (
+                  { activeRequest?.status === 'payment_pending' ? (
                     <Button
                       type="button"
                       size="lg"
                       className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      onClick={handlePayment}
-                      disabled={processingPayment}
+                      onClick={ handlePayment }
+                      disabled={ processingPayment }
                     >
-                      {processingPayment ? (
+                      { processingPayment ? (
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                       ) : (
                         <span className="flex items-center gap-2">
                           <CreditCard className="h-5 w-5" />
-                          {language === "ar" ? "ادفع الآن" : "Pay Now"}
+                          { language === "ar" ? "ادفع الآن" : "Pay Now" }
                         </span>
-                      )}
+                      ) }
                     </Button>
                   ) : (
                     <Button
                       type="submit"
                       size="lg"
                       className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      disabled={selectedProducts.length === 0 || !dateRange || isFormDisabled}
+                      disabled={ selectedProducts.length === 0 || !dateRange || isFormDisabled }
                     >
-                      {activeRequest?.status === 'rejected' ? (
+                      { activeRequest?.status === 'rejected' ? (
                         <span className="flex items-center gap-2">
                           <X className="h-5 w-5" />
-                          {language === "ar" ? "الطلب مرفوض" : "Request Rejected"}
+                          { language === "ar" ? "الطلب مرفوض" : "Request Rejected" }
                         </span>
                       ) : activeRequest?.status === 'active' ? (
                         <span className="flex items-center gap-2">
                           <Check className="h-5 w-5" />
-                          {language === "ar" ? "الإيجار نشط" : "Rental Active"}
+                          { language === "ar" ? "الإيجار نشط" : "Rental Active" }
                         </span>
                       ) : activeRequest?.status === 'pending' ? (
                         <span className="flex items-center gap-2">
                           <RefreshCw className="h-5 w-5" />
-                          {language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request"}
+                          { language === "ar" ? "تحديث طلب الإيجار" : "Update Rental Request" }
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
                           <Send className="h-5 w-5" />
-                          {t("marketplace.details.submit_request")}
+                          { t("marketplace.details.submit_request") }
                         </span>
-                      )}
+                      ) }
                     </Button>
-                  )}
+                  ) }
                 </div>
               </CardContent>
             </form>
           </Card>
 
-          {/* Communication Card - Enhanced Design */}
+          {/* Communication Card - Enhanced Design */ }
           <Card className="flex flex-col overflow-hidden h-[500px]">
             <div className="bg-muted/50 px-6 py-3 border-b flex items-center gap-3">
               <Avatar className="h-8 w-8">
@@ -1047,27 +1119,27 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
               </Avatar>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold truncate">
-                  {shelfDetails.ownerName || t("marketplace.store_owner")}
+                  { shelfDetails.ownerName || t("marketplace.store_owner") }
                 </h3>
               </div>
             </div>
             <CardContent className="flex-1 flex flex-col p-0 h-[calc(100%-60px)]">
-              {/* Messages Area */}
+              {/* Messages Area */ }
               <div className="flex-1 relative h-full">
-                {hasSubmittedRequest && conversationId && userId ? (
+                { hasSubmittedRequest && conversationId && userId ? (
                   <ChatInterface
-                    conversationId={conversationId}
-                    currentUserId={userId}
+                    conversationId={ conversationId }
+                    currentUserId={ userId }
                     currentUserType="brand-owner"
-                    otherUserName={shelfDetails.ownerName || `${t("marketplace.owner")} ${shelfDetails.shelfName}`}
-                    shelfName={shelfDetails.shelfName}
+                    otherUserName={ shelfDetails.ownerName || `${t("marketplace.owner")} ${shelfDetails.shelfName}` }
+                    shelfName={ shelfDetails.shelfName }
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <div className="text-center">
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
                       <p className="text-sm">
-                        {!userId
+                        { !userId
                           ? t("form.login_first")
                           : (language === "ar"
                             ? "قم بإرسال طلب الإيجار أولاً للتواصل مع صاحب المتجر"
@@ -1076,26 +1148,26 @@ export default function MarketDetailsPage({ params }: { params: Promise<{ id: st
                       </p>
                     </div>
                   </div>
-                )}
+                ) }
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Payment Verification Banner */}
-      {isVerifyingPayment && (
+      {/* Payment Verification Banner */ }
+      { isVerifyingPayment && (
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 mt-6">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
               <p className="text-sm font-medium">
-                {language === "ar" ? "جاري التحقق من الدفع..." : "Verifying payment..."}
+                { language === "ar" ? "جاري التحقق من الدفع..." : "Verifying payment..." }
               </p>
             </div>
           </CardContent>
         </Card>
-      )}
+      ) }
     </div>
   )
 }

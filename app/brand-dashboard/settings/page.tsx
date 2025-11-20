@@ -224,7 +224,7 @@ export default function BrandDashboardSettingsPage() {
     setIsLoading(true)
     try {
       // Get upload URL from Convex
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({})
 
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
@@ -274,7 +274,7 @@ export default function BrandDashboardSettingsPage() {
     setIsLoading(true)
     try {
       // Get upload URL from Convex
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({})
 
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
@@ -698,7 +698,7 @@ export default function BrandDashboardSettingsPage() {
                       let documentStorageId = null
                       if (pendingDocumentFile) {
                         // Get upload URL from Convex
-                        const uploadUrl = await generateUploadUrl()
+                        const uploadUrl = await generateUploadUrl({})
 
                         // Upload file to Convex storage
                         const result = await fetch(uploadUrl, {
@@ -1144,7 +1144,7 @@ export default function BrandDashboardSettingsPage() {
 
                   // Upload certificate if new file selected
                   if (ibanCertificateFile) {
-                    const uploadUrl = await generateUploadUrl()
+                    const uploadUrl = await generateUploadUrl({})
                     const uploadResult = await fetch(uploadUrl, {
                       method: "POST",
                       headers: { "Content-Type": ibanCertificateFile.type },

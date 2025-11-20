@@ -59,7 +59,6 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
       } else {
         await rejectRequest({
           requestId: request._id,
-          response: responseText,
         })
       }
       
@@ -82,11 +81,17 @@ export function RentalRequestCard({ request, onActionComplete }: RentalRequestCa
   
   const getStatusBadge = () => {
     switch (request.status) {
+      case "pending_admin_approval":
+        return <Badge variant="default" className="bg-amber-500">{t("status.pending_admin_approval")}</Badge>
       case "pending":
       case "under_discussion":
         return <Badge variant="default">{t("orders.under_review")}</Badge>
       case "payment_pending":
         return <Badge variant="default" className="bg-orange-500">{t("status.payment_pending")}</Badge>
+      case "awaiting_shipment":
+        return <Badge variant="default" className="bg-purple-500">{t("status.awaiting_shipment")}</Badge>
+      case "shipment_sent":
+        return <Badge variant="default" className="bg-indigo-500">{t("status.shipment_sent")}</Badge>
       case "accepted":
       case "active":
         return <Badge variant="default" className="bg-green-500">{t("orders.accepted")}</Badge>

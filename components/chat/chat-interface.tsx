@@ -57,6 +57,7 @@ export function ChatInterface({
     if (conversationId && currentUserId) {
       markAsRead({ conversationId })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, currentUserId])
   
   // Mark messages as read when new messages arrive
@@ -65,6 +66,7 @@ export function ChatInterface({
       // Mark as read immediately when messages change
       markAsRead({ conversationId })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, currentUserId, messages?.length])
   
   // Set up interval to mark messages as read while dialog is open
@@ -75,8 +77,9 @@ export function ChatInterface({
     const interval = setInterval(() => {
       markAsRead({ conversationId })
     }, 2000)
-    
+
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, currentUserId])
   
   // Auto-scroll to bottom when new messages arrive

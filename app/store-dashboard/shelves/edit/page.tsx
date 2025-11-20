@@ -25,6 +25,7 @@ import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useToast } from "@/hooks/use-toast"
 import { Id } from "@/convex/_generated/dataModel"
+import Image from "next/image"
 
 export default function AddShelfPage() {
   const { t, direction, language } = useLanguage()
@@ -114,7 +115,7 @@ export default function AddShelfPage() {
   // Upload file to Convex storage
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({})
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -199,22 +200,15 @@ export default function AddShelfPage() {
       // Create shelf in database
       await addShelf({
         shelfName,
-        city,
-        branch,
+        branchId: branch as Id<"branches">,
         monthlyPrice: parseFloat(monthlyPrice),
         storeCommission: discount,
         availableFrom: availableFrom ? formatDate(availableFrom, 'en', 'short').split('/').reverse().join('-') : new Date().toISOString().split('T')[0],
         length,
         width,
         depth,
-        productType: productType || undefined,
+        productTypes: productType ? [productType] : [],
         description: description || undefined,
-        address: selectedLocation.address || undefined,
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
-        exteriorImage: exteriorImageId || undefined,
-        interiorImage: interiorImageId || undefined,
-        shelfImage: shelfImageId || undefined,
       })
 
       toast({
@@ -545,11 +539,15 @@ export default function AddShelfPage() {
                       {exteriorImage ? (
                         <>
                           {exteriorPreview ? (
-                            <img
-                              src={exteriorPreview}
-                              alt="Exterior preview"
-                              className="w-full h-32 object-cover rounded-md mb-2"
-                            />
+                            <div className="relative w-full h-32 rounded-md mb-2 overflow-hidden">
+                              <Image
+                                src={exteriorPreview}
+                                alt="Exterior preview"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{exteriorImage.name}</p>
                           )}
@@ -601,11 +599,15 @@ export default function AddShelfPage() {
                       {interiorImage ? (
                         <>
                           {interiorPreview ? (
-                            <img
-                              src={interiorPreview}
-                              alt="Interior preview"
-                              className="w-full h-32 object-cover rounded-md mb-2"
-                            />
+                            <div className="relative w-full h-32 rounded-md mb-2 overflow-hidden">
+                              <Image
+                                src={interiorPreview}
+                                alt="Interior preview"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{interiorImage.name}</p>
                           )}
@@ -657,11 +659,15 @@ export default function AddShelfPage() {
                       {shelfImage ? (
                         <>
                           {shelfPreview ? (
-                            <img
-                              src={shelfPreview}
-                              alt="Shelf preview"
-                              className="w-full h-32 object-cover rounded-md mb-2"
-                            />
+                            <div className="relative w-full h-32 rounded-md mb-2 overflow-hidden">
+                              <Image
+                                src={shelfPreview}
+                                alt="Shelf preview"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                           ) : (
                             <p className="text-sm font-medium text-center text-green-600">{shelfImage.name}</p>
                           )}

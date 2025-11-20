@@ -70,7 +70,7 @@ export const createRentalRequest = mutation({
     for (const rental of existingRentals) {
       // Skip if it's the user's own pending request (will be updated)
       if (rental.brandProfileId === brandOwnerProfile._id &&
-          (rental.status === "pending" || rental.status === "payment_pending")) {
+          (rental.status === "pending_admin_approval" || rental.status === "pending" || rental.status === "payment_pending")) {
         continue
       }
 
@@ -99,7 +99,7 @@ export const createRentalRequest = mutation({
     const existingRequest = await ctx.db
       .query("rentalRequests")
       .withIndex("by_brand")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("brandProfileId"), brandOwnerProfile._id),
           q.eq(q.field("shelfId"), args.shelfId)
@@ -107,6 +107,7 @@ export const createRentalRequest = mutation({
       )
       .filter((q) =>
         q.or(
+          q.eq(q.field("status"), "pending_admin_approval"),
           q.eq(q.field("status"), "pending"),
           q.eq(q.field("status"), "payment_pending")
         )
@@ -225,30 +226,36 @@ export const createRentalRequest = mutation({
         { type: "store" as const, rate: storeCommission },
         { type: "platform" as const, rate: platformCommission },
       ],
-      status: "pending",
+      status: "pending_admin_approval", // Awaiting admin review before store sees it
       conversationId: args.conversationId,
     })
-    
-    
-    // Send a system message in the conversation with proper unread count handling
-    if (args.conversationId) {
-      await ctx.runMutation(api.chats.sendSystemMessage, {
-        conversationId: args.conversationId,
-        senderId: brandOwnerProfile._id as any,
-        text: `تم إرسال طلب إيجار جديد للرف\nNew rental request sent for the shelf`,
-        messageType: "rental_request",
-      })
-    }
 
-    // Send WhatsApp notification to store owner
-    if (storeOwnerProfile && storeOwner?.phone) {
-      await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendNewRequestNotification, {
-        storeOwnerPhone: storeOwner.phone,
-        storeName: storeOwnerProfile.storeName || "المتجر",
-        brandName: brandOwnerProfile.brandName || "العلامة التجارية",
-        requestId: requestId,
-      })
-    }
+
+    // NOTE: Store notifications deferred until admin approval (Task A1.4)
+    // Stores should NOT see requests until admin reviews and approves them
+
+    // TODO: Move these notifications to admin approval mutation:
+    // - System message in conversation
+    // - WhatsApp notification to store owner
+
+    // Previously sent immediately:
+    // if (args.conversationId) {
+    //   await ctx.runMutation(api.chats.sendSystemMessage, {
+    //     conversationId: args.conversationId,
+    //     senderId: brandOwnerProfile._id as any,
+    //     text: `تم إرسال طلب إيجار جديد للرف\nNew rental request sent for the shelf`,
+    //     messageType: "rental_request",
+    //   })
+    // }
+
+    // if (storeOwnerProfile && storeOwner?.phone) {
+    //   await ctx.scheduler.runAfter(0, internal.whatsappNotifications.sendNewRequestNotification, {
+    //     storeOwnerPhone: storeOwner.phone,
+    //     storeName: storeOwnerProfile.storeName || "المتجر",
+    //     brandName: brandOwnerProfile.brandName || "العلامة التجارية",
+    //     requestId: requestId,
+    //   })
+    // }
 
     // No longer need to update conversation with rental request ID
 
@@ -433,9 +440,9 @@ export const updateRentalRequest = mutation({
       throw new Error("Request not found")
     }
 
-    // Only allow updates for pending requests
-    if (request.status !== "pending") {
-      throw new Error("Can only update pending requests")
+    // Only allow updates for requests awaiting approval
+    if (request.status !== "pending_admin_approval" && request.status !== "pending") {
+      throw new Error("Can only update requests awaiting approval")
     }
 
     // Verify the user is the brand owner who created this request
@@ -623,8 +630,9 @@ export const getUserRentalRequests = query({
           .query("rentalRequests")
           .withIndex("by_store")
           .filter((q) => q.eq(q.field("storeProfileId"), profileData.profile._id))
+          .filter((q) => q.neq(q.field("status"), "pending_admin_approval")) // Hide unapproved requests
           .collect()
-    
+
     // Get additional data for each request
     const enrichedRequests = await Promise.all(
       requests.map(async (request) => {
@@ -735,6 +743,7 @@ export const getActiveRentalRequest = query({
       )
       .filter((q) =>
         q.or(
+          q.eq(q.field("status"), "pending_admin_approval"),
           q.eq(q.field("status"), "pending"),
           q.eq(q.field("status"), "payment_pending")
         )
@@ -774,6 +783,7 @@ export const getUserActiveRentalRequest = query({
       )
       .filter((q) =>
         q.or(
+          q.eq(q.field("status"), "pending_admin_approval"),
           q.eq(q.field("status"), "pending"),
           q.eq(q.field("status"), "payment_pending")
         )
@@ -801,7 +811,7 @@ export const getUserRequestForShelf = query({
     const request = await ctx.db
       .query("rentalRequests")
       .withIndex("by_shelf")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("shelfId"), args.shelfId),
           q.eq(q.field("brandProfileId"), profileData.profile._id)
@@ -809,6 +819,7 @@ export const getUserRequestForShelf = query({
       )
       .filter((q) =>
         q.or(
+          q.eq(q.field("status"), "pending_admin_approval"),
           q.eq(q.field("status"), "pending"),
           q.eq(q.field("status"), "payment_pending"),
           q.eq(q.field("status"), "active")
@@ -834,7 +845,8 @@ export const getShelfRentalSchedule = query({
         q.or(
           q.eq(q.field("status"), "active"),
           q.eq(q.field("status"), "payment_pending"),
-          q.eq(q.field("status"), "pending")
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "pending_admin_approval") // Block dates even during admin review
         )
       )
       .collect()
@@ -950,8 +962,9 @@ export const getRentalStatsWithChanges = query({
           .query("rentalRequests")
           .withIndex("by_store")
           .filter((q) => q.eq(q.field("storeProfileId"), profileData.profile._id))
+          .filter((q) => q.neq(q.field("status"), "pending_admin_approval")) // Hide unapproved requests
           .collect()
-    
+
     // Calculate date range based on period using helper
     const { now, currentPeriodStart, previousPeriodStart, previousPeriodEnd } = getPeriodDates(args.period)
 
@@ -1027,11 +1040,12 @@ export const confirmPayment = mutation({
     const otherRequests = await ctx.db
       .query("rentalRequests")
       .withIndex("by_shelf")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("shelfId"), request.shelfId),
           q.neq(q.field("_id"), args.requestId),
           q.or(
+            q.eq(q.field("status"), "pending_admin_approval"),
             q.eq(q.field("status"), "pending"),
             q.eq(q.field("status"), "payment_pending")
           )
@@ -1103,7 +1117,136 @@ export const confirmPayment = mutation({
   },
 })
 
+// Brand submits initial shipment after payment
+export const submitInitialShipment = mutation({
+  args: {
+    requestId: v.id("rentalRequests"),
+    carrier: v.string(),
+    trackingNumber: v.string(),
+    expectedDeliveryDate: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Verify brand owner authentication
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
 
+    // 2. Get rental request and validate
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      throw new Error("Request not found")
+    }
+
+    // 3. Verify request status
+    if (request.status !== "awaiting_shipment") {
+      throw new Error(`Request is not awaiting shipment. Current status: ${request.status}`)
+    }
+
+    // 4. Verify ownership - only brand owner can submit shipment
+    const brandProfile = await ctx.db.get(request.brandProfileId)
+    if (!brandProfile || brandProfile.userId !== userId) {
+      throw new Error("Only the brand owner can submit shipment details")
+    }
+
+    // 5. Update request status and add shipment details
+    await ctx.db.patch(args.requestId, {
+      status: "shipment_sent",
+      initialShipment: {
+        carrier: args.carrier,
+        trackingNumber: args.trackingNumber,
+        shippedAt: Date.now(),
+        shippedBy: userId,
+        expectedDeliveryDate: args.expectedDeliveryDate,
+        notes: args.notes,
+      }
+    })
+
+    // 6. Notify store owner about shipment
+    // TODO: Implement notification when sendShipmentSent function is available
+    // const storeProfile = await ctx.db.get(request.storeProfileId)
+    // if (storeProfile) {
+    //   await ctx.scheduler.runAfter(0, api.notifications.sendShipmentSent, {
+    //     requestId: args.requestId,
+    //     storeProfileId: request.storeProfileId,
+    //     trackingNumber: args.trackingNumber,
+    //   })
+    // }
+
+    return { success: true }
+  }
+})
+
+// Store confirms receipt of initial shipment
+export const confirmInitialShipmentReceipt = mutation({
+  args: {
+    requestId: v.id("rentalRequests"),
+    condition: v.optional(v.string()),
+    receiptPhotos: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Verify store owner authentication
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
+
+    // 2. Get rental request and validate
+    const request = await ctx.db.get(args.requestId)
+    if (!request) {
+      throw new Error("Request not found")
+    }
+
+    // 3. Verify request status
+    if (request.status !== "shipment_sent") {
+      throw new Error(`No shipment to confirm. Current status: ${request.status}`)
+    }
+
+    // 4. Verify ownership - only store owner can confirm receipt
+    const storeProfile = await ctx.db.get(request.storeProfileId)
+    if (!storeProfile || storeProfile.userId !== userId) {
+      throw new Error("Only the store owner can confirm receipt")
+    }
+
+    // 5. Update request status and add receipt confirmation - ACTIVATE RENTAL
+    await ctx.db.patch(args.requestId, {
+      status: "active",
+      initialShipment: {
+        ...request.initialShipment!,
+        receivedAt: Date.now(),
+        receivedBy: userId,
+        receivedCondition: args.condition || "good",
+        receiptPhotos: args.receiptPhotos,
+        confirmationNotes: args.notes,
+      }
+    })
+
+    // 6. Update shelf to rented status
+    await ctx.db.patch(request.shelfId, {
+      status: "rented"
+    })
+
+    // 7. Send system message to conversation
+    if (request.conversationId) {
+      await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+        conversationId: request.conversationId,
+        text: "تم استلام المنتجات بنجاح. بدأت فترة الإيجار الآن.\nProducts received successfully. The rental period has now begun.",
+        messageType: "rental_accepted",
+        senderId: request.storeProfileId,
+      })
+    }
+
+    // 8. TODO: Notify brand owner (when notification function available)
+    // await ctx.scheduler.runAfter(0, api.notifications.sendShipmentReceived, {
+    //   requestId: args.requestId,
+    //   brandProfileId: request.brandProfileId,
+    // })
+
+    return { success: true }
+  }
+})
 
 // Get rental request details
 export const getRentalRequestDetails = query({

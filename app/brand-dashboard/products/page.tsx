@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/ui/stat-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/formatters"
 import { ProductDialog } from "@/components/dialogs/product-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +32,7 @@ import {
 } from "@/components/ui/pagination"
 import { Search, Plus, Upload, Edit, Trash2, ShoppingCart, Package, ChartLine, TrendingUp, TrendingDown, Banknote, ImageIcon, AlertCircle } from "lucide-react"
 import { useLanguage } from "@/contexts/localization-context"
+import Image from "next/image"
 import { useBrandData } from "@/contexts/brand-data-context"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -43,6 +54,7 @@ export default function BrandProductsPage() {
   const [salesPage, setSalesPage] = useState(1)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [productToDelete, setProductToDelete] = useState<any>(null)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "products")
   const itemsPerPage = 5
 
@@ -263,10 +275,13 @@ export default function BrandProductsPage() {
                               <TableCell className="py-3">
                                 <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
                                   {product.imageUrl ? (
-                                    <img
+                                    <Image
                                       src={product.imageUrl}
                                       alt={product.name}
+                                      width={40}
+                                      height={40}
                                       className="h-full w-full object-cover"
+                                      unoptimized
                                     />
                                   ) : (
                                     <ImageIcon className="h-5 w-5 text-muted-foreground" />
@@ -301,18 +316,36 @@ export default function BrandProductsPage() {
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() => {
-                                      if (confirm(t("brand.dashboard.confirm_delete_product"))) {
-                                        deleteProduct({ productId: product._id })
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <AlertDialog open={productToDelete?._id === product._id} onOpenChange={(open) => !open && setProductToDelete(null)}>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => setProductToDelete(product)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>{t("brand.dashboard.confirm_delete_product")}</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          {t("brand.dashboard.confirm_delete_product_description")}
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => {
+                                            deleteProduct({ productId: product._id })
+                                            setProductToDelete(null)
+                                          }}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          {t("common.delete")}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               </TableCell>
                             </TableRow>

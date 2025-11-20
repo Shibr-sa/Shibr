@@ -170,7 +170,7 @@ function StoreMapContent({
   })
 
   // Get available cities from Convex
-  const availableCities = useQuery(api.stores.getAvailableCitiesByStore)
+  const availableCities = useQuery(api.stores.getAvailableCitiesByStore, {})
 
   // Filter stores with valid coordinates - check both formats
   const storesWithCoordinates = stores.filter(

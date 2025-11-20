@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MapPin, Edit, Trash2, Package, Building2, Image as ImageIcon } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,7 +113,7 @@ export default function BranchDetailsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>{t("branches.delete_confirm_title")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t("branches.delete_confirm_description", { name: branch.branchName })}
+                  {t("branches.delete_confirm_description", { name: String(branch.branchName) })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -184,11 +186,15 @@ export default function BranchDetailsPage() {
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   {t("branches.exterior_image_label")}
                 </p>
-                <img
-                  src={exteriorImage.url || ""}
-                  alt="Store Exterior"
-                  className="w-full h-48 object-cover rounded-lg"
-                />
+                <div className="relative w-full h-48">
+                  <Image
+                    src={exteriorImage.url || ""}
+                    alt="Store Exterior"
+                    fill
+                    className="object-cover rounded-lg"
+                    unoptimized
+                  />
+                </div>
               </div>
             )}
 
@@ -197,11 +203,15 @@ export default function BranchDetailsPage() {
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   {t("branches.interior_image_label")}
                 </p>
-                <img
-                  src={interiorImage.url || ""}
-                  alt="Store Interior"
-                  className="w-full h-48 object-cover rounded-lg"
-                />
+                <div className="relative w-full h-48">
+                  <Image
+                    src={interiorImage.url || ""}
+                    alt="Store Interior"
+                    fill
+                    className="object-cover rounded-lg"
+                    unoptimized
+                  />
+                </div>
               </div>
             )}
 

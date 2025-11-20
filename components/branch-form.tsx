@@ -14,6 +14,7 @@ import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useToast } from "@/hooks/use-toast"
 import { Id } from "@/convex/_generated/dataModel"
+import Image from "next/image"
 
 interface BranchFormProps {
   mode: "create" | "edit"
@@ -108,6 +109,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
         longitude: cityCoordinates[city].lng
       }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city, mode])
 
   // Image states - only exterior and interior for branches
@@ -177,7 +179,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
     // Then, upload and add new images
     for (const [type, file] of Object.entries(images)) {
       if (file) {
-        const uploadUrl = await generateUploadUrl()
+        const uploadUrl = await generateUploadUrl({})
         const result = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
@@ -331,7 +333,7 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
         <Label>{t("branches.location_label")}</Label>
 
         <MapPicker
-          center={{
+          defaultLocation={{
             lat: selectedLocation.latitude,
             lng: selectedLocation.longitude
           }}
@@ -360,9 +362,12 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
         <div className="border-2 border-dashed rounded-lg p-6">
           {imagePreviews.exterior ? (
             <div className="relative">
-              <img
+              <Image
                 src={imagePreviews.exterior}
                 alt="Exterior"
+                width={500}
+                height={192}
+                unoptimized
                 className="w-full h-48 object-cover rounded-lg"
               />
               <Button
@@ -401,9 +406,12 @@ export function BranchForm({ mode, branchId, initialData }: BranchFormProps) {
         <div className="border-2 border-dashed rounded-lg p-6">
           {imagePreviews.interior ? (
             <div className="relative">
-              <img
+              <Image
                 src={imagePreviews.interior}
                 alt="Interior"
+                width={500}
+                height={192}
+                unoptimized
                 className="w-full h-48 object-cover rounded-lg"
               />
               <Button

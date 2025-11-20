@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/localization-context"
 import "react-image-crop/dist/ReactCrop.css"
+import Image from "next/image"
 
 interface ImageCropperProps {
   open: boolean
@@ -153,16 +154,19 @@ export function ImageCropper({
               circularCrop={cropShape === "round"}
               className="max-h-[300px] sm:max-h-[400px]"
             >
-              <img
+              <Image
                 ref={imgRef}
                 alt="Crop preview"
                 src={imageUrl}
+                width={400}
+                height={400}
+                unoptimized
                 onLoad={onImageLoad}
                 className="max-h-[300px] sm:max-h-[400px] max-w-full"
               />
             </ReactCrop>
           )}
-          
+
           <canvas
             ref={canvasRef}
             style={{ display: 'none' }}

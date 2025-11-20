@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, lazy, Suspense } from "react"
+import { useState, useCallback, lazy, Suspense, use } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useQuery } from "convex/react"
@@ -9,7 +9,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, ChevronLeft, Store, ChevronRight, Skeleton as SkeletonIcon } from "lucide-react"
+import { Search, MapPin, ChevronLeft, Store, ChevronRight } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/localization-context"
@@ -18,12 +18,13 @@ import { useDebounce } from "@/hooks/use-debounce"
 const StoreMap = lazy(() => import("@/components/marketplace/store-map"))
 
 interface BranchDetailsPageProps {
-  params: {
+  params: Promise<{
     branchId: string
-  }
+  }>
 }
 
 export default function BranchDetailsPage({ params }: BranchDetailsPageProps) {
+  const { branchId } = use(params)
   const { t, direction } = useLanguage()
   const [searchInput, setSearchInput] = useState("")
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({})
@@ -32,7 +33,7 @@ export default function BranchDetailsPage({ params }: BranchDetailsPageProps) {
 
   // Fetch branch and shelves data
   const branchData = useQuery(api.branches.getBranchShelves, {
-    branchId: params.branchId as Id<"branches">,
+    branchId: branchId as Id<"branches">,
   })
 
   const isLoading = branchData === undefined

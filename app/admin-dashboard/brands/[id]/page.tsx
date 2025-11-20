@@ -18,14 +18,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import {
+import
+{
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
+import
+{
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -33,7 +35,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import {
+import
+{
   User,
   Mail,
   Phone,
@@ -52,8 +55,11 @@ import {
   Search,
   CalendarDays,
 } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 
-export default function BrandDetailsPage() {
+export default function BrandDetailsPage()
+{
   const { t, language } = useLanguage()
   const router = useRouter()
   const params = useParams()
@@ -92,7 +98,7 @@ export default function BrandDetailsPage() {
   // not all products owned by the brand
   const productsQuery = useQuery(api.admin.brands.getBrandProducts,
     brand?.id ? {
-      profileId: brand.id as Id<"userProfiles">,
+      profileId: brand.id,
       searchQuery: debouncedProductSearch,
     } : "skip"
   )
@@ -101,7 +107,7 @@ export default function BrandDetailsPage() {
   // Fetch rental requests for this brand
   const rentalsResult = useQuery(api.admin.brands.getBrandRentals,
     brand?.id ? {
-      profileId: brand.id as Id<"userProfiles">,
+      profileId: brand.id,
       searchQuery: debouncedPaymentSearch,
       statusFilter: paymentFilter,
     } : "skip"
@@ -110,40 +116,49 @@ export default function BrandDetailsPage() {
   const rentals = rentalsResult || []
 
   // Track when we have initial rentals data
-  useEffect(() => {
-    if (rentalsResult !== undefined && !hasInitialRentalsData) {
+  useEffect(() =>
+  {
+    if (rentalsResult !== undefined && !hasInitialRentalsData)
+    {
       setHasInitialRentalsData(true)
     }
   }, [rentalsResult, hasInitialRentalsData])
 
   // Track when we have initial products data
-  useEffect(() => {
-    if (products !== undefined && !hasInitialProductsData) {
+  useEffect(() =>
+  {
+    if (products !== undefined && !hasInitialProductsData)
+    {
       setHasInitialProductsData(true)
     }
   }, [products, hasInitialProductsData])
 
-  if (!brand) {
+  if (!brand)
+  {
     return (
       <div className="space-y-6">
-        {/* Loading skeleton */}
+        {/* Loading skeleton */ }
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number) =>
+  {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | number) =>
+  {
     if (!date) return "-"
     return new Date(date).toLocaleDateString("en-US")
   }
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
+  const getStatusVariant = (status: string) =>
+  {
+    switch (status)
+    {
       case "active":
         return "default"
       case "suspended":
@@ -155,33 +170,33 @@ export default function BrandDetailsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Statistics */}
+      {/* Statistics */ }
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
-          title={t("brands.total_payments_due")}
-          value={formatCurrency(brand.revenue || 0)}
-          icon={<DollarSign className="h-6 w-6 text-primary" />}
+          title={ t("brands.total_payments_due") }
+          value={ formatCurrency(brand.revenue || 0) }
+          icon={ <DollarSign className="h-6 w-6 text-primary" /> }
         />
         <StatCard
-          title={t("brands.rented_shelves_count")}
-          value={brand.rentals || 0}
-          icon={<Package className="h-6 w-6 text-primary" />}
+          title={ t("brands.rented_shelves_count") }
+          value={ brand.rentals || 0 }
+          icon={ <Package className="h-6 w-6 text-primary" /> }
         />
       </div>
 
-      {/* Brand Info Card */}
+      {/* Brand Info Card */ }
       <Card className="overflow-hidden">
         <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
           <h3 className="text-base font-semibold">
-            {t("brands.brand_information")}
+            { t("brands.brand_information") }
           </h3>
-          <Badge variant={getStatusVariant(brand.status)}>
-            {t(`brands.status.${brand.status}`) || t("common.unknown")}
+          <Badge variant={ getStatusVariant(brand.status) }>
+            { t(`brands.status.${brand.status}`) || t("common.unknown") }
           </Badge>
         </div>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            {/* First Row */}
+            {/* First Row */ }
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -189,9 +204,9 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.brand_name")}
+                    { t("brands.brand_name") }
                   </Label>
-                  <p className="text-sm font-medium">{brand.name}</p>
+                  <p className="text-sm font-medium">{ brand.name }</p>
                 </div>
               </div>
 
@@ -201,9 +216,9 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.owner_name")}
+                    { t("brands.owner_name") }
                   </Label>
-                  <p className="text-sm font-medium">{brand.ownerName || brand.email || "-"}</p>
+                  <p className="text-sm font-medium">{ brand.ownerName || brand.email || "-" }</p>
                 </div>
               </div>
 
@@ -213,16 +228,16 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.website")}
+                    { t("brands.website") }
                   </Label>
                   <p className="text-sm font-medium">
-                    {brand.website || "-"}
+                    { brand.website || "-" }
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Second Row */}
+            {/* Second Row */ }
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -230,9 +245,9 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.join_date")}
+                    { t("brands.join_date") }
                   </Label>
-                  <p className="text-sm font-medium">{formatDate(brand.joinDate)}</p>
+                  <p className="text-sm font-medium">{ formatDate(brand.joinDate) }</p>
                 </div>
               </div>
 
@@ -242,10 +257,10 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.registration_number")}
+                    { t("brands.registration_number") }
                   </Label>
                   <p className="text-sm font-medium">
-                    {brand.businessRegistration || "-"}
+                    { brand.businessRegistration || "-" }
                   </p>
                 </div>
               </div>
@@ -256,136 +271,135 @@ export default function BrandDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs text-muted-foreground font-normal">
-                    {t("brands.registration_document")}
+                    { t("brands.registration_document") }
                   </Label>
                   <div className="flex items-center gap-2">
-                    {brand.businessRegistrationUrl ? (
-                      <a
-                        href={brand.businessRegistrationUrl}
+                    { brand.businessRegistrationUrl ? (
+                      <Link href={ brand.businessRegistrationUrl }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm font-medium text-primary cursor-pointer hover:underline"
                       >
-                        {t("common.download")}
-                      </a>
+                        { t("common.download") }
+                      </Link>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
-                    )}
+                    ) }
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Contact Info and Actions */}
+          {/* Contact Info and Actions */ }
           <Separator className="my-6" />
           <div className="flex items-center justify-between px-3">
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5" />
-                <span>{brand.email || "-"}</span>
+                <span>{ brand.email || "-" }</span>
               </div>
               <Separator orientation="vertical" className="h-4" />
               <div className="flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5" />
-                <span>{brand.phoneNumber || "-"}</span>
+                <span>{ brand.phoneNumber || "-" }</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 <Ban className="h-4 w-4 me-2" />
-                {t("brands.suspend_account")}
+                { t("brands.suspend_account") }
               </Button>
               <Button variant="destructive" size="sm">
                 <Trash2 className="h-4 w-4 me-2" />
-                {t("brands.delete_brand")}
+                { t("brands.delete_brand") }
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tables with Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Top Row: Tabs, Search Bar, and Filters */}
+      {/* Tables with Tabs */ }
+      <Tabs value={ activeTab } onValueChange={ setActiveTab } className="space-y-6">
+        {/* Top Row: Tabs, Search Bar, and Filters */ }
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <TabsList className="grid w-fit grid-cols-2">
-            <TabsTrigger value="payments">{t("brands.payment_collection_log")}</TabsTrigger>
-            <TabsTrigger value="products">{t("brands.displayed_products")}</TabsTrigger>
+            <TabsTrigger value="payments">{ t("brands.payment_collection_log") }</TabsTrigger>
+            <TabsTrigger value="products">{ t("brands.displayed_products") }</TabsTrigger>
           </TabsList>
 
           <div className="flex flex-col md:flex-row items-start md:items-center gap-3 flex-1 justify-end">
-            {/* Filter Toggles for Payment Tab */}
-            {activeTab === "payments" && (
+            {/* Filter Toggles for Payment Tab */ }
+            { activeTab === "payments" && (
               <div className="flex flex-wrap gap-2">
                 <Button
-                  variant={paymentFilter === "all" ? "default" : "outline"}
+                  variant={ paymentFilter === "all" ? "default" : "outline" }
                   size="sm"
-                  onClick={() => setPaymentFilter("all")}
+                  onClick={ () => setPaymentFilter("all") }
                   className="h-9"
                 >
-                  {t("brands.filter_all")}
+                  { t("brands.filter_all") }
                 </Button>
                 <Button
-                  variant={paymentFilter === "completed" ? "default" : "outline"}
+                  variant={ paymentFilter === "completed" ? "default" : "outline" }
                   size="sm"
-                  onClick={() => setPaymentFilter("completed")}
+                  onClick={ () => setPaymentFilter("completed") }
                   className="h-9"
                 >
-                  {t("brands.filter_completed")}
+                  { t("brands.filter_completed") }
                 </Button>
                 <Button
-                  variant={paymentFilter === "needs_collection" ? "default" : "outline"}
+                  variant={ paymentFilter === "needs_collection" ? "default" : "outline" }
                   size="sm"
-                  onClick={() => setPaymentFilter("needs_collection")}
+                  onClick={ () => setPaymentFilter("needs_collection") }
                   className="h-9"
                 >
-                  {t("brands.filter_needs_collection")}
+                  { t("brands.filter_needs_collection") }
                 </Button>
                 <Button
-                  variant={paymentFilter === "upcoming" ? "default" : "outline"}
+                  variant={ paymentFilter === "upcoming" ? "default" : "outline" }
                   size="sm"
-                  onClick={() => setPaymentFilter("upcoming")}
+                  onClick={ () => setPaymentFilter("upcoming") }
                   className="h-9"
                 >
-                  {t("brands.filter_upcoming")}
+                  { t("brands.filter_upcoming") }
                 </Button>
               </div>
-            )}
+            ) }
 
-            {/* Search Bar - Changes based on active tab */}
+            {/* Search Bar - Changes based on active tab */ }
             <div className="relative w-full md:w-96">
               <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder={activeTab === "payments" ? t("brands.search_payments_placeholder") : t("brands.search_products_placeholder")}
+                placeholder={ activeTab === "payments" ? t("brands.search_payments_placeholder") : t("brands.search_products_placeholder") }
                 className="ps-9 h-10"
-                value={activeTab === "payments" ? paymentSearch : productSearch}
-                onChange={(e) => activeTab === "payments" ? setPaymentSearch(e.target.value) : setProductSearch(e.target.value)}
+                value={ activeTab === "payments" ? paymentSearch : productSearch }
+                onChange={ (e) => activeTab === "payments" ? setPaymentSearch(e.target.value) : setProductSearch(e.target.value) }
               />
             </div>
           </div>
         </div>
 
-        {/* Payment Collection Log Tab */}
+        {/* Payment Collection Log Tab */ }
         <TabsContent value="payments" className="space-y-6">
           <div className="rounded-md border bg-card">
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="h-12 text-start font-medium w-[160px]">{t("common.date")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[140px]">{t("brands.store")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[120px]">{t("brands.amount")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[140px]">{t("brands.operation_type")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[100px]">{t("brands.status_column")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium w-[60px]">{t("brands.options")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[160px]">{ t("common.date") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[140px]">{ t("brands.store") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[120px]">{ t("brands.amount") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[140px]">{ t("brands.operation_type") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[100px]">{ t("brands.status_column") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium w-[60px]">{ t("brands.options") }</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!hasInitialRentalsData || rentalsResult === undefined || isPaymentSearching ? (
+                { !hasInitialRentalsData || rentalsResult === undefined || isPaymentSearching ? (
                   // Loading state - show skeletons
                   Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={`loading-payment-${index}`} className="h-[72px]">
+                    <TableRow key={ `loading-payment-${index}` } className="h-[72px]">
                       <TableCell className="py-3 w-[160px]">
                         <Skeleton className="h-4 w-32" />
                       </TableCell>
@@ -409,26 +423,26 @@ export default function BrandDetailsPage() {
                 ) : rentals.length === 0 ? (
                   // Empty state - centered view with fixed height
                   <TableRow>
-                    <TableCell colSpan={6} className="h-[360px] text-center">
+                    <TableCell colSpan={ 6 } className="h-[360px] text-center">
                       <div className="flex h-full w-full items-center justify-center">
                         <div className="flex flex-col items-center gap-1 py-10">
                           <DollarSign className="h-10 w-10 text-muted-foreground/40 mb-2" />
                           <h3 className="font-medium">
-                            {paymentSearch ? t("brands.no_results") : t("brands.no_payments")}
+                            { paymentSearch ? t("brands.no_results") : t("brands.no_payments") }
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {paymentSearch ? t("brands.try_different_search") : t("brands.payments_will_appear_here")}
+                            { paymentSearch ? t("brands.try_different_search") : t("brands.payments_will_appear_here") }
                           </p>
-                          {paymentSearch && (
+                          { paymentSearch && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="mt-4"
-                              onClick={() => setPaymentSearch("")}
+                              onClick={ () => setPaymentSearch("") }
                             >
-                              {t("brands.clear_search")}
+                              { t("brands.clear_search") }
                             </Button>
-                          )}
+                          ) }
                         </div>
                       </div>
                     </TableCell>
@@ -437,14 +451,14 @@ export default function BrandDetailsPage() {
                   // Show data rows, padded to 5 rows minimum
                   [...rentals.slice((paymentPage - 1) * itemsPerPage, paymentPage * itemsPerPage), ...Array(Math.max(0, 5 - Math.min(rentals.slice((paymentPage - 1) * itemsPerPage, paymentPage * itemsPerPage).length, itemsPerPage)))].map((payment: any, index: number) => (
                     payment ? (
-                      <TableRow key={payment.id} className="h-[72px]">
-                        <TableCell className="py-3 w-[160px]">{formatDate(payment.createdAt)}</TableCell>
-                        <TableCell className="py-3 w-[140px]">{payment.storeName || "-"}</TableCell>
-                        <TableCell className="py-3 w-[120px]">{formatCurrency(payment.payment || 0)}</TableCell>
-                        <TableCell className="py-3 w-[140px]">{t("brands.payment_transfer")}</TableCell>
+                      <TableRow key={ payment.id } className="h-[72px]">
+                        <TableCell className="py-3 w-[160px]">{ formatDate(payment.createdAt) }</TableCell>
+                        <TableCell className="py-3 w-[140px]">{ payment.storeName || "-" }</TableCell>
+                        <TableCell className="py-3 w-[120px]">{ formatCurrency(payment.payment || 0) }</TableCell>
+                        <TableCell className="py-3 w-[140px]">{ t("brands.payment_transfer") }</TableCell>
                         <TableCell className="py-3 w-[100px]">
-                          <Badge variant={payment.status === "active" ? "default" : "secondary"}>
-                            {payment.status === "active" ? t("brands.payment_completed") : t("brands.payment_pending")}
+                          <Badge variant={ payment.status === "active" ? "default" : "secondary" }>
+                            { payment.status === "active" ? t("brands.payment_completed") : t("brands.payment_pending") }
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 w-[60px]">
@@ -452,7 +466,8 @@ export default function BrandDetailsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => {
+                            onClick={ () =>
+                            {
                               // Generate and download receipt
                               const receiptContent = `
                                 PAYMENT RECEIPT\n
@@ -472,15 +487,15 @@ export default function BrandDetailsPage() {
                               a.download = `receipt-INV-${String((paymentPage - 1) * itemsPerPage + index + 1).padStart(5, '0')}.txt`;
                               a.click();
                               URL.revokeObjectURL(url);
-                            }}
-                            title={t("brands.download_invoice")}
+                            } }
+                            title={ t("brands.download_invoice") }
                           >
                             <Download className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      <TableRow key={`empty-${index}`} className="h-[72px]">
+                      <TableRow key={ `empty-${index}` } className="h-[72px]">
                         <TableCell className="py-3">&nbsp;</TableCell>
                         <TableCell className="py-3">&nbsp;</TableCell>
                         <TableCell className="py-3">&nbsp;</TableCell>
@@ -490,76 +505,76 @@ export default function BrandDetailsPage() {
                       </TableRow>
                     )
                   ))
-                )}
+                ) }
               </TableBody>
             </Table>
           </div>
 
-          {/* Pagination - Always visible */}
+          {/* Pagination - Always visible */ }
           <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => setPaymentPage(Math.max(1, paymentPage - 1))}
-                  className={paymentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={ () => setPaymentPage(Math.max(1, paymentPage - 1)) }
+                  className={ paymentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer" }
                 />
               </PaginationItem>
-              {Array.from({ length: Math.max(1, Math.ceil(rentals.length / itemsPerPage)) }).map((_, i) => (
-                <PaginationItem key={i}>
+              { Array.from({ length: Math.max(1, Math.ceil(rentals.length / itemsPerPage)) }).map((_, i) => (
+                <PaginationItem key={ i }>
                   <PaginationLink
-                    onClick={() => setPaymentPage(i + 1)}
-                    isActive={paymentPage === i + 1}
+                    onClick={ () => setPaymentPage(i + 1) }
+                    isActive={ paymentPage === i + 1 }
                     className="cursor-pointer"
                   >
-                    {i + 1}
+                    { i + 1 }
                   </PaginationLink>
                 </PaginationItem>
-              ))}
+              )) }
               <PaginationItem>
                 <PaginationNext
-                  onClick={() => setPaymentPage(Math.min(Math.max(1, Math.ceil(rentals.length / itemsPerPage)), paymentPage + 1))}
-                  className={paymentPage === Math.max(1, Math.ceil(rentals.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={ () => setPaymentPage(Math.min(Math.max(1, Math.ceil(rentals.length / itemsPerPage)), paymentPage + 1)) }
+                  className={ paymentPage === Math.max(1, Math.ceil(rentals.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer" }
                 />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
         </TabsContent>
 
-        {/* Displayed Products Tab */}
+        {/* Displayed Products Tab */ }
         <TabsContent value="products" className="space-y-6">
           <div className="rounded-md border bg-card">
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '80px' }}>{t("brands.product_image")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '200px' }}>{t("brands.product_name")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '140px' }}>{t("brands.product_code")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '120px' }}>{t("brands.price")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '80px' }}>{t("brands.quantity")}</TableHead>
-                  <TableHead className="h-12 text-start font-medium" style={{ width: '80px' }}>{t("brands.sales_count")}</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '80px' } }>{ t("brands.product_image") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '200px' } }>{ t("brands.product_name") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '140px' } }>{ t("brands.product_code") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '120px' } }>{ t("brands.price") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '80px' } }>{ t("brands.quantity") }</TableHead>
+                  <TableHead className="h-12 text-start font-medium" style={ { width: '80px' } }>{ t("brands.sales_count") }</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!hasInitialProductsData || products === undefined || isProductSearching ? (
+                { !hasInitialProductsData || products === undefined || isProductSearching ? (
                   // Loading state - show skeletons
                   Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={`loading-product-${index}`} className="h-[72px]">
-                      <TableCell className="py-3" style={{ width: '80px' }}>
+                    <TableRow key={ `loading-product-${index}` } className="h-[72px]">
+                      <TableCell className="py-3" style={ { width: '80px' } }>
                         <Skeleton className="h-10 w-10 rounded-lg" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '200px' }}>
+                      <TableCell className="py-3" style={ { width: '200px' } }>
                         <Skeleton className="h-4 w-40" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '140px' }}>
+                      <TableCell className="py-3" style={ { width: '140px' } }>
                         <Skeleton className="h-4 w-28" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '120px' }}>
+                      <TableCell className="py-3" style={ { width: '120px' } }>
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '80px' }}>
+                      <TableCell className="py-3" style={ { width: '80px' } }>
                         <Skeleton className="h-4 w-16" />
                       </TableCell>
-                      <TableCell className="py-3" style={{ width: '80px' }}>
+                      <TableCell className="py-3" style={ { width: '80px' } }>
                         <Skeleton className="h-4 w-16" />
                       </TableCell>
                     </TableRow>
@@ -567,26 +582,26 @@ export default function BrandDetailsPage() {
                 ) : products.length === 0 ? (
                   // Empty state - centered view with fixed height
                   <TableRow>
-                    <TableCell colSpan={6} className="h-[360px] text-center">
+                    <TableCell colSpan={ 6 } className="h-[360px] text-center">
                       <div className="flex h-full w-full items-center justify-center">
                         <div className="flex flex-col items-center gap-1 py-10">
                           <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
                           <h3 className="font-medium">
-                            {productSearch ? t("brands.no_results") : t("brands.no_products")}
+                            { productSearch ? t("brands.no_results") : t("brands.no_products") }
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {productSearch ? t("brands.try_different_search") : t("brands.products_will_appear_here")}
+                            { productSearch ? t("brands.try_different_search") : t("brands.products_will_appear_here") }
                           </p>
-                          {productSearch && (
+                          { productSearch && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="mt-4"
-                              onClick={() => setProductSearch("")}
+                              onClick={ () => setProductSearch("") }
                             >
-                              {t("brands.clear_search")}
+                              { t("brands.clear_search") }
                             </Button>
-                          )}
+                          ) }
                         </div>
                       </div>
                     </TableCell>
@@ -595,30 +610,33 @@ export default function BrandDetailsPage() {
                   // Show data rows, padded to 5 rows minimum
                   [...products.slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage), ...Array(Math.max(0, 5 - Math.min(products.slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage).length, itemsPerPage)))].map((product: any, index: number) => (
                     product ? (
-                      <TableRow key={product.id} className="h-[72px]">
-                        <TableCell className="py-3" style={{ width: '80px' }}>
+                      <TableRow key={ product.id } className="h-[72px]">
+                        <TableCell className="py-3" style={ { width: '80px' } }>
                           <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden">
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl}
-                                alt={product.name}
+                            { product.imageUrl ? (
+                              <Image
+                                src={ product.imageUrl }
+                                alt={ product.name }
+                                width={ 40 }
+                                height={ 40 }
                                 className="h-full w-full object-cover"
+                                unoptimized
                               />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center">
                                 <Package className="h-5 w-5 text-muted-foreground" />
                               </div>
-                            )}
+                            ) }
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 font-medium" style={{ width: '200px' }}>{product.name}</TableCell>
-                        <TableCell className="py-3" style={{ width: '140px' }}>{product.sku || `PRD-${product.id?.slice(-6) || '000000'}`}</TableCell>
-                        <TableCell className="py-3" style={{ width: '120px' }}>{formatCurrency(product.price || 0)}</TableCell>
-                        <TableCell className="py-3" style={{ width: '80px' }}>{product.quantity || 0}</TableCell>
-                        <TableCell className="py-3" style={{ width: '80px' }}>{product.salesCount || 0}</TableCell>
+                        <TableCell className="py-3 font-medium" style={ { width: '200px' } }>{ product.name }</TableCell>
+                        <TableCell className="py-3" style={ { width: '140px' } }>{ product.sku || `PRD-${product.id?.slice(-6) || '000000'}` }</TableCell>
+                        <TableCell className="py-3" style={ { width: '120px' } }>{ formatCurrency(product.price || 0) }</TableCell>
+                        <TableCell className="py-3" style={ { width: '80px' } }>{ product.quantity || 0 }</TableCell>
+                        <TableCell className="py-3" style={ { width: '80px' } }>{ product.salesCount || 0 }</TableCell>
                       </TableRow>
                     ) : (
-                      <TableRow key={`empty-prod-${index}`} className="h-[72px]">
+                      <TableRow key={ `empty-prod-${index}` } className="h-[72px]">
                         <TableCell className="py-3">&nbsp;</TableCell>
                         <TableCell className="py-3">&nbsp;</TableCell>
                         <TableCell className="py-3">&nbsp;</TableCell>
@@ -628,35 +646,35 @@ export default function BrandDetailsPage() {
                       </TableRow>
                     )
                   ))
-                )}
+                ) }
               </TableBody>
             </Table>
           </div>
 
-          {/* Pagination - Always visible */}
+          {/* Pagination - Always visible */ }
           <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => setProductPage(Math.max(1, productPage - 1))}
-                  className={productPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={ () => setProductPage(Math.max(1, productPage - 1)) }
+                  className={ productPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer" }
                 />
               </PaginationItem>
-              {Array.from({ length: Math.max(1, Math.ceil(products.length / itemsPerPage)) }).map((_, i) => (
-                <PaginationItem key={i}>
+              { Array.from({ length: Math.max(1, Math.ceil(products.length / itemsPerPage)) }).map((_, i) => (
+                <PaginationItem key={ i }>
                   <PaginationLink
-                    onClick={() => setProductPage(i + 1)}
-                    isActive={productPage === i + 1}
+                    onClick={ () => setProductPage(i + 1) }
+                    isActive={ productPage === i + 1 }
                     className="cursor-pointer"
                   >
-                    {i + 1}
+                    { i + 1 }
                   </PaginationLink>
                 </PaginationItem>
-              ))}
+              )) }
               <PaginationItem>
                 <PaginationNext
-                  onClick={() => setProductPage(Math.min(Math.max(1, Math.ceil(products.length / itemsPerPage)), productPage + 1))}
-                  className={productPage === Math.max(1, Math.ceil(products.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={ () => setProductPage(Math.min(Math.max(1, Math.ceil(products.length / itemsPerPage)), productPage + 1)) }
+                  className={ productPage === Math.max(1, Math.ceil(products.length / itemsPerPage)) ? "pointer-events-none opacity-50" : "cursor-pointer" }
                 />
               </PaginationItem>
             </PaginationContent>

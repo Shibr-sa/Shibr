@@ -19,7 +19,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
+import
+{
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -28,7 +29,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
-import {
+import
+{
   Store,
   Phone,
   Mail,
@@ -46,6 +48,7 @@ import {
   Hash,
   Download,
 } from "lucide-react"
+import Link from "next/link"
 
 // Transform store data for display
 const getStoreDetailsData = (language: string, store: any, shelves: any[], rentals: any[], payments: any[]) => ({
@@ -86,7 +89,8 @@ const getStoreDetailsData = (language: string, store: any, shelves: any[], renta
   }))
 })
 
-export default function StoreDetailsPage() {
+export default function StoreDetailsPage()
+{
   const { t, language } = useLanguage()
   const router = useRouter()
   const params = useParams()
@@ -121,10 +125,20 @@ export default function StoreDetailsPage() {
 
   const store = storesResult?.items?.find((s: any) => s.id === storeId)
 
-  // Fetch shelves for this store with server-side search - store.id is the profileId
+  // Fetch shelves for this store with server-side search
+  // The store.id from getStores is a storeProfile._id, but loses its specific type through serialization
+  // This helper validates and narrows the type without using type assertions
+  function isStoreProfileId(id: unknown): id is Id<"storeProfiles">
+  {
+    // A Convex ID is a string with a specific format
+    return typeof id === "string" && id.length > 0
+  }
+
+  const storeProfileId = store?.id && isStoreProfileId(store.id) ? store.id : undefined
+
   const shelvesResult = useQuery(api.admin.stores.getStoreShelves,
-    store?.id ? {
-      profileId: store.id as Id<"userProfiles">,
+    storeProfileId ? {
+      profileId: storeProfileId,
       searchQuery: debouncedSearchQuery,
       status: shelfFilter,
       page: currentPage,
@@ -135,39 +149,47 @@ export default function StoreDetailsPage() {
 
   // Fetch rentals for this store
   const rentalsQuery = useQuery(api.admin.stores.getStoreRentals,
-    store?.id ? { profileId: store.id as Id<"userProfiles"> } : "skip"
+    storeProfileId ? { profileId: storeProfileId } : "skip"
   )
   const rentals = useMemo(() => rentalsQuery || [], [rentalsQuery])
 
   // Fetch payment summary
   const paymentsQuery = useQuery(api.admin.stores.getStorePayments,
-    store?.id ? { profileId: store.id as Id<"userProfiles"> } : "skip"
+    storeProfileId ? { profileId: storeProfileId } : "skip"
   )
   const payments = useMemo(() => paymentsQuery || [], [paymentsQuery])
 
   const storeDetailsData = getStoreDetailsData(language, store, shelves, rentals, payments)
 
   // Track when we have initial data
-  useEffect(() => {
-    if (shelvesResult !== undefined && !hasInitialShelvesData) {
+  useEffect(() =>
+  {
+    if (shelvesResult !== undefined && !hasInitialShelvesData)
+    {
       setHasInitialShelvesData(true)
     }
   }, [shelvesResult, hasInitialShelvesData])
 
-  useEffect(() => {
-    if (rentals !== undefined && !hasInitialRentalsData) {
+  useEffect(() =>
+  {
+    if (rentals !== undefined && !hasInitialRentalsData)
+    {
       setHasInitialRentalsData(true)
     }
   }, [rentals, hasInitialRentalsData])
 
-  useEffect(() => {
-    if (payments !== undefined && !hasInitialPaymentsData) {
+  useEffect(() =>
+  {
+    if (payments !== undefined && !hasInitialPaymentsData)
+    {
       setHasInitialPaymentsData(true)
     }
   }, [payments, hasInitialPaymentsData])
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
+  const getStatusVariant = (status: string) =>
+  {
+    switch (status)
+    {
       case "active":
         return "default"
       case "under_review":
@@ -179,8 +201,10 @@ export default function StoreDetailsPage() {
     }
   }
 
-  const getRentalStatusVariant = (status: string) => {
-    switch (status) {
+  const getRentalStatusVariant = (status: string) =>
+  {
+    switch (status)
+    {
       case "active":
         return "default"
       case "completed":
@@ -198,50 +222,52 @@ export default function StoreDetailsPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number) =>
+  {
     return `${amount.toLocaleString()} ${t("common.currency")}`
   }
 
-  if (!store) {
+  if (!store)
+  {
     return null
   }
 
   return (
     <div className="space-y-6">
-      {/* Overview Section */}
+      {/* Overview Section */ }
       <div className="space-y-4">
-        {/* Statistics */}
+        {/* Statistics */ }
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
-            title={t("stores.total_revenue")}
-            value={formatCurrency(storeDetailsData.totalRevenue)}
-            icon={<DollarSign className="h-6 w-6 text-primary" />}
+            title={ t("stores.total_revenue") }
+            value={ formatCurrency(storeDetailsData.totalRevenue) }
+            icon={ <DollarSign className="h-6 w-6 text-primary" /> }
           />
           <StatCard
-            title={t("stores.shelves_count")}
-            value={store.shelves}
-            icon={<Package className="h-6 w-6 text-primary" />}
+            title={ t("stores.shelves_count") }
+            value={ store.shelves }
+            icon={ <Package className="h-6 w-6 text-primary" /> }
           />
           <StatCard
-            title={t("stores.renters_count")}
-            value={store.rentals}
-            icon={<ShoppingCart className="h-6 w-6 text-primary" />}
+            title={ t("stores.renters_count") }
+            value={ store.rentals }
+            icon={ <ShoppingCart className="h-6 w-6 text-primary" /> }
           />
         </div>
 
-        {/* Store Info - Enhanced */}
+        {/* Store Info - Enhanced */ }
         <Card className="overflow-hidden">
           <div className="bg-muted/50 px-6 py-3 border-b flex items-center justify-between">
             <h3 className="text-base font-semibold">
-              {t("stores.store_information")}
+              { t("stores.store_information") }
             </h3>
-            <Badge variant={getStatusVariant(store.status)}>
-              {t(`stores.status.${store.status}`)}
+            <Badge variant={ getStatusVariant(store.status) }>
+              { t(`stores.status.${store.status}`) }
             </Badge>
           </div>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {/* First Row */}
+              {/* First Row */ }
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -249,9 +275,9 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.store_name")}
+                      { t("stores.store_name") }
                     </Label>
-                    <p className="text-sm font-medium">{store.name}</p>
+                    <p className="text-sm font-medium">{ store.name }</p>
                   </div>
                 </div>
 
@@ -261,9 +287,9 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.store_owner")}
+                      { t("stores.store_owner") }
                     </Label>
-                    <p className="text-sm font-medium">{storeDetailsData.owner}</p>
+                    <p className="text-sm font-medium">{ storeDetailsData.owner }</p>
                   </div>
                 </div>
 
@@ -273,19 +299,19 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.branches_count")}
+                      { t("stores.branches_count") }
                     </Label>
                     <p className="text-sm font-medium">
-                      {storeDetailsData.branchesCount}
+                      { storeDetailsData.branchesCount }
                       <span className="text-muted-foreground ms-1">
-                        {storeDetailsData.branchesCount === 1 ? t("stores.branch") : t("stores.branches")}
+                        { storeDetailsData.branchesCount === 1 ? t("stores.branch") : t("stores.branches") }
                       </span>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Second Row */}
+              {/* Second Row */ }
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -293,9 +319,9 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.registration_date")}
+                      { t("stores.registration_date") }
                     </Label>
-                    <p className="text-sm font-medium">{storeDetailsData.registrationDate}</p>
+                    <p className="text-sm font-medium">{ storeDetailsData.registrationDate }</p>
                   </div>
                 </div>
 
@@ -305,10 +331,10 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.commercial_registry_number")}
+                      { t("stores.commercial_registry_number") }
                     </Label>
                     <p className="text-sm font-medium">
-                      {storeDetailsData.commercialRegistryNumber}
+                      { storeDetailsData.commercialRegistryNumber }
                     </p>
                   </div>
                 </div>
@@ -319,124 +345,126 @@ export default function StoreDetailsPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs text-muted-foreground font-normal">
-                      {t("stores.commercial_registry")}
+                      { t("stores.commercial_registry") }
                     </Label>
                     <div className="flex items-center gap-2">
-                      {storeDetailsData.commercialRegistryUrl ? (
-                        <a
-                          href={storeDetailsData.commercialRegistryUrl}
+                      { storeDetailsData.commercialRegistryUrl ? (
+                        <Link href={ storeDetailsData.commercialRegistryUrl }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-medium text-primary cursor-pointer hover:underline"
                           download
                         >
-                          {t("common.download")}
-                        </a>
+                          { t("common.download") }
+                        </Link>
                       ) : (
                         <span className="text-sm text-muted-foreground">-</span>
-                      )}
+                      ) }
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Additional Contact Info and Actions */}
+            {/* Additional Contact Info and Actions */ }
             <Separator className="my-6" />
             <div className="flex items-center justify-between px-3">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5" />
-                  <span>{storeDetailsData.ownerEmail}</span>
+                  <span>{ storeDetailsData.ownerEmail }</span>
                 </div>
                 <Separator orientation="vertical" className="h-4" />
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5" />
-                  <span>{storeDetailsData.ownerPhone}</span>
+                  <span>{ storeDetailsData.ownerPhone }</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm">
                   <Ban className="h-4 w-4 me-2" />
-                  {t("stores.suspend_account")}
+                  { t("stores.suspend_account") }
                 </Button>
                 <Button variant="destructive" size="sm">
                   <Trash2 className="h-4 w-4 me-2" />
-                  {t("stores.delete_store")}
+                  { t("stores.delete_store") }
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tables with Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Tab Header with Search */}
+        {/* Tables with Tabs */ }
+        <Tabs value={ activeTab } onValueChange={ setActiveTab } className="space-y-6">
+          {/* Tab Header with Search */ }
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <TabsList className="grid w-auto grid-cols-3">
-              <TabsTrigger value="shelves">{t("stores.shelves")}</TabsTrigger>
-              <TabsTrigger value="rentals">{t("stores.rentals")}</TabsTrigger>
-              <TabsTrigger value="payments">{t("stores.payments")}</TabsTrigger>
+              <TabsTrigger value="shelves">{ t("stores.shelves") }</TabsTrigger>
+              <TabsTrigger value="rentals">{ t("stores.rentals") }</TabsTrigger>
+              <TabsTrigger value="payments">{ t("stores.payments") }</TabsTrigger>
             </TabsList>
 
-            {activeTab === "shelves" && (
+            { activeTab === "shelves" && (
               <div className="flex items-center gap-2">
                 <ToggleGroup
                   type="single"
-                  value={shelfFilter}
-                  onValueChange={(value) => {
-                    if (value) {
+                  value={ shelfFilter }
+                  onValueChange={ (value) =>
+                  {
+                    if (value)
+                    {
                       setShelfFilter(value)
                       setCurrentPage(1)
                     }
-                  }}
+                  } }
                 >
                   <ToggleGroupItem value="all" aria-label="Show all shelves">
-                    {t("stores.filter.all")}
+                    { t("stores.filter.all") }
                   </ToggleGroupItem>
                   <ToggleGroupItem value="rented" aria-label="Show rented shelves">
-                    {t("stores.shelf_status.rented")}
+                    { t("stores.shelf_status.rented") }
                   </ToggleGroupItem>
                   <ToggleGroupItem value="available" aria-label="Show available shelves">
-                    {t("stores.shelf_status.available")}
+                    { t("stores.shelf_status.available") }
                   </ToggleGroupItem>
                 </ToggleGroup>
 
                 <div className="relative w-full sm:w-80">
                   <Search className="absolute end-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder={t("stores.search_shelves_placeholder")}
+                    placeholder={ t("stores.search_shelves_placeholder") }
                     className="pe-10"
-                    value={searchQuery}
-                    onChange={(e) => {
+                    value={ searchQuery }
+                    onChange={ (e) =>
+                    {
                       setSearchQuery(e.target.value)
                       setCurrentPage(1)
-                    }}
+                    } }
                   />
                 </div>
               </div>
-            )}
+            ) }
           </div>
 
-          {/* Shelves Tab */}
+          {/* Shelves Tab */ }
           <TabsContent value="shelves" className="space-y-6">
             <div className="rounded-md border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium">{t("stores.shelf_name")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.branch")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.status")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.monthly_price")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.rented_to")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.options")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.shelf_name") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.branch") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.status") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.monthly_price") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.rented_to") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.options") }</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {shelvesResult === undefined || isSearching ? (
+                  { shelvesResult === undefined || isSearching ? (
                     // Loading state
                     Array.from({ length: itemsPerPage }).map((_, index) => (
-                      <TableRow key={`loading-${index}`} className="h-[72px]">
+                      <TableRow key={ `loading-${index}` } className="h-[72px]">
                         <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
@@ -445,7 +473,8 @@ export default function StoreDetailsPage() {
                         <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                       </TableRow>
                     ))
-                  ) : (() => {
+                  ) : (() =>
+                  {
                     // Use server-filtered shelves data
                     const filteredShelves = shelves.map((shelf: any) => ({
                       id: shelf._id,
@@ -457,33 +486,35 @@ export default function StoreDetailsPage() {
                     }))
 
                     // Check if there are no shelves
-                    if (filteredShelves.length === 0) {
+                    if (filteredShelves.length === 0)
+                    {
                       return (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-[360px] text-center">
+                          <TableCell colSpan={ 6 } className="h-[360px] text-center">
                             <div className="flex h-full w-full items-center justify-center">
                               <div className="flex flex-col items-center gap-1 py-10">
                                 <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
                                 <h3 className="font-medium">
-                                  {debouncedSearchQuery || shelfFilter !== "all" ? t("stores.no_shelves_found") : t("stores.no_shelves")}
+                                  { debouncedSearchQuery || shelfFilter !== "all" ? t("stores.no_shelves_found") : t("stores.no_shelves") }
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
-                                  {debouncedSearchQuery || shelfFilter !== "all" ? t("stores.try_different_filter") : t("stores.shelves_will_appear_here")}
+                                  { debouncedSearchQuery || shelfFilter !== "all" ? t("stores.try_different_filter") : t("stores.shelves_will_appear_here") }
                                 </p>
-                                {(debouncedSearchQuery || shelfFilter !== "all") && (
+                                { (debouncedSearchQuery || shelfFilter !== "all") && (
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     className="mt-4"
-                                    onClick={() => {
+                                    onClick={ () =>
+                                    {
                                       setSearchQuery("")
                                       setShelfFilter("all")
                                       setCurrentPage(1)
-                                    }}
+                                    } }
                                   >
-                                    {t("common.clear_filters")}
+                                    { t("common.clear_filters") }
                                   </Button>
-                                )}
+                                ) }
                               </div>
                             </div>
                           </TableCell>
@@ -497,46 +528,47 @@ export default function StoreDetailsPage() {
 
                     return (
                       <>
-                        {pageItems.map((shelf) => (
-                          <TableRow key={shelf.id} className="h-[72px]">
-                            <TableCell className="py-3 font-medium">{shelf.name}</TableCell>
-                            <TableCell className="py-3">{shelf.branch?.branchName || '-'}</TableCell>
+                        { pageItems.map((shelf) => (
+                          <TableRow key={ shelf.id } className="h-[72px]">
+                            <TableCell className="py-3 font-medium">{ shelf.name }</TableCell>
+                            <TableCell className="py-3">{ shelf.branch?.branchName || '-' }</TableCell>
                             <TableCell className="py-3">
                               <Badge
-                                variant={shelf.status === "rented" ? "default" : "secondary"}
+                                variant={ shelf.status === "rented" ? "default" : "secondary" }
                                 className="font-normal"
                               >
-                                {t(`stores.shelf_status.${shelf.status}`)}
+                                { t(`stores.shelf_status.${shelf.status}`) }
                               </Badge>
                             </TableCell>
-                            <TableCell className="py-3">{formatCurrency(shelf.monthlyPrice)}</TableCell>
-                            <TableCell className="py-3">{shelf.endDate || "-"}</TableCell>
+                            <TableCell className="py-3">{ formatCurrency(shelf.monthlyPrice) }</TableCell>
+                            <TableCell className="py-3">{ shelf.endDate || "-" }</TableCell>
                             <TableCell className="py-3">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => router.push(`/admin-dashboard/stores/${storeId}/${shelf.id}`)}
+                                onClick={ () => router.push(`/admin-dashboard/stores/${storeId}/${shelf.id}`) }
                               >
                                 <Eye className="h-4 w-4 text-muted-foreground" />
                               </Button>
                             </TableCell>
                           </TableRow>
-                        ))}
-                        {Array.from({ length: emptyRows }).map((_, index) => (
-                          <TableRow key={`empty-${index}`} className="h-[72px]">
-                            <TableCell className="py-3" colSpan={6}>&nbsp;</TableCell>
+                        )) }
+                        { Array.from({ length: emptyRows }).map((_, index) => (
+                          <TableRow key={ `empty-${index}` } className="h-[72px]">
+                            <TableCell className="py-3" colSpan={ 6 }>&nbsp;</TableCell>
                           </TableRow>
-                        ))}
+                        )) }
                       </>
                     );
-                  })()}
+                  })() }
                 </TableBody>
               </Table>
             </div>
 
-            {/* Pagination */}
-            {(() => {
+            {/* Pagination */ }
+            { (() =>
+            {
               // Use server pagination info
               const totalPages = shelvesResult?.totalPages || 1;
 
@@ -545,51 +577,51 @@ export default function StoreDetailsPage() {
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={ () => setCurrentPage(Math.max(1, currentPage - 1)) }
+                        className={ currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer" }
                       />
                     </PaginationItem>
-                    {Array.from({ length: totalPages }).map((_, i) => (
-                      <PaginationItem key={i}>
+                    { Array.from({ length: totalPages }).map((_, i) => (
+                      <PaginationItem key={ i }>
                         <PaginationLink
-                          onClick={() => setCurrentPage(i + 1)}
-                          isActive={currentPage === i + 1}
+                          onClick={ () => setCurrentPage(i + 1) }
+                          isActive={ currentPage === i + 1 }
                           className="cursor-pointer"
                         >
-                          {i + 1}
+                          { i + 1 }
                         </PaginationLink>
                       </PaginationItem>
-                    ))}
+                    )) }
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={ () => setCurrentPage(Math.min(totalPages, currentPage + 1)) }
+                        className={ currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer" }
                       />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               );
-            })()}
+            })() }
           </TabsContent>
 
-          {/* Rentals Tab */}
+          {/* Rentals Tab */ }
           <TabsContent value="rentals" className="space-y-6">
             <div className="rounded-md border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium">{t("stores.store_name_rental")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.rented_shelf")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.duration")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.payment")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.status")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.store_name_rental") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.rented_shelf") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.duration") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.payment") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.status") }</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rentals === undefined ? (
+                  { rentals === undefined ? (
                     // Loading state
                     Array.from({ length: itemsPerPage }).map((_, index) => (
-                      <TableRow key={`loading-${index}`} className="h-[72px]">
+                      <TableRow key={ `loading-${index}` } className="h-[72px]">
                         <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
@@ -600,102 +632,103 @@ export default function StoreDetailsPage() {
                   ) : storeDetailsData.recentRentals.length === 0 ? (
                     // Empty state
                     <TableRow>
-                      <TableCell colSpan={5} className="h-[360px] text-center">
+                      <TableCell colSpan={ 5 } className="h-[360px] text-center">
                         <div className="flex h-full w-full items-center justify-center">
                           <div className="flex flex-col items-center gap-1 py-10">
                             <ShoppingCart className="h-10 w-10 text-muted-foreground/40 mb-2" />
                             <h3 className="font-medium">
-                              {t("stores.no_rentals")}
+                              { t("stores.no_rentals") }
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {t("stores.rentals_will_appear_here")}
+                              { t("stores.rentals_will_appear_here") }
                             </p>
                           </div>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ) : (() => {
+                  ) : (() =>
+                  {
                     const pageItems = storeDetailsData.recentRentals.slice((rentalPage - 1) * itemsPerPage, rentalPage * itemsPerPage);
                     const emptyRows = itemsPerPage - pageItems.length;
 
                     return (
                       <>
-                        {pageItems.map((rental) => (
-                          <TableRow key={rental.id} className="h-[72px]">
-                            <TableCell className="py-3 font-medium">{rental.storeName}</TableCell>
-                            <TableCell className="py-3">{rental.shelf}</TableCell>
-                            <TableCell className="py-3">{rental.duration}</TableCell>
-                            <TableCell className="py-3">{formatCurrency(rental.payment)}</TableCell>
+                        { pageItems.map((rental) => (
+                          <TableRow key={ rental.id } className="h-[72px]">
+                            <TableCell className="py-3 font-medium">{ rental.storeName }</TableCell>
+                            <TableCell className="py-3">{ rental.shelf }</TableCell>
+                            <TableCell className="py-3">{ rental.duration }</TableCell>
+                            <TableCell className="py-3">{ formatCurrency(rental.payment) }</TableCell>
                             <TableCell className="py-3">
                               <Badge
-                                variant={getRentalStatusVariant(rental.status)}
+                                variant={ getRentalStatusVariant(rental.status) }
                                 className="font-normal"
                               >
-                                {t(`stores.rental_status.${rental.status}`)}
+                                { t(`stores.rental_status.${rental.status}`) }
                               </Badge>
                             </TableCell>
                           </TableRow>
-                        ))}
-                        {Array.from({ length: emptyRows }).map((_, index) => (
-                          <TableRow key={`empty-${index}`} className="h-[72px]">
-                            <TableCell className="py-3" colSpan={5}>&nbsp;</TableCell>
+                        )) }
+                        { Array.from({ length: emptyRows }).map((_, index) => (
+                          <TableRow key={ `empty-${index}` } className="h-[72px]">
+                            <TableCell className="py-3" colSpan={ 5 }>&nbsp;</TableCell>
                           </TableRow>
-                        ))}
+                        )) }
                       </>
                     );
-                  })()}
+                  })() }
                 </TableBody>
               </Table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination */ }
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => setRentalPage(Math.max(1, rentalPage - 1))}
-                    className={rentalPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={ () => setRentalPage(Math.max(1, rentalPage - 1)) }
+                    className={ rentalPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer" }
                   />
                 </PaginationItem>
-                {Array.from({ length: Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1 }).map((_, i) => (
-                  <PaginationItem key={i}>
+                { Array.from({ length: Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1 }).map((_, i) => (
+                  <PaginationItem key={ i }>
                     <PaginationLink
-                      onClick={() => setRentalPage(i + 1)}
-                      isActive={rentalPage === i + 1}
+                      onClick={ () => setRentalPage(i + 1) }
+                      isActive={ rentalPage === i + 1 }
                       className="cursor-pointer"
                     >
-                      {i + 1}
+                      { i + 1 }
                     </PaginationLink>
                   </PaginationItem>
-                ))}
+                )) }
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => setRentalPage(Math.min(Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1, rentalPage + 1))}
-                    className={rentalPage === (Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={ () => setRentalPage(Math.min(Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1, rentalPage + 1)) }
+                    className={ rentalPage === (Math.ceil(storeDetailsData.recentRentals.length / itemsPerPage) || 1) ? "pointer-events-none opacity-50" : "cursor-pointer" }
                   />
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
           </TabsContent>
 
-          {/* Payment Summary Tab */}
+          {/* Payment Summary Tab */ }
           <TabsContent value="payments" className="space-y-6">
             <div className="rounded-md border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="h-12 text-start font-medium">{t("stores.month_column")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.rented_shelves_count")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.total_income")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.payment_method")}</TableHead>
-                    <TableHead className="h-12 text-start font-medium">{t("stores.status")}</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.month_column") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.rented_shelves_count") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.total_income") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.payment_method") }</TableHead>
+                    <TableHead className="h-12 text-start font-medium">{ t("stores.status") }</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments === undefined ? (
+                  { payments === undefined ? (
                     // Loading state
                     Array.from({ length: itemsPerPage }).map((_, index) => (
-                      <TableRow key={`loading-${index}`} className="h-[72px]">
+                      <TableRow key={ `loading-${index}` } className="h-[72px]">
                         <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-28" /></TableCell>
@@ -706,78 +739,79 @@ export default function StoreDetailsPage() {
                   ) : storeDetailsData.paymentSummary.length === 0 ? (
                     // Empty state
                     <TableRow>
-                      <TableCell colSpan={5} className="h-[360px] text-center">
+                      <TableCell colSpan={ 5 } className="h-[360px] text-center">
                         <div className="flex h-full w-full items-center justify-center">
                           <div className="flex flex-col items-center gap-1 py-10">
                             <DollarSign className="h-10 w-10 text-muted-foreground/40 mb-2" />
                             <h3 className="font-medium">
-                              {t("stores.no_payments")}
+                              { t("stores.no_payments") }
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {t("stores.payments_will_appear_here")}
+                              { t("stores.payments_will_appear_here") }
                             </p>
                           </div>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ) : (() => {
+                  ) : (() =>
+                  {
                     const pageItems = storeDetailsData.paymentSummary.slice((paymentPage - 1) * itemsPerPage, paymentPage * itemsPerPage);
                     const emptyRows = itemsPerPage - pageItems.length;
 
                     return (
                       <>
-                        {pageItems.map((payment, index) => (
-                          <TableRow key={index} className="h-[72px]">
-                            <TableCell className="py-3 font-medium">{payment.month}</TableCell>
-                            <TableCell className="py-3">{payment.rentedShelves}</TableCell>
-                            <TableCell className="py-3">{formatCurrency(payment.totalIncome)}</TableCell>
-                            <TableCell className="py-3">{payment.paymentMethod}</TableCell>
+                        { pageItems.map((payment, index) => (
+                          <TableRow key={ index } className="h-[72px]">
+                            <TableCell className="py-3 font-medium">{ payment.month }</TableCell>
+                            <TableCell className="py-3">{ payment.rentedShelves }</TableCell>
+                            <TableCell className="py-3">{ formatCurrency(payment.totalIncome) }</TableCell>
+                            <TableCell className="py-3">{ payment.paymentMethod }</TableCell>
                             <TableCell className="py-3">
                               <Badge
-                                variant={payment.status === "completed" ? "default" : "secondary"}
+                                variant={ payment.status === "completed" ? "default" : "secondary" }
                                 className="font-normal"
                               >
-                                {payment.status === "completed" ? t("common.completed") : t("common.pending")}
+                                { payment.status === "completed" ? t("common.completed") : t("common.pending") }
                               </Badge>
                             </TableCell>
                           </TableRow>
-                        ))}
-                        {Array.from({ length: emptyRows }).map((_, index) => (
-                          <TableRow key={`empty-${index}`} className="h-[72px]">
-                            <TableCell className="py-3" colSpan={5}>&nbsp;</TableCell>
+                        )) }
+                        { Array.from({ length: emptyRows }).map((_, index) => (
+                          <TableRow key={ `empty-${index}` } className="h-[72px]">
+                            <TableCell className="py-3" colSpan={ 5 }>&nbsp;</TableCell>
                           </TableRow>
-                        ))}
+                        )) }
                       </>
                     );
-                  })()}
+                  })() }
                 </TableBody>
               </Table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination */ }
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => setPaymentPage(Math.max(1, paymentPage - 1))}
-                    className={paymentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={ () => setPaymentPage(Math.max(1, paymentPage - 1)) }
+                    className={ paymentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer" }
                   />
                 </PaginationItem>
-                {Array.from({ length: Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1 }).map((_, i) => (
-                  <PaginationItem key={i}>
+                { Array.from({ length: Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1 }).map((_, i) => (
+                  <PaginationItem key={ i }>
                     <PaginationLink
-                      onClick={() => setPaymentPage(i + 1)}
-                      isActive={paymentPage === i + 1}
+                      onClick={ () => setPaymentPage(i + 1) }
+                      isActive={ paymentPage === i + 1 }
                       className="cursor-pointer"
                     >
-                      {i + 1}
+                      { i + 1 }
                     </PaginationLink>
                   </PaginationItem>
-                ))}
+                )) }
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => setPaymentPage(Math.min(Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1, paymentPage + 1))}
-                    className={paymentPage === (Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={ () => setPaymentPage(Math.min(Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1, paymentPage + 1)) }
+                    className={ paymentPage === (Math.ceil(storeDetailsData.paymentSummary.length / itemsPerPage) || 1) ? "pointer-events-none opacity-50" : "cursor-pointer" }
                   />
                 </PaginationItem>
               </PaginationContent>

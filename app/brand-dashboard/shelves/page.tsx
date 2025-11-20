@@ -140,6 +140,12 @@ export default function BrandShelvesPage() {
             {t("status.active")}
           </Badge>
         )
+      case "pending_admin_approval":
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+            {t("status.pending_admin_approval")}
+          </Badge>
+        )
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
@@ -150,6 +156,18 @@ export default function BrandShelvesPage() {
         return (
           <Badge className="bg-orange-100 text-orange-800 border-orange-200">
             {t("status.payment_pending")}
+          </Badge>
+        )
+      case "awaiting_shipment":
+        return (
+          <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+            {t("status.awaiting_shipment")}
+          </Badge>
+        )
+      case "shipment_sent":
+        return (
+          <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
+            {t("status.shipment_sent")}
           </Badge>
         )
       case "completed":

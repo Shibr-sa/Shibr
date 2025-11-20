@@ -578,7 +578,7 @@ export default function StoresPage() {
                         {post.storeName}
                       </TableCell>
                       <TableCell className="py-3 text-muted-foreground hidden md:table-cell">
-                        {translateCity(post.branch)}
+                        {translateCity(post.city)}
                       </TableCell>
                       <TableCell className="py-3 font-medium">
                         {translateShelfName(post.shelfName)}

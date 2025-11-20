@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react"
 
 export default function RenterStorePage() {
   const router = useRouter()
-  const currentUser = useQuery(api.users.getCurrentUser)
+  const currentUser = useQuery(api.users.getCurrentUserWithProfile)
 
   useEffect(() => {
     // Wait for the query to resolve

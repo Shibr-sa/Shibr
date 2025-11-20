@@ -85,6 +85,7 @@ export default function BranchesPage() {
     }
 
     return filtered
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branches, filter, debouncedSearchQuery])
 
   // Handle delete branch
@@ -247,7 +248,7 @@ export default function BranchesPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t("branches.delete_confirm_title")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {t("branches.delete_confirm_description", { name: branch.branchName })}
+                              {t("branches.delete_confirm_description", { name: String(branch.branchName) })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

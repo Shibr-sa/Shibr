@@ -306,7 +306,7 @@ export default function PaymentsPage() {
                     key={payment.id}
                     className={`h-[72px] ${index < payments.length - 1 ? 'border-b' : ''}`}
                   >
-                    <TableCell className="py-3 font-medium">{payment.invoiceNumber}</TableCell>
+                    <TableCell className="py-3 font-medium">{payment.transactionReference || payment.id}</TableCell>
                     <TableCell className="py-3 hidden md:table-cell">{payment.store}</TableCell>
                           <TableCell className="py-3 text-muted-foreground hidden lg:table-cell">
                             {formatDate(payment.date, language, 'long')}
@@ -589,7 +589,7 @@ export default function PaymentsPage() {
                 } catch (error) {
                   toast({
                     title: t("payments.payout.error"),
-                    description: error.message || t("payments.payout.error_message"),
+                    description: error instanceof Error ? error.message : t("payments.payout.error_message"),
                     variant: "destructive",
                   })
                 } finally {

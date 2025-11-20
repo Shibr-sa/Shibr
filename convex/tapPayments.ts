@@ -77,7 +77,7 @@ export const updatePaymentStatus = internalMutation({
     switch (args.status.toUpperCase()) {
       case "CAPTURED":
         paymentStatus = "completed"
-        rentalStatus = "active"
+        rentalStatus = "awaiting_shipment" // Payment done, brand needs to ship
         break
       case "FAILED":
       case "DECLINED":
@@ -140,15 +140,14 @@ export const updatePaymentStatus = internalMutation({
         })
       }
 
-      // Update rental request status to active
+      // Update rental request status to awaiting_shipment
+      // Rental will activate after store confirms receipt of products
       await ctx.db.patch(args.rentalRequestId, {
-        status: "active" as any,
+        status: "awaiting_shipment" as any,
       })
 
-      // Update shelf status to rented
-      await ctx.db.patch(rentalRequest.shelfId, {
-        status: "rented" as any,
-      })
+      // NOTE: Shelf status update removed - happens in confirmInitialShipmentReceipt
+      // when store confirms receipt (line 1225 of rentalRequests.ts)
     }
 
     return { success: true }

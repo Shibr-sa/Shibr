@@ -69,8 +69,10 @@ export default function AdminDashboard() {
   // Fetch real stats from Convex
   const adminStats = useQuery(api.admin.analytics.getAdminStats, { timePeriod })
   const chartData = useQuery(api.admin.analytics.getAdminChartData, {}) // Separate query for charts
+  const topStores = useQuery(api.admin.analytics.getTopPerformingStores, { timePeriod, limit: 5 }) // New: Top stores query
   const isLoading = adminStats === undefined
   const isChartLoading = chartData === undefined
+  const isTopStoresLoading = topStores === undefined
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num)
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isChartLoading ? (
+                {isTopStoresLoading ? (
                   Array.from({ length: 5 }).map((_, index) => (
                     <TableRow key={index} className="h-[72px]">
                       <TableCell className="py-3">
@@ -302,14 +304,14 @@ export default function AdminDashboard() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : chartData?.topStores?.length > 0 ? (
+                ) : topStores && topStores.length > 0 ? (
                   <>
-                    {chartData.topStores.slice(0, 5).map((store, index) => (
+                    {topStores.map((store, index) => (
                       <TableRow key={store.id || index} className="h-[72px]">
                         <TableCell className="py-3">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10">
-                              <AvatarImage src={store.avatar} alt={store.name} />
+                              <AvatarImage src={store.avatar || undefined} alt={store.name} />
                               <AvatarFallback className="bg-primary/10 text-primary">
                                 {store.name?.charAt(0)?.toUpperCase() || "S"}
                               </AvatarFallback>
@@ -338,8 +340,8 @@ export default function AdminDashboard() {
                       </TableRow>
                     ))}
                       {/* Fill remaining rows to always show 5 rows */}
-                    {chartData.topStores.length < 5 && 
-                      Array.from({ length: 5 - chartData.topStores.length }).map((_, index) => (
+                    {topStores && topStores.length < 5 &&
+                      Array.from({ length: 5 - topStores.length }).map((_, index) => (
                         <TableRow key={`filler-${index}`} className="h-[72px]">
                           <TableCell className="py-3" colSpan={3}></TableCell>
                         </TableRow>

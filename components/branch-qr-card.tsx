@@ -30,6 +30,7 @@ import {
   Loader2
 } from "lucide-react"
 import QRCode from "qrcode"
+import Image from "next/image"
 
 interface BranchQRCardProps {
   branchId: Id<"branches">
@@ -140,9 +141,12 @@ export function BranchQRCard({ branchId, className }: BranchQRCardProps) {
           <div className="flex items-center gap-4">
             <div className="bg-white p-4 rounded-lg border">
               {qrCodeDataUrl ? (
-                <img
+                <Image
                   src={qrCodeDataUrl}
                   alt="QR Code"
+                  width={128}
+                  height={128}
+                  unoptimized
                   className="w-32 h-32 cursor-pointer"
                   onClick={() => setShowQRDialog(true)}
                 />
@@ -229,9 +233,12 @@ export function BranchQRCard({ branchId, className }: BranchQRCardProps) {
           {qrCodeDataUrl && branch && (
             <div className="space-y-4 overflow-hidden">
               <div className="bg-white p-4 rounded-lg flex items-center justify-center">
-                <img
+                <Image
                   src={qrCodeDataUrl}
                   alt="QR Code"
+                  width={256}
+                  height={256}
+                  unoptimized
                   className="w-48 h-48 sm:w-64 sm:h-64"
                 />
               </div>

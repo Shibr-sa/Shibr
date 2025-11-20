@@ -170,15 +170,17 @@ export function BranchList({ storeId, initialCity, initialPage = 1 }: BranchList
                     {allImages.length > 0 ? (
                       <>
                         <Image
-                          src={allImages[currentImageIndex]?.url || "/placeholder.svg"}
+                          src={allImages[currentImageIndex] && typeof allImages[currentImageIndex] === 'object' && 'url' in allImages[currentImageIndex] ? allImages[currentImageIndex].url : "/placeholder.svg"}
                           alt={branch.branchName}
                           fill
                           className="object-cover cursor-pointer z-0"
                           onClick={() => {
-                            const images = allImages.map(img => ({
-                              url: img.url || "/placeholder.svg",
-                              alt: branch.branchName
-                            }))
+                            const images = allImages
+                              .filter((img): img is { url: string; type: string } => typeof img === 'object' && img !== null && 'url' in img)
+                              .map(img => ({
+                                url: img.url || "/placeholder.svg",
+                                alt: branch.branchName
+                              }))
                             openImageModal(images, currentImageIndex)
                           }}
                         />

@@ -405,9 +405,7 @@ export default function BrandDashboardPage() {
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {formatNumber(
-                              rental.selectedProducts?.length ||
-                              rental.selectedProductIds?.length ||
-                              0
+                              rental.selectedProducts?.length || 0
                             )}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">

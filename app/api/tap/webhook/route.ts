@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@/convex/_generated/api"
+import { logError } from "@/lib/error-logger"
 
 // Initialize Convex client for server-side API calls
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+
+// Simple logger object for webhook logging
+const logger = {
+  logInfo: (message: string, data?: Record<string, unknown>) => {
+    console.log(`[Tap Webhook] ${message}`, data)
+  }
+}
 
 /**
  * Tap Payment Gateway Webhook Handler

@@ -248,7 +248,7 @@ export default function StoreDashboardSettingsPage() {
     setIsLoading(true)
     try {
       // Get upload URL from Convex
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({})
 
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
@@ -676,7 +676,7 @@ export default function StoreDashboardSettingsPage() {
                         let documentStorageId = null
                         if (pendingDocumentFile) {
                           // Get upload URL from Convex
-                          const uploadUrl = await generateUploadUrl({ fileType: "document" })
+                          const uploadUrl = await generateUploadUrl({})
 
                           // Upload file to Convex storage
                           const result = await fetch(uploadUrl, {

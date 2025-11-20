@@ -214,14 +214,41 @@ const schema = defineSchema({
 
     // Simplified status (no "accepted")
     status: v.union(
-      v.literal("pending"),
-      v.literal("payment_pending"), // Replaces old "accepted"
-      v.literal("active"),
-      v.literal("completed"),
+      v.literal("pending_admin_approval"), // Brand created, awaiting admin review
+      v.literal("pending"), // Admin approved, awaiting store response
+      v.literal("payment_pending"), // Store accepted, awaiting brand payment
+      v.literal("awaiting_shipment"), // Payment completed, awaiting brand to ship products
+      v.literal("shipment_sent"), // Brand shipped products, awaiting store confirmation
+      v.literal("active"), // Rental period active
+      v.literal("completed"), // Rental period completed
       v.literal("cancelled"),
       v.literal("rejected"),
       v.literal("expired")
     ),
+
+    // Admin approval fields
+    adminReviewedBy: v.optional(v.id("users")), // Admin who reviewed the request
+    adminReviewedAt: v.optional(v.number()), // Unix timestamp of admin review
+    adminApprovedCommission: v.optional(v.number()), // Platform commission % set by admin for this request
+    adminRejectionReason: v.optional(v.string()), // Reason if admin rejected the request
+
+    // Initial product shipping (Brand → Store)
+    initialShipment: v.optional(v.object({
+      // Shipping details
+      carrier: v.string(), // Shipping company name
+      trackingNumber: v.string(), // Tracking number
+      shippedAt: v.number(), // Unix timestamp when brand shipped
+      shippedBy: v.id("users"), // User who initiated shipping
+      expectedDeliveryDate: v.optional(v.string()), // Expected delivery date
+      notes: v.optional(v.string()), // Shipping notes from brand
+
+      // Store confirmation
+      receivedAt: v.optional(v.number()), // Unix timestamp when store confirmed receipt
+      receivedBy: v.optional(v.id("users")), // User who confirmed receipt
+      receivedCondition: v.optional(v.string()), // Condition: "good", "damaged", etc.
+      receiptPhotos: v.optional(v.array(v.string())), // Storage IDs for photos
+      confirmationNotes: v.optional(v.string()), // Notes from store upon receipt
+    })),
 
     // Communication
     conversationId: v.optional(v.id("conversations"))

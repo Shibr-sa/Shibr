@@ -1,8 +1,9 @@
 import { v } from "convex/values"
-import { query, mutation } from "../_generated/server"
-import { getAuthUserId } from "@convex-dev/auth/server"
+import { query, mutation, internalAction, internalMutation } from "../_generated/server"
+import { getAuthUserId, createAccount } from "@convex-dev/auth/server"
 import { getUserProfile } from "../profileHelpers"
 import { requireAuthWithProfile } from "../helpers"
+import { internal } from "../_generated/api"
 
 // Get current admin profile
 export const getCurrentAdminProfile = query({
@@ -385,20 +386,54 @@ export const toggleAdminUserStatus = mutation({
   },
 });
 
-// Seed initial super admin (for initial setup only)
-export const seedInitialSuperAdmin = mutation({
+// Helper mutation to create admin profile (internal only)
+export const createAdminProfileInternal = internalMutation({
+  args: {
+    userId: v.id("users"),
+    adminRole: v.union(
+      v.literal("super_admin"),
+      v.literal("support"),
+      v.literal("finance"),
+      v.literal("operations")
+    ),
+  },
+  handler: async (ctx, { userId, adminRole }) => {
+    const profileId = await ctx.db.insert("adminProfiles", {
+      userId,
+      adminRole,
+      permissions: adminRole === "super_admin" ? ["all"] : [],
+      isActive: true,
+      department: undefined,
+    })
+
+    return profileId
+  },
+})
+
+// Helper query to check existing admins (internal only)
+export const checkExistingAdmins = internalMutation({
   args: {},
   handler: async (ctx) => {
-    // Check if any admin exists
     const existingAdmins = await ctx.db
       .query("adminProfiles")
       .collect()
+
+    return existingAdmins
+  },
+})
+
+// Seed initial super admin (for initial setup only)
+export const seedInitialSuperAdmin = internalAction({
+  args: {},
+  handler: async (ctx): Promise<any> => {
+    // Check if any admin exists
+    const existingAdmins: any = await ctx.runMutation(internal.admin.settings.checkExistingAdmins)
 
     // Return the count for debugging
     if (existingAdmins.length > 0) {
       return {
         success: false,
-        message: `Found ${existingAdmins.length} admin users. IDs: ${existingAdmins.map(a => a._id).join(', ')}`,
+        message: `Found ${existingAdmins.length} admin users. IDs: ${existingAdmins.map((a: any) => a._id).join(', ')}`,
         count: existingAdmins.length,
         admins: existingAdmins
       }
@@ -409,66 +444,43 @@ export const seedInitialSuperAdmin = mutation({
     const adminPassword = "wwadnj0aw2nc@!!"
     const adminName = "Shibr Admin"
 
-    // Check if user with this email exists
-    const existingUsers = await ctx.db.query("users").collect()
-    const existingUser = existingUsers.find(u => u.email === adminEmail.toLowerCase())
+    try {
+      // Create account using Convex Auth's official API
+      // This automatically handles password hashing with the correct algorithm (Scrypt)
+      const { user, account } = await createAccount(ctx, {
+        provider: "password",
+        account: {
+          id: adminEmail.toLowerCase(),
+          secret: adminPassword, // Plain password - will be hashed automatically
+        },
+        profile: {
+          email: adminEmail.toLowerCase(),
+          emailVerificationTime: Date.now(),
+          name: adminName,
+          isAnonymous: false,
+        },
+      })
 
-    if (existingUser) {
-      // Create admin profile for existing user
-      await ctx.db.insert("adminProfiles", {
-        userId: existingUser._id,
+      // Create admin profile
+      const profileId = await ctx.runMutation(internal.admin.settings.createAdminProfileInternal, {
+        userId: user._id,
         adminRole: "super_admin",
-        permissions: ["all"],
-        isActive: true,
-        department: undefined,
       })
 
       return {
         success: true,
-        message: `Existing user ${adminEmail} promoted to super admin`
+        message: `Super admin created successfully with email: ${adminEmail}`,
+        userId: user._id,
+        profileId,
+        email: adminEmail
       }
-    }
-
-    // Import password hashing utilities
-    const { sha256 } = await import("@oslojs/crypto/sha2")
-    const { encodeBase64 } = await import("@oslojs/encoding")
-
-    // Hash the password
-    const encoder = new TextEncoder()
-    const passwordData = encoder.encode(adminPassword)
-    const hashedPasswordBuffer = sha256(passwordData)
-    const hashedPassword = encodeBase64(hashedPasswordBuffer)
-
-    // Create the user
-    const userId = await ctx.db.insert("users", {
-      email: adminEmail.toLowerCase(),
-      emailVerificationTime: Date.now(),
-      name: adminName,
-      isAnonymous: false,
-    })
-
-    // Create auth account
-    await ctx.db.insert("authAccounts", {
-      userId,
-      provider: "password",
-      providerAccountId: adminEmail.toLowerCase(),
-      secret: hashedPassword,
-    })
-
-    // Create admin profile
-    await ctx.db.insert("adminProfiles", {
-      userId,
-      adminRole: "super_admin",
-      permissions: ["all"],
-      isActive: true,
-      department: undefined,
-    })
-
-    return {
-      success: true,
-      message: `Super admin created successfully with email: ${adminEmail}`,
-      userId,
-      email: adminEmail
+    } catch (error) {
+      console.error("Error creating super admin:", error)
+      return {
+        success: false,
+        message: `Failed to create super admin: ${error}`,
+        error: String(error)
+      }
     }
   },
 })

@@ -182,7 +182,7 @@ export function StoreProfileCompletionProgress({ showDetails = true, onCompletio
           {completionPercentage < 100 && (
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                {t("dashboard.missing_fields", { count: missingFields.length })}
+                {t("dashboard.missing_fields", { count: String(missingFields.length) })}
               </p>
               <Button size="sm" variant="outline" asChild className="h-7 text-xs">
                 <Link href="/store-dashboard/settings">

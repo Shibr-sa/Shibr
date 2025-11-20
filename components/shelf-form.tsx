@@ -25,6 +25,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { useToast } from "@/hooks/use-toast"
 import { Id } from "@/convex/_generated/dataModel"
 import { NUMERIC_LIMITS } from "@/lib/constants"
+import Image from "next/image"
 
 interface ShelfFormProps {
   mode: "create" | "edit"
@@ -163,7 +164,7 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
   // Upload file to Convex storage
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({})
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -810,10 +811,13 @@ export function ShelfForm({ mode, shelfId, initialData }: ShelfFormProps) {
                   {images.shelf || imagePreviews.shelf ? (
                     <>
                       {imagePreviews.shelf ? (
-                        <img
+                        <Image
                           src={imagePreviews.shelf}
                           alt="Shelf preview"
+                          width={500}
+                          height={192}
                           className="w-full h-48 object-cover rounded-md mb-2"
+                          unoptimized
                         />
                       ) : (
                         <p className="text-sm font-medium text-center text-green-600">{images.shelf?.name}</p>

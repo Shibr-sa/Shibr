@@ -281,10 +281,12 @@ export default function StorePage() {
                 >
                   {product.imageUrl && (
                     <div className="aspect-square relative bg-muted">
-                      <img
+                      <Image
                         src={product.imageUrl}
                         alt={product.name}
-                        className="object-cover w-full h-full"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -360,10 +362,12 @@ export default function StorePage() {
               {/* Product Image */}
               {selectedProduct.imageUrl && (
                 <div className="aspect-square relative bg-muted rounded-lg overflow-hidden max-w-md mx-auto">
-                  <img
+                  <Image
                     src={selectedProduct.imageUrl}
                     alt={selectedProduct.name}
-                    className="object-cover w-full h-full"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 </div>
               )}

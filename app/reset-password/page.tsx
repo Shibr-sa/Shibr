@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
       return null
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return error.errors[0].message
+        return error.issues[0].message
       }
       return "Invalid password"
     }

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { PRODUCT_CATEGORIES } from "@/lib/constants"
 import { calculatePriceWithTax, getTaxRatePercentage } from "@/lib/tax"
+import Image from "next/image"
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -219,9 +220,12 @@ export function ProductDialog({
                 <div className="relative">
                   {imagePreview ? (
                     <div className="relative">
-                      <img
+                      <Image
                         src={imagePreview}
                         alt="Product preview"
+                        width={80}
+                        height={80}
+                        unoptimized
                         className="h-20 w-20 rounded-lg object-cover border"
                       />
                       <button

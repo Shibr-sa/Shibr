@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -56,6 +57,41 @@ interface StoreData {
   createdAt: number
 }
 
+// Branch interface matching what getBranchesForMarketplace returns
+// and what StoreMap component expects
+interface BranchData {
+  _id: string
+  branchName: string
+  storeName?: string
+  city: string
+  address?: string
+  latitude?: number
+  longitude?: number
+  location?: {
+    lat: number
+    lng: number
+    address?: string
+  }
+  ownerName?: string
+  ownerImage?: string
+  availableShelvesCount: number
+  priceRange: {
+    min: number
+    max: number
+  }
+  productTypes: string[]
+  images?: Array<{
+    storageId?: string
+    url: string | null
+    type?: string
+    order?: number
+  }>
+  qrCodeUrl?: string
+  earliestAvailable?: number
+  status?: string
+  shelves?: unknown[]
+}
+
 export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceContentProps) {
   const { t, direction } = useLanguage()
 
@@ -66,13 +102,13 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
 
   // Map modal states (to be updated later for stores)
   const [isMapOpen, setIsMapOpen] = useState(false)
-  const [selectedStoreInMap, setSelectedStoreInMap] = useState<StoreData | null>(null)
+  const [selectedStoreInMap, setSelectedStoreInMap] = useState<BranchData | null>(null)
 
   // Debounce search input to avoid too many queries
   const debouncedSearchQuery = useDebounce(searchInput, 500)
 
   // Get available cities
-  const availableCities = useQuery(api.stores.getAvailableCitiesByStore)
+  const availableCities = useQuery(api.stores.getAvailableCitiesByStore, {})
 
   // Fetch stores from Convex with backend pagination
   const storesData = useQuery(api.stores.getAllStores, {
@@ -310,10 +346,13 @@ export function MarketplaceContent({ linkPrefix = "/marketplace" }: MarketplaceC
                       if (typeof data === 'string') {
                         // Only ID is provided in non-fullscreen mode
                         const branch = branchesForMap?.find(b => b._id === data)
-                        if (branch) setSelectedStoreInMap(branch as any)
+                        if (branch) {
+                          // The branch from getBranchesForMarketplace matches BranchData structure
+                          setSelectedStoreInMap(branch satisfies BranchData)
+                        }
                       } else {
                         // Full branch object in fullscreen mode
-                        setSelectedStoreInMap(data as any)
+                        setSelectedStoreInMap(data satisfies BranchData)
                       }
                     }}
                     isFullscreen={true}

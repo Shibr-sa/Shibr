@@ -299,10 +299,10 @@ export default function ShibrLandingPage() {
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              {t("stores.title")}
+              {t("landing.stores_title")}
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground leading-7">
-              {t("stores.description")}
+              {t("landing.stores_description")}
             </p>
           </div>
         </div>
