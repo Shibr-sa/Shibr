@@ -9,34 +9,102 @@ export const checkRentalStatuses = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now()
-    
-    // 1. Check for payment_pending requests that need to be activated (when start date arrives)
-    const paymentPendingRentals = await ctx.db
+
+    // NOTE: Removed obsolete payment_pending → active check (Task A2.7)
+    // New flow: payment → awaiting_shipment → brand ships → shipment_sent → store confirms → active
+    // Activation now happens through store receipt confirmation, not automatic on start date
+
+    // 1. Check awaiting_shipment rentals for timeout (brand hasn't shipped after payment)
+    const awaitingShipmentRentals = await ctx.db
       .query("rentalRequests")
-      .withIndex("by_status", (q) => q.eq("status", "payment_pending"))
+      .withIndex("by_status", (q) => q.eq("status", "awaiting_shipment"))
       .collect()
-    
-    for (const rental of paymentPendingRentals) {
-      // If the start date has arrived, activate the rental
-      if (rental.startDate <= now) {
-        // Mark rental as active
-        await ctx.db.patch(rental._id, {
-          status: "active"
-        })
-        
-        // Send system message about rental activation
-        if (rental.conversationId) {
-          await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
-            conversationId: rental.conversationId,
-            text: "تم تفعيل الإيجار بنجاح. فترة الإيجار النشطة بدأت الآن.\nThe rental has been activated successfully. The active rental period has now begun.",
-            messageType: "rental_accepted",
-            senderId: rental.storeProfileId as any
-          })
+
+    for (const rental of awaitingShipmentRentals) {
+      // Get payment to find paymentDate
+      const payment = await ctx.db
+        .query("payments")
+        .withIndex("by_rental", (q) => q.eq("rentalRequestId", rental._id))
+        .first()
+
+      if (payment && payment.paymentDate) {
+        const daysSincePayment = (now - payment.paymentDate) / (24 * 60 * 60 * 1000)
+
+        // Cancel if not shipped within 10 days
+        if (daysSincePayment >= 10) {
+          await ctx.db.patch(rental._id, { status: "cancelled" })
+
+          // Free up shelf
+          await ctx.db.patch(rental.shelfId, { status: "active" })
+
+          // Send cancellation message
+          if (rental.conversationId) {
+            await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+              conversationId: rental.conversationId,
+              text: "تم إلغاء طلب الإيجار بسبب عدم شحن المنتجات خلال 10 أيام من الدفع.\nRental request cancelled due to products not shipped within 10 days of payment.",
+              messageType: "rental_rejected",
+              senderId: rental.storeProfileId as any
+            })
+          }
+        }
+        // Warning reminder at 7 days
+        else if (daysSincePayment >= 7 && daysSincePayment < 10) {
+          // Send reminder (send once around day 7, not daily)
+          const hoursSincePayment = (now - payment.paymentDate) / (60 * 60 * 1000)
+          if (hoursSincePayment >= 168 && hoursSincePayment < 192) { // Between 7 and 8 days
+            if (rental.conversationId) {
+              await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+                conversationId: rental.conversationId,
+                text: "تذكير: يرجى شحن المنتجات إلى المتجر خلال 3 أيام لتجنب إلغاء الطلب.\nReminder: Please ship products to the store within 3 days to avoid request cancellation.",
+                messageType: "text",
+                senderId: rental.brandProfileId as any
+              })
+            }
+          }
         }
       }
     }
-    
-    // 2. Check for active rentals that need to be completed (when end date passes)
+
+    // 2. Check shipment_sent rentals for timeout (store hasn't confirmed receipt)
+    const shipmentSentRentals = await ctx.db
+      .query("rentalRequests")
+      .withIndex("by_status", (q) => q.eq("status", "shipment_sent"))
+      .collect()
+
+    for (const rental of shipmentSentRentals) {
+      if (rental.initialShipment?.shippedAt) {
+        const daysSinceShipment = (now - rental.initialShipment.shippedAt) / (24 * 60 * 60 * 1000)
+
+        // Escalate after 14 days - needs admin review
+        if (daysSinceShipment >= 14) {
+          if (rental.conversationId) {
+            await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+              conversationId: rental.conversationId,
+              text: "تأخير في تأكيد استلام الشحنة. يرجى التواصل مع الدعم الفني.\nDelay in receipt confirmation. Please contact support for assistance.",
+              messageType: "text",
+              senderId: rental.storeProfileId as any
+            })
+          }
+        }
+        // Reminder at 7 days
+        else if (daysSinceShipment >= 7 && daysSinceShipment < 14) {
+          // Send reminder once around day 7
+          const hoursSinceShipment = (now - rental.initialShipment.shippedAt) / (60 * 60 * 1000)
+          if (hoursSinceShipment >= 168 && hoursSinceShipment < 192) { // Between 7 and 8 days
+            if (rental.conversationId) {
+              await ctx.scheduler.runAfter(0, internal.rentalManagement.sendRentalSystemMessage, {
+                conversationId: rental.conversationId,
+                text: "تذكير: يرجى تأكيد استلام المنتجات المشحونة لبدء فترة الإيجار.\nReminder: Please confirm receipt of shipped products to start the rental period.",
+                messageType: "text",
+                senderId: rental.storeProfileId as any
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Check for active rentals that need to be completed (when end date passes)
     const activeRentals = await ctx.db
       .query("rentalRequests")
       .withIndex("by_status", (q) => q.eq("status", "active"))

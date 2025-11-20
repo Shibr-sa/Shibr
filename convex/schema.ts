@@ -250,6 +250,75 @@ const schema = defineSchema({
       confirmationNotes: v.optional(v.string()), // Notes from store upon receipt
     })),
 
+    // Post-rental clearance workflow
+    clearanceStatus: v.optional(v.union(
+      v.literal("not_started"),
+      v.literal("pending_inventory_check"),
+      v.literal("pending_return_shipment"),
+      v.literal("return_shipped"),
+      v.literal("return_received"),
+      v.literal("pending_settlement"),
+      v.literal("settlement_approved"),
+      v.literal("payment_completed"),
+      v.literal("closed")
+    )),
+    clearanceInitiatedAt: v.optional(v.number()),
+    clearanceInitiatedBy: v.optional(v.id("users")),
+    clearanceCompletedAt: v.optional(v.number()),
+
+    // Inventory snapshot at rental end
+    finalProductSnapshot: v.optional(v.array(v.object({
+      productId: v.id("products"),
+      productName: v.string(),
+      productNameAr: v.string(),
+      initialQuantity: v.number(), // At rental start
+      soldQuantity: v.number(),    // During rental
+      remainingQuantity: v.number(), // To be returned
+      unitPrice: v.number(),
+      totalSalesValue: v.number(),
+      totalSalesWithTax: v.number(),
+    }))),
+
+    // Return shipping (Store → Brand)
+    returnShipment: v.optional(v.object({
+      carrier: v.string(),
+      trackingNumber: v.string(),
+      shippedAt: v.number(),
+      shippedBy: v.id("users"),
+      expectedDeliveryDate: v.optional(v.string()),
+      notes: v.optional(v.string()),
+
+      receivedAt: v.optional(v.number()),
+      receivedBy: v.optional(v.id("users")),
+      condition: v.optional(v.string()),
+      receiptPhotos: v.optional(v.array(v.string())),
+      confirmationNotes: v.optional(v.string()),
+    })),
+
+    // Financial settlement
+    settlementCalculation: v.optional(v.object({
+      totalSales: v.number(),
+      totalSalesWithTax: v.number(),
+
+      platformCommissionRate: v.number(),
+      platformCommissionAmount: v.number(),
+
+      storeCommissionRate: v.number(),
+      storeCommissionAmount: v.number(),
+
+      storePayoutAmount: v.number(), // Store's commission from sales
+
+      returnInventoryValue: v.number(), // Value of unsold products
+      brandTotalAmount: v.number(), // Sales revenue - commissions
+
+      calculatedAt: v.number(),
+      calculatedBy: v.id("users"),
+      approvedAt: v.optional(v.number()),
+      approvedBy: v.optional(v.id("users")),
+    })),
+
+    clearanceDocumentId: v.optional(v.string()), // Convex storage ID
+
     // Communication
     conversationId: v.optional(v.id("conversations"))
   })
@@ -406,6 +475,26 @@ const schema = defineSchema({
     // Additional info
     description: v.optional(v.string()),
     failureReason: v.optional(v.string()), // Error message if status is "failed"
+
+    // Clearance-related fields (for store_settlement payments)
+    clearanceId: v.optional(v.id("rentalClearances")),
+
+    settlementBreakdown: v.optional(v.object({
+      totalSalesAmount: v.number(),
+      totalSalesWithTax: v.number(),
+
+      platformCommissionRate: v.number(),
+      platformCommissionAmount: v.number(),
+
+      storeCommissionRate: v.number(),
+      storeCommissionAmount: v.number(),
+
+      netPayoutToStore: v.number(),
+    })),
+
+    receiptFileId: v.optional(v.string()), // Admin upload
+    receiptUploadedBy: v.optional(v.id("users")),
+    receiptUploadedAt: v.optional(v.number()),
   })
     .index("by_rental", ["rentalRequestId"])
     .index("by_type", ["type"])
@@ -415,6 +504,56 @@ const schema = defineSchema({
     .index("by_type_status", ["type", "status"])
     .index("by_from_profile", ["fromProfileId"])
     .index("by_to_profile", ["toProfileId"]),
+
+  // Rental clearance workflow tracking
+  rentalClearances: defineTable({
+    rentalRequestId: v.id("rentalRequests"),
+    status: v.union(
+      v.literal("initiated"),
+      v.literal("inventory_confirmed"),
+      v.literal("return_shipped"),
+      v.literal("return_received"),
+      v.literal("settlement_calculated"),
+      v.literal("settlement_approved"),
+      v.literal("payment_completed"),
+      v.literal("closed")
+    ),
+
+    initiatedBy: v.id("users"),
+    initiatedAt: v.number(),
+
+    // Timeline tracking
+    inventoryConfirmedAt: v.optional(v.number()),
+    returnShippedAt: v.optional(v.number()),
+    returnReceivedAt: v.optional(v.number()),
+    settlementCalculatedAt: v.optional(v.number()),
+    settlementApprovedAt: v.optional(v.number()),
+    paymentCompletedAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+
+    // Payment references
+    settlementPaymentIds: v.optional(v.array(v.id("payments"))),
+
+    // Document
+    clearanceDocumentId: v.optional(v.string()),
+    documentGeneratedAt: v.optional(v.number()),
+
+    // Notes and issues
+    notes: v.optional(v.string()),
+    discrepancies: v.optional(v.array(v.object({
+      productId: v.id("products"),
+      issue: v.string(),
+      expectedQty: v.number(),
+      actualQty: v.number(),
+      resolution: v.optional(v.string()),
+    }))),
+  })
+    .index("by_rental", ["rentalRequestId"])
+    .index("by_status", ["status"])
+    .index("by_initiated_at", ["initiatedAt"])
+    .searchIndex("search_rental", {
+      searchField: "notes",
+    }),
 
   // Platform settings (for admins)
   platformSettings: defineTable({
