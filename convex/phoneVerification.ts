@@ -345,21 +345,30 @@ export const sendPhoneOTPViaKarzoun = internalAction({
     userName: v.string(),
   },
   handler: async (ctx, args) => {
+    const isDevelopment = process.env.DEV_MODE === 'true'
+
+    // Development mode - ONLY log the OTP, don't send SMS/WhatsApp
+    if (isDevelopment) {
+      logger.info('\n' + '='.repeat(50))
+      logger.info('📱 PHONE/WHATSAPP VERIFICATION OTP (DEV MODE)')
+      logger.info('='.repeat(50))
+      logger.info(`To: ${args.phoneNumber}`)
+      logger.info(`Name: ${args.userName}`)
+      logger.info(`OTP Code: ${args.otp}`)
+      logger.info('='.repeat(50) + '\n')
+      return { success: true, messageId: 'dev-mode' }
+    }
+
+    // Production mode - send real WhatsApp message
     const karzounToken = process.env.KARZOUN_API_TOKEN
     const karzounSenderId = process.env.KARZOUN_SENDER_ID
     const templateName = process.env.KARZOUN_OTP_TEMPLATE_NAME
 
-    // Log OTP in development mode
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    if (isDevelopment) {
-      logger.info(`[DEV] Phone OTP for ${args.phoneNumber}: ${args.otp}`)
+    if (!karzounToken || !karzounSenderId || !templateName) {
+      throw new Error('Karzoun API credentials are required in production. Please set KARZOUN_API_TOKEN, KARZOUN_SENDER_ID, and KARZOUN_OTP_TEMPLATE_NAME in environment variables.')
     }
 
     logger.info('Sending WhatsApp OTP to:', args.phoneNumber)
-
-    if (!karzounToken || !karzounSenderId || !templateName) {
-      throw new Error('Karzoun API credentials are not configured. Please set KARZOUN_API_TOKEN, KARZOUN_SENDER_ID, and KARZOUN_OTP_TEMPLATE_NAME in environment variables.')
-    }
 
     try {
       // Build the API URL with template parameters

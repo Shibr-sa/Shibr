@@ -14,16 +14,22 @@ export const ResendOTPPasswordReset = Email({
     return generateRandomString(6, alphabet("0-9"));
   },
   async sendVerificationRequest({ identifier: email, token, provider }: any) {
-    // Use development mode if no API key
-    if (!process.env.RESEND_API_KEY) {
-      logger.debug('Password Reset OTP Email')
-      
-      
-      logger.debug('OTP Email', { to: email, token })
-      
-      
-      
+    const isDevelopment = process.env.DEV_MODE === 'true'
+
+    // Development mode - ONLY log the OTP, don't send email
+    if (isDevelopment) {
+      logger.info('\n' + '='.repeat(50))
+      logger.info('🔐 PASSWORD RESET OTP (DEV MODE)')
+      logger.info('='.repeat(50))
+      logger.info(`To: ${email}`)
+      logger.info(`OTP Code: ${token}`)
+      logger.info('='.repeat(50) + '\n')
       return
+    }
+
+    // Production mode - send real email
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is required in production')
     }
 
     const resend = new ResendAPI(process.env.RESEND_API_KEY);

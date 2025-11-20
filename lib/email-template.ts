@@ -1,10 +1,12 @@
 // Helper to get site URL without trailing slash
-function getSiteUrl(): string {
+function getSiteUrl(): string
+{
   const url = process.env.SITE_URL || 'http://localhost:3000'
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
 
-export interface EmailTemplateProps {
+export interface EmailTemplateProps
+{
   language: 'en' | 'ar';
   subject: string;
   preheader?: string;
@@ -33,7 +35,8 @@ export function generateEmailHTML({
   warning,
   footerNote,
   code
-}: EmailTemplateProps): { subject: string; html: string } {
+}: EmailTemplateProps): { subject: string; html: string }
+{
   const isArabic = language === 'ar';
   const direction = isArabic ? 'rtl' : 'ltr';
   const fontFamily = isArabic ? 'Cairo, Arial, sans-serif' : 'Inter, Arial, sans-serif';
@@ -247,7 +250,7 @@ export function generateEmailHTML({
             <div class="container">
               <!-- Header -->
               <div class="header">
-                <a href="${getSiteUrl()}" class="logo">شبر | Shibr</a>
+                <Link href="${getSiteUrl()}" class="logo">شبر | Shibr</Link>
                 <div class="tagline">
                   ${isArabic ? 'منصة الربط الذكية بين المتاجر' : 'Smart Store Connection Platform'}
                 </div>
@@ -271,7 +274,7 @@ export function generateEmailHTML({
 
                 ${buttonText && buttonUrl ? `
                   <div style="text-align: center; margin: 32px 0;">
-                    <a href="${buttonUrl}" class="button">${buttonText}</a>
+                    <Link href="${buttonUrl}" class="button">${buttonText}</Link>
                   </div>
                 ` : ''}
 
@@ -292,8 +295,8 @@ export function generateEmailHTML({
                 ${buttonUrl && buttonText ? `
                   <p style="font-size: 14px; color: #999;">
                     ${isArabic
-                      ? 'إذا كان الزر لا يعمل، يمكنك نسخ الرابط التالي ولصقه في متصفحك:'
-                      : 'If the button doesn\'t work, you can copy and paste the following link into your browser:'}
+        ? 'إذا كان الزر لا يعمل، يمكنك نسخ الرابط التالي ولصقه في متصفحك:'
+        : 'If the button doesn\'t work, you can copy and paste the following link into your browser:'}
                   </p>
                   <div class="link-text">${buttonUrl}</div>
                 ` : ''}
@@ -306,13 +309,13 @@ export function generateEmailHTML({
                 </p>
                 <p style="margin-top: 8px;">
                   ${isArabic
-                    ? 'هذا بريد إلكتروني تلقائي، يرجى عدم الرد عليه.'
-                    : 'This is an automated email, please do not reply.'}
+      ? 'هذا بريد إلكتروني تلقائي، يرجى عدم الرد عليه.'
+      : 'This is an automated email, please do not reply.'}
                 </p>
                 <p style="margin-top: 12px; font-size: 12px;">
                   ${isArabic
-                    ? 'تم إرسال هذا البريد الإلكتروني إليك لأنك مسجل في منصة شبر.'
-                    : 'You received this email because you are registered with Shibr platform.'}
+      ? 'تم إرسال هذا البريد الإلكتروني إليك لأنك مسجل في منصة شبر.'
+      : 'You received this email because you are registered with Shibr platform.'}
                 </p>
               </div>
             </div>

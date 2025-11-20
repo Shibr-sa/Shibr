@@ -331,21 +331,12 @@ export const sendSignupOTPEmail = internalAction({
     userName: v.string(),
   },
   handler: async (ctx, args) => {
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    const resendApiKey = process.env.RESEND_API_KEY
+    const isDevelopment = process.env.DEV_MODE === 'true'
 
-    // Log OTP in development mode
+    // Development mode - ONLY log the OTP, don't send email
     if (isDevelopment) {
-      logger.info(`[DEV] Email OTP for ${args.email}: ${args.otp}`)
-    }
-
-    // Always log OTP for development debugging (matches phone pattern at line 370)
-    logger.info('Email OTP details', { email: args.email, otp: args.otp })
-
-    // Development mode - just log the OTP
-    if (isDevelopment && !resendApiKey) {
       logger.info('\n' + '='.repeat(50))
-      logger.info('📧 SIGNUP EMAIL VERIFICATION OTP')
+      logger.info('📧 SIGNUP EMAIL VERIFICATION OTP (DEV MODE)')
       logger.info('='.repeat(50))
       logger.info(`To: ${args.email}`)
       logger.info(`Name: ${args.userName}`)
@@ -355,8 +346,9 @@ export const sendSignupOTPEmail = internalAction({
     }
 
     // Production mode - send real email
+    const resendApiKey = process.env.RESEND_API_KEY
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY is not configured')
+      throw new Error('RESEND_API_KEY is required in production')
     }
 
     const resend = new Resend(resendApiKey)
