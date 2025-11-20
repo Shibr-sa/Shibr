@@ -37,7 +37,15 @@ bunx convex run rentalRequests:getById '{"requestId":"<id>"}'
 - `bunx convex dev` - Start Convex dev server independently
 - `bunx convex deploy -y` - Deploy to production (auto-confirm)
 - `bunx convex env set <KEY> <VALUE>` - Set environment variables in Convex
+- `bunx convex env list` - List all environment variables
+- `bunx convex env unset <KEY>` - Remove environment variable
 - Dashboard: https://dashboard.convex.dev
+
+### Seeding & Database Reset
+- `bun seed:admin` - Seed initial super admin user (it@shibr.io)
+- `bun seed` - Seed test stores without images
+- `bun seed:logos` - Seed test stores with logos and images (recommended)
+- `bunx convex run resetDatabase:resetAllData` - Reset entire database (development only)
 
 ### Package Management
 This project uses Bun. Install dependencies with `bun install`.
@@ -51,14 +59,31 @@ This project uses Bun. Install dependencies with `bun install`.
 # Install dependencies
 bun install
 
-# Set up environment variables
+# Set up environment variables (see ENVIRONMENT_VARIABLES.md for complete guide)
 cp .env.example .env.local
-# Add your Convex deployment URL and API keys
+# Edit .env.local with your NEXT_PUBLIC_CONVEX_URL
+
+# Generate and set JWT keys for authentication
+node scripts/generate-jwt-keys.mjs
+# Copy JWT_PRIVATE_KEY and JWKS values, then:
+bunx convex env set JWT_PRIVATE_KEY -- "<paste-private-key>"
+bunx convex env set JWKS "<paste-jwks>"
+bunx convex env set SITE_URL "http://localhost:3000"
+bunx convex env set DEV_MODE true
+
+# Seed initial admin user
+bun seed:admin
 
 # Start development servers
 bun dev
 # Opens: http://localhost:3000
 ```
+
+### Admin Access
+- **URL**: http://localhost:3000/admin-dashboard
+- **Email**: it@shibr.io
+- **Password**: wwadnj0aw2nc@!!
+- Create additional admins via admin dashboard after initial login
 
 ### Common Development Tasks
 
@@ -100,25 +125,72 @@ bun dev
 4. **Phone Verification**: Alternative OTP system in `/convex/phoneVerification.ts` (574 lines)
 5. **Session Management**: JWT-based with Convex Auth, 30-day expiry
 
-#### Rental Workflow State Machine
-```
-pending → payment_pending → active → completed/cancelled
-         ↓                    ↓
-    rejected              suspended
-```
-- Webhook validation for payment confirmation
-- Automatic status updates via Convex mutations
-- Commission calculation (platform fees applied at checkout)
+**CRITICAL**: Admin seeding uses `createAccount` API from `@convex-dev/auth/server` in `internalAction` context (not mutations). This ensures password hashing uses Convex Auth's Scrypt algorithm, matching normal user signup flow. Never manually hash passwords with SHA-256 or insert directly into `authAccounts` table - always use the `createAccount` API.
 
-#### User Journey
-1. Users sign up selecting role (store owner or brand owner)
+Seeding files:
+- `/convex/forceAdminSeed.ts` - Main admin seeding (recommended)
+- `/convex/seedInitialAdmin.ts` - Alternative admin seeding
+- `/convex/admin/settings.ts` - Contains `seedInitialSuperAdmin` action
+- All use `internalAction` + `createAccount(ctx, {...})` pattern
+
+#### Rental Workflow State Machine
+
+**⚠️ IMPORTANT: Current implementation is incomplete. The flow below is the REQUIRED flow, but only partial implementation exists (steps 1-6 incomplete, step 7-9 exist).**
+
+```
+1. Brand Creates Request → pending_admin_approval (Admin only sees it)
+                            ↓
+2. Admin Reviews & Approves
+   Admin Sets Platform Commission % (per request)
+                            ↓
+3. Admin Activates → pending (Store now sees it)
+                            ↓
+4. Store Accepts → payment_pending
+   Store Rejects → rejected
+                            ↓
+5. Brand Pays (Tap Gateway) → awaiting_shipment
+                            ↓
+6. Brand Ships Products to Store
+   Brand Fills Shipping Info → shipment_sent
+                            ↓
+7. Store Confirms Receipt → active (Rental period starts)
+                            ↓
+8. End Date Passes → completed
+                            ↓
+9. Clearance Process (5 steps):
+   a. Admin confirms operation end → pending_clearance
+   b. Inventory reconciliation (sold vs remaining)
+   c. Brand ships products back to store
+   d. Financial settlement (platform, store, brand commissions)
+   e. Generate clearance document → closed
+```
+
+**Current Status vs Required:**
+- ✅ Steps 7-8: Active rental management and automatic completion (IMPLEMENTED)
+- ❌ Steps 1-3: Admin pre-approval workflow (NOT IMPLEMENTED)
+- ❌ Steps 4-6: Initial shipping confirmation (NOT IMPLEMENTED)
+- ❌ Step 9: Complete clearance mechanism (NOT IMPLEMENTED)
+
+**Commission Structure:**
+1. **Rental Fee Commission**: Platform takes % of monthly rental fee (set by admin per request)
+2. **Sales Commission**: Platform + Store take % of product sales during rental period
+
+#### User Journey (Required Flow)
+1. Users sign up selecting role (store owner, brand owner, or admin)
 2. Store owners create branches (each gets a permanent QR code) and list shelves with location, size, and pricing
 3. Brand owners browse marketplace and request rentals
-4. Real-time chat between parties
-5. Store owners approve/reject requests
-6. Payment processing via Tap Payment Gateway with webhook confirmation
-7. Approved rentals become active contracts - brand products appear in the branch's QR store
-8. QR store allows customers to browse products and place orders
+4. **Admin reviews request, sets platform commission, and activates it** ⚠️ NOT IMPLEMENTED
+5. Store owners approve/reject requests (only see admin-approved requests)
+6. Brand pays via Tap Payment Gateway with webhook confirmation
+7. **Brand ships products to store and fills shipping details** ⚠️ NOT IMPLEMENTED
+8. **Store confirms receipt of products** ⚠️ NOT IMPLEMENTED
+9. Rental becomes active - brand products appear in the branch's QR store
+10. QR store allows customers to browse products and place orders
+11. When rental period ends, **clearance process begins** ⚠️ NOT IMPLEMENTED:
+    - Inventory reconciliation (products sold vs remaining)
+    - Brand ships unsold products back
+    - Financial settlement (store gets commission from sales)
+    - Clearance document generated
 
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router
@@ -325,23 +397,71 @@ The app is fully bilingual with RTL/LTR support:
 
 ### Environment Variables
 
-#### Required in `.env.local`
-```
-NEXT_PUBLIC_CONVEX_URL=<convex-deployment-url>
-CONVEX_DEPLOYMENT=<deployment-name>
-RESEND_API_KEY=<resend-api-key>
-SITE_URL=<production-url>
-JWT_PRIVATE_KEY=<auth-private-key>
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<maps-key>
-NEXT_PUBLIC_TAP_PUBLISHABLE_KEY=<tap-public-key>
+**Complete documentation**: See `ENVIRONMENT_VARIABLES.md` for detailed guide on all 20+ variables.
+
+#### Critical Setup (Required for Development)
+
+**Next.js Environment** (`.env.local`):
+```env
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210  # Or your Convex cloud URL
+CONVEX_DEPLOYMENT=local:local-hossam_eldin-shibr_37bd1
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_key
+NEXT_PUBLIC_TAP_PUBLISHABLE_KEY=pk_test_xxx
 ```
 
-#### Convex Environment (set via CLI)
+**Convex Environment** (set via `bunx convex env set`):
+```bash
+# Authentication (REQUIRED - generate with scripts/generate-jwt-keys.mjs)
+JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY----- ..."
+JWKS={"keys":[{"use":"sig",...}]}
+SITE_URL="http://localhost:3000"
+
+# Development Mode Control (REQUIRED)
+DEV_MODE=true  # Set to "true" for development, unset for production
+
+# Email/SMS (Optional in dev, Required in production)
+RESEND_API_KEY=re_xxx  # Optional - OTPs logged to console in dev mode
+KARZOUN_API_TOKEN=xxx  # Optional - OTPs logged to console in dev mode
+KARZOUN_SENDER_ID=xxx
+KARZOUN_OTP_TEMPLATE_NAME=xxx
+
+# Payments (Required in production)
+TAP_SECRET_KEY=sk_xxx
 ```
-RESEND_API_KEY=<resend-api-key>
-SITE_URL=<production-url>
-JWT_PRIVATE_KEY=<auth-private-key>
-TAP_SECRET_KEY=<tap-secret-key>
+
+#### Development vs Production OTP Behavior
+
+**Development Mode** (`DEV_MODE=true`):
+- All OTPs (email signup, phone, password reset) are **logged to console**
+- No external API calls made
+- No API keys required
+- Perfect for testing without external services
+- Console output format:
+  ```
+  ==================================================
+  📧 SIGNUP EMAIL VERIFICATION OTP (DEV MODE)
+  ==================================================
+  To: user@example.com
+  OTP Code: 123456
+  ==================================================
+  ```
+
+**Production Mode** (`DEV_MODE` unset or not "true"):
+- OTPs sent via actual email/SMS services
+- Requires `RESEND_API_KEY` for emails
+- Requires `KARZOUN_*` credentials for SMS/WhatsApp
+- Throws errors if API keys are missing
+
+#### First-Time Setup Script
+```bash
+# 1. Generate JWT keys
+node scripts/generate-jwt-keys.mjs
+
+# 2. Set all variables using template (edit first with your values)
+cp convex-env-template.sh convex-env-setup.sh
+# Edit convex-env-setup.sh with generated keys
+chmod +x convex-env-setup.sh
+./convex-env-setup.sh
 ```
 
 ### Deployment
@@ -459,11 +579,20 @@ export const approveRequest = mutation({
 
 - `/convex/schema.ts` - Database schema definition
 - `/convex/auth.ts` - Authentication configuration
+- `/convex/auth.config.ts` - Auth domain configuration (uses CONVEX_SITE_URL)
 - `/contexts/localization-context.tsx` - All translations
 - `/lib/formatters.ts` - Number/date/currency formatting
 - `/lib/validations.ts` - Zod validation schemas
 - `/lib/constants.ts` - App-wide constants
 - `/middleware.ts` - Route protection logic
+
+### Utility Scripts & Documentation
+
+- `/scripts/generate-jwt-keys.mjs` - Generate RS256 JWT key pairs for Convex Auth
+- `/convex/resetDatabase.ts` - Reset all database tables (development only)
+- `/ENVIRONMENT_VARIABLES.md` - Complete guide to all environment variables
+- `/convex-env-template.sh` - Template script for setting all Convex env vars
+- `/.env.example` - Template for Next.js environment variables
 
 ### Security Patterns
 

@@ -9,7 +9,7 @@
     "start": "next start",
     "seed": "bunx convex run seedTestStoresWithLogos",
     "seed:logos": "node scripts/seedWithUploadedLogos.js",
-    "seed:admin": "bunx convex run seedInitialAdmin"
+    "seed:admin": "bunx convex run forceAdminSeed:forceSeedAdmin"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.88",
