@@ -109,6 +109,7 @@ export function ImageModal({ images, initialIndex = 0, isOpen, onClose }: ImageM
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, direction])
 
   if (!images || images.length === 0) return null

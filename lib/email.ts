@@ -3,18 +3,21 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Helper to get site URL without trailing slash
-function getSiteUrl(): string {
+function getSiteUrl(): string
+{
   const url = process.env.SITE_URL || 'http://localhost:3000'
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
 
-export interface EmailTemplate {
+export interface EmailTemplate
+{
   subject: string
   html: string
   text?: string
 }
 
-export interface EmailOptions {
+export interface EmailOptions
+{
   to: string | string[]
   subject: string
   html: string
@@ -23,24 +26,30 @@ export interface EmailOptions {
   replyTo?: string
 }
 
-export class EmailService {
+export class EmailService
+{
   private static instance: EmailService
   private resend: Resend
   private defaultFrom = 'Shibr <noreply@shibr.io>'
 
-  private constructor() {
+  private constructor()
+  {
     this.resend = new Resend(process.env.RESEND_API_KEY)
   }
 
-  static getInstance(): EmailService {
-    if (!EmailService.instance) {
+  static getInstance(): EmailService
+  {
+    if (!EmailService.instance)
+    {
       EmailService.instance = new EmailService()
     }
     return EmailService.instance
   }
 
-  async sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string; data?: any }> {
-    try {
+  async sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string; data?: any }>
+  {
+    try
+    {
       const result = await this.resend.emails.send({
         from: options.from || this.defaultFrom,
         to: options.to,
@@ -51,7 +60,8 @@ export class EmailService {
       })
 
       return { success: true, data: result }
-    } catch (error: any) {
+    } catch (error: any)
+    {
       return {
         success: false,
         error: error?.message || 'Failed to send email'
@@ -64,7 +74,8 @@ export class EmailService {
     resetLink: string,
     language: 'ar' | 'en' = 'en',
     userName?: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string }>
+  {
     const isArabic = language === 'ar'
     const direction = isArabic ? 'rtl' : 'ltr'
     const fontFamily = isArabic ? 'Cairo, Arial, sans-serif' : 'Inter, Arial, sans-serif'
@@ -196,33 +207,33 @@ export class EmailService {
 
             <p>
               ${isArabic
-                ? 'لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك على منصة شبر.'
-                : 'We received a request to reset the password for your Shibr account.'}
+        ? 'لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك على منصة شبر.'
+        : 'We received a request to reset the password for your Shibr account.'}
             </p>
 
             <p>
               ${isArabic
-                ? 'انقر على الزر أدناه لإعادة تعيين كلمة المرور الخاصة بك:'
-                : 'Click the button below to reset your password:'}
+        ? 'انقر على الزر أدناه لإعادة تعيين كلمة المرور الخاصة بك:'
+        : 'Click the button below to reset your password:'}
             </p>
 
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${resetLink}" class="button">
+              <Link href="${resetLink}" class="button">
                 ${isArabic ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
-              </a>
+              </Link>
             </div>
 
             <div class="warning">
               <strong>${isArabic ? 'ملاحظة مهمة:' : 'Important Note:'}</strong><br>
               ${isArabic
-                ? 'هذا الرابط صالح لمدة ساعة واحدة فقط. إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد الإلكتروني بأمان.'
-                : 'This link is valid for 1 hour only. If you didn\'t request a password reset, you can safely ignore this email.'}
+        ? 'هذا الرابط صالح لمدة ساعة واحدة فقط. إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد الإلكتروني بأمان.'
+        : 'This link is valid for 1 hour only. If you didn\'t request a password reset, you can safely ignore this email.'}
             </div>
 
             <p style="font-size: 14px; color: #999;">
               ${isArabic
-                ? 'إذا كان الزر لا يعمل، يمكنك نسخ الرابط التالي ولصقه في متصفحك:'
-                : 'If the button doesn\'t work, you can copy and paste the following link into your browser:'}
+        ? 'إذا كان الزر لا يعمل، يمكنك نسخ الرابط التالي ولصقه في متصفحك:'
+        : 'If the button doesn\'t work, you can copy and paste the following link into your browser:'}
             </p>
 
             <div class="link-text">
@@ -233,13 +244,13 @@ export class EmailService {
           <div class="footer">
             <p>
               ${isArabic
-                ? '© 2024 شبر. جميع الحقوق محفوظة.'
-                : '© 2024 Shibr. All rights reserved.'}
+        ? '© 2024 شبر. جميع الحقوق محفوظة.'
+        : '© 2024 Shibr. All rights reserved.'}
             </p>
             <p style="margin-top: 8px;">
               ${isArabic
-                ? 'هذا بريد إلكتروني تلقائي، يرجى عدم الرد عليه.'
-                : 'This is an automated email, please do not reply.'}
+        ? 'هذا بريد إلكتروني تلقائي، يرجى عدم الرد عليه.'
+        : 'This is an automated email, please do not reply.'}
             </p>
           </div>
         </div>
@@ -287,7 +298,8 @@ The Shibr Team`
     language: 'ar' | 'en' = 'en',
     userName?: string,
     accountType?: 'store_owner' | 'brand_owner'
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string }>
+  {
     const isArabic = language === 'ar'
     const direction = isArabic ? 'rtl' : 'ltr'
     const fontFamily = isArabic ? 'Cairo, Arial, sans-serif' : 'Inter, Arial, sans-serif'
@@ -303,15 +315,15 @@ The Shibr Team`
     const accountTypeText = accountType === 'store_owner'
       ? (isArabic ? 'صاحب متجر' : 'Store Owner')
       : accountType === 'brand_owner'
-      ? (isArabic ? 'صاحب علامة تجارية' : 'Brand Owner')
-      : ''
+        ? (isArabic ? 'صاحب علامة تجارية' : 'Brand Owner')
+        : ''
 
     const siteUrl = getSiteUrl()
     const dashboardLink = accountType === 'store_owner'
       ? `${siteUrl}/store-dashboard`
       : accountType === 'brand_owner'
-      ? `${siteUrl}/brand-dashboard`
-      : siteUrl
+        ? `${siteUrl}/brand-dashboard`
+        : siteUrl
 
     const html = `
       <!DOCTYPE html>
@@ -430,8 +442,8 @@ The Shibr Team`
 
             <p>
               ${isArabic
-                ? `مرحباً بك في منصة شبر${accountTypeText ? ` كـ${accountTypeText}` : ''}! نحن سعداء جداً بانضمامك إلينا.`
-                : `Welcome to Shibr${accountTypeText ? ` as a ${accountTypeText}` : ''}! We're thrilled to have you on board.`}
+        ? `مرحباً بك في منصة شبر${accountTypeText ? ` كـ${accountTypeText}` : ''}! نحن سعداء جداً بانضمامك إلينا.`
+        : `Welcome to Shibr${accountTypeText ? ` as a ${accountTypeText}` : ''}! We're thrilled to have you on board.`}
             </p>
 
             <div class="features">
@@ -466,23 +478,23 @@ The Shibr Team`
             </div>
 
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${dashboardLink}" class="button">
+              <Link href="${dashboardLink}" class="button">
                 ${isArabic ? 'الذهاب إلى لوحة التحكم' : 'Go to Dashboard'}
-              </a>
+              </Link>
             </div>
 
             <p style="font-size: 14px; color: #999;">
               ${isArabic
-                ? 'إذا كان لديك أي أسئلة، لا تتردد في التواصل معنا.'
-                : 'If you have any questions, don\'t hesitate to contact us.'}
+        ? 'إذا كان لديك أي أسئلة، لا تتردد في التواصل معنا.'
+        : 'If you have any questions, don\'t hesitate to contact us.'}
             </p>
           </div>
 
           <div class="footer">
             <p>
               ${isArabic
-                ? '© 2024 شبر. جميع الحقوق محفوظة.'
-                : '© 2024 Shibr. All rights reserved.'}
+        ? '© 2024 شبر. جميع الحقوق محفوظة.'
+        : '© 2024 Shibr. All rights reserved.'}
             </p>
           </div>
         </div>

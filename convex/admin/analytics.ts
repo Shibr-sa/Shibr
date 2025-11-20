@@ -560,3 +560,105 @@ export const getAdminStats = query({
     }
   },
 })
+
+/**
+ * Get top performing stores by revenue for a given time period
+ * Memory-optimized: Only loads top N store profiles, not all stores
+ */
+export const getTopPerformingStores = query({
+  args: {
+    timePeriod: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Verify admin access
+    const auth = await verifyAdminAccess(ctx)
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      return []
+    }
+
+    const period = args.timePeriod || "monthly"
+    const limit = args.limit || 10
+    const now = new Date()
+
+    // Get date ranges for current and previous periods
+    const currentRange = getDateRange(now, period)
+    const prevRangeEnd = new Date(currentRange.startDate.getTime() - 1) // 1ms before current period
+    const previousRange = getDateRange(prevRangeEnd, period)
+
+    // Query payments for current period (only store_settlement payments)
+    const currentPayments = await ctx.db
+      .query("payments")
+      .filter(q => q.and(
+        q.gte(q.field("_creationTime"), currentRange.startDate.getTime()),
+        q.lte(q.field("_creationTime"), currentRange.endDate.getTime()),
+        q.eq(q.field("type"), "store_settlement")
+      ))
+      .collect()
+
+    // Query payments for previous period
+    const previousPayments = await ctx.db
+      .query("payments")
+      .filter(q => q.and(
+        q.gte(q.field("_creationTime"), previousRange.startDate.getTime()),
+        q.lte(q.field("_creationTime"), previousRange.endDate.getTime()),
+        q.eq(q.field("type"), "store_settlement")
+      ))
+      .collect()
+
+    // Aggregate revenue by store for current period
+    const currentRevenueByStore = new Map<Id<"storeProfiles">, number>()
+    for (const payment of currentPayments) {
+      if (payment.toProfileId) {
+        const current = currentRevenueByStore.get(payment.toProfileId as Id<"storeProfiles">) || 0
+        currentRevenueByStore.set(payment.toProfileId as Id<"storeProfiles">, current + payment.amount)
+      }
+    }
+
+    // Aggregate revenue by store for previous period
+    const previousRevenueByStore = new Map<Id<"storeProfiles">, number>()
+    for (const payment of previousPayments) {
+      if (payment.toProfileId) {
+        const current = previousRevenueByStore.get(payment.toProfileId as Id<"storeProfiles">) || 0
+        previousRevenueByStore.set(payment.toProfileId as Id<"storeProfiles">, current + payment.amount)
+      }
+    }
+
+    // Sort by revenue and take top N
+    const topStoreEntries = Array.from(currentRevenueByStore.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+
+    // Load ONLY the top N store profiles (memory efficient)
+    const topStoreProfiles = await Promise.all(
+      topStoreEntries.map(([storeId]) => ctx.db.get(storeId))
+    )
+
+    // Build result with growth calculation
+    const result: TopStore[] = topStoreProfiles
+      .filter(store => store !== null)
+      .map((store, index) => {
+        const storeId = topStoreEntries[index][0]
+        const currentRevenue = topStoreEntries[index][1]
+        const previousRevenue = previousRevenueByStore.get(storeId) || 0
+
+        // Calculate growth percentage
+        let growth = 0
+        if (previousRevenue > 0) {
+          growth = ((currentRevenue - previousRevenue) / previousRevenue) * 100
+        } else if (currentRevenue > 0) {
+          growth = 100 // New revenue where there was none before
+        }
+
+        return {
+          id: store!._id,
+          name: store!.storeName,
+          avatar: null, // storeProfiles doesn't have logo field
+          revenue: currentRevenue,
+          growth: Math.round(growth * 10) / 10, // Round to 1 decimal
+        }
+      })
+
+    return result
+  }
+})

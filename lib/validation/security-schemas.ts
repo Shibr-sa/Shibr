@@ -121,10 +121,12 @@ export const paginationSchema = z.object({
 
 // Search query validation
 export const searchQuerySchema = z.string()
-  .max(100, "Search query is too long")
   .transform(query => {
     // Remove special regex characters that could cause issues
     return query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  })
+  .refine(query => query.length <= 100, {
+    message: "Search query is too long"
   })
 
 // Product data validation
@@ -203,7 +205,9 @@ export const orderSchema = z.object({
 
 // Message/Chat validation
 export const messageSchema = z.object({
-  content: safeTextSchema.max(1000, "Message is too long"),
+  content: safeTextSchema.refine(text => text.length <= 1000, {
+    message: "Message is too long"
+  }),
   conversationId: z.string(),
 })
 
@@ -219,7 +223,8 @@ export function validateInput<T>(
     return { success: true, data: validated }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0]
+      const issues = error.issues
+      const firstError = issues[0]
       return {
         success: false,
         error: firstError?.message || "Validation failed"

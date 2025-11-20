@@ -233,6 +233,7 @@ export function MapPicker({
         console.error("Failed to load Google Maps:", error)
         setIsLoading(false)
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty dependency array - only run once on mount
 
   // Handle manual search

@@ -101,7 +101,7 @@ export function Combobox({
                                     onSelect={() => handleSelect(inputValue)}
                                 >
                                     <Check className="mr-2 h-4 w-4 opacity-0" />
-                                    <span className="font-medium">Use: "{inputValue}"</span>
+                                    <span className="font-medium">Use: &quot;{inputValue}&quot;</span>
                                 </CommandItem>
                             )}
                             {filteredOptions.map((option) => (
