@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
-import { Home, Store, CreditCard, Settings, ChevronUp, LogOut, Package, ExternalLink, FileCheck } from "lucide-react"
+import { Home, Store, CreditCard, Settings, ChevronUp, LogOut, Package, ExternalLink, FileCheck, Receipt } from "lucide-react"
 import Image from "next/image"
 import { useSignOut } from "@/hooks/use-sign-out"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -41,6 +41,7 @@ const sidebarItems = [
   { title: "dashboard.stores", href: "/admin-dashboard/stores", icon: Store, pageTitle: "dashboard.stores" },
   { title: "dashboard.brands", href: "/admin-dashboard/brands", icon: Package, pageTitle: "dashboard.brands" },
   { title: "rentals.title", href: "/admin-dashboard/rental-approvals", icon: FileCheck, pageTitle: "rentals.title" },
+  { title: "clearances.title", href: "/admin-dashboard/clearances", icon: Receipt, pageTitle: "clearances.title" },
   { title: "dashboard.payments", href: "/admin-dashboard/payments", icon: CreditCard, pageTitle: "dashboard.payments" },
   { title: "dashboard.settings", href: "/admin-dashboard/settings", icon: Settings, pageTitle: "dashboard.settings" },
 ]

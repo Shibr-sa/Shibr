@@ -1,8 +1,8 @@
 import { logger } from "./logger";
 import { v } from "convex/values"
-import { action, mutation } from "./_generated/server"
+import { action, mutation, internalMutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 import { requireAuth } from "./helpers"
 
 // Tap Transfer API endpoint
@@ -217,4 +217,92 @@ export const getBankAccountById = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.get(args.bankAccountId)
   },
+})
+
+/**
+ * B4.2: Automatically initiate store settlement payout after approval
+ * Called from createSettlementPayments after admin approval
+ */
+export const initiateAutomaticSettlementPayout = internalMutation({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get payment record
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment) {
+      logger.error("Payment not found for auto-payout", { paymentId: args.paymentId })
+      return { success: false, reason: "payment_not_found" }
+    }
+
+    // 2. Verify this is a store settlement payment
+    if (payment.type !== "store_settlement") {
+      logger.error("Auto-payout attempted on non-settlement payment", {
+        paymentId: args.paymentId,
+        type: payment.type
+      })
+      return { success: false, reason: "invalid_payment_type" }
+    }
+
+    // 3. Get store profile to find userId
+    const storeProfile = payment.toProfileId
+      ? await ctx.db.get(payment.toProfileId)
+      : null
+
+    if (!storeProfile || !("userId" in storeProfile)) {
+      logger.error("Store profile not found for payment", { paymentId: args.paymentId })
+      return { success: false, reason: "store_not_found" }
+    }
+
+    // 4. Find store's default bank account
+    const bankAccount = await ctx.db
+      .query("bankAccounts")
+      .filter((q) => q.and(
+        q.eq(q.field("profileId"), payment.toProfileId),
+        q.eq(q.field("isDefault"), true)
+      ))
+      .first()
+
+    if (!bankAccount) {
+      logger.warn("No bank account found for auto-payout", {
+        paymentId: args.paymentId,
+        storeUserId: storeProfile.userId
+      })
+
+      // TODO: Send notification to store and admin
+      // await ctx.scheduler.runAfter(0, api.notifications.sendPayoutRequiresManualAction, {
+      //   paymentId: payment._id,
+      //   storeUserId: storeProfile.userId,
+      //   reason: "no_bank_account"
+      // })
+
+      return { success: false, reason: "no_bank_account" }
+    }
+
+    // 5. Schedule transfer via Tap API (using scheduler since it's an action)
+    try {
+      ctx.scheduler.runAfter(0, api.tapTransfers.createTransfer, {
+        paymentId: payment._id,
+        amount: payment.amount,
+        currency: "SAR",
+        description: `Settlement payout for rental ${payment.rentalRequestId?.slice(-8) || ""}`,
+        bankAccountId: bankAccount._id,
+      })
+
+      logger.info("Auto-payout initiated successfully", {
+        paymentId: args.paymentId,
+        bankAccountId: bankAccount._id,
+        amount: payment.amount
+      })
+
+      return { success: true }
+    } catch (error) {
+      logger.error("Auto-payout failed", {
+        paymentId: args.paymentId,
+        error: error instanceof Error ? error.message : "Unknown error"
+      })
+
+      return { success: false, reason: "transfer_failed" }
+    }
+  }
 })

@@ -35,6 +35,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import BrandShelvesLoading from "./loading"
 import { formatCurrency } from "@/lib/formatters"
 import { ReviewDialog } from "@/components/dialogs/review-dialog"
+import { ClearanceStatusBadge } from "@/components/clearances/ClearanceStatusBadge"
 
 // Helper function to calculate rental months
 const calculateRentalMonths = (startDate: number | undefined, endDate: number | undefined) => {
@@ -547,6 +548,9 @@ export default function BrandShelvesPage() {
                 <TableHead className="h-12 text-start font-medium">
                   {t("table.status")}
                 </TableHead>
+                <TableHead className="h-12 text-start font-medium hidden xl:table-cell">
+                  {t("clearances.title")}
+                </TableHead>
                 <TableHead className="h-12 text-start font-medium">
                   {t("table.action")}
                 </TableHead>
@@ -564,6 +568,7 @@ export default function BrandShelvesPage() {
                     <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell className="py-3"><Skeleton className="h-6 w-[70px] rounded-full" /></TableCell>
+                    <TableCell className="py-3 hidden xl:table-cell"><Skeleton className="h-6 w-[90px] rounded-full" /></TableCell>
                     <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                   </TableRow>
                 ))
@@ -612,20 +617,27 @@ export default function BrandShelvesPage() {
                       <TableCell className="py-3">
                         {request.status ? getStatusBadge(request.status) : "-"}
                       </TableCell>
+                      <TableCell className="py-3 hidden xl:table-cell">
+                        {(request as any).clearanceStatus ? (
+                          <ClearanceStatusBadge status={(request as any).clearanceStatus} />
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
                       <TableCell className="py-3">{getActionButton(request)}</TableCell>
                     </TableRow>
                   ))}
                   {/* Fill remaining rows to always show 5 rows */}
                   {paginatedRequests.length < 5 && Array.from({ length: 5 - paginatedRequests.length }).map((_, index) => (
                     <TableRow key={`filler-${index}`} className="h-[72px]">
-                      <TableCell className="py-3" colSpan={7}></TableCell>
+                      <TableCell className="py-3" colSpan={9}></TableCell>
                     </TableRow>
                   ))}
                 </>
               ) : (
                 // Empty state - centered view with fixed height
                 <TableRow>
-                  <TableCell colSpan={7} className="h-[360px] text-center">
+                  <TableCell colSpan={9} className="h-[360px] text-center">
                     <div className="flex h-full w-full items-center justify-center">
                       <div className="flex flex-col items-center gap-1 py-10">
                         <Store className="h-10 w-10 text-muted-foreground/40 mb-2" />

@@ -10,6 +10,7 @@
 
 import type * as admin_analytics from "../admin/analytics.js";
 import type * as admin_brands from "../admin/brands.js";
+import type * as admin_clearances from "../admin/clearances.js";
 import type * as admin_helpers from "../admin/helpers.js";
 import type * as admin_index from "../admin/index.js";
 import type * as admin_payments from "../admin/payments.js";
@@ -38,6 +39,7 @@ import type * as phoneVerification from "../phoneVerification.js";
 import type * as platformSettings from "../platformSettings.js";
 import type * as products from "../products.js";
 import type * as profileHelpers from "../profileHelpers.js";
+import type * as rentalClearance from "../rentalClearance.js";
 import type * as rentalManagement from "../rentalManagement.js";
 import type * as rentalRequests from "../rentalRequests.js";
 import type * as resetDatabase from "../resetDatabase.js";
@@ -73,6 +75,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "admin/analytics": typeof admin_analytics;
   "admin/brands": typeof admin_brands;
+  "admin/clearances": typeof admin_clearances;
   "admin/helpers": typeof admin_helpers;
   "admin/index": typeof admin_index;
   "admin/payments": typeof admin_payments;
@@ -101,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   platformSettings: typeof platformSettings;
   products: typeof products;
   profileHelpers: typeof profileHelpers;
+  rentalClearance: typeof rentalClearance;
   rentalManagement: typeof rentalManagement;
   rentalRequests: typeof rentalRequests;
   resetDatabase: typeof resetDatabase;

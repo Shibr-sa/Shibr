@@ -35,6 +35,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Search, Eye, Package, TrendingUp, DollarSign, Calendar } from "lucide-react"
+import { ClearanceStatusBadge } from "@/components/clearances/ClearanceStatusBadge"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -402,6 +403,9 @@ export default function RentalApprovalsPage() {
               <TableHead className="h-12 text-start font-medium">
                 {t("rentals.table.status")}
               </TableHead>
+              <TableHead className="h-12 text-start font-medium hidden xl:table-cell">
+                {t("clearances.title")}
+              </TableHead>
               <TableHead className="h-12 text-start font-medium">
                 {t("rentals.table.actions")}
               </TableHead>
@@ -424,6 +428,7 @@ export default function RentalApprovalsPage() {
                   <TableCell className="py-3"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="py-3 hidden lg:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                  <TableCell className="py-3 hidden xl:table-cell"><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
                   <TableCell className="py-3"><Skeleton className="h-8 w-8 rounded" /></TableCell>
                 </TableRow>
               ))
@@ -457,6 +462,13 @@ export default function RentalApprovalsPage() {
                         {t(`dashboard.status.${rental.status}`) || t("common.unknown")}
                       </Badge>
                     </TableCell>
+                    <TableCell className="py-3 hidden xl:table-cell">
+                      {(rental as any).clearanceStatus ? (
+                        <ClearanceStatusBadge status={(rental as any).clearanceStatus} />
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
                     <TableCell className="py-3">
                       <Button
                         variant="ghost"
@@ -472,14 +484,14 @@ export default function RentalApprovalsPage() {
                 {/* Fill remaining rows to always show 5 rows */}
                 {rentals.length < 5 && Array.from({ length: 5 - rentals.length }).map((_, index) => (
                   <TableRow key={`filler-${index}`} className="h-[72px]">
-                    <TableCell className="py-3" colSpan={8}></TableCell>
+                    <TableCell className="py-3" colSpan={9}></TableCell>
                   </TableRow>
                 ))}
               </>
             ) : (
               // Empty state
               <TableRow>
-                <TableCell colSpan={8} className="h-[360px] text-center">
+                <TableCell colSpan={9} className="h-[360px] text-center">
                   <div className="flex h-full w-full items-center justify-center">
                     <div className="flex flex-col items-center gap-1 py-10">
                       <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />

@@ -132,9 +132,14 @@ export const checkRentalStatuses = internalMutation({
             senderId: rental.storeProfileId as any
           })
         }
+
+        // Initiate clearance workflow after completion
+        await ctx.scheduler.runAfter(0, internal.rentalClearance.initiateClearance, {
+          rentalRequestId: rental._id
+        })
       }
     }
-    
+
     // 3. Check for expired pending requests (not responded to within 48 hours)
     const pendingRequests = await ctx.db
       .query("rentalRequests")

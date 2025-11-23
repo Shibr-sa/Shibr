@@ -17,4 +17,11 @@ crons.daily(
   internal.rentalManagement.sendRentalReminders
 )
 
+// Run daily to process pending clearances (B4.1)
+crons.daily(
+  "process clearances",
+  { hourUTC: 10, minuteUTC: 0 }, // Run at 10 AM UTC (1 PM Saudi time)
+  internal.rentalClearance.processPendingClearances
+)
+
 export default crons

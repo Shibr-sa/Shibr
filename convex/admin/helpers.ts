@@ -26,3 +26,21 @@ export async function verifyAdminAccess(ctx: QueryCtx | MutationCtx) {
     adminProfile
   }
 }
+
+// Helper function to require admin access (throws if not admin)
+export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) {
+    throw new Error("Unauthorized: Authentication required")
+  }
+
+  const userProfile = await getUserProfile(ctx, userId)
+  if (!userProfile || userProfile.type !== "admin") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  return {
+    userId,
+    adminProfile: userProfile.profile as Doc<"adminProfiles">,
+  }
+}
